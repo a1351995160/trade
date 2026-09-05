@@ -34,6 +34,7 @@ from .research_factory.predictive_trial_reauthorization import PredictiveTrialRe
 from .research_factory.predictive_trial_start import PredictiveTrialStartError, PredictiveTrialStartServiceV1
 from .research_factory.candidate_generation import CandidateGenerationError, CandidateGenerationManagerV1
 from .research_factory.ai_design_approval import AIDesignApprovalError, AIDesignApprovalServiceV1
+from .research_factory.candidate_executable_materialization import CandidateExecutableMaterializationError, CandidateExecutableMaterializationManagerV1
 from .research_factory.research_evolution_ai_design import ResearchEvolutionAIDesignServiceV1
 from .research_factory.research_proposal_governance import ResearchProposalGovernanceError, ResearchProposalGovernanceServiceV1
 from .research_factory.structural_reconciliation import reconcile_structural_pass
@@ -60,6 +61,7 @@ research_proposal_governance_service = ResearchProposalGovernanceServiceV1(PROJE
 research_evolution_ai_design_service = ResearchEvolutionAIDesignServiceV1(PROJECT_ROOT)
 research_evolution_ai_design_approval_service = AIDesignApprovalServiceV1(PROJECT_ROOT)
 candidate_generation_service = CandidateGenerationManagerV1(PROJECT_ROOT)
+candidate_materialization_service = CandidateExecutableMaterializationManagerV1(PROJECT_ROOT)
 
 
 @app.on_event("startup")
@@ -112,6 +114,11 @@ async def ai_design_approval_error_handler(_, exc: AIDesignApprovalError) -> JSO
     return JSONResponse(status_code=exc.status_code, content=exc.envelope())
 
 
+@app.exception_handler(CandidateExecutableMaterializationError)
+async def candidate_executable_materialization_error_handler(_, exc: CandidateExecutableMaterializationError) -> JSONResponse:
+    return JSONResponse(status_code=exc.status_code, content=exc.envelope())
+
+
 def _require_local_console_request(request: Request) -> None:
     host = request.client.host if request.client else None
     if host not in {"127.0.0.1", "::1", "localhost", "testclient"}:
@@ -138,6 +145,17 @@ def _console_candidate_generation_service() -> CandidateGenerationManagerV1:
         except (AttributeError, TypeError, OSError):
             pass
     return candidate_generation_service
+
+
+def _console_candidate_materialization_service() -> CandidateExecutableMaterializationManagerV1:
+    scoped_service = getattr(_console_service(), "candidate_materialization", None)
+    if scoped_service is not None:
+        try:
+            if Path(scoped_service.root).resolve() != PROJECT_ROOT.resolve():
+                return scoped_service
+        except (AttributeError, TypeError, OSError):
+            pass
+    return candidate_materialization_service
 
 
 if (FRONTEND_DIST / "assets").exists():
@@ -795,6 +813,29 @@ def research_console_generate_candidate_proposal(objective_id: str, request: Req
     return _console_candidate_generation_service().generate_proposal(objective_id)
 
 
+@app.get("/api/research-console/{objective_id}/candidate-proposals/materialization")
+def research_console_candidate_materialization(objective_id: str, proposal_id: str | None = Query(default=None)) -> dict:
+    return _console_candidate_materialization_service().read_for_objective(objective_id, proposal_id)
+
+
+@app.post("/api/research-console/{objective_id}/candidate-proposals/materialization/preview")
+def research_console_create_candidate_materialization_preview(objective_id: str, request: Request, payload: dict[str, Any] | None = Body(default=None)) -> dict:
+    _require_local_console_request(request)
+    body = payload or {}
+    proposal_id = str(body.get("proposal_id") or "") or None
+    return _console_candidate_materialization_service().create_preview(objective_id, proposal_id)
+
+
+@app.post("/api/research-console/{objective_id}/candidate-proposals/materialization/confirm")
+def research_console_confirm_candidate_materialization(objective_id: str, request: Request, payload: dict[str, Any] | None = Body(default=None)) -> dict:
+    _require_local_console_request(request)
+    body = payload or {}
+    proposal_id = str(body.get("proposal_id") or "")
+    if not proposal_id:
+        raise CandidateExecutableMaterializationError("CANDIDATE_PROPOSAL_REQUIRED", "确认执行合同必须明确 Candidate Proposal", status_code=400)
+    return _console_candidate_materialization_service().confirm(objective_id, proposal_id, body)
+
+
 @app.get("/api/research/evolution/proposals")
 def research_evolution_proposals(objective_id: str | None = Query(default=None), status: str | None = Query(default=None)) -> dict:
     return research_proposal_governance_service.list_proposals(objective_id=objective_id, status=status)
@@ -847,6 +888,37 @@ def research_candidate_proposals(objective_id: str | None = Query(default=None),
 @app.get("/research/candidates/proposals/{proposal_id}/freeze-preview")
 def research_candidate_proposal_freeze_preview(proposal_id: str) -> dict:
     return candidate_generation_service.get_freeze_preview(proposal_id)
+
+
+@app.get("/api/research/candidates/proposals/{proposal_id}/materialization")
+@app.get("/research/candidates/proposals/{proposal_id}/materialization")
+def research_candidate_materialization(proposal_id: str) -> dict:
+    service = candidate_materialization_service
+    return service.read_for_objective(service.objective_id_for_proposal(proposal_id), proposal_id)
+
+
+@app.get("/api/research/candidates/proposals/{proposal_id}/materialization/preview")
+@app.get("/research/candidates/proposals/{proposal_id}/materialization/preview")
+def research_candidate_materialization_preview(proposal_id: str) -> dict:
+    service = candidate_materialization_service
+    state = service.read_for_objective(service.objective_id_for_proposal(proposal_id), proposal_id)
+    return state.get("preview") if isinstance(state.get("preview"), dict) else state
+
+
+@app.post("/api/research/candidates/proposals/{proposal_id}/materialization/preview")
+@app.post("/research/candidates/proposals/{proposal_id}/materialization/preview")
+def research_create_candidate_materialization_preview(proposal_id: str, request: Request, payload: dict[str, Any] | None = Body(default=None)) -> dict:
+    _require_local_console_request(request)
+    service = candidate_materialization_service
+    return service.create_preview(service.objective_id_for_proposal(proposal_id), proposal_id)
+
+
+@app.post("/api/research/candidates/proposals/{proposal_id}/materialization/confirm")
+@app.post("/research/candidates/proposals/{proposal_id}/materialization/confirm")
+def research_confirm_candidate_materialization(proposal_id: str, request: Request, payload: dict[str, Any] | None = Body(default=None)) -> dict:
+    _require_local_console_request(request)
+    service = candidate_materialization_service
+    return service.confirm(service.objective_id_for_proposal(proposal_id), proposal_id, payload or {})
 
 
 @app.get("/api/research/candidates/proposals/{proposal_id}")

@@ -524,6 +524,7 @@ export interface CandidateProposalView extends Provenance {
   freeze_preview: JsonRecord | null
   freeze_record?: JsonRecord | null
   candidate_registry?: JsonRecord | null
+  materialization?: JsonRecord
   display: JsonRecord
   output_path?: string | null
   outcome_blind?: boolean
@@ -546,6 +547,18 @@ export interface CandidateProposalFreezeResult extends JsonRecord {
   candidate: JsonRecord
   proposal: JsonRecord
   idempotent: boolean
+  message_zh?: string
+}
+
+export interface CandidateExecutableMaterializationResult extends JsonRecord {
+  materialization_state?: string
+  effective_state?: string
+  required_action?: string | null
+  structural_preflight_ready?: boolean
+  preview?: JsonRecord | null
+  confirmation?: JsonRecord
+  contract?: JsonRecord
+  idempotent?: boolean
   message_zh?: string
 }
 

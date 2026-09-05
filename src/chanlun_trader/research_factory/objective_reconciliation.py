@@ -24,6 +24,9 @@ from .ai_design_approval import (
 from .canonical_authority import CANONICAL_AUTHORITY_CONTRACT_V1
 from .common import stable_hash
 from .durability import DurableFrozenCandidateContractV1
+from .candidate_executable_materialization import (
+    CANONICAL_CANDIDATE_IDENTITY_CONFLICT,
+)
 
 
 RECONCILIATION_SCHEMA_VERSION = "objective-reconciliation-v1"
@@ -44,6 +47,8 @@ AI_DESIGN_AWAITING_CONFIRMATION = "AI_DESIGN_AWAITING_CONFIRMATION"
 NEED_AI_RESEARCH_DESIGN = "NEED_AI_RESEARCH_DESIGN"
 CANDIDATE_PROPOSAL_READY = "CANDIDATE_PROPOSAL_READY"
 CANDIDATE_FROZEN_PENDING_EXECUTABLE_MATERIALIZATION = "CANDIDATE_FROZEN_PENDING_EXECUTABLE_MATERIALIZATION"
+EXECUTABLE_MATERIALIZATION_PREVIEW_READY = "EXECUTABLE_MATERIALIZATION_PREVIEW_READY"
+EXECUTABLE_CONTRACT_INVALID = "EXECUTABLE_CONTRACT_INVALID"
 READY_FOR_STRUCTURAL_PREFLIGHT = "READY_FOR_STRUCTURAL_PREFLIGHT"
 TRIAL_ACTIVE = "TRIAL_ACTIVE"
 TRIAL_TERMINAL = "TRIAL_TERMINAL"
@@ -53,6 +58,8 @@ BUDGET_AUTHORITY_AMBIGUOUS = "BUDGET_AUTHORITY_AMBIGUOUS"
 
 HUMAN_CONFIRM_AI_RESEARCH_DESIGN = "HUMAN_CONFIRM_AI_RESEARCH_DESIGN"
 HUMAN_REVIEW_CANDIDATE_PROPOSAL = "HUMAN_REVIEW_CANDIDATE_PROPOSAL"
+CREATE_EXECUTABLE_MATERIALIZATION_PREVIEW = "CREATE_EXECUTABLE_MATERIALIZATION_PREVIEW"
+HUMAN_CONFIRM_EXECUTABLE_MATERIALIZATION = "HUMAN_CONFIRM_EXECUTABLE_MATERIALIZATION"
 RUN_STRUCTURAL_PREFLIGHT = "RUN_STRUCTURAL_PREFLIGHT"
 STOP_RESEARCH = "STOP_RESEARCH"
 
@@ -761,7 +768,10 @@ class ObjectiveReconciliationServiceV1:
         if directory.is_dir():
             for path in sorted(directory.iterdir()):
                 if path.suffix.casefold() in {".json", ".jsonl"}:
-                    self._add_if_objective(ctx, "candidate_governance", path, "CANDIDATE_PROPOSAL_GOVERNANCE_FACT", path_scoped=True)
+                    if path.name in {"EXECUTABLE_MATERIALIZATION_PREVIEW.json", "EXECUTABLE_MATERIALIZATION_CONFIRMATION.json"}:
+                        self._add_if_objective(ctx, "executable_materialization", path, "EXECUTABLE_CANDIDATE_MATERIALIZATION_EVIDENCE", path_scoped=True)
+                    else:
+                        self._add_if_objective(ctx, "candidate_governance", path, "CANDIDATE_PROPOSAL_GOVERNANCE_FACT", path_scoped=True)
         registry = self.root / "data/research/research_factory/candidates" / ctx.objective_id / "CANDIDATE_REGISTRY.json"
         self._add_if_objective(ctx, "candidate_governance", registry, "CANDIDATE_GOVERNANCE_FREEZE_FACT", path_scoped=True)
 
@@ -835,6 +845,27 @@ class ObjectiveReconciliationServiceV1:
         proposal_present = False
         registry_present = False
         freeze_receipt_present = False
+        materialization_preview = next(
+            (
+                source.get("payload")
+                for source in ctx.sources.get("executable_materialization", ())
+                if source["path"].name == "EXECUTABLE_MATERIALIZATION_PREVIEW.json" and isinstance(source.get("payload"), Mapping)
+            ),
+            None,
+        )
+        materialization_confirmation = next(
+            (
+                source.get("payload")
+                for source in ctx.sources.get("executable_materialization", ())
+                if source["path"].name == "EXECUTABLE_MATERIALIZATION_CONFIRMATION.json" and isinstance(source.get("payload"), Mapping)
+            ),
+            None,
+        )
+        preview_valid = bool(
+            isinstance(materialization_preview, Mapping)
+            and str(materialization_preview.get("preview_hash") or "")
+            == stable_hash({key: value for key, value in materialization_preview.items() if key != "preview_hash"})
+        )
         for source in ctx.sources.get("candidate_governance", ()):
             path_name = source["path"].name.casefold()
             proposal_present = proposal_present or "candidate_proposal" in path_name
@@ -888,6 +919,16 @@ class ObjectiveReconciliationServiceV1:
             "durable_contracts": [],
             "executable_frozen_candidate": False,
             "structural_preflight_ready": False,
+            "durable_contract_invalid": False,
+            "materialization": {
+                "preview_present": materialization_preview is not None,
+                "preview_valid": preview_valid,
+                "preview_ready": preview_valid and str((materialization_preview or {}).get("status") or "") == EXECUTABLE_MATERIALIZATION_PREVIEW_READY,
+                "preview": dict(materialization_preview) if isinstance(materialization_preview, Mapping) else None,
+                "confirmation_present": materialization_confirmation is not None,
+                "confirmation": dict(materialization_confirmation) if isinstance(materialization_confirmation, Mapping) else None,
+                "source_paths": sorted(source["meta"]["path"] for source in ctx.sources.get("executable_materialization", ())),
+            },
             "current_candidate_id": only_candidate,
             "current_candidate_hash": only_hashes[0] if len(only_hashes) == 1 else None,
         }
@@ -972,6 +1013,10 @@ class ObjectiveReconciliationServiceV1:
 
         target_id = candidate_view.get("current_candidate_id")
         target_hash = candidate_view.get("current_candidate_hash")
+        materialization_preview = candidate_view.get("materialization", {}).get("preview") if isinstance(candidate_view.get("materialization"), Mapping) else None
+        if not target_id and isinstance(materialization_preview, Mapping):
+            target_id = materialization_preview.get("candidate_id")
+            target_hash = materialization_preview.get("candidate_hash")
         if not target_id and len(by_candidate) == 1:
             target_id = next(iter(by_candidate))
             if len(by_candidate[target_id]) == 1:
@@ -989,6 +1034,12 @@ class ObjectiveReconciliationServiceV1:
         candidate_view["durable_contracts"] = entries
         candidate_view["executable_frozen_candidate"] = executable
         candidate_view["structural_preflight_ready"] = executable
+        candidate_view["durable_contract_invalid"] = any(
+            item["identity_match"]
+            and (item["from_dict"] == "FAIL" or item["provider_candidate_payload"] == "FAIL")
+            for item in entries
+            if not target_id or item["candidate_id"] == target_id
+        )
         candidate_view["current_candidate_id"] = target_id
         candidate_view["current_candidate_hash"] = target_hash
         candidate_view["contract_identity_count"] = len(by_candidate)
@@ -1609,6 +1660,9 @@ class ObjectiveReconciliationServiceV1:
         active_trial = bool(trial_view.get("active_trial_count"))
         terminal_trial = bool(trial_view.get("terminal_trial_count"))
         executable = bool(candidate_view.get("executable_frozen_candidate"))
+        executable_invalid = bool(candidate_view.get("durable_contract_invalid"))
+        materialization = candidate_view.get("materialization") if isinstance(candidate_view.get("materialization"), Mapping) else {}
+        materialization_preview_ready = bool(materialization.get("preview_ready"))
         governance_freeze = bool(candidate_view.get("governance_freeze_present"))
         proposal_ready = bool(candidate_view.get("proposal_present")) and not governance_freeze
 
@@ -1630,6 +1684,12 @@ class ObjectiveReconciliationServiceV1:
             stage, state, action = "BUDGET", BUDGET_EXHAUSTED, STOP_RESEARCH
         elif terminal_trial:
             stage, state, action = "TRIAL_LIFECYCLE", TRIAL_TERMINAL, STOP_RESEARCH
+        elif executable_invalid:
+            stage, state, action = (
+                "EXECUTABLE_CANDIDATE_MATERIALIZATION",
+                EXECUTABLE_CONTRACT_INVALID,
+                None,
+            )
         elif executable:
             structural_status = self._canonical_structural_status(ctx)
             predictive_authorized = self._canonical_predictive_authorized(ctx)
@@ -1645,11 +1705,17 @@ class ObjectiveReconciliationServiceV1:
                     READY_FOR_STRUCTURAL_PREFLIGHT,
                     RUN_STRUCTURAL_PREFLIGHT,
                 )
+        elif materialization_preview_ready:
+            stage, state, action = (
+                "EXECUTABLE_CANDIDATE_MATERIALIZATION",
+                EXECUTABLE_MATERIALIZATION_PREVIEW_READY,
+                HUMAN_CONFIRM_EXECUTABLE_MATERIALIZATION,
+            )
         elif governance_freeze:
             stage, state, action = (
                 "CANDIDATE_GOVERNANCE_FREEZE",
                 CANDIDATE_FROZEN_PENDING_EXECUTABLE_MATERIALIZATION,
-                "MATERIALIZE_EXECUTABLE_FROZEN_CANDIDATE_CONTRACT",
+                CREATE_EXECUTABLE_MATERIALIZATION_PREVIEW,
             )
         elif proposal_ready:
             stage, state, action = (
@@ -1700,6 +1766,8 @@ class ObjectiveReconciliationServiceV1:
             AI_DESIGN_AWAITING_CONFIRMATION,
             AI_DESIGN_REJECTED,
             CANDIDATE_FROZEN_PENDING_EXECUTABLE_MATERIALIZATION,
+            EXECUTABLE_MATERIALIZATION_PREVIEW_READY,
+            EXECUTABLE_CONTRACT_INVALID,
             BUDGET_EXHAUSTED,
             TRIAL_TERMINAL,
             TRIAL_ACTIVE,
@@ -1709,6 +1777,8 @@ class ObjectiveReconciliationServiceV1:
             CANDIDATE_PROPOSAL_READY,
         }:
             safe_to_advance = False
+        if state == CANDIDATE_FROZEN_PENDING_EXECUTABLE_MATERIALIZATION and safe_to_resume and not executable_invalid:
+            safe_to_advance = True
 
         canonical_refs = {
             "objective": next(
@@ -1722,6 +1792,9 @@ class ObjectiveReconciliationServiceV1:
             "ai_design_approval": [item["path"] for item in ctx.evidence.get("ai_design_approval", ())],
             "candidate_governance": [
                 item["path"] for item in ctx.evidence.get("candidate_governance", ())
+            ],
+            "executable_materialization": [
+                item["path"] for item in ctx.evidence.get("executable_materialization", ())
             ],
             "durable_frozen_contract": [
                 item["path"]

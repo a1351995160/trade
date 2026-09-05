@@ -47,6 +47,8 @@ FREEZE_PREVIEW_READY = "FREEZE_PREVIEW_READY"
 CANDIDATE_FREEZE_READY = FREEZE_PREVIEW_READY
 _LEGACY_CANDIDATE_FREEZE_READY = "CANDIDATE_FREEZE_READY"
 FROZEN = "FROZEN"
+CANDIDATE_GOVERNANCE_FROZEN = "CANDIDATE_GOVERNANCE_FROZEN"
+EXECUTABLE_CANDIDATE_FROZEN = "EXECUTABLE_CANDIDATE_FROZEN"
 READY_FOR_STRUCTURAL_PREFLIGHT = "READY_FOR_STRUCTURAL_PREFLIGHT"
 NEW_CANDIDATE = "NEW_CANDIDATE"
 REJECTED = "REJECTED"
@@ -54,6 +56,8 @@ CLOSED = "CLOSED"
 DUPLICATE_MECHANISM_REJECTED = "DUPLICATE_MECHANISM_REJECTED"
 NEED_CANDIDATE_PROPOSAL = "NEED_CANDIDATE_PROPOSAL"
 HUMAN_CONFIRM_CANDIDATE_FREEZE = "HUMAN_CONFIRM_CANDIDATE_FREEZE"
+CREATE_EXECUTABLE_MATERIALIZATION_PREVIEW = "CREATE_EXECUTABLE_MATERIALIZATION_PREVIEW"
+HUMAN_CONFIRM_EXECUTABLE_MATERIALIZATION = "HUMAN_CONFIRM_EXECUTABLE_MATERIALIZATION"
 
 CANDIDATE_PROPOSAL_FILENAME = "CANDIDATE_PROPOSAL.json"
 CANDIDATE_PROPOSAL_INPUT_FILENAME = "CANDIDATE_PROPOSAL_INPUT.json"
@@ -1083,12 +1087,15 @@ class CandidateGenerationManagerV1:
             APPROVED: FREEZE_PREVIEW_READY,
             FREEZE_PREVIEW_READY: HUMAN_CONFIRM_CANDIDATE_FREEZE,
             _LEGACY_CANDIDATE_FREEZE_READY: HUMAN_CONFIRM_CANDIDATE_FREEZE,
-            FROZEN: READY_FOR_STRUCTURAL_PREFLIGHT,
+            FROZEN: CREATE_EXECUTABLE_MATERIALIZATION_PREVIEW,
+            CANDIDATE_GOVERNANCE_FROZEN: CREATE_EXECUTABLE_MATERIALIZATION_PREVIEW,
+            EXECUTABLE_CANDIDATE_FROZEN: READY_FOR_STRUCTURAL_PREFLIGHT,
             READY_FOR_STRUCTURAL_PREFLIGHT: READY_FOR_STRUCTURAL_PREFLIGHT,
             REJECTED: CLOSED,
             CLOSED: "STOPPED",
         }.get(state, HUMAN_REVIEW_REQUIRED)
-        frozen = state in {FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}
+        governance_frozen = state in {FROZEN, CANDIDATE_GOVERNANCE_FROZEN, EXECUTABLE_CANDIDATE_FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}
+        executable_frozen = state in {EXECUTABLE_CANDIDATE_FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}
         return {
             "schema_version": CANDIDATE_PROPOSAL_STATE_SCHEMA_VERSION,
             "transition_id": f"CANDIDATE_PROPOSAL_TRANSITION_{stable_hash({'proposal_id': proposal.get('proposal_id'), 'state': state, 'history': history})[:24].upper()}",
@@ -1102,8 +1109,10 @@ class CandidateGenerationManagerV1:
             "review_ids": review_ids or [],
             "requires_human_review": state in {CANDIDATE_PROPOSAL_READY, HUMAN_REVIEW_REQUIRED, FREEZE_PREVIEW_READY},
             "next_action": next_action,
-            "candidate_created": frozen,
-            "candidate_frozen": frozen,
+            "candidate_created": governance_frozen,
+            "candidate_frozen": governance_frozen,
+            "executable_candidate_frozen": executable_frozen,
+            "structural_preflight_ready": executable_frozen,
             "structural_preflight_started": False,
             "trial_started": False,
             "ai_called": False,
@@ -1292,7 +1301,8 @@ class CandidateGenerationManagerV1:
         registry_entry = None
         if candidate_registry is not None and candidate_id:
             registry_entry = next((dict(item) for item in candidate_registry.get("candidates", ()) if isinstance(item, Mapping) and str(item.get("candidate_id") or "") == candidate_id), None)
-        frozen = current_state in {FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}
+        governance_frozen = current_state in {FROZEN, CANDIDATE_GOVERNANCE_FROZEN, EXECUTABLE_CANDIDATE_FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}
+        executable_frozen = current_state in {EXECUTABLE_CANDIDATE_FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}
         result = dict(proposal)
         result["proposal_status"] = CANDIDATE_PROPOSAL_READY
         result["governance_state"] = current_state
@@ -1311,21 +1321,25 @@ class CandidateGenerationManagerV1:
             "current_state": current_state,
             "next_action": (state or {}).get("next_action") or HUMAN_REVIEW_REQUIRED,
             "requires_human_review": current_state in {CANDIDATE_PROPOSAL_READY, HUMAN_REVIEW_REQUIRED, FREEZE_PREVIEW_READY},
-            "candidate_created": frozen,
-            "candidate_frozen": frozen,
+            "candidate_created": governance_frozen,
+            "candidate_frozen": governance_frozen,
+            "executable_candidate_frozen": executable_frozen,
+            "structural_preflight_ready": executable_frozen,
             "structural_preflight_started": False,
             "trial_started": False,
             "ai_called": False,
             "budget_consumed": False,
-            "freeze_confirmed": frozen,
+            "freeze_confirmed": governance_frozen,
             "freeze_id": freeze_receipt.get("freeze_id") if freeze_receipt else None,
-            "candidate_registry_ref": _relative(self.root, self._candidate_registry_path(objective_id)) if frozen else None,
+            "candidate_registry_ref": _relative(self.root, self._candidate_registry_path(objective_id)) if governance_frozen else None,
             "automatic_structural_preflight": False,
             "automatic_trial_started": False,
         }
         result["human_review_required"] = current_state in {CANDIDATE_PROPOSAL_READY, HUMAN_REVIEW_REQUIRED, FREEZE_PREVIEW_READY}
-        result["candidate_created"] = frozen
-        result["candidate_frozen"] = frozen
+        result["candidate_created"] = governance_frozen
+        result["candidate_frozen"] = governance_frozen
+        result["executable_candidate_frozen"] = executable_frozen
+        result["structural_preflight_ready"] = executable_frozen
         result["structural_preflight_started"] = False
         result["trial_started"] = False
         result["budget_consumed"] = False
@@ -1350,14 +1364,17 @@ class CandidateGenerationManagerV1:
     def _validate_state(self, state: Mapping[str, Any], proposal: Mapping[str, Any]) -> None:
         if str(state.get("proposal_id") or "") != str(proposal.get("proposal_id") or "") or str(state.get("proposal_hash") or "") != str(proposal.get("proposal_hash") or ""):
             raise CandidateGenerationError("CANDIDATE_PROPOSAL_STATE_INVALID", "候选建议状态记录与 Proposal 身份不一致", status_code=503)
-        valid = {CANDIDATE_PROPOSAL_READY, HUMAN_REVIEW_REQUIRED, APPROVED, FREEZE_PREVIEW_READY, _LEGACY_CANDIDATE_FREEZE_READY, FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT, REJECTED, CLOSED}
+        valid = {CANDIDATE_PROPOSAL_READY, HUMAN_REVIEW_REQUIRED, APPROVED, FREEZE_PREVIEW_READY, _LEGACY_CANDIDATE_FREEZE_READY, FROZEN, CANDIDATE_GOVERNANCE_FROZEN, EXECUTABLE_CANDIDATE_FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT, REJECTED, CLOSED}
         if str(state.get("status") or "") not in valid:
             raise CandidateGenerationError("CANDIDATE_PROPOSAL_STATE_INVALID", "候选建议状态不受支持", status_code=503)
-        frozen = str(state.get("status") or "") in {FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}
+        frozen = str(state.get("status") or "") in {FROZEN, CANDIDATE_GOVERNANCE_FROZEN, EXECUTABLE_CANDIDATE_FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}
+        executable = str(state.get("status") or "") in {EXECUTABLE_CANDIDATE_FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}
         for key in ("candidate_created", "candidate_frozen", "structural_preflight_started", "trial_started", "ai_called", "budget_consumed"):
             expected = frozen if key in {"candidate_created", "candidate_frozen"} else False
             if state.get(key) is not expected:
                 raise CandidateGenerationError("CANDIDATE_PROPOSAL_STATE_INVALID", "候选建议状态违反零副作用边界", status_code=503)
+        if ("executable_candidate_frozen" in state and state.get("executable_candidate_frozen") is not executable) or ("structural_preflight_ready" in state and state.get("structural_preflight_ready") is not executable):
+            raise CandidateGenerationError("CANDIDATE_PROPOSAL_STATE_INVALID", "候选建议状态的执行冻结标记不一致", status_code=503)
         try:
             _assert_outcome_blind(state)
         except PerformanceLeakError as exc:
@@ -1386,7 +1403,7 @@ class CandidateGenerationManagerV1:
         preview = _read_json(preview_path, code="CANDIDATE_FREEZE_PREVIEW_UNREADABLE", required=False)
         if preview is not None:
             self._validate_freeze_preview(proposal, preview)
-        if state is not None and str(state.get("status") or "") in {FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}:
+        if state is not None and str(state.get("status") or "") in {FROZEN, CANDIDATE_GOVERNANCE_FROZEN, EXECUTABLE_CANDIDATE_FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}:
             if preview is None:
                 raise CandidateGenerationError("CANDIDATE_FREEZE_PREVIEW_MISSING", "已冻结 Candidate 缺少 Freeze Preview", status_code=503)
             receipt = _read_json(output_path.parent / CANDIDATE_FREEZE_RECEIPT_FILENAME, code="CANDIDATE_FREEZE_RECEIPT_UNREADABLE", required=False)
@@ -1425,9 +1442,9 @@ class CandidateGenerationManagerV1:
         if value in {"PENDING", "待审核"}:
             return state in {CANDIDATE_PROPOSAL_READY, HUMAN_REVIEW_REQUIRED}
         if value in {"APPROVED", "已批准"}:
-            return state in {APPROVED, FREEZE_PREVIEW_READY, _LEGACY_CANDIDATE_FREEZE_READY, FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}
+            return state in {APPROVED, FREEZE_PREVIEW_READY, _LEGACY_CANDIDATE_FREEZE_READY, FROZEN, CANDIDATE_GOVERNANCE_FROZEN, EXECUTABLE_CANDIDATE_FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}
         if value in {"FROZEN", "已冻结"}:
-            return state in {FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}
+            return state in {FROZEN, CANDIDATE_GOVERNANCE_FROZEN, EXECUTABLE_CANDIDATE_FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}
         if value in {"REJECTED", "已拒绝"}:
             return state in {REJECTED, CLOSED}
         return state == value
@@ -1544,7 +1561,7 @@ class CandidateGenerationManagerV1:
         """Read the already materialized freeze preview; never create it."""
         with self._mutex:
             view = self._load_view(proposal_id)
-            if str(view.get("governance_state") or "") not in {APPROVED, FREEZE_PREVIEW_READY, _LEGACY_CANDIDATE_FREEZE_READY, FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}:
+            if str(view.get("governance_state") or "") not in {APPROVED, FREEZE_PREVIEW_READY, _LEGACY_CANDIDATE_FREEZE_READY, FROZEN, CANDIDATE_GOVERNANCE_FROZEN, EXECUTABLE_CANDIDATE_FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}:
                 raise CandidateGenerationError("CANDIDATE_FREEZE_NOT_READY", "Candidate Proposal 尚未通过人工审核，不能查看冻结预览", status_code=409)
             preview = view.get("freeze_preview")
             if not isinstance(preview, Mapping):
@@ -1600,7 +1617,7 @@ class CandidateGenerationManagerV1:
             current = str(state.get("status") if state else CANDIDATE_PROPOSAL_READY)
             reviews = self._read_reviews(reviews_path)
             existing_action = next((item for item in reversed(reviews) if str(item.get("action") or "") == normalized), None)
-            if normalized == "approve" and current in {APPROVED, FREEZE_PREVIEW_READY, _LEGACY_CANDIDATE_FREEZE_READY, FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}:
+            if normalized == "approve" and current in {APPROVED, FREEZE_PREVIEW_READY, _LEGACY_CANDIDATE_FREEZE_READY, FROZEN, CANDIDATE_GOVERNANCE_FROZEN, EXECUTABLE_CANDIDATE_FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}:
                 return {"schema_version": CANDIDATE_REVIEW_SCHEMA_VERSION, "review": existing_action or {}, "proposal": self._load_view(str(proposal.get("proposal_id") or "")), "freeze_preview": self.get_freeze_preview(str(proposal.get("proposal_id") or "")), "idempotent": True}
             if normalized == "reject" and current in {REJECTED, CLOSED}:
                 return {"schema_version": CANDIDATE_REVIEW_SCHEMA_VERSION, "review": existing_action or {}, "proposal": self._load_view(str(proposal.get("proposal_id") or "")), "freeze_preview": None, "idempotent": True}
@@ -1737,6 +1754,9 @@ class CandidateGenerationManagerV1:
             "lineage": proposal.get("lineage"),
             "creation_reason": "HUMAN_CONFIRMED_CANDIDATE_FREEZE",
             "state": FROZEN,
+            "governance_state": CANDIDATE_GOVERNANCE_FROZEN,
+            "executable_candidate_frozen": False,
+            "structural_preflight_ready": False,
             "freeze_id": freeze_id,
             "frozen_at": timestamp,
             "multiple_testing_family_id": proposal.get("multiple_testing_family_id"),
@@ -1759,8 +1779,8 @@ class CandidateGenerationManagerV1:
             **dict(record),
             "action": "FREEZE_CANDIDATE",
             "previous_state": FREEZE_PREVIEW_READY,
-            "resulting_state": FROZEN,
-            "next_state": READY_FOR_STRUCTURAL_PREFLIGHT,
+            "resulting_state": CANDIDATE_GOVERNANCE_FROZEN,
+            "next_state": CREATE_EXECUTABLE_MATERIALIZATION_PREVIEW,
             "candidate_registry_ref": _relative(self.root, self._candidate_registry_path(objective_id)),
             "lineage": proposal.get("lineage"),
             "creation_reason": "HUMAN_CONFIRMED_CANDIDATE_FREEZE",
@@ -1780,7 +1800,12 @@ class CandidateGenerationManagerV1:
         receipt_base = {
             **dict(record),
             "receipt_status": "CONFIRMED",
-            "result_state": READY_FOR_STRUCTURAL_PREFLIGHT,
+            "result_state": CANDIDATE_GOVERNANCE_FROZEN,
+            "governance_state": CANDIDATE_GOVERNANCE_FROZEN,
+            "next_state": CREATE_EXECUTABLE_MATERIALIZATION_PREVIEW,
+            "next_action": CREATE_EXECUTABLE_MATERIALIZATION_PREVIEW,
+            "executable_candidate_frozen": False,
+            "structural_preflight_ready": False,
             "candidate_registry_ref": _relative(self.root, self._candidate_registry_path(objective_id)),
             "lineage_ref": _relative(self.root, self._lineage_path(objective_id)),
             "creation_reason": "HUMAN_CONFIRMED_CANDIDATE_FREEZE",
@@ -1806,14 +1831,14 @@ class CandidateGenerationManagerV1:
         history = list((state or {}).get("state_history") or proposal.get("state_history") or [GENERATED, CANDIDATE_PROPOSAL_READY, HUMAN_REVIEW_REQUIRED, FREEZE_PREVIEW_READY])
         if FROZEN not in history:
             history.append(FROZEN)
-        if current not in {FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}:
-            self._materialize_state(proposal, FROZEN, history, reviews)
+        if CANDIDATE_GOVERNANCE_FROZEN not in history:
+            history.append(CANDIDATE_GOVERNANCE_FROZEN)
+        if current not in {FROZEN, CANDIDATE_GOVERNANCE_FROZEN, EXECUTABLE_CANDIDATE_FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}:
+            self._materialize_state(proposal, CANDIDATE_GOVERNANCE_FROZEN, history, reviews)
             if self.crash_at in {"after_frozen_state", "after_candidate_freeze"}:
                 raise RuntimeError("SYNTHETIC_CANDIDATE_GOVERNANCE_CRASH:after_frozen_state")
-        if READY_FOR_STRUCTURAL_PREFLIGHT not in history:
-            history.append(READY_FOR_STRUCTURAL_PREFLIGHT)
-        if current != READY_FOR_STRUCTURAL_PREFLIGHT:
-            self._materialize_state(proposal, READY_FOR_STRUCTURAL_PREFLIGHT, history, reviews)
+        if current in {FROZEN, CANDIDATE_GOVERNANCE_FROZEN} and current != CANDIDATE_GOVERNANCE_FROZEN:
+            self._materialize_state(proposal, CANDIDATE_GOVERNANCE_FROZEN, history, reviews)
         view = self._load_view(proposal_id)
         registry_entry = next((dict(item) for item in registry.get("candidates", ()) if isinstance(item, Mapping) and str(item.get("candidate_id") or "") == candidate_id), entry)
         return {
@@ -1822,7 +1847,7 @@ class CandidateGenerationManagerV1:
             "candidate": registry_entry,
             "proposal": view,
             "idempotent": bool(idempotent and not created),
-            "message_zh": "Candidate 已按人工确认冻结；系统停在 READY_FOR_STRUCTURAL_PREFLIGHT，未自动执行 Structural Preflight 或 Trial。",
+            "message_zh": "Candidate Governance Freeze 已按人工确认完成；当前等待执行合同预览，未自动执行 Structural Preflight 或 Trial。",
         }
 
     def freeze(
@@ -1878,7 +1903,7 @@ class CandidateGenerationManagerV1:
             state_path = output_path.parent / CANDIDATE_PROPOSAL_STATE_FILENAME
             state = _read_json(state_path, code="CANDIDATE_PROPOSAL_STATE_UNREADABLE", required=False)
             current = str(state.get("status") if state else CANDIDATE_PROPOSAL_READY)
-            if current in {FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}:
+            if current in {FROZEN, CANDIDATE_GOVERNANCE_FROZEN, EXECUTABLE_CANDIDATE_FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}:
                 receipt = _read_json(output_path.parent / CANDIDATE_FREEZE_RECEIPT_FILENAME, code="CANDIDATE_FREEZE_RECEIPT_UNREADABLE")
                 existing_freeze_id = str(receipt.get("freeze_id") or "")
                 if freeze_id not in (None, "") and str(freeze_id) != existing_freeze_id:
@@ -1984,7 +2009,7 @@ class CandidateGenerationManagerV1:
                     _append_jsonl(reviews_path, record)
                     reviews.append(record)
                     recovered = True
-                if state is None or str(state.get("status") or "") not in {READY_FOR_STRUCTURAL_PREFLIGHT}:
+                if state is None or str(state.get("status") or "") not in {CANDIDATE_GOVERNANCE_FROZEN, EXECUTABLE_CANDIDATE_FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}:
                     self._materialize_freeze(proposal, preview, record, reviews, state=state, idempotent=True)
                     recovered = True
             elif state is None:
@@ -2047,6 +2072,7 @@ if __name__ == "__main__":
 
 __all__ = [
     "APPROVED",
+    "CANDIDATE_GOVERNANCE_FROZEN",
     "CANDIDATE_FREEZE_GOVERNANCE_FILENAME",
     "CANDIDATE_FREEZE_PREVIEW_FILENAME",
     "CANDIDATE_FREEZE_PREVIEW_SCHEMA_VERSION",
@@ -2080,9 +2106,12 @@ __all__ = [
     "DUPLICATE_MECHANISM_REJECTED",
     "GENERATED",
     "HUMAN_CONFIRM_CANDIDATE_FREEZE",
+    "CREATE_EXECUTABLE_MATERIALIZATION_PREVIEW",
+    "HUMAN_CONFIRM_EXECUTABLE_MATERIALIZATION",
     "HUMAN_REVIEW_REQUIRED",
     "NEED_CANDIDATE_PROPOSAL",
     "NEW_CANDIDATE",
+    "EXECUTABLE_CANDIDATE_FROZEN",
     "READY_FOR_STRUCTURAL_PREFLIGHT",
     "REJECTED",
 ]

@@ -260,7 +260,7 @@ def test_matrix_b_governance_freeze_without_contract_is_not_structural_ready(tmp
     assert report["effective_state"] == CANDIDATE_FROZEN_PENDING_EXECUTABLE_MATERIALIZATION
     assert report["structural_preflight_ready"] is False
     assert report["candidate_reconciliation"]["executable_frozen_candidate"] is False
-    assert report["safe_to_advance"] is False
+    assert report["safe_to_advance"] is True
 
 
 def test_matrix_c_registry_and_contract_hash_mismatch_is_canonical_conflict(

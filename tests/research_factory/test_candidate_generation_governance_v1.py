@@ -15,6 +15,7 @@ from chanlun_trader.research_factory.candidate_generation import (
     HUMAN_REVIEW_REQUIRED,
     FROZEN,
     NEW_CANDIDATE,
+    CANDIDATE_GOVERNANCE_FROZEN,
     READY_FOR_STRUCTURAL_PREFLIGHT,
     CandidateGenerationError,
     CandidateGenerationManagerV1,
@@ -370,9 +371,11 @@ def test_confirmed_freeze_creates_registry_and_stops_before_structural_or_trial(
     })
 
     view = result["proposal"]
-    assert view["governance_state"] == READY_FOR_STRUCTURAL_PREFLIGHT
-    assert view["state_history"][-2:] == [FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT]
+    assert view["governance_state"] == CANDIDATE_GOVERNANCE_FROZEN
+    assert view["state_history"][-2:] == [FROZEN, CANDIDATE_GOVERNANCE_FROZEN]
     assert view["candidate_frozen"] is True
+    assert view["executable_candidate_frozen"] is False
+    assert view["structural_preflight_ready"] is False
     assert view["governance"]["structural_preflight_started"] is False
     assert view["governance"]["trial_started"] is False
     assert view["governance"]["budget_consumed"] is False
@@ -409,7 +412,8 @@ def test_freeze_hash_consistency_and_exact_once_restart_recovery(tmp_path: Path)
     assert registry_path.exists()
     recovered = CandidateGenerationManagerV1(root).recover(OBJECTIVE_ID)
     assert recovered["recovered"] is True
-    assert recovered["governance_state"] == READY_FOR_STRUCTURAL_PREFLIGHT
+    assert recovered["governance_state"] == CANDIDATE_GOVERNANCE_FROZEN
+    assert recovered["structural_preflight_ready"] is False
     first_registry = registry_path.read_bytes()
     first_reviews = (_proposal_path(root).parent / "reviews.jsonl").read_bytes()
     repeated = CandidateGenerationManagerV1(root).freeze(proposal["proposal_id"], {
@@ -478,6 +482,7 @@ def test_freeze_http_endpoint_requires_local_confirmation_and_is_exactly_once(tm
             "candidate_hash": preview["candidate_hash"],
         })
     assert first.status_code == 200
-    assert first.json()["proposal"]["governance_state"] == READY_FOR_STRUCTURAL_PREFLIGHT
+    assert first.json()["proposal"]["governance_state"] == CANDIDATE_GOVERNANCE_FROZEN
+    assert first.json()["proposal"]["structural_preflight_ready"] is False
     assert second.status_code == 200
     assert second.json()["idempotent"] is True

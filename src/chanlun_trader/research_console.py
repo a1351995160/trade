@@ -36,6 +36,7 @@ from .research_factory.predictive_trial_start import PredictiveTrialStartError, 
 from .research_factory.ai_design_approval import AIDesignApprovalError, AIDesignApprovalServiceV1
 from .research_factory.research_evolution_ai_design import ResearchEvolutionAIDesignError, ResearchEvolutionAIDesignServiceV1
 from .research_factory.candidate_generation import CandidateGenerationError, CandidateGenerationManagerV1
+from .research_factory.candidate_executable_materialization import CandidateExecutableMaterializationError, CandidateExecutableMaterializationManagerV1
 from .research_factory.promising_followup_scope import candidate_scope_info, load_scope_manifest
 from .research_factory.research_evolution_proposal import COVERAGE_FILENAME, PROPOSAL_FILENAME
 from .research_factory.research_proposal_governance import ResearchProposalGovernanceError, ResearchProposalGovernanceServiceV1
@@ -432,6 +433,7 @@ class CandidateProposalView(ReadModel):
     proposals: tuple[Mapping[str, Any], ...] = ()
     governance: Mapping[str, Any] = field(default_factory=dict)
     freeze_preview: Mapping[str, Any] | None = None
+    materialization: Mapping[str, Any] = field(default_factory=dict)
     display: Mapping[str, Any] = field(default_factory=dict)
     output_path: str | None = None
     outcome_blind: bool = True
@@ -749,6 +751,7 @@ class ResearchConsoleReadService:
         self.evolution_ai_design = ResearchEvolutionAIDesignServiceV1(self.root)
         self.ai_design_approval = AIDesignApprovalServiceV1(self.root)
         self.candidate_generation = CandidateGenerationManagerV1(self.root)
+        self.candidate_materialization = CandidateExecutableMaterializationManagerV1(self.root)
 
     @property
     def cache_stats(self) -> dict[str, int]:
@@ -3106,6 +3109,35 @@ class ResearchConsoleReadService:
         status = str(proposal.get("status") or "NEED_CANDIDATE_PROPOSAL") if isinstance(proposal, Mapping) else "NEED_CANDIDATE_PROPOSAL"
         source_path = self.root / output_path if output_path else None
         generated_at = _parse_timestamp(proposal.get("generated_at")) if isinstance(proposal, Mapping) else None
+        try:
+            materialization = self.candidate_materialization.read_for_objective(
+                objective_id,
+                str(proposal.get("proposal_id") or "") if isinstance(proposal, Mapping) else None,
+            )
+            PerformanceBlindGuard.assert_blind(materialization)
+        except CandidateExecutableMaterializationError as exc:
+            materialization = {
+                "materialization_state": exc.code,
+                "reason_code": exc.code,
+                "required_action": None,
+                "structural_preflight_ready": False,
+                "safe_to_advance": False,
+            }
+        except PerformanceLeakError as exc:
+            raise ResearchConsoleReadError("OUTCOME_LEAK_DETECTED", "执行合同视图包含被禁止的结果字段", status_code=503) from exc
+        materialization_state = str(materialization.get("materialization_state") or "") if isinstance(materialization, Mapping) else ""
+        if materialization_state == "READY_FOR_STRUCTURAL_PREFLIGHT":
+            title_zh = "Candidate 执行合同已冻结"
+            message_zh = "DurableFrozenCandidateContractV1 已通过 provider 校验；当前仅具备结构预检资格，不会自动启动 Structural。"
+        elif materialization_state == "EXECUTABLE_MATERIALIZATION_PREVIEW_READY":
+            title_zh = "等待确认执行合同预览"
+            message_zh = "Candidate Governance Freeze 已完成；执行合同预览已生成，仍需第二次人工确认。"
+        elif status in {"FROZEN", "CANDIDATE_GOVERNANCE_FROZEN"}:
+            title_zh = "Candidate Governance Freeze 已完成"
+            message_zh = "Candidate 已完成治理冻结，但尚未生成执行合同；请显式创建 Materialization Preview。"
+        else:
+            title_zh = "候选策略建议已生成" if proposal else "等待候选策略建议"
+            message_zh = "候选建议已停在人工审核边界；批准后只生成 immutable 冻结预览，仍需第二次人工确认。" if proposal else "请先显式生成 Candidate Proposal；页面不会自动调用 AI、创建 Candidate 或消耗预算。"
         return CandidateProposalView(
             provenance=self._provenance(source_id="candidate_proposal_governance_v1", path=source_path, payload=proposal, freshness=FreshnessState.FRESH if proposal else FreshnessState.UNKNOWN, stale=False, conflict=False, source_generated_at=generated_at),
             objective_id=objective_id,
@@ -3115,9 +3147,10 @@ class ResearchConsoleReadService:
             proposals=items,
             governance=proposal.get("governance") if isinstance(proposal, Mapping) and isinstance(proposal.get("governance"), Mapping) else {},
             freeze_preview=preview,
+            materialization=materialization if isinstance(materialization, Mapping) else {},
             display={
-                "title_zh": "Candidate 已冻结" if status in {"FROZEN", "READY_FOR_STRUCTURAL_PREFLIGHT"} else "候选策略建议已生成" if proposal else "等待候选策略建议",
-                "message_zh": "Candidate 已由人工确认冻结；当前仅允许进入独立 Structural Preflight 人工入口，不会自动启动 Structural Preflight 或 Trial。" if status in {"FROZEN", "READY_FOR_STRUCTURAL_PREFLIGHT"} else "候选建议已停在人工审核边界；批准后只生成 immutable 冻结预览，仍需第二次人工确认。" if proposal else "请先显式生成 Candidate Proposal；页面不会自动调用 AI、创建 Candidate 或消耗预算。",
+                "title_zh": title_zh,
+                "message_zh": message_zh,
             },
             output_path=output_path,
             outcome_blind=True,
