@@ -44,6 +44,8 @@ AI_DESIGN_IDENTITY_FIELDS = (
     "objective_id",
     "parent_proposal_id",
     "parent_proposal_hash",
+    "source_context_id",
+    "source_context_hash",
     "input_context_hash",
     "research_hypothesis",
     "mechanism_family",
@@ -326,6 +328,8 @@ class EvolutionAIDesignInputV1:
     constraints: Mapping[str, Any] = field(default_factory=dict)
     source_refs: Mapping[str, str] = field(default_factory=dict)
     source_hashes: Mapping[str, str] = field(default_factory=dict)
+    source_context_id: str = ""
+    source_context_hash: str = ""
     input_context_hash: str = ""
 
     def __post_init__(self) -> None:
@@ -371,6 +375,8 @@ class EvolutionAIDesignInputV1:
             "constraints": self.constraints,
             "source_refs": self.source_refs,
             "source_hashes": self.source_hashes,
+            "source_context_id": self.source_context_id,
+            "source_context_hash": self.source_context_hash,
             "outcome_blind": True,
             "performance_data_loaded": False,
             "outcome_fields_available": False,
@@ -424,6 +430,12 @@ class ResearchEvolutionAIDesignServiceV1:
         self.backend = backend or TemplateEvolutionAIDesignBackendV1()
         self.clock = clock
         self.crash_at = crash_at
+        # Imported lazily so the reconciliation/approval import graph stays
+        # acyclic while this service remains the AI-facing adapter.
+        from .safe_runtime_context import SafeRuntimeContextBuilderV1
+
+        self.safe_runtime_context_builder = SafeRuntimeContextBuilderV1(self.root, clock=clock)
+        self.safe_runtime_context = self.safe_runtime_context_builder
 
     def _objective_path(self, objective_id: str) -> Path:
         return self.root / "data" / "research" / "research_factory" / "objectives" / f"{_safe_id(objective_id, kind='objective_id')}.json"
@@ -564,70 +576,30 @@ class ResearchEvolutionAIDesignServiceV1:
     def build_input(self, objective_id: str) -> EvolutionAIDesignInputV1:
         objective_id = _safe_id(objective_id, kind="objective_id")
         with self._mutex:
-            sources, paths = self._load_sources(objective_id)
-            objective = sources["objective"]
-            proposal = _safe_proposal(sources["proposal"])
-            landscape = _safe_landscape(sources["failure_landscape"])
-            raw_coverage = sources["coverage"]
-            coverage = {
-                key: raw_coverage[key]
-                for key in ("schema_version", "coverage_id", "covered", "unexplored", "read_only", "outcome_blind")
-                if key in raw_coverage
-            }
-            lineage = _safe_lineage(sources["lineage"])
-            failed = _dedupe_strings([proposal.get("failed_mechanism"), proposal.get("failed_mechanism_family")])
-            for item in landscape["entries"]:
-                failed.extend(_dedupe_strings([item.get("mechanism"), item.get("candidate_family")]))
-            failed = _dedupe_strings(failed)
-            excluded = _dedupe_strings([
-                *failed,
-                *proposal.get("avoid_mechanism_family", []),
-                *proposal.get("avoid_mechanisms", []),
-                *coverage.get("covered", []),
-            ])
-            directions = _dedupe_strings([
-                *proposal.get("suggested_research_directions", []),
-                *coverage.get("unexplored", []),
-            ])
-            allowed_factors = _dedupe_strings(objective.get("allowed_factor_scope"))
-            category_names = _dedupe_strings([
-                category
-                for item in landscape["entries"]
-                for category in _dedupe_strings(item.get("failure_categories"))
-            ])
-            constraints = {
-                key: objective.get("risk_constraints", {}).get(key)
-                for key in ("pit_required", "no_lookahead", "t_plus_1", "price_limit_fail_closed", "suspension_fail_closed")
-                if isinstance(objective.get("risk_constraints"), Mapping) and key in objective["risk_constraints"]
-            }
-            constraints["failure_category_constraints"] = {
-                category: _FAILURE_CONSTRAINTS_ZH[category]
-                for category in category_names
-                if category in _FAILURE_CONSTRAINTS_ZH
-            }
-            safe_capabilities = _safe_dataset_capability(sources["data_capability"])
-            source_refs = {key: _relative(self.root, path) for key, path in paths.items()}
-            source_hashes = {
-                "proposal": _source_hash(proposal),
-                "failure_landscape": _source_hash(landscape),
-                "mechanism_coverage_registry": _source_hash(coverage),
-                "objective_lineage": _source_hash(lineage),
-                "data_capability": _source_hash(safe_capabilities),
-            }
+            from .safe_runtime_context import SafeRuntimeContextError
+
+            try:
+                safe_context = self.safe_runtime_context_builder.build(objective_id, purpose="AI_DESIGN")
+            except SafeRuntimeContextError as exc:
+                raise ResearchEvolutionAIDesignError(exc.code, exc.message_zh, status_code=503, details=exc.details) from exc
+            safe_input = safe_context.to_ai_design_input()
             return EvolutionAIDesignInputV1(
                 objective_id=objective_id,
-                research_evolution_proposal=proposal,
-                failure_landscape=landscape,
-                mechanism_coverage_registry=coverage,
-                objective_lineage=lineage,
-                failed_mechanisms=tuple(failed),
-                excluded_mechanisms=tuple(excluded),
-                suggested_research_directions=tuple(directions),
-                allowed_factors=tuple(allowed_factors),
-                available_data_capabilities=safe_capabilities,
-                constraints=constraints,
-                source_refs=source_refs,
-                source_hashes=source_hashes,
+                research_evolution_proposal=safe_input["research_evolution_proposal"],
+                failure_landscape=safe_input["failure_landscape"],
+                mechanism_coverage_registry=safe_input["mechanism_coverage_registry"],
+                objective_lineage=safe_input["objective_lineage"],
+                failed_mechanisms=tuple(safe_input["failed_mechanisms"]),
+                excluded_mechanisms=tuple(safe_input["excluded_mechanisms"]),
+                suggested_research_directions=tuple(safe_input["suggested_research_directions"]),
+                allowed_factors=tuple(safe_input["allowed_factors"]),
+                available_data_capabilities=safe_input["available_data_capabilities"],
+                constraints=safe_input["constraints"],
+                source_refs=safe_input["source_refs"],
+                source_hashes=safe_input["source_hashes"],
+                source_context_id=safe_context.context_id,
+                source_context_hash=safe_context.context_hash,
+                input_context_hash=safe_context.context_hash,
             )
 
     build_ai_input = build_input
@@ -723,6 +695,10 @@ class ResearchEvolutionAIDesignServiceV1:
             raise ResearchEvolutionAIDesignError("AI_DESIGN_IDENTITY_CONFLICT", "已存在的 AI 设计不属于当前 Objective", status_code=409)
         if str(design.get("input_context_hash") or "") != context.input_context_hash:
             raise ResearchEvolutionAIDesignError("AI_DESIGN_CONTEXT_CHANGED", "AI 设计输入上下文已变化，请人工重新确认", status_code=409)
+        if design.get("source_context_id") not in (None, "") and str(design.get("source_context_id")) != context.source_context_id:
+            raise ResearchEvolutionAIDesignError("STALE_RUNTIME_CONTEXT", "AI 设计绑定的安全运行时上下文已变化，请重新构建", status_code=409)
+        if design.get("source_context_hash") not in (None, "") and str(design.get("source_context_hash")) != context.source_context_hash:
+            raise ResearchEvolutionAIDesignError("STALE_RUNTIME_CONTEXT", "AI 设计绑定的安全运行时上下文已变化，请重新构建", status_code=409)
         expected_hash = stable_hash(self._design_identity(design))
         if str(design.get("design_hash") or "") != expected_hash:
             raise ResearchEvolutionAIDesignError("AI_DESIGN_HASH_INVALID", "AI 设计哈希校验失败", status_code=503)
@@ -785,6 +761,8 @@ class ResearchEvolutionAIDesignServiceV1:
                 "objective_id": objective_id,
                 "parent_proposal_id": proposal.get("proposal_id"),
                 "parent_proposal_hash": proposal.get("proposal_hash"),
+                "source_context_id": context.source_context_id,
+                "source_context_hash": context.source_context_hash,
                 "input_context_hash": context.input_context_hash,
                 **fields,
                 "lineage": {

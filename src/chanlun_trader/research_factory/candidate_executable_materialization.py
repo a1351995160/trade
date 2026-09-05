@@ -486,6 +486,41 @@ class CandidateExecutableMaterializationManagerV1:
         if str(proposal.get("proposal_id") or proposal_id) != expected_id:
             raise CandidateExecutableMaterializationError(INTEGRITY_FAILURE, "Candidate Proposal 编号校验失败", status_code=503)
 
+    def _validate_safe_runtime_context(self, objective_id: str, proposal: Mapping[str, Any]) -> None:
+        stored_hash = str(proposal.get("source_context_hash") or "")
+        if not stored_hash:
+            return
+        from .safe_runtime_context import SafeRuntimeContextBuilderV1, SafeRuntimeContextError
+
+        try:
+            current = SafeRuntimeContextBuilderV1(self.root).build(objective_id, purpose="CANDIDATE_PROPOSAL")
+        except SafeRuntimeContextError as exc:
+            raise CandidateExecutableMaterializationError(
+                exc.code,
+                "安全运行时上下文不可用，执行物化已阻断",
+                status_code=exc.status_code,
+                details=exc.details,
+            ) from exc
+        if stored_hash == current.context_hash and str(proposal.get("input_context_hash") or stored_hash) == current.context_hash:
+            return
+        stored_budget_status = str(proposal.get("source_budget_authority_status") or "MISSING")
+        current_budget = current.get("budget") if isinstance(current.get("budget"), Mapping) else {}
+        empty_budget_established = (
+            stored_budget_status == "MISSING"
+            and str(current_budget.get("authority_status") or "") == "UNIQUE_CANONICAL"
+            and not current_budget.get("active_reservations")
+            and not current_budget.get("used")
+            and not current_budget.get("reserved")
+        )
+        if empty_budget_established:
+            return
+        raise CandidateExecutableMaterializationError(
+            "STALE_RUNTIME_CONTEXT",
+            "候选 Proposal 绑定的安全运行时上下文已过期，执行物化已阻断",
+            status_code=409,
+            details={"source_context_hash": stored_hash, "current_context_hash": current.context_hash},
+        )
+
     def _approval_context(self, objective_id: str) -> tuple[Path, Mapping[str, Any], Mapping[str, Any], Mapping[str, Any]]:
         evaluation = self.ai_design_approval.evaluate(objective_id)
         if str(evaluation.get("approval_status") or "") != AI_APPROVED or evaluation.get("candidate_generation_allowed") is not True:
@@ -575,7 +610,6 @@ class CandidateExecutableMaterializationManagerV1:
                 details={"missing_required_fields": sorted(set(missing)), "safe_to_advance": False},
             )
         registry_path, registry_entry = self._candidate_registry_entry(objective_id, candidate_id, candidate_hash)
-
         objective_path = self._objective_path(objective_id)
         objective = _read_json(objective_path, code="OBJECTIVE_NOT_FOUND")
         if objective is None or str(objective.get("objective_id") or "") != objective_id:
@@ -863,6 +897,7 @@ class CandidateExecutableMaterializationManagerV1:
                 proposal = _read_json(proposal_candidates[0], code="CANDIDATE_PROPOSAL_UNREADABLE")
                 proposal_id = str((proposal or {}).get("proposal_id") or "")
             context = self._load_context(objective_id, proposal_id)
+            self._validate_safe_runtime_context(objective_id, context.proposal)
             preview_path = self._preview_path(context)
             existing = _read_json(preview_path, code=INTEGRITY_FAILURE, required=False)
             if existing is not None:
@@ -1101,6 +1136,7 @@ class CandidateExecutableMaterializationManagerV1:
             same_id = [item for item in entries if str(item["raw"].get("candidate_id") or "") == context.candidate_id]
             if any(str(item["raw"].get("candidate_hash") or "") != context.candidate_hash for item in same_id):
                 raise CandidateExecutableMaterializationError(CANONICAL_CANDIDATE_IDENTITY_CONFLICT, "同 Candidate ID 已存在不同 Candidate hash", status_code=409)
+            self._validate_safe_runtime_context(context.objective_id, context.proposal)
             target = self.root / "data/research/research_factory/batches" / context.batch_id / "durable_frozen_candidate_contracts.json"
             same_content = next((item for item in same_id if item["raw"] == contract.to_dict()), None)
             if same_content is None:

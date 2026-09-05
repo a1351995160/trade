@@ -408,6 +408,10 @@ class CandidateGenerationInputV1:
     available_data_capabilities: Mapping[str, Any] = field(default_factory=dict)
     source_refs: Mapping[str, str] = field(default_factory=dict)
     source_hashes: Mapping[str, str] = field(default_factory=dict)
+    source_context_id: str = ""
+    source_context_hash: str = ""
+    source_budget_authority_status: str = "MISSING"
+    runtime_budget: Mapping[str, Any] = field(default_factory=dict)
     input_context_hash: str = ""
     ai_design_approval_id: str = ""
 
@@ -421,6 +425,7 @@ class CandidateGenerationInputV1:
             "available_data_capabilities",
             "source_refs",
             "source_hashes",
+            "runtime_budget",
         ):
             object.__setattr__(self, name, jsonable(getattr(self, name)))
         base = self._payload(include_hash=False)
@@ -443,6 +448,10 @@ class CandidateGenerationInputV1:
             "available_data_capabilities": self.available_data_capabilities,
             "source_refs": self.source_refs,
             "source_hashes": self.source_hashes,
+            "source_context_id": self.source_context_id,
+            "source_context_hash": self.source_context_hash,
+            "source_budget_authority_status": self.source_budget_authority_status,
+            "runtime_budget": self.runtime_budget,
             "ai_design_approval_id": self.ai_design_approval_id,
             "outcome_blind": True,
             "performance_data_loaded": False,
@@ -554,6 +563,10 @@ class CandidateGenerationManagerV1:
         self.crash_at = crash_at
         self.ai_design_approval = AIDesignApprovalServiceV1(self.root)
         self.ai_design_approval_service = self.ai_design_approval
+        from .safe_runtime_context import SafeRuntimeContextBuilderV1
+
+        self.safe_runtime_context_builder = SafeRuntimeContextBuilderV1(self.root, clock=clock)
+        self.safe_context_builder = self.safe_runtime_context_builder
 
     def _objective_path(self, objective_id: str) -> Path:
         return self.root / "data" / "research" / "research_factory" / "objectives" / f"{_safe_id(objective_id, kind='objective_id')}.json"
@@ -642,6 +655,8 @@ class CandidateGenerationManagerV1:
             raise CandidateGenerationError(exc.code, exc.message_zh, status_code=exc.status_code, details=exc.details) from exc
 
     def _load_sources(self, objective_id: str) -> tuple[CandidateGenerationInputV1, dict[str, Path]]:
+        safe_context = self.safe_runtime_context_builder.build(objective_id, purpose="CANDIDATE_PROPOSAL")
+        safe_context_input = safe_context.to_ai_design_input()
         objective_path = self._objective_path(objective_id)
         objective_raw = _read_json(objective_path, code="OBJECTIVE_NOT_FOUND")
         if objective_raw is None or str(objective_raw.get("objective_id") or "") != objective_id:
@@ -719,11 +734,15 @@ class CandidateGenerationManagerV1:
         if capability_raw is None:
             capability_path = self.root / "data" / "research" / "data_capability.json"
             capability_raw = _read_json(capability_path, code="DATA_CAPABILITY_UNREADABLE", required=False) or {}
+        if not capability_raw:
+            capability_raw = safe_context_input.get("available_data_capabilities") or {}
         capabilities = _safe_capabilities(capability_raw)
 
         safe_design = {
             "design_id": str(design_raw.get("design_id") or ""),
             "design_hash": str(design_raw.get("design_hash") or ""),
+            "source_context_id": str(design_raw.get("source_context_id") or ""),
+            "source_context_hash": str(design_raw.get("source_context_hash") or ""),
             "input_context_hash": str(design_raw.get("input_context_hash") or ""),
             "research_hypothesis": str(design_raw.get("research_hypothesis") or "").strip(),
             "mechanism_family": str(design_raw.get("mechanism_family") or "").strip(),
@@ -756,6 +775,7 @@ class CandidateGenerationManagerV1:
             "objective": stable_hash(safe_objective),
             "objective_lineage": stable_hash(safe_lineage),
             "mechanism_coverage_registry": stable_hash(safe_coverage),
+            "safe_runtime_context": safe_context.context_hash,
         }
         context = CandidateGenerationInputV1(
             objective_id=objective_id,
@@ -767,6 +787,11 @@ class CandidateGenerationManagerV1:
             available_data_capabilities=capabilities,
             source_refs=source_refs,
             source_hashes=source_hashes,
+            source_context_id=safe_context.context_id,
+            source_context_hash=safe_context.context_hash,
+            source_budget_authority_status=str((safe_context.get("budget") or {}).get("authority_status") or "MISSING"),
+            runtime_budget=safe_context.get("budget") or {},
+            input_context_hash=safe_context.context_hash,
             ai_design_approval_id=str(approval.get("approval_id") or ""),
         )
         return context, {
@@ -781,7 +806,12 @@ class CandidateGenerationManagerV1:
     def build_input(self, objective_id: str) -> CandidateGenerationInputV1:
         objective_id = _safe_id(objective_id, kind="objective_id")
         with self._mutex:
-            return self._load_sources(objective_id)[0]
+            from .safe_runtime_context import SafeRuntimeContextError
+
+            try:
+                return self._load_sources(objective_id)[0]
+            except SafeRuntimeContextError as exc:
+                raise CandidateGenerationError(exc.code, exc.message_zh, status_code=503, details=exc.details) from exc
 
     prepare = build_input
 
@@ -960,6 +990,10 @@ class CandidateGenerationManagerV1:
             "budget": context.objective.get("budget"),
             "source_refs": context.source_refs,
             "source_hashes": context.source_hashes,
+            "source_context_id": context.source_context_id,
+            "source_context_hash": context.source_context_hash,
+            "source_budget_authority_status": context.source_budget_authority_status,
+            "source_budget_snapshot": context.runtime_budget,
             "input_context_hash": context.input_context_hash,
             "status": CANDIDATE_PROPOSAL_READY,
             "human_review_required": True,
@@ -1008,6 +1042,10 @@ class CandidateGenerationManagerV1:
                 "multiple_testing_family_id",
                 "budget",
                 "source_hashes",
+                "source_context_id",
+                "source_context_hash",
+                "source_budget_authority_status",
+                "source_budget_snapshot",
                 "input_context_hash",
             )
         }
@@ -1045,6 +1083,10 @@ class CandidateGenerationManagerV1:
                 "multiple_testing_family_id",
                 "budget",
                 "source_hashes",
+                "source_context_id",
+                "source_context_hash",
+                "source_budget_authority_status",
+                "source_budget_snapshot",
                 "input_context_hash",
             )
         }
@@ -1052,8 +1094,27 @@ class CandidateGenerationManagerV1:
     def _validate_persisted(self, proposal: Mapping[str, Any], context: CandidateGenerationInputV1) -> None:
         if str(proposal.get("objective_id") or "") != context.objective_id:
             raise CandidateGenerationError("CANDIDATE_PROPOSAL_CONTEXT_CONFLICT", "已存在的 Candidate Proposal 不属于当前 Objective", status_code=409)
-        if str(proposal.get("input_context_hash") or "") != context.input_context_hash:
-            raise CandidateGenerationError("CANDIDATE_PROPOSAL_CONTEXT_CHANGED", "候选建议输入上下文已变化，请重新生成并人工复核", status_code=409)
+        context_changed = str(proposal.get("input_context_hash") or "") != context.input_context_hash
+        source_context_changed = str(proposal.get("source_context_hash") or "") != context.source_context_hash
+        if context_changed or source_context_changed:
+            stored_budget_status = str(proposal.get("source_budget_authority_status") or "MISSING")
+            current_budget = context.source_budget_authority_status
+            current_budget_view = context.runtime_budget if isinstance(context.runtime_budget, Mapping) else {}
+            # Older fixtures and early Objective setup may create the empty
+            # zero-use registry after the proposal.  Establishing that single
+            # authority does not alter the research decision; any later
+            # mutation of an already-known authority remains stale.
+            empty_budget_established = (
+                stored_budget_status == "MISSING"
+                and current_budget == "UNIQUE_CANONICAL"
+                and not context.runtime_budget.get("active_reservations")
+                and not current_budget_view.get("used")
+                and not current_budget_view.get("reserved")
+            )
+            if not empty_budget_established:
+                code = "STALE_RUNTIME_CONTEXT" if source_context_changed else "CANDIDATE_PROPOSAL_CONTEXT_CHANGED"
+                message = "候选建议绑定的安全运行时上下文已过期，请重新生成" if source_context_changed else "候选建议输入上下文已变化，请重新生成并人工复核"
+                raise CandidateGenerationError(code, message, status_code=409)
         expected_hash = stable_hash(self._identity(proposal))
         if str(proposal.get("proposal_hash") or "") != expected_hash:
             raise CandidateGenerationError("CANDIDATE_PROPOSAL_HASH_INVALID", "Candidate Proposal 哈希校验失败", status_code=503)

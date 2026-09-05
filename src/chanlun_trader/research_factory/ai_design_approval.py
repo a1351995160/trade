@@ -99,6 +99,7 @@ class AIDesignApprovalReceiptV1:
     idempotency_key: str
     receipt_hash: str
     source_context_hash: str | None = None
+    source_context_id: str | None = None
     proposal_id: str | None = None
     lineage: Mapping[str, Any] | None = None
     reason: str | None = None
@@ -113,6 +114,8 @@ class AIDesignApprovalReceiptV1:
         }
         if self.source_context_hash not in (None, ""):
             payload["source_context_hash"] = self.source_context_hash
+        if self.source_context_id not in (None, ""):
+            payload["source_context_id"] = self.source_context_id
         if self.proposal_id not in (None, ""):
             payload["proposal_id"] = self.proposal_id
         if self.lineage is not None:
@@ -304,6 +307,7 @@ class AIDesignApprovalServiceV1:
             "ai_design_id": design_id,
             "ai_design_hash": design_hash,
             "source_context_hash": str((design or {}).get("input_context_hash") or (design or {}).get("source_context_hash") or "") or None,
+            "source_context_id": str((design or {}).get("source_context_id") or "") or None,
             "receipt": None,
             "receipt_path": _relative(root, receipt_path) if receipt_path and receipt_path.exists() else None,
             "reason_code": None if design is None else "AI_DESIGN_APPROVAL_REQUIRED",
@@ -388,6 +392,15 @@ class AIDesignApprovalServiceV1:
             current_context_hash = str(design.get("input_context_hash") or design.get("source_context_hash") or "")
             receipt_context_hash = str(receipt.get("source_context_hash") or "")
             if current_context_hash and receipt_context_hash != current_context_hash:
+                result.update({
+                    "approval_status": STALE,
+                    "reason_code": "STALE_AI_DESIGN_APPROVAL",
+                    "required_action_supported": False,
+                })
+                return result
+            current_context_id = str(design.get("source_context_id") or "")
+            receipt_context_id = str(receipt.get("source_context_id") or "")
+            if current_context_id and receipt_context_id and receipt_context_id != current_context_id:
                 result.update({
                     "approval_status": STALE,
                     "reason_code": "STALE_AI_DESIGN_APPROVAL",
@@ -497,6 +510,7 @@ class AIDesignApprovalServiceV1:
             )
 
         source_context_hash = str(design.get("input_context_hash") or design.get("source_context_hash") or "") or None
+        source_context_id = str(design.get("source_context_id") or "") or None
         proposal_id = str(design.get("proposal_id") or design.get("parent_proposal_id") or "") or None
         lineage = design.get("lineage") if isinstance(design.get("lineage"), Mapping) else None
         approval_id = f"AI_DESIGN_APPROVAL_{stable_hash({'objective_id': objective_id, 'ai_design_id': design.get('design_id'), 'ai_design_hash': design_hash, 'decision': decision, 'idempotency_key': key})[:24].upper()}"
@@ -509,6 +523,8 @@ class AIDesignApprovalServiceV1:
         }
         if source_context_hash:
             base["source_context_hash"] = source_context_hash
+        if source_context_id:
+            base["source_context_id"] = source_context_id
         if proposal_id:
             base["proposal_id"] = proposal_id
         if lineage is not None:
@@ -564,6 +580,8 @@ class AIDesignApprovalServiceV1:
             "approval_id": receipt.get("approval_id"),
             "objective_id": receipt.get("objective_id"),
             "ai_design_hash": receipt.get("ai_design_hash"),
+            "source_context_id": receipt.get("source_context_id"),
+            "source_context_hash": receipt.get("source_context_hash"),
             "decision": decision,
             "status": AI_DESIGN_APPROVED if decision == APPROVED else AI_DESIGN_REJECTED,
             "effective_state": AI_DESIGN_APPROVED if decision == APPROVED else AI_DESIGN_REJECTED,

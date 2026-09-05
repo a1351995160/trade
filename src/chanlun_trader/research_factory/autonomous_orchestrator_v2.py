@@ -1599,18 +1599,41 @@ class AutonomousResearchOrchestratorV2:
 
     def _handoff(self, snapshot: CanonicalResearchSnapshotV2) -> dict[str, Any]:
         self._set_state(OrchestratorState.AI_HANDOFF_PREPARING, "AI_HANDOFF_CREATED")
+        safe_runtime_context = None
+        objective_path = self.root / "data" / "research" / "research_factory" / "objectives" / f"{snapshot.objective_id}.json"
+        if objective_path.is_file():
+            from .safe_runtime_context import SafeRuntimeContextBuilderV1
+
+            # The safe context is built before assembling any handoff view.
+            # Canonical reconciliation remains the only authority; the
+            # existing snapshot is retained only for legacy runtime metadata.
+            safe_runtime_context = SafeRuntimeContextBuilderV1(self.root).build(snapshot.objective_id, purpose="MANUAL_HANDOFF")
         adapter = FailureKnowledgeAdapterV1()
         failure_snapshot = adapter.snapshot_from_trials(snapshot.trials, snapshot_id=f"{snapshot.objective_id}_ORCHESTRATOR_FAILURE_SNAPSHOT")
         failure_view = failure_snapshot.sanitized_view(source_batch_ids=(), source_history_hash=stable_hash(snapshot.trials))
         objective = self._objective_payload(snapshot.objective_id)
         safe_objective = _safe_design_payload({key: objective.get(key) for key in ("objective_id", "research_universe", "holding_horizon", "preferred_horizon", "mechanism_scope", "allowed_factor_scope", "risk_constraints")})
+        if safe_runtime_context is not None:
+            safe_objective = dict(safe_runtime_context.get("objective") or safe_objective)
+        safe_budget = dict((safe_runtime_context.get("budget") if safe_runtime_context is not None else snapshot.budget) or {})
+        safe_factor_capabilities = list(safe_runtime_context.get("factor_capabilities") or ()) if safe_runtime_context is not None else []
         no_outcome_context = NoOutcomeResearchContextV1(
-            factor_capability_summary=tuple({"factor_id": factor_id, "available": True} for factor_id in sorted({factor_id for item in snapshot.candidates for factor_id in item.get("factor_ids", ())})),
-            mechanism_history=tuple({"mechanism": item.get("mechanism"), "candidate_id": item.get("candidate_id")} for item in snapshot.candidates),
+            factor_capability_summary=tuple(
+                {"factor_id": item.get("factor_id"), "available": item.get("availability") == "AVAILABLE"}
+                for item in safe_factor_capabilities
+                if isinstance(item, Mapping) and item.get("factor_id")
+            ) or tuple({"factor_id": factor_id, "available": True} for factor_id in sorted({factor_id for item in snapshot.candidates for factor_id in item.get("factor_ids", ())})),
+            mechanism_history=tuple(
+                {"mechanism": item.get("mechanism"), "candidate_id": item.get("candidate_id")}
+                for item in ((safe_runtime_context.get("candidate") or {}).get("candidates", ()) if safe_runtime_context is not None else snapshot.candidates)
+                if isinstance(item, Mapping)
+            ),
             failure_class_summaries=tuple(dict(item) for item in failure_view.entries),
             constraints={"objective_id": snapshot.objective_id, "mechanism_scope": list(objective.get("mechanism_scope", ())), "pit_required": True, "execution_semantics": "EXISTING_CANONICAL_EXECUTION_CONTRACT"},
         )
-        source_hashes = {"objective": snapshot.objective_hash, "budget": str(snapshot.budget.get("registry_head_hash")), "failure_knowledge": failure_view.view_hash, "candidate_identities": stable_hash([(item.get("candidate_id"), item.get("candidate_hash")) for item in snapshot.candidates])}
+        source_hashes = {"objective": snapshot.objective_hash, "budget": str(safe_budget.get("budget_identity", {}).get("registry_head_hash") or snapshot.budget.get("registry_head_hash")), "failure_knowledge": failure_view.view_hash, "candidate_identities": stable_hash([(item.get("candidate_id"), item.get("candidate_hash")) for item in snapshot.candidates])}
+        if safe_runtime_context is not None:
+            source_hashes["safe_runtime_context"] = safe_runtime_context.context_hash
         scope = load_scope_manifest(self.root, snapshot.objective_id)
         design_policy = load_design_policy(self.root)
         governance_action = str(objective.get("governance_action") or "")
@@ -1625,8 +1648,12 @@ class AutonomousResearchOrchestratorV2:
             "current_round": current_round,
             "allowed_action": ["DESIGN_LEGAL_HYPOTHESES", "GENERATE_FROZEN_CANDIDATE_BATCH"],
             "forbidden_actions": ["RUN_PROVIDER", "RUN_PREDICTIVE_TRIAL", "ACCESS_PERFORMANCE", "MUTATE_TRIAL_LEDGER", "MUTATE_SEARCH_BUDGET", "CREATE_OBJECTIVE", "OPEN_FINAL_TEST", "START_PROSPECTIVE", "ENABLE_REAL_ORDER"],
-            "remaining_budget": dict(snapshot.budget),
-            "search_space_context": {"objective": safe_objective, "mechanism_scope": list(objective.get("mechanism_scope", ())), "data_capability_metadata": self._data_capability_payload(), "global_search_exhausted": snapshot.global_search_exhausted, "remaining_frozen_candidates": snapshot.remaining_frozen_candidates, "pit_required": True, "execution_semantics": "EXISTING_CANONICAL_EXECUTION_CONTRACT"},
+            "remaining_budget": safe_budget,
+            "search_space_context": {"objective": safe_objective, "mechanism_scope": list(objective.get("mechanism_scope", ())), "data_capability_metadata": safe_runtime_context.get("data_capabilities") if safe_runtime_context is not None else self._data_capability_payload(), "global_search_exhausted": snapshot.global_search_exhausted, "remaining_frozen_candidates": snapshot.remaining_frozen_candidates, "pit_required": True, "execution_semantics": "EXISTING_CANONICAL_EXECUTION_CONTRACT"},
+            "source_context_id": safe_runtime_context.context_id if safe_runtime_context is not None else None,
+            "source_context_hash": safe_runtime_context.context_hash if safe_runtime_context is not None else None,
+            "source_context_version": safe_runtime_context.get("context_version") if safe_runtime_context is not None else None,
+            "safe_runtime_context_identity": dict(safe_runtime_context.identity) if safe_runtime_context is not None else None,
             "no_outcome_research_context": no_outcome_context.to_dict(),
             "sanitized_failure_knowledge": failure_view.to_dict(),
             "ai_design_policy": {"policy": design_policy.get("objective_overrides", {}).get(snapshot.objective_id) if isinstance(design_policy.get("objective_overrides"), Mapping) else None, "current_round_mode": "ONE_SHOT" if is_one_shot_followup(self.root, snapshot.objective_id) else "ITERATIVE"},

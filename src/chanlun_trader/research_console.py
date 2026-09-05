@@ -38,6 +38,7 @@ from .research_factory.research_evolution_ai_design import ResearchEvolutionAIDe
 from .research_factory.candidate_generation import CandidateGenerationError, CandidateGenerationManagerV1
 from .research_factory.candidate_executable_materialization import CandidateExecutableMaterializationError, CandidateExecutableMaterializationManagerV1
 from .research_factory.objective_reconciliation import ObjectiveReconciliationServiceV1
+from .research_factory.safe_runtime_context import SafeRuntimeContextBuilderV1, SafeRuntimeContextError
 from .research_factory.promising_followup_scope import candidate_scope_info, load_scope_manifest
 from .research_factory.research_evolution_proposal import COVERAGE_FILENAME, PROPOSAL_FILENAME
 from .research_factory.research_proposal_governance import ResearchProposalGovernanceError, ResearchProposalGovernanceServiceV1
@@ -754,6 +755,8 @@ class ResearchConsoleReadService:
         self.candidate_generation = CandidateGenerationManagerV1(self.root)
         self.candidate_materialization = CandidateExecutableMaterializationManagerV1(self.root)
         self.objective_reconciliation = ObjectiveReconciliationServiceV1(self.root)
+        self.safe_runtime_context = SafeRuntimeContextBuilderV1(self.root, clock=self._clock)
+        self.safe_runtime_context_builder = self.safe_runtime_context
 
     @property
     def cache_stats(self) -> dict[str, int]:
@@ -3220,6 +3223,24 @@ class ResearchConsoleReadService:
             performance_data_loaded=bool(model.get("performance_data_loaded", False)),
             outcome_fields_available=bool(model.get("outcome_fields_available", False)),
         )
+
+    def get_safe_runtime_context(self, objective_id: str) -> dict[str, Any]:
+        """Return the objective-scoped safe runtime read model only."""
+        self._objective(objective_id)
+        try:
+            context = self.safe_runtime_context.build(objective_id)
+            payload = context.to_dict()
+            PerformanceBlindGuard.assert_blind(
+                payload,
+                allowed_paths=frozenset({
+                    ("trial", "trials", "performance_accessed"),
+                }),
+            )
+            return payload
+        except SafeRuntimeContextError as exc:
+            raise ResearchConsoleReadError(exc.code, exc.message_zh, status_code=exc.status_code, details=exc.details) from exc
+        except PerformanceLeakError as exc:
+            raise ResearchConsoleReadError("OUTCOME_LEAK_DETECTED", "安全运行时上下文包含被禁止的绩效字段", status_code=503) from exc
 
     def get_candidate_proposals(self, objective_id: str) -> CandidateProposalView:
         """Read Candidate Proposal governance without generating or freezing anything."""

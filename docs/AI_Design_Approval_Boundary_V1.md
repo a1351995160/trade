@@ -27,7 +27,7 @@ CANDIDATE_PROPOSAL_READY
 回执是不可变的单一决策记录，至少包含：
 
 - `schema_version`、`approval_id`、`objective_id`；
-- `ai_design_id`、`ai_design_hash`，以及设计存在时的 `source_context_hash`；
+- `ai_design_id`、`ai_design_hash`，以及设计存在时的 `source_context_id`、`source_context_hash`；
 - `proposal_id`、`lineage`（设计提供时）；
 - `decision=APPROVED|REJECTED`、`reviewer`、`reviewed_at`；
 - `idempotency_key`、`receipt_hash`。
@@ -40,7 +40,7 @@ Candidate Generation 在所有生成入口（服务、CLI、Web 和内部 helper
 
 1. 当前 Objective 与 AI Design 存在且设计状态为 `AI_DESIGN_READY`；
 2. 存在批准回执，决策为 `APPROVED`；
-3. 回执绑定当前 `ai_design_id`、`ai_design_hash` 和 `source_context_hash`；
+3. 回执绑定当前 `ai_design_id`、`ai_design_hash`、`source_context_id` 和 `source_context_hash`；
 4. 回执自身的 `receipt_hash` 校验通过。
 
 检查失败时不写 Candidate Proposal，并返回明确的 `AI_DESIGN_APPROVAL_REQUIRED`、`AI_DESIGN_REJECTED`、`STALE_AI_DESIGN_APPROVAL`、`AI_DESIGN_APPROVAL_OBJECTIVE_MISMATCH` 或 `AI_DESIGN_APPROVAL_INTEGRITY_FAILURE`。

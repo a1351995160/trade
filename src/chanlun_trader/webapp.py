@@ -424,6 +424,11 @@ def research_console_manual_ai_handoff(objective_id: str) -> dict:
     return _console_service().get_manual_ai_handoff(objective_id)
 
 
+@app.api_route("/api/research-console/{objective_id}/safe-runtime-context", methods=["GET", "HEAD"])
+def research_console_safe_runtime_context(objective_id: str) -> dict:
+    return _console_service().get_safe_runtime_context(objective_id)
+
+
 @app.get("/api/research-console/{objective_id}/ai-tasks")
 def research_console_ai_tasks(objective_id: str, page: int = 1, page_size: int = 20, search: str = "", status: str = "ALL", mode: str = "ALL", sort: str = "created_at", direction: str = "desc") -> dict:
     return _console_service().list_ai_tasks(objective_id, page=page, page_size=page_size, search=search, status=status, mode=mode, sort=sort, direction=direction)
