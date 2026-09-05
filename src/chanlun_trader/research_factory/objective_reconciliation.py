@@ -50,6 +50,10 @@ CANDIDATE_FROZEN_PENDING_EXECUTABLE_MATERIALIZATION = "CANDIDATE_FROZEN_PENDING_
 EXECUTABLE_MATERIALIZATION_PREVIEW_READY = "EXECUTABLE_MATERIALIZATION_PREVIEW_READY"
 EXECUTABLE_CONTRACT_INVALID = "EXECUTABLE_CONTRACT_INVALID"
 READY_FOR_STRUCTURAL_PREFLIGHT = "READY_FOR_STRUCTURAL_PREFLIGHT"
+STRUCTURAL_RUNNING = "STRUCTURAL_RUNNING"
+STRUCTURAL_BLOCKED = "STRUCTURAL_BLOCKED"
+ENGINEERING_BLOCKED = "ENGINEERING_BLOCKED"
+PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED = "PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED"
 TRIAL_ACTIVE = "TRIAL_ACTIVE"
 TRIAL_TERMINAL = "TRIAL_TERMINAL"
 BUDGET_EXHAUSTED = "BUDGET_EXHAUSTED"
@@ -61,6 +65,8 @@ HUMAN_REVIEW_CANDIDATE_PROPOSAL = "HUMAN_REVIEW_CANDIDATE_PROPOSAL"
 CREATE_EXECUTABLE_MATERIALIZATION_PREVIEW = "CREATE_EXECUTABLE_MATERIALIZATION_PREVIEW"
 HUMAN_CONFIRM_EXECUTABLE_MATERIALIZATION = "HUMAN_CONFIRM_EXECUTABLE_MATERIALIZATION"
 RUN_STRUCTURAL_PREFLIGHT = "RUN_STRUCTURAL_PREFLIGHT"
+RECONCILE_STRUCTURAL = "RECONCILE_STRUCTURAL"
+ENGINEERING_REVIEW_REQUIRED = "ENGINEERING_REVIEW_REQUIRED"
 STOP_RESEARCH = "STOP_RESEARCH"
 
 TRIAL_TERMINAL_STATUSES = {"COMPLETED", "BLOCKED", "INVALIDATED", "SUPERSEDED"}
@@ -550,10 +556,19 @@ class ObjectiveReconciliationServiceV1:
         ai_view = self._reconcile_ai_design(ctx)
         candidate_view = self._reconcile_candidates(ctx)
         self._reconcile_contracts(ctx, candidate_view)
+        structural_result_view = self._reconcile_structural_results(ctx, candidate_view)
+        structural_execution_view = self._reconcile_structural_execution(ctx, candidate_view, structural_result_view)
         trial_view = self._reconcile_trials(ctx)
         budget_view = self._reconcile_budget(ctx, objective_payload, trial_view)
         graph_view = self._reconcile_graph(ctx, candidate_view)
-        projection_view = self._reconcile_projections(ctx, budget_view, trial_view)
+        projection_view = self._reconcile_projections(
+            ctx,
+            budget_view,
+            trial_view,
+            candidate_view,
+            structural_result_view,
+            structural_execution_view,
+        )
         self._classify_artifacts(ctx, candidate_view, trial_view, graph_view)
 
         effective = self._derive_effective_state(
@@ -565,6 +580,8 @@ class ObjectiveReconciliationServiceV1:
             trial_view,
             budget_view,
             graph_view,
+            structural_result_view,
+            structural_execution_view,
         )
         report: dict[str, Any] = {
             "schema_version": RECONCILIATION_SCHEMA_VERSION,
@@ -575,6 +592,8 @@ class ObjectiveReconciliationServiceV1:
             "objective_definition": dict(objective_payload),
             "objective_dialect": dialect,
             "ai_design_reconciliation": ai_view,
+            "structural_result_reconciliation": structural_result_view,
+            "structural_execution_evidence": structural_execution_view,
             "effective_objective_state": effective.to_dict(),
             "effective_state": effective.effective_state,
             "effective_stage": effective.effective_stage,
@@ -807,10 +826,16 @@ class ObjectiveReconciliationServiceV1:
                 name = path.name.casefold()
                 if name in {"daemon_checkpoint.json", "daemon_status.json"}:
                     self._add_if_objective(ctx, "daemon_projection", path, "RUNTIME_PROJECTION", path_scoped=True)
+                elif name == "structural_preflight_reconciliation_canonical_v1.json":
+                    self._add_if_objective(ctx, "structural_result", path, "STRUCTURAL_RESULT_AUTHORITY", path_scoped=True)
+                elif name == "structural_execution_evidence.json":
+                    self._add_if_objective(ctx, "structural_execution_evidence", path, "STRUCTURAL_EXECUTION_EVIDENCE", path_scoped=True)
+                elif name == "structural_preflight_reconciliation_history.json":
+                    self._add_if_objective(ctx, "structural_result_history", path, "STRUCTURAL_RESULT_AUTHORITY", path_scoped=True)
                 elif any(token in name for token in ("structural", "preflight")):
-                    self._add_if_objective(ctx, "structural_preflight", path, "STRUCTURAL_PREFLIGHT_FACT", path_scoped=True)
+                    self._add_if_objective(ctx, "structural_execution_evidence", path, "STRUCTURAL_EXECUTION_EVIDENCE", path_scoped=True)
                 elif any(token in name for token in ("predictive", "authorization", "authorisation")):
-                    self._add_if_objective(ctx, "predictive_authorization", path, "PREDICTIVE_AUTHORIZATION_FACT", path_scoped=True)
+                    self._add_if_objective(ctx, "predictive_authorization", path, "PREDICTIVE_AUTHORIZATION_AUTHORITY", path_scoped=True)
                 elif any(token in name for token in ("validation", "adjudication", "final")):
                     self._add_if_objective(ctx, "validation_final_adjudication", path, "VALIDATION_FINAL_ADJUDICATION_FACT", path_scoped=True)
 
@@ -821,12 +846,14 @@ class ObjectiveReconciliationServiceV1:
                 name = path.name.casefold()
                 if name in {"orchestrator_checkpoint.json", "orchestrator_status.json"}:
                     self._add_if_objective(ctx, "orchestrator_projection", path, "RUNTIME_PROJECTION", path_scoped=True)
+                elif name == "structural_governance_decision_required.json":
+                    self._add_if_objective(ctx, "orchestrator_projection", path, "RUNTIME_PROJECTION", path_scoped=True)
                 elif any(token in name for token in ("validation", "adjudication", "final")):
                     self._add_if_objective(ctx, "validation_final_adjudication", path, "VALIDATION_FINAL_ADJUDICATION_FACT", path_scoped=True)
                 elif any(token in name for token in ("structural", "preflight")):
-                    self._add_if_objective(ctx, "structural_preflight", path, "STRUCTURAL_PREFLIGHT_FACT", path_scoped=True)
+                    self._add_if_objective(ctx, "orchestrator_projection", path, "RUNTIME_PROJECTION", path_scoped=True)
                 elif any(token in name for token in ("predictive", "authorization", "authorisation")):
-                    self._add_if_objective(ctx, "predictive_authorization", path, "PREDICTIVE_AUTHORIZATION_FACT", path_scoped=True)
+                    self._add_if_objective(ctx, "predictive_authorization", path, "PREDICTIVE_AUTHORIZATION_AUTHORITY", path_scoped=True)
 
     def _collect_validation_and_final(self, ctx: _ReconciliationContext) -> None:
         for path in sorted((self.root / "data/research/research_factory/batches").glob("*/trial_registry.json")):
@@ -1443,6 +1470,13 @@ class ObjectiveReconciliationServiceV1:
     def _projection_view(self, source: Mapping[str, Any]) -> dict[str, Any]:
         payload = source.get("payload")
         states = _status_values(payload)
+        projection_state = None
+        if isinstance(payload, Mapping):
+            for key in ("daemon_state", "current_state", "orchestrator_state", "state"):
+                value = payload.get(key)
+                if value not in (None, ""):
+                    projection_state = str(value)
+                    break
         action = _first_value(payload, {"required_action", "next_action"})
         trial_id = _first_value(payload, {"current_trial_id"})
         candidate_id = _first_value(payload, {"current_candidate_id"})
@@ -1464,6 +1498,7 @@ class ObjectiveReconciliationServiceV1:
             "path": source["meta"]["path"],
             "source_hash": source["meta"]["source_hash"],
             "states": states,
+            "projection_state": projection_state,
             "required_action": str(action) if action not in (None, "") else None,
             "current_trial_id": str(trial_id) if trial_id not in (None, "") else None,
             "current_candidate_id": str(candidate_id) if candidate_id not in (None, "") else None,
@@ -1484,6 +1519,9 @@ class ObjectiveReconciliationServiceV1:
         ctx: _ReconciliationContext,
         budget_view: Mapping[str, Any],
         trial_view: Mapping[str, Any],
+        candidate_view: Mapping[str, Any],
+        structural_result_view: Mapping[str, Any],
+        structural_execution_view: Mapping[str, Any],
     ) -> dict[str, Any]:
         self._objective_id = ctx.objective_id
         projections = [
@@ -1537,6 +1575,24 @@ class ObjectiveReconciliationServiceV1:
                         projection_budget_reference=str(referenced_budget),
                         canonical_budget_path=canonical_budget_path,
                     )
+            projection_state = projection.get("projection_state")
+            desired = self._desired_structural_projection(
+                candidate_view,
+                structural_result_view,
+                structural_execution_view,
+            )
+            if projection_state and desired.get("state") and projection_state not in set(desired.get("accepted_states", ())):
+                # A projection can be stale, but it must not be promoted to a
+                # canonical fact.  The desired state is derived solely from
+                # the reconciled Structural Result or explicit run evidence.
+                ctx.conflict(
+                    "PROJECTION_STRUCTURAL_STATE_DRIFT",
+                    PROJECTION_DRIFT,
+                    projection_path=projection["path"],
+                    projection_state=projection_state,
+                    desired_state=desired.get("state"),
+                    canonical_effective_state=desired.get("effective_state"),
+                )
             states = set(projection["states"])
             if states & ACTIVE_PROJECTION_STATES and trial_view.get("terminal_trial_count", 0):
                 ctx.conflict(
@@ -1565,8 +1621,216 @@ class ObjectiveReconciliationServiceV1:
         return {
             "projection_count": len(projections),
             "projections": projections,
+            "structural_projection": self._desired_structural_projection(
+                candidate_view,
+                structural_result_view,
+                structural_execution_view,
+            ),
             "projection_drift_detected": PROJECTION_DRIFT in ctx.conflicts,
         }
+
+    @staticmethod
+    def _structural_status(payload: Any) -> str | None:
+        if not isinstance(payload, Mapping):
+            return None
+        nested = payload.get("canonical_result") if isinstance(payload.get("canonical_result"), Mapping) else payload
+        raw = nested.get("status") or payload.get("result_status") or payload.get("structural_status")
+        if raw in (None, ""):
+            return None
+        status = str(raw).upper()
+        if status in {"INSUFFICIENT_SAMPLE", "BOUND_INCOMPLETE", "UNKNOWN", "BLOCKED", "STRUCTURAL_UNKNOWN", "STRUCTURAL_BLOCKED"}:
+            return "BLOCKED" if status in {"INSUFFICIENT_SAMPLE", "BOUND_INCOMPLETE", "STRUCTURAL_BLOCKED"} else "UNKNOWN" if status == "STRUCTURAL_UNKNOWN" else status
+        if status in {"PASS", "PASSED"}:
+            return "PASS"
+        if status in {"ENGINEERING", "ENGINEERING_FAILURE", "INTEGRITY_FAILURE", "ENGINEERING_BLOCKED"}:
+            return "ENGINEERING_BLOCKED"
+        return status
+
+    @staticmethod
+    def _structural_identity(payload: Any) -> dict[str, Any]:
+        if not isinstance(payload, Mapping):
+            return {}
+        identity = payload.get("structural_identity") if isinstance(payload.get("structural_identity"), Mapping) else {}
+        canonical = payload.get("canonical_result") if isinstance(payload.get("canonical_result"), Mapping) else {}
+        def value(*keys: str) -> Any:
+            for key in keys:
+                if key in identity and identity[key] not in (None, ""):
+                    return identity[key]
+                if key in payload and payload[key] not in (None, ""):
+                    return payload[key]
+                if key in canonical and canonical[key] not in (None, ""):
+                    return canonical[key]
+            return None
+        return {
+            "objective_id": value("objective_id"),
+            "candidate_id": value("candidate_id"),
+            "candidate_hash": value("candidate_hash"),
+            "durable_contract_hash": value("durable_contract_hash", "contract_hash", "content_hash"),
+            "provider_payload_identity": value("provider_payload_identity", "provider_candidate_payload_identity"),
+            "data_identity": value("data_identity", "data_manifest_identity", "data_pit_provenance"),
+            "manifest_identity": value("manifest_identity", "manifest_id", "observation_hash"),
+            "policy_identity": value("policy_identity", "policy_hash"),
+            "structural_contract_hash": value("structural_contract_hash"),
+            "result_hash": value("result_hash", "reconciliation_id"),
+        }
+
+    def _reconcile_structural_results(
+        self,
+        ctx: _ReconciliationContext,
+        candidate_view: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        results: list[dict[str, Any]] = []
+        target_id = str(candidate_view.get("current_candidate_id") or "")
+        target_hash = str(candidate_view.get("current_candidate_hash") or "")
+        for source in ctx.sources.get("structural_result", ()):
+            payload = source.get("payload")
+            status = self._structural_status(payload)
+            identity = self._structural_identity(payload)
+            if identity.get("objective_id") not in (None, "", ctx.objective_id):
+                ctx.conflict(
+                    "CANONICAL_STRUCTURAL_RESULT_IDENTITY_CONFLICT",
+                    CANONICAL_CONFLICT,
+                    result_path=source["meta"]["path"],
+                    objective_id=identity.get("objective_id"),
+                    expected_objective_id=ctx.objective_id,
+                )
+            if target_id and identity.get("candidate_id") not in (None, "", target_id):
+                ctx.conflict(
+                    "CANONICAL_STRUCTURAL_RESULT_IDENTITY_CONFLICT",
+                    CANONICAL_CONFLICT,
+                    result_path=source["meta"]["path"],
+                    candidate_id=identity.get("candidate_id"),
+                    expected_candidate_id=target_id,
+                )
+            if target_hash and identity.get("candidate_hash") not in (None, "", target_hash):
+                ctx.conflict(
+                    "CANONICAL_STRUCTURAL_RESULT_IDENTITY_CONFLICT",
+                    CANONICAL_CONFLICT,
+                    result_path=source["meta"]["path"],
+                    candidate_hash=identity.get("candidate_hash"),
+                    expected_candidate_hash=target_hash,
+                )
+            item = {
+                "path": source["meta"]["path"],
+                "source_hash": source["meta"]["source_hash"],
+                "status": status,
+                "identity": identity,
+                "identity_complete": all(identity.get(key) not in (None, "") for key in (
+                    "objective_id", "candidate_id", "candidate_hash", "durable_contract_hash",
+                    "provider_payload_identity", "data_identity", "manifest_identity", "policy_identity",
+                    "structural_contract_hash", "result_hash",
+                )),
+                "payload": dict(payload) if isinstance(payload, Mapping) else payload,
+            }
+            if not item["identity_complete"]:
+                ctx.warning("STRUCTURAL_RESULT_IDENTITY_UNVERIFIED")
+            results.append(item)
+        canonical = results[0] if results else None
+        if len(results) > 1:
+            signatures = {stable_hash({"status": item.get("status"), "identity": item.get("identity")}) for item in results}
+            if len(signatures) > 1:
+                ctx.conflict(
+                    "CANONICAL_STRUCTURAL_RESULT_IDENTITY_CONFLICT",
+                    CANONICAL_CONFLICT,
+                    result_paths=[item["path"] for item in results],
+                )
+            else:
+                ctx.warning("DUPLICATE_STRUCTURAL_RESULT_REFERENCE")
+        return {
+            "present": bool(canonical),
+            "status": canonical.get("status") if canonical else None,
+            "canonical": canonical,
+            "results": results,
+            "result_count": len(results),
+            "authority_role": "STRUCTURAL_RESULT_AUTHORITY",
+        }
+
+    def _reconcile_structural_execution(
+        self,
+        ctx: _ReconciliationContext,
+        candidate_view: Mapping[str, Any],
+        structural_result_view: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        evidence: list[dict[str, Any]] = []
+        target_id = str(candidate_view.get("current_candidate_id") or "")
+        target_hash = str(candidate_view.get("current_candidate_hash") or "")
+        for source in ctx.sources.get("structural_execution_evidence", ()):
+            payload = source.get("payload")
+            if not isinstance(payload, Mapping):
+                continue
+            status = str(payload.get("status") or payload.get("execution_status") or "").upper()
+            identity = self._structural_identity(payload)
+            if target_id and identity.get("candidate_id") not in (None, "", target_id):
+                ctx.conflict("STRUCTURAL_EXECUTION_IDENTITY_CONFLICT", CANONICAL_CONFLICT, evidence_path=source["meta"]["path"])
+            if target_hash and identity.get("candidate_hash") not in (None, "", target_hash):
+                ctx.conflict("STRUCTURAL_EXECUTION_IDENTITY_CONFLICT", CANONICAL_CONFLICT, evidence_path=source["meta"]["path"])
+            evidence.append({
+                "path": source["meta"]["path"],
+                "source_hash": source["meta"]["source_hash"],
+                "status": status,
+                "result_status": self._structural_status(payload),
+                "identity": identity,
+                "payload": dict(payload),
+            })
+        running = next((item for item in evidence if item["status"] in {"STRUCTURAL_RUNNING", "RUNNING", "STARTED"}), None)
+        terminal_statuses = {
+            "PASS",
+            "PASSED",
+            "UNKNOWN",
+            "BLOCKED",
+            "STRUCTURAL_UNKNOWN",
+            "STRUCTURAL_BLOCKED",
+            "INSUFFICIENT_SAMPLE",
+            "BOUND_INCOMPLETE",
+            "ENGINEERING_BLOCKED",
+            "COMPLETED",
+            "TERMINAL",
+            "DONE",
+            "FINISHED",
+            "FAILED",
+            "ERROR",
+            "STRUCTURAL_COMPLETED",
+        }
+        terminal_unreconciled = any(
+            item["status"] in terminal_statuses
+            for item in evidence
+        ) and not structural_result_view.get("present")
+        if structural_result_view.get("present") and running is not None:
+            ctx.conflict(
+                "STALE_STRUCTURAL_EXECUTION_EVIDENCE",
+                PROJECTION_DRIFT,
+                evidence_path=running["path"],
+                canonical_structural_status=structural_result_view.get("status"),
+            )
+        return {
+            "present": bool(evidence),
+            "running": running is not None,
+            "status": "STRUCTURAL_RUNNING" if running else None,
+            "terminal_unreconciled": terminal_unreconciled,
+            "evidence": evidence,
+            "authority_role": "STRUCTURAL_EXECUTION_EVIDENCE",
+        }
+
+    @staticmethod
+    def _desired_structural_projection(
+        candidate_view: Mapping[str, Any],
+        structural_result_view: Mapping[str, Any],
+        structural_execution_view: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        if not candidate_view.get("executable_frozen_candidate"):
+            return {"effective_state": None, "state": None, "accepted_states": ()}
+        status = str(structural_result_view.get("status") or "")
+        if status == "PASS":
+            return {"effective_state": PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED, "state": "STRUCTURAL_PASS", "accepted_states": ("STRUCTURAL_PASS", "READY", "ACTIVE")}
+        if status == "ENGINEERING_BLOCKED":
+            return {"effective_state": ENGINEERING_BLOCKED, "state": ENGINEERING_BLOCKED, "accepted_states": (ENGINEERING_BLOCKED,)}
+        if status in {"UNKNOWN", "BLOCKED"}:
+            return {"effective_state": STRUCTURAL_BLOCKED, "state": STRUCTURAL_BLOCKED, "accepted_states": (STRUCTURAL_BLOCKED, "STRUCTURAL_UNKNOWN", "READY")}
+        if structural_execution_view.get("terminal_unreconciled"):
+            return {"effective_state": ENGINEERING_BLOCKED, "state": ENGINEERING_BLOCKED, "accepted_states": (ENGINEERING_BLOCKED,)}
+        if structural_execution_view.get("running"):
+            return {"effective_state": STRUCTURAL_RUNNING, "state": STRUCTURAL_RUNNING, "accepted_states": ("STRUCTURAL_RUNNING", "STRUCTURAL_PENDING")}
+        return {"effective_state": READY_FOR_STRUCTURAL_PREFLIGHT, "state": "READY", "accepted_states": ("READY", "ACTIVE")}
 
     def _classify_artifacts(
         self,
@@ -1628,6 +1892,8 @@ class ObjectiveReconciliationServiceV1:
         trial_view: Mapping[str, Any],
         budget_view: Mapping[str, Any],
         graph_view: Mapping[str, Any],
+        structural_result_view: Mapping[str, Any],
+        structural_execution_view: Mapping[str, Any],
     ) -> EffectiveObjectiveStateV1:
         del graph_view
         ai_sources = ctx.sources.get("ai_design", ())
@@ -1680,7 +1946,7 @@ class ObjectiveReconciliationServiceV1:
             )
         elif active_trial:
             stage, state, action = "TRIAL_LIFECYCLE", TRIAL_ACTIVE, None
-        elif budget_exhausted:
+        elif budget_exhausted and not executable:
             stage, state, action = "BUDGET", BUDGET_EXHAUSTED, STOP_RESEARCH
         elif terminal_trial:
             stage, state, action = "TRIAL_LIFECYCLE", TRIAL_TERMINAL, STOP_RESEARCH
@@ -1691,13 +1957,36 @@ class ObjectiveReconciliationServiceV1:
                 None,
             )
         elif executable:
-            structural_status = self._canonical_structural_status(ctx)
-            predictive_authorized = self._canonical_predictive_authorized(ctx)
-            if structural_status == "PASS" and not predictive_authorized:
+            structural_status = str(structural_result_view.get("status") or "")
+            if structural_status == "PASS":
                 stage, state, action = (
                     "PREDICTIVE_AUTHORIZATION",
-                    "PREDICTIVE_AUTHORIZATION_REQUIRED",
+                    PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED,
                     "AUTHORIZE_PREDICTIVE_TRIAL",
+                )
+            elif structural_status in {"UNKNOWN", "BLOCKED"}:
+                stage, state, action = (
+                    "STRUCTURAL_PREFLIGHT",
+                    STRUCTURAL_BLOCKED,
+                    RECONCILE_STRUCTURAL,
+                )
+            elif structural_status == "ENGINEERING_BLOCKED":
+                stage, state, action = (
+                    "STRUCTURAL_PREFLIGHT",
+                    ENGINEERING_BLOCKED,
+                    ENGINEERING_REVIEW_REQUIRED,
+                )
+            elif structural_execution_view.get("terminal_unreconciled"):
+                stage, state, action = (
+                    "STRUCTURAL_PREFLIGHT",
+                    ENGINEERING_BLOCKED,
+                    ENGINEERING_REVIEW_REQUIRED,
+                )
+            elif structural_execution_view.get("running"):
+                stage, state, action = (
+                    "STRUCTURAL_PREFLIGHT",
+                    STRUCTURAL_RUNNING,
+                    "STRUCTURAL_RUN_IN_PROGRESS",
                 )
             else:
                 stage, state, action = (
@@ -1775,10 +2064,16 @@ class ObjectiveReconciliationServiceV1:
             BUDGET_AUTHORITY_AMBIGUOUS,
             NEED_AI_RESEARCH_DESIGN,
             CANDIDATE_PROPOSAL_READY,
+            STRUCTURAL_RUNNING,
+            STRUCTURAL_BLOCKED,
+            ENGINEERING_BLOCKED,
+            PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED,
         }:
             safe_to_advance = False
         if state == CANDIDATE_FROZEN_PENDING_EXECUTABLE_MATERIALIZATION and safe_to_resume and not executable_invalid:
             safe_to_advance = True
+        if state in {STRUCTURAL_RUNNING, STRUCTURAL_BLOCKED, ENGINEERING_BLOCKED, PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED}:
+            safe_to_resume = False if state in {STRUCTURAL_BLOCKED, ENGINEERING_BLOCKED} else safe_to_resume
 
         canonical_refs = {
             "objective": next(
@@ -1811,6 +2106,12 @@ class ObjectiveReconciliationServiceV1:
             "budget_registry_path": self._canonical_budget_path(budget_view),
             "artifact_graph": [
                 item["path"] for item in ctx.evidence.get("artifact_graph", ())
+            ],
+            "structural_result": [
+                item["path"] for item in ctx.evidence.get("structural_result", ())
+            ],
+            "structural_execution_evidence": [
+                item["path"] for item in ctx.evidence.get("structural_execution_evidence", ())
             ],
         }
         projection_refs = {
@@ -1855,18 +2156,6 @@ class ObjectiveReconciliationServiceV1:
             or _bool(payload.get("approved"))
             or _bool(payload.get("confirmed"))
         )
-
-    @staticmethod
-    def _canonical_structural_status(ctx: _ReconciliationContext) -> str | None:
-        statuses: set[str] = set()
-        for source in ctx.sources.get("structural_preflight", ()):
-            for item in _walk_mappings(source.get("payload")):
-                for key in ("status", "state", "result"):
-                    if item.get(key) not in (None, ""):
-                        statuses.add(str(item[key]).upper())
-        if "PASS" in statuses or "PASSED" in statuses:
-            return "PASS"
-        return sorted(statuses)[0] if statuses else None
 
     @staticmethod
     def _canonical_predictive_authorized(ctx: _ReconciliationContext) -> bool:
@@ -2057,5 +2346,12 @@ __all__ = [
     "READY_FOR_STRUCTURAL_PREFLIGHT",
     "RECONCILIATION_SCHEMA_VERSION",
     "REPAIRABLE_INDEX_DRIFT",
+    "RUN_STRUCTURAL_PREFLIGHT",
+    "RECONCILE_STRUCTURAL",
+    "ENGINEERING_REVIEW_REQUIRED",
+    "STRUCTURAL_RUNNING",
+    "STRUCTURAL_BLOCKED",
+    "ENGINEERING_BLOCKED",
+    "PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED",
     "main",
 ]

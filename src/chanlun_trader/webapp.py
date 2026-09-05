@@ -37,7 +37,8 @@ from .research_factory.ai_design_approval import AIDesignApprovalError, AIDesign
 from .research_factory.candidate_executable_materialization import CandidateExecutableMaterializationError, CandidateExecutableMaterializationManagerV1
 from .research_factory.research_evolution_ai_design import ResearchEvolutionAIDesignServiceV1
 from .research_factory.research_proposal_governance import ResearchProposalGovernanceError, ResearchProposalGovernanceServiceV1
-from .research_factory.structural_reconciliation import reconcile_structural_pass
+from .research_factory.structural_entry import StructuralEntryError, StructuralEntryServiceV1
+from .research_factory.projection_reconciliation import ProjectionReconciliationError, ProjectionReconciliationServiceV1
 from .research_factory.trial_reconciliation import CanonicalTrialReconciliationServiceV1, TrialReconciliationError
 from .screener import scan_all
 from .tdx_data import TdxData
@@ -62,6 +63,8 @@ research_evolution_ai_design_service = ResearchEvolutionAIDesignServiceV1(PROJEC
 research_evolution_ai_design_approval_service = AIDesignApprovalServiceV1(PROJECT_ROOT)
 candidate_generation_service = CandidateGenerationManagerV1(PROJECT_ROOT)
 candidate_materialization_service = CandidateExecutableMaterializationManagerV1(PROJECT_ROOT)
+structural_entry_service = StructuralEntryServiceV1(PROJECT_ROOT)
+projection_reconciliation_service = ProjectionReconciliationServiceV1(PROJECT_ROOT)
 
 
 @app.on_event("startup")
@@ -116,6 +119,16 @@ async def ai_design_approval_error_handler(_, exc: AIDesignApprovalError) -> JSO
 
 @app.exception_handler(CandidateExecutableMaterializationError)
 async def candidate_executable_materialization_error_handler(_, exc: CandidateExecutableMaterializationError) -> JSONResponse:
+    return JSONResponse(status_code=exc.status_code, content=exc.envelope())
+
+
+@app.exception_handler(StructuralEntryError)
+async def structural_entry_error_handler(_, exc: StructuralEntryError) -> JSONResponse:
+    return JSONResponse(status_code=exc.status_code, content=exc.envelope())
+
+
+@app.exception_handler(ProjectionReconciliationError)
+async def projection_reconciliation_error_handler(_, exc: ProjectionReconciliationError) -> JSONResponse:
     return JSONResponse(status_code=exc.status_code, content=exc.envelope())
 
 
@@ -592,20 +605,47 @@ def research_console_predictive_new_trial_start(objective_id: str, request: Requ
 def research_console_reconcile_structural(objective_id: str, request: Request, payload: dict[str, Any] | None = Body(default=None)) -> dict:
     _require_local_console_request(request)
     body = payload or {}
+    if body.get("confirmed") is not True or str(body.get("action") or "").upper() != "RUN_STRUCTURAL_PREFLIGHT":
+        raise OrchestratorOperationError("CONFIRMATION_REQUIRED", "重新进行结构预检需要在页面中明确确认 RUN_STRUCTURAL_PREFLIGHT", status_code=400)
+    return structural_entry_service.start(
+        objective_id,
+        candidate_id=str(body.get("candidate_id") or "") or None,
+        confirmed=True,
+        action="RUN_STRUCTURAL_PREFLIGHT",
+    )
+
+
+@app.get("/api/research-console/{objective_id}/structural/readiness")
+def research_console_structural_readiness(objective_id: str) -> dict:
+    return structural_entry_service.readiness(objective_id)
+
+
+@app.get("/api/research-console/{objective_id}/structural/reconciliation")
+def research_console_structural_reconciliation(objective_id: str) -> dict:
+    return projection_reconciliation_service.read(objective_id)
+
+
+@app.post("/api/research-console/{objective_id}/structural/start")
+def research_console_start_structural(objective_id: str, request: Request, payload: dict[str, Any] | None = Body(default=None)) -> dict:
+    _require_local_console_request(request)
+    body = payload or {}
+    if body.get("confirmed") is not True or str(body.get("action") or "RUN_STRUCTURAL_PREFLIGHT").upper() != "RUN_STRUCTURAL_PREFLIGHT":
+        raise OrchestratorOperationError("CONFIRMATION_REQUIRED", "启动结构预检需要明确确认 RUN_STRUCTURAL_PREFLIGHT", status_code=400)
+    return structural_entry_service.start(
+        objective_id,
+        candidate_id=str(body.get("candidate_id") or "") or None,
+        confirmed=True,
+        action="RUN_STRUCTURAL_PREFLIGHT",
+    )
+
+
+@app.post("/api/research-console/{objective_id}/structural/projection-repair")
+def research_console_repair_structural_projection(objective_id: str, request: Request, payload: dict[str, Any] | None = Body(default=None)) -> dict:
+    _require_local_console_request(request)
+    body = payload or {}
     if body.get("confirmed") is not True:
-        raise OrchestratorOperationError("CONFIRMATION_REQUIRED", "重新进行结构预检需要在页面中明确确认", status_code=400)
-    candidate_id = str(body.get("candidate_id") or "")
-    reconciliation = _console_service().get_pipeline(objective_id).structural_reconciliation
-    if not reconciliation.get("available"):
-        raise OrchestratorOperationError("STRUCTURAL_RECONCILIATION_UNAVAILABLE", str(reconciliation.get("reason_zh") or "当前不满足结构重新检查条件"), status_code=409)
-    if candidate_id != reconciliation.get("candidate_id"):
-        raise OrchestratorOperationError("STRUCTURAL_RECONCILIATION_CANDIDATE_MISMATCH", "页面候选与当前可重新检查的候选不一致，请刷新页面后重试", status_code=409)
-    try:
-        return reconcile_structural_pass(PROJECT_ROOT, objective_id=objective_id, candidate_id=candidate_id)
-    except ValueError as exc:
-        raise OrchestratorOperationError("INVALID_STRUCTURAL_RECONCILIATION", "结构重新检查请求不合法，请刷新页面后重试", status_code=400) from exc
-    except RuntimeError as exc:
-        raise OrchestratorOperationError("STRUCTURAL_RECONCILIATION_BLOCKED", f"结构重新检查未完成：{exc}", status_code=409) from exc
+        raise OrchestratorOperationError("CONFIRMATION_REQUIRED", "修复运行态 projection 需要明确确认", status_code=400)
+    return projection_reconciliation_service.reconcile(objective_id, apply=True)
 
 
 def _contract_correction_identity(objective_id: str, candidate_id: str) -> tuple[str, str]:

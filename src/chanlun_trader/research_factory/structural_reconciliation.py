@@ -1,4 +1,4 @@
-"""Safely reconcile a repaired structural PASS without entering prediction."""
+"""Reconcile Structural provider evidence into an outcome-blind canonical result."""
 from __future__ import annotations
 
 import hashlib
@@ -11,6 +11,7 @@ from ..research_daemon import CandidateWork, CanonicalResearchRuntime, ResearchD
 from ..research_daemon_state import DaemonCheckpointStoreV1, DaemonInstanceLockV1, ResearchDaemonState
 from .artifact_graph import ResearchArtifactGraphV1
 from .common import now_timestamp, stable_hash
+from .durability import canonical_frozen_contract_identity_hash
 
 
 RECONCILIATION_SCHEMA_VERSION = "structural-preflight-reconciliation-v1"
@@ -19,6 +20,12 @@ CANONICAL_RECONCILIATION_FILENAME = "structural_preflight_reconciliation_canonic
 RECONCILIATION_HISTORY_FILENAME = "structural_preflight_reconciliation_history.json"
 STRUCTURAL_GOVERNANCE_FILENAME = "structural_governance_decision_required.json"
 SAFE_ID = re.compile(r"^[A-Za-z0-9_.-]+$")
+STRUCTURAL_RESULT_AUTHORITY = "STRUCTURAL_RESULT_AUTHORITY"
+STRUCTURAL_EXECUTION_EVIDENCE = "STRUCTURAL_EXECUTION_EVIDENCE"
+PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED = "PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED"
+STRUCTURAL_RESULT_REQUIRED_ACTION = "AUTHORIZE_PREDICTIVE_TRIAL"
+STRUCTURAL_BLOCKED_ACTION = "RECONCILE_STRUCTURAL"
+ENGINEERING_REVIEW_ACTION = "ENGINEERING_REVIEW_REQUIRED"
 
 
 def _sha256(path: Path) -> str:
@@ -53,6 +60,326 @@ def _structural_payload(result: StructuralResult) -> dict[str, Any]:
         "provider_checkpoint": result.provider_checkpoint,
         "partition_index": result.partition_index,
         "details": dict(result.details),
+    }
+
+
+def _structural_identity(
+    root: Path,
+    *,
+    objective_id: str,
+    candidate: CandidateWork,
+    result: StructuralResult,
+    provider_payload: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build the immutable identity of one Structural execution.
+
+    The identity intentionally contains data and policy pins in addition to
+    Candidate identity.  Runtime timestamps and checkpoint state are not
+    identity inputs, so a restart can reuse the same terminal result without
+    creating a competing Structural fact.
+    """
+
+    raw_contract = dict(candidate.metadata.get("raw_contract") or {})
+    details = dict(result.details)
+    provider = dict(provider_payload or {})
+
+    def first(*keys: str) -> Any:
+        for key in keys:
+            if details.get(key) not in (None, ""):
+                return details[key]
+        return None
+
+    contract_hash = str(
+        raw_contract.get("content_hash")
+        or canonical_frozen_contract_identity_hash(raw_contract)
+        or candidate.candidate_hash
+    )
+    policy_value = first("policy_identity", "policy_hash", "validation_policy_hash")
+    if policy_value in (None, ""):
+        policy_value = raw_contract.get("policy_identity") or {}
+    data_value = first("data_identity", "data_manifest_identity", "data_pit_provenance", "pit_identity")
+    if data_value in (None, ""):
+        data_value = {"artifact_refs": list(result.artifact_refs), "provider_checkpoint": result.provider_checkpoint}
+    manifest_value = first("manifest_identity", "manifest_id", "observation_hash", "provider_manifest_id")
+    if manifest_value in (None, ""):
+        manifest_value = {"provider_checkpoint": result.provider_checkpoint, "partition_index": result.partition_index}
+    structural_contract_value = first("structural_contract_hash", "structural_engine_contract_hash")
+    if structural_contract_value in (None, ""):
+        structural_contract_value = {
+            "engine": "CanonicalResearchRuntime.structural_preflight",
+            "provider": type(provider_payload).__name__ if provider_payload is not None else "canonical",
+            "result_schema": RECONCILIATION_SCHEMA_VERSION,
+        }
+    identity = {
+        "objective_id": objective_id,
+        "candidate_id": candidate.candidate_id,
+        "candidate_hash": candidate.candidate_hash,
+        "durable_contract_hash": contract_hash,
+        "provider_payload_identity": stable_hash(provider),
+        "data_identity": data_value if isinstance(data_value, (str, int, float, bool)) else stable_hash(data_value),
+        "manifest_identity": manifest_value if isinstance(manifest_value, (str, int, float, bool)) else stable_hash(manifest_value),
+        "policy_identity": policy_value if isinstance(policy_value, (str, int, float, bool)) else stable_hash(policy_value),
+        "structural_contract_hash": structural_contract_value if isinstance(structural_contract_value, (str, int, float, bool)) else stable_hash(structural_contract_value),
+    }
+    identity["execution_identity_hash"] = stable_hash(identity)
+    return identity
+
+
+def _structural_result_hash(result: StructuralResult, identity: Mapping[str, Any]) -> str:
+    return stable_hash({"status": result.status, "reason_code": result.reason_code, "details": dict(result.details), "identity": dict(identity)})
+
+
+def _trial_event_signature(root: Path, objective_id: str, candidate_id: str) -> str:
+    return stable_hash(_trial_events(root, objective_id, candidate_id))
+
+
+def _assert_structural_blind(result: StructuralResult) -> None:
+    details = dict(result.details)
+    if details.get("performance_data_loaded") is True or details.get("performance_accessed") is True:
+        raise RuntimeError("structural result crossed the outcome-blind boundary")
+    performance_files = details.get("performance_files_read")
+    if performance_files:
+        raise RuntimeError("structural result read Performance artifacts")
+    try:
+        from .context import PerformanceBlindGuard
+
+        PerformanceBlindGuard.assert_blind(details)
+    except Exception as exc:
+        raise RuntimeError("structural result crossed the outcome-blind boundary") from exc
+
+
+def persist_canonical_structural_result(
+    root: str | Path,
+    *,
+    objective_id: str,
+    candidate: CandidateWork,
+    result: StructuralResult,
+    provider_payload: Mapping[str, Any] | None = None,
+    budget_before: Mapping[str, Any] | None = None,
+    trial_signature_before: str | None = None,
+    execution_evidence: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Persist one identity-bound canonical Structural Result.
+
+    This function is deliberately limited to Structural artifacts and runtime
+    projections.  It never reserves budget, creates a Trial, reads
+    Performance, authorizes Predictive validation, or mutates a Candidate.
+    """
+
+    if not SAFE_ID.fullmatch(objective_id) or not SAFE_ID.fullmatch(candidate.candidate_id):
+        raise ValueError("objective_id and candidate_id must be canonical safe identifiers")
+    root_path = Path(root).resolve()
+    _assert_structural_blind(result)
+    identity = _structural_identity(
+        root_path,
+        objective_id=objective_id,
+        candidate=candidate,
+        result=result,
+        provider_payload=provider_payload,
+    )
+    result_hash = _structural_result_hash(result, identity)
+    runtime_dir = root_path / "reports" / "research_daemon" / objective_id
+    report_path = runtime_dir / CANONICAL_RECONCILIATION_FILENAME
+    report_ref = _relative_ref(root_path, report_path)
+
+    if report_path.is_file():
+        existing = json.loads(report_path.read_text(encoding="utf-8"))
+        existing_identity = dict(existing.get("structural_identity") or {})
+        if (
+            existing_identity.get("execution_identity_hash") == identity["execution_identity_hash"]
+            and str(existing.get("result_hash") or "") == result_hash
+        ):
+            return {
+                "status": str(existing.get("status") or result.status),
+                "reconciliation_id": existing.get("reconciliation_id"),
+                "report_ref": report_ref,
+                "history_ref": existing.get("history_ref"),
+                "governance_ref": existing.get("governance_ref"),
+                "canonical_values": {key: existing.get(key) for key in ("lower_bound", "upper_bound", "minimum_required", "lower_bound_integrity", "classification")},
+                "idempotent": True,
+                "report": existing,
+            }
+        logical_keys = ("objective_id", "candidate_id", "candidate_hash", "durable_contract_hash", "structural_contract_hash")
+        if all(existing_identity.get(key) == identity.get(key) for key in logical_keys):
+            raise RuntimeError("STRUCTURAL_IDEMPOTENCY_CONFLICT")
+        raise RuntimeError("CANONICAL_STRUCTURAL_RESULT_IDENTITY_CONFLICT")
+
+    trial_before = trial_signature_before or _trial_event_signature(root_path, objective_id, candidate.candidate_id)
+    budget = dict(budget_before or {})
+    lower_bound = None
+    upper_bound = None
+    minimum_required = None
+    integrity_status = None
+    details = dict(result.details)
+    v1 = dict(details.get("v1_result") or {})
+    v2 = dict(details.get("v2_result") or {})
+    integrity = dict(details.get("lower_bound_integrity") or {})
+    for key, target in (("lower_bound_count", "lower_bound"), ("upper_bound_count", "upper_bound"), ("minimum_required_count", "minimum_required")):
+        value = v2.get(key, v1.get(key))
+        if value is not None:
+            if target == "lower_bound":
+                lower_bound = int(value)
+            elif target == "upper_bound":
+                upper_bound = int(value)
+            else:
+                minimum_required = int(value)
+    integrity_status = integrity.get("status") or details.get("lower_bound_integrity_status")
+    normalized_status = {
+        "PASSED": "PASS",
+        "INSUFFICIENT_SAMPLE": "BLOCKED",
+        "BOUND_INCOMPLETE": "BLOCKED",
+        "STRUCTURAL_UNKNOWN": "UNKNOWN",
+        "STRUCTURAL_BLOCKED": "BLOCKED",
+    }.get(str(result.status).upper(), str(result.status).upper())
+    if normalized_status == "PASS":
+        required_action = STRUCTURAL_RESULT_REQUIRED_ACTION
+        effective_state = PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED
+        next_boundary = "PREDICTIVE_VALIDATION_REQUIRES_SEPARATE_AUTHORIZATION"
+    elif normalized_status in {"UNKNOWN", "BLOCKED"}:
+        required_action = STRUCTURAL_BLOCKED_ACTION
+        effective_state = "STRUCTURAL_BLOCKED"
+        next_boundary = "PREDICTIVE_VALIDATION_BLOCKED_BY_STRUCTURAL_RESULT"
+    else:
+        required_action = ENGINEERING_REVIEW_ACTION
+        effective_state = "ENGINEERING_BLOCKED"
+        next_boundary = "PREDICTIVE_VALIDATION_BLOCKED_BY_ENGINEERING_FAILURE"
+    canonical_result = _structural_payload(result)
+    reconciliation_id = stable_hash({
+        "schema_version": RECONCILIATION_SCHEMA_VERSION,
+        "authority_role": STRUCTURAL_RESULT_AUTHORITY,
+        "execution_identity_hash": identity["execution_identity_hash"],
+        "result_hash": result_hash,
+    })
+    graph_summary = _update_artifact_graph(
+        root_path,
+        objective_id=objective_id,
+        candidate=candidate,
+        reconciliation_id=reconciliation_id,
+        structural={
+            "status": normalized_status,
+            "lower_bound": lower_bound,
+            "upper_bound": upper_bound,
+            "minimum_required": minimum_required,
+            "lower_bound_integrity": integrity_status,
+        },
+    )
+    report = {
+        "schema_version": RECONCILIATION_SCHEMA_VERSION,
+        "authority_role": STRUCTURAL_RESULT_AUTHORITY,
+        "reconciliation_id": reconciliation_id,
+        "result_hash": result_hash,
+        "status": normalized_status,
+        "effective_state": effective_state,
+        "required_action": required_action,
+        "safe_to_advance": False,
+        "predictive_authorized": False,
+        "objective_id": objective_id,
+        "candidate_id": candidate.candidate_id,
+        "candidate_hash": candidate.candidate_hash,
+        "durable_contract_hash": identity["durable_contract_hash"],
+        "structural_identity": identity,
+        "provider_payload_identity": identity["provider_payload_identity"],
+        "data_identity": identity["data_identity"],
+        "manifest_identity": identity["manifest_identity"],
+        "policy_identity": identity["policy_identity"],
+        "structural_contract_hash": identity["structural_contract_hash"],
+        "provider_execution_evidence": dict(execution_evidence or canonical_result),
+        "canonical_result": canonical_result,
+        "fresh_provider_recheck": canonical_result,
+        "repaired_structural_result": canonical_result,
+        "lower_bound": lower_bound,
+        "upper_bound": upper_bound,
+        "minimum_required": minimum_required,
+        "lower_bound_integrity": integrity_status,
+        "classification": "PASS" if normalized_status == "PASS" else normalized_status,
+        "reconciliation_source": "EXPLICIT_STRUCTURAL_ENTRY",
+        "artifact_graph": graph_summary,
+        "safety_evidence": {
+            "budget_before": budget,
+            "budget_after": budget,
+            "budget_delta": 0,
+            "budget_reserved_delta": 0,
+            "trial_ledger_signature_before": trial_before,
+            "trial_ledger_signature_after": trial_before,
+            "trial_ledger_event_count_before": len(_trial_events(root_path, objective_id, candidate.candidate_id)),
+            "trial_ledger_event_count_after": len(_trial_events(root_path, objective_id, candidate.candidate_id)),
+            "predictive_executor_invoked": False,
+            "performance_data_loaded": False,
+            "new_predictive_trials": 0,
+            "new_performance_access": 0,
+            "final_test_access": {"analytical": 0, "decision": 0, "physical": 0},
+            "prospective": "DISABLED",
+            "real_order": "DISABLED",
+        },
+        "next_boundary": next_boundary,
+        "created_at": now_timestamp(),
+        "reconciled_at": now_timestamp(),
+    }
+    if report["safety_evidence"]["trial_ledger_signature_after"] != trial_before:
+        raise RuntimeError("TrialLedger changed during structural result publication")
+    DaemonCheckpointStoreV1._atomic_write(report_path, report)
+    history_path = runtime_dir / RECONCILIATION_HISTORY_FILENAME
+    history = {}
+    if history_path.is_file():
+        loaded = json.loads(history_path.read_text(encoding="utf-8"))
+        if isinstance(loaded, Mapping):
+            history = dict(loaded)
+    generations = [dict(item) for item in history.get("generations", ()) if isinstance(item, Mapping)]
+    generations.append({
+        "generation": "CANONICAL_STRUCTURAL_RESULT",
+        "report_ref": report_ref,
+        "sha256": _sha256(report_path),
+        "reconciliation_id": reconciliation_id,
+        "result_hash": result_hash,
+        "status": normalized_status,
+        "objective_id": objective_id,
+        "candidate_id": candidate.candidate_id,
+        "candidate_hash": candidate.candidate_hash,
+    })
+    history_payload = {
+        "schema_version": "structural-preflight-reconciliation-history-v1",
+        "objective_id": objective_id,
+        "latest_reconciliation_id": reconciliation_id,
+        "generations": generations,
+        "history_preserved": True,
+        "updated_at": now_timestamp(),
+    }
+    DaemonCheckpointStoreV1._atomic_write(history_path, history_payload)
+    governance_ref = None
+    governance = None
+    if normalized_status == "PASS":
+        governance_path = root_path / "reports" / "research_orchestrator_v2" / objective_id / STRUCTURAL_GOVERNANCE_FILENAME
+        governance = _write_structural_governance(
+            root_path,
+            objective_id=objective_id,
+            candidate=candidate,
+            report_ref=report_ref,
+            reconciliation_id=reconciliation_id,
+            structural={
+                "status": normalized_status,
+                "lower_bound": lower_bound,
+                "upper_bound": upper_bound,
+                "minimum_required": minimum_required,
+                "lower_bound_integrity": integrity_status,
+            },
+        )
+        governance_ref = _relative_ref(root_path, governance_path)
+    return {
+        "status": normalized_status,
+        "reconciliation_id": reconciliation_id,
+        "report_ref": report_ref,
+        "history_ref": _relative_ref(root_path, history_path),
+        "governance_ref": governance_ref,
+        "governance": governance,
+        "canonical_values": {
+            "lower_bound": lower_bound,
+            "upper_bound": upper_bound,
+            "minimum_required": minimum_required,
+            "lower_bound_integrity": integrity_status,
+            "classification": "PASS" if normalized_status == "PASS" else normalized_status,
+        },
+        "idempotent": False,
+        "report": report,
     }
 
 
@@ -1112,4 +1439,12 @@ def reconcile_structural_pass(
         lock.release()
 
 
-__all__ = ["reconcile_structural_pass"]
+__all__ = [
+    "ENGINEERING_REVIEW_ACTION",
+    "PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED",
+    "STRUCTURAL_BLOCKED_ACTION",
+    "STRUCTURAL_EXECUTION_EVIDENCE",
+    "STRUCTURAL_RESULT_AUTHORITY",
+    "persist_canonical_structural_result",
+    "reconcile_structural_pass",
+]

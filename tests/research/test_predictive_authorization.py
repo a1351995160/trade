@@ -315,10 +315,11 @@ def test_fresh_structural_pass_stops_before_predictive_execution(tmp_path: Path)
     status = daemon.run_once()
 
     assert runtime.predictive_called is False
-    assert status["required_human_ai_action"] == "PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED"
+    assert status["required_human_ai_action"] == "RUN_STRUCTURAL_PREFLIGHT"
     checkpoint = DaemonCheckpointStoreV1(tmp_path, OBJECTIVE_ID).load()
-    assert checkpoint.current_state == "STRUCTURAL_PASS"
-    assert checkpoint.last_completed_candidate["candidate_id"] == CANDIDATE_ID
+    assert checkpoint.current_state == "READY"
+    assert checkpoint.current_candidate is None
+    assert checkpoint.last_completed_candidate is None
     assert checkpoint.current_trial is None
 
 

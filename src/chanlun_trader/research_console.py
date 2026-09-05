@@ -37,6 +37,7 @@ from .research_factory.ai_design_approval import AIDesignApprovalError, AIDesign
 from .research_factory.research_evolution_ai_design import ResearchEvolutionAIDesignError, ResearchEvolutionAIDesignServiceV1
 from .research_factory.candidate_generation import CandidateGenerationError, CandidateGenerationManagerV1
 from .research_factory.candidate_executable_materialization import CandidateExecutableMaterializationError, CandidateExecutableMaterializationManagerV1
+from .research_factory.objective_reconciliation import ObjectiveReconciliationServiceV1
 from .research_factory.promising_followup_scope import candidate_scope_info, load_scope_manifest
 from .research_factory.research_evolution_proposal import COVERAGE_FILENAME, PROPOSAL_FILENAME
 from .research_factory.research_proposal_governance import ResearchProposalGovernanceError, ResearchProposalGovernanceServiceV1
@@ -752,6 +753,7 @@ class ResearchConsoleReadService:
         self.ai_design_approval = AIDesignApprovalServiceV1(self.root)
         self.candidate_generation = CandidateGenerationManagerV1(self.root)
         self.candidate_materialization = CandidateExecutableMaterializationManagerV1(self.root)
+        self.objective_reconciliation = ObjectiveReconciliationServiceV1(self.root)
 
     @property
     def cache_stats(self) -> dict[str, int]:
@@ -765,6 +767,14 @@ class ResearchConsoleReadService:
         if not pattern.fullmatch(candidate):
             raise ResearchConsoleReadError("INVALID_IDENTIFIER", f"{kind} 标识不合法", status_code=400)
         return candidate
+
+    def _objective_reconciliation(self, objective_id: str) -> Mapping[str, Any] | None:
+        """Read the effective state; never derive Structural truth from a projection."""
+
+        try:
+            return self.objective_reconciliation.reconcile(objective_id)
+        except (OSError, UnicodeError, ValueError, KeyError, TypeError, json.JSONDecodeError):
+            return None
 
     def _safe_path(self, relative: str | Path, *, code: str = "SOURCE_NOT_FOUND") -> Path:
         raw = str(relative).replace("\\", "/")
@@ -904,6 +914,24 @@ class ResearchConsoleReadService:
             elif structural_governance_pending:
                 state_zh = "结构预检已通过，等待研究治理决定"
                 state_source = f"{state_source} + structural governance projection"
+            reconciled = self._objective_reconciliation(objective_id)
+            reconciled_effective = reconciled.get("effective_objective_state") if isinstance(reconciled, Mapping) and isinstance(reconciled.get("effective_objective_state"), Mapping) else {}
+            reconciled_state = str(reconciled_effective.get("effective_state") or reconciled.get("effective_state") or "") if reconciled else ""
+            reconciled_conflict = bool(reconciled and str(reconciled.get("conflict_level") or "") == "CANONICAL_CONFLICT")
+            if reconciled_state in {
+                "READY_FOR_STRUCTURAL_PREFLIGHT",
+                "STRUCTURAL_RUNNING",
+                "STRUCTURAL_BLOCKED",
+                "ENGINEERING_BLOCKED",
+                "CANONICAL_STATE_CONFLICT",
+                "PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED",
+            } or reconciled_conflict:
+                if reconciled_conflict:
+                    reconciled_state = "CANONICAL_STATE_CONFLICT"
+                state = reconciled_state
+                state_zh = display_state(reconciled_state)
+                state_source = "ObjectiveReconciliationServiceV1 / canonical facts"
+                waiting_for_governance = reconciled_state == "PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED"
             governance_pending = waiting_for_governance or state == "GOVERNANCE_DECISION_REQUIRED" or structural_governance_pending
             terminal = governance_pending or state in _TERMINAL_ORCHESTRATOR_STATES
             rows.append((
@@ -1113,6 +1141,21 @@ class ResearchConsoleReadService:
             counts = {str(key): int(value) for key, value in orchestrator["research_counts"].items() if value is not None}
         canonical_state = str(orchestrator.get("orchestrator_state") if isinstance(orchestrator, Mapping) else daemon.daemon_state)
         lifecycle_stage = _lifecycle_stage(orchestrator_state=canonical_state, daemon_stage=daemon.stage, candidate_count=len(self._current_contract_candidates(objective_id)), trial_count=len(self._trial_records(objective_id)))
+        reconciled = self._objective_reconciliation(objective_id)
+        effective = reconciled.get("effective_objective_state") if isinstance(reconciled, Mapping) and isinstance(reconciled.get("effective_objective_state"), Mapping) else {}
+        reconciled_state = str(effective.get("effective_state") or reconciled.get("effective_state") or "") if reconciled else ""
+        if reconciled and str(reconciled.get("conflict_level") or "") == "CANONICAL_CONFLICT":
+            reconciled_state = "CANONICAL_STATE_CONFLICT"
+        if reconciled_state in {
+            "READY_FOR_STRUCTURAL_PREFLIGHT",
+            "STRUCTURAL_RUNNING",
+            "STRUCTURAL_BLOCKED",
+            "ENGINEERING_BLOCKED",
+            "CANONICAL_STATE_CONFLICT",
+            "PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED",
+        }:
+            canonical_state = reconciled_state
+            lifecycle_stage = str(effective.get("effective_stage") or ("PREDICTIVE_AUTHORIZATION" if reconciled_state == "PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED" else "STRUCTURAL_PREFLIGHT"))
         return ResearchStatusView(
             provenance=self._provenance(source_id="objective+daemon+effective_strategy_view", path=objective_path, payload=objective, freshness=FreshnessState.CONFLICT if daemon.conflict else FreshnessState.STALE if daemon.stale else FreshnessState.FRESH, stale=daemon.stale, conflict=daemon.conflict),
             objective_id=objective_id,
@@ -1121,7 +1164,7 @@ class ResearchConsoleReadService:
             stage=lifecycle_stage,
             counts=counts,
             safety_counters=self._safety_counters(),
-            display={"state_zh": str(orchestrator.get("orchestrator_state_zh") if isinstance(orchestrator, Mapping) else daemon.state_display_zh), "stage_zh": display_state(lifecycle_stage)},
+            display={"state_zh": display_state(canonical_state) if reconciled_state else str(orchestrator.get("orchestrator_state_zh") if isinstance(orchestrator, Mapping) else daemon.state_display_zh), "stage_zh": display_state(lifecycle_stage)},
         )
 
     def get_daemon_health(self, objective_id: str) -> DaemonHealthView:
@@ -1296,29 +1339,17 @@ class ResearchConsoleReadService:
                 "correction_event_id": correction.get("event_id"),
                 "generated_at": correction.get("created_at"),
             }, self.root / "reports" / "research_daemon" / objective_id / CORRECTION_FILENAME
-        checkpoint_path = self._runtime_paths(objective_id)["daemon_checkpoint.json"]
-        if checkpoint_path.exists():
-            checkpoint = self._read_json(checkpoint_path, ttl_seconds=5.0)
-            canonical_refs = checkpoint.get("canonical_refs") if isinstance(checkpoint.get("canonical_refs"), Mapping) else {}
-            reconciliation = canonical_refs.get("structural_reconciliation") if isinstance(canonical_refs.get("structural_reconciliation"), Mapping) else {}
-            report_ref = str(reconciliation.get("report_ref") or "")
-            if report_ref and _safe_relative_ref(report_ref):
-                report_path = self.root / report_ref
-                if report_path.is_file():
-                    report = self._read_json(report_path, ttl_seconds=5.0)
-                    if str(report.get("objective_id") or objective_id) == objective_id and str(report.get("candidate_id") or "") == candidate_id and (not candidate_hash or str(report.get("candidate_hash") or "") in {"", candidate_hash}):
-                        return report, report_path
-            structural = canonical_refs.get("last_structural_result") if isinstance(canonical_refs.get("last_structural_result"), Mapping) else {}
-            details = structural.get("details") if isinstance(structural.get("details"), Mapping) else {}
-            identity = details
-            for nested_key in ("v2_result", "v1_result"):
-                nested = details.get(nested_key) if isinstance(details.get(nested_key), Mapping) else {}
-                if nested.get("candidate_id"):
-                    identity = nested
-                    break
-            if str(identity.get("candidate_id") or "") == candidate_id and (not candidate_hash or str(identity.get("candidate_hash") or "") in {"", candidate_hash}):
-                return {**dict(details), "status": structural.get("status"), "reason_code": structural.get("reason_code")}, checkpoint_path
+        # The daemon checkpoint is a runtime projection.  It is deliberately
+        # not consulted as a Structural fact; only the canonical reconciled
+        # result can populate this read model.
+        canonical_path = self.root / "reports" / "research_daemon" / objective_id / "structural_preflight_reconciliation_canonical_v1.json"
+        if canonical_path.is_file():
+            report = self._read_json(canonical_path, ttl_seconds=5.0)
+            if str(report.get("objective_id") or objective_id) == objective_id and str(report.get("candidate_id") or "") == candidate_id and (not candidate_hash or str(report.get("candidate_hash") or "") in {"", candidate_hash}):
+                return report, canonical_path
         for path, payload in self._structural_payloads(self.root / "reports"):
+            if str(payload.get("authority_role") or "") != "STRUCTURAL_RESULT_AUTHORITY":
+                continue
             payload_objective = payload.get("objective") if isinstance(payload.get("objective"), Mapping) else {}
             declared_objective_id = str(payload_objective.get("objective_id") or payload.get("objective_id") or "")
             if declared_objective_id and declared_objective_id != objective_id:
@@ -1343,25 +1374,16 @@ class ResearchConsoleReadService:
 
     def _current_structural(self, objective_id: str) -> StructuralPreflightView | None:
         candidates = self._contract_candidates(objective_id)
-        checkpoint_path = self._runtime_paths(objective_id)["daemon_checkpoint.json"]
         candidate_id = ""
         candidate_hash = ""
-        if checkpoint_path.exists():
-            checkpoint = self._read_json(checkpoint_path, ttl_seconds=5.0)
-            refs = checkpoint.get("canonical_refs") if isinstance(checkpoint.get("canonical_refs"), Mapping) else {}
-            structural = refs.get("last_structural_result") if isinstance(refs.get("last_structural_result"), Mapping) else {}
-            details = structural.get("details") if isinstance(structural.get("details"), Mapping) else {}
-            for key in ("v2_result", "v1_result"):
-                nested = details.get(key) if isinstance(details.get(key), Mapping) else {}
-                if nested.get("candidate_id"):
-                    candidate_id = str(nested.get("candidate_id"))
-                    candidate_hash = str(nested.get("candidate_hash") or "")
-                    break
-        if not candidate_id:
-            governance = self._structural_governance(objective_id)
-            if governance:
-                candidate_id = str(governance[0].get("candidate_id") or "")
-                candidate_hash = str(governance[0].get("candidate_hash") or "")
+        reconciled = self._objective_reconciliation(objective_id)
+        effective = reconciled.get("effective_objective_state") if isinstance(reconciled, Mapping) and isinstance(reconciled.get("effective_objective_state"), Mapping) else {}
+        if reconciled:
+            candidate_id = str(effective.get("current_candidate_id") or reconciled.get("current_candidate_id") or "")
+            candidate_hash = str(effective.get("current_candidate_hash") or reconciled.get("current_candidate_hash") or "")
+        if not candidate_id and len(candidates) == 1:
+            candidate_id, fallback = next(iter(candidates.items()))
+            candidate_hash = str(fallback.get("candidate_hash") or "")
         candidate = candidates.get(candidate_id)
         if candidate is None:
             return None
@@ -2421,6 +2443,9 @@ class ResearchConsoleReadService:
         daemon = self.get_daemon(objective_id)
         budget = self.get_budget(objective_id, include_trial_consumption=False)
         status = self.get_research_status(objective_id)
+        reconciled = self._objective_reconciliation(objective_id)
+        reconciled_effective = reconciled.get("effective_objective_state") if isinstance(reconciled, Mapping) and isinstance(reconciled.get("effective_objective_state"), Mapping) else {}
+        reconciled_state = str(reconciled_effective.get("effective_state") or reconciled.get("effective_state") or "") if reconciled else ""
         try:
             orchestrator = self.get_orchestrator(objective_id)
         except ResearchConsoleReadError:
@@ -2529,9 +2554,38 @@ class ResearchConsoleReadService:
             "budget_reserved": 0 if latest_trial_completed else int(governance_payload.get("budget_reserved", 0) or 0),
             "budget_used_delta": 0 if latest_trial_completed else int(governance_payload.get("budget_used_delta", 0) or 0),
         }
-        return ResearchDashboardView(provenance=snapshot_provenance, objective_id=objective_id, research_running=research_running, daemon_state=daemon.daemon_state, orchestrator_state=orchestrator_state or "UNKNOWN", orchestrator_state_zh=orchestrator_state_zh, stage=lifecycle_stage, current_candidate_id=dashboard_candidate_id, remaining_frozen_candidates=daemon.remaining_frozen_candidates, budget_used=budget.used, budget_total=budget.total, budget_remaining=budget.remaining, budget_conflict=budget.conflict, research_passed_count=int(orchestrator_counts.get("RESEARCH_PASSED", status.counts.get("RESEARCH_PASSED", 0))), promising_count=int(orchestrator_counts.get("PROMISING", status.counts.get("PROMISING", 0))), required_human_action=required_action, engineering_blocked=daemon.daemon_state == "ENGINEERING_BLOCKED" or engineering_failure, resource_health=health.health_state, shadow_latest_state=shadow.readiness, data_health_state=data.overall_status, predictive_trial_count=len(trial_records), safety_counters=safety, display={"daemon_state_zh": daemon.state_display_zh, "orchestrator_state_zh": orchestrator_state_zh, "stage_zh": display_state(lifecycle_stage), "resource_health_zh": health.health_display_zh, "shadow_warning_zh": shadow.warning_zh}, structural=structural_view.to_dict() if structural_view else {}, governance_readiness=governance_readiness, predictive_trial_recovery=predictive_trial_recovery)
+        daemon_state = daemon.daemon_state
+        if reconciled_state in {
+            "READY_FOR_STRUCTURAL_PREFLIGHT",
+            "STRUCTURAL_RUNNING",
+            "STRUCTURAL_BLOCKED",
+            "ENGINEERING_BLOCKED",
+            "CANONICAL_STATE_CONFLICT",
+            "PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED",
+        }:
+            # Dashboard state is a read projection of the reconciled snapshot.
+            # An ACTIVE Orchestrator checkpoint never means that research is
+            # running by itself.
+            daemon_state = {
+                "READY_FOR_STRUCTURAL_PREFLIGHT": "READY",
+                "STRUCTURAL_RUNNING": "STRUCTURAL_RUNNING",
+                "PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED": "STRUCTURAL_PASS",
+                "STRUCTURAL_BLOCKED": "STRUCTURAL_BLOCKED",
+                "ENGINEERING_BLOCKED": "ENGINEERING_BLOCKED",
+                "CANONICAL_STATE_CONFLICT": "CANONICAL_STATE_CONFLICT",
+            }.get(reconciled_state, daemon.daemon_state)
+            orchestrator_state = "ACTIVE"
+            orchestrator_state_zh = display_state(reconciled_state)
+            lifecycle_stage = "PREDICTIVE" if reconciled_state == "PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED" else "STRUCTURAL"
+            research_running = reconciled_state == "STRUCTURAL_RUNNING"
+            required_action = str(reconciled_effective.get("required_action") or reconciled.get("required_action") or "") or None
+            dashboard_candidate_id = str(reconciled_effective.get("current_candidate_id") or reconciled.get("current_candidate_id") or "") or dashboard_candidate_id
+        return ResearchDashboardView(provenance=snapshot_provenance, objective_id=objective_id, research_running=research_running, daemon_state=daemon_state, orchestrator_state=orchestrator_state or "UNKNOWN", orchestrator_state_zh=orchestrator_state_zh, stage=lifecycle_stage, current_candidate_id=dashboard_candidate_id, remaining_frozen_candidates=daemon.remaining_frozen_candidates, budget_used=budget.used, budget_total=budget.total, budget_remaining=budget.remaining, budget_conflict=budget.conflict, research_passed_count=int(orchestrator_counts.get("RESEARCH_PASSED", status.counts.get("RESEARCH_PASSED", 0))), promising_count=int(orchestrator_counts.get("PROMISING", status.counts.get("PROMISING", 0))), required_human_action=required_action, engineering_blocked=reconciled_state == "ENGINEERING_BLOCKED" or daemon_state == "ENGINEERING_BLOCKED" or engineering_failure, resource_health=health.health_state, shadow_latest_state=shadow.readiness, data_health_state=data.overall_status, predictive_trial_count=len(trial_records), safety_counters=safety, display={"daemon_state_zh": display_state(daemon_state), "orchestrator_state_zh": orchestrator_state_zh, "stage_zh": display_state(lifecycle_stage), "resource_health_zh": health.health_display_zh, "shadow_warning_zh": shadow.warning_zh}, structural=structural_view.to_dict() if structural_view else {}, governance_readiness=governance_readiness, predictive_trial_recovery=predictive_trial_recovery)
 
     def get_pipeline(self, objective_id: str) -> ResearchPipelineView:
+        reconciled = self._objective_reconciliation(objective_id)
+        reconciled_effective = reconciled.get("effective_objective_state") if isinstance(reconciled, Mapping) and isinstance(reconciled.get("effective_objective_state"), Mapping) else {}
+        reconciled_state = str(reconciled_effective.get("effective_state") or reconciled.get("effective_state") or "") if reconciled else ""
         daemon = self.get_daemon(objective_id)
         candidates = self._contract_candidates(objective_id)
         current_candidates = self._current_contract_candidates(objective_id)
@@ -2544,7 +2598,6 @@ class ResearchConsoleReadService:
         orchestrator_state_zh = str(orchestrator.get("orchestrator_state_zh") or display_state(orchestrator_state))
         checkpoint_path = self._runtime_paths(objective_id)["daemon_checkpoint.json"]
         checkpoint = self._read_json(checkpoint_path, ttl_seconds=5.0) if checkpoint_path.exists() else {}
-        canonical_refs = checkpoint.get("canonical_refs") if isinstance(checkpoint.get("canonical_refs"), Mapping) else {}
         structural_governance_source = self._structural_governance(objective_id)
         predictive_governance = None
         if structural_governance_source:
@@ -2553,9 +2606,20 @@ class ResearchConsoleReadService:
             except PredictiveGovernanceError:
                 predictive_governance = None
         structural_governance_payload = dict(predictive_governance or (structural_governance_source[0] if structural_governance_source else {}))
-        last_structural = canonical_refs.get("last_structural_result") if isinstance(canonical_refs.get("last_structural_result"), Mapping) else {}
+        last_structural = {}
+        reconciled_structural = reconciled.get("structural_result_reconciliation") if isinstance(reconciled, Mapping) else None
+        canonical_structural = reconciled_structural.get("canonical") if isinstance(reconciled_structural, Mapping) else None
+        if isinstance(canonical_structural, Mapping):
+            canonical_payload = canonical_structural.get("payload")
+            if isinstance(canonical_payload, Mapping):
+                last_structural = dict(canonical_payload)
         structural_details = last_structural.get("details") if isinstance(last_structural.get("details"), Mapping) else {}
         last_candidate = checkpoint.get("last_completed_candidate") if isinstance(checkpoint.get("last_completed_candidate"), Mapping) else {}
+        if reconciled_effective.get("current_candidate_id"):
+            last_candidate = {
+                "candidate_id": reconciled_effective.get("current_candidate_id"),
+                "candidate_hash": reconciled_effective.get("current_candidate_hash"),
+            }
         correction_candidate_id = str(last_candidate.get("candidate_id") or structural_details.get("candidate_id") or "")
         correction = load_effective_contract_invalidations(self.root, objective_id).get(correction_candidate_id)
         if correction:
@@ -2825,7 +2889,72 @@ class ResearchConsoleReadService:
             "budget_used_delta": int(structural_governance_payload.get("budget_used_delta", 0) or 0),
             "latest_decision": structural_governance_payload.get("latest_decision"),
         }
-        return ResearchPipelineView(provenance=provenance, objective_id=objective_id, current_stage=current_stage, current_state=orchestrator_state, current_state_zh=orchestrator_state_zh, next_action=next_action, next_action_zh=next_action_zh, current_candidate_id=current_candidate_id or completed_candidate_id, remaining_frozen_candidates=daemon.remaining_frozen_candidates, last_error=last_error, state_source="canonical Orchestrator checkpoint + structural reconciliation" if structural_status == "PASS" else "canonical Orchestrator checkpoint" if orchestrator else "daemon canonical status", stages=stages, batch_ids=batches, candidate_count=len(current_candidates), trial_count=len(trials), recent_events=recent, execution=execution, structural_reconciliation=structural_reconciliation, predictive_authorization=predictive_authorization, predictive_trial_start=predictive_trial_start, predictive_trial_recovery=predictive_trial_recovery, governance_readiness=governance_readiness)
+        if reconciled_state in {
+            "READY_FOR_STRUCTURAL_PREFLIGHT",
+            "STRUCTURAL_RUNNING",
+            "STRUCTURAL_BLOCKED",
+            "ENGINEERING_BLOCKED",
+            "CANONICAL_STATE_CONFLICT",
+            "PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED",
+        }:
+            canonical_structural = reconciled.get("structural_result_reconciliation") if isinstance(reconciled, Mapping) and isinstance(reconciled.get("structural_result_reconciliation"), Mapping) else {}
+            canonical_item = canonical_structural.get("canonical") if isinstance(canonical_structural.get("canonical"), Mapping) else {}
+            canonical_status = str(canonical_structural.get("status") or "")
+            current_state = reconciled_state
+            display_structural_status = "CANONICAL_STATE_CONFLICT" if current_state == "CANONICAL_STATE_CONFLICT" else canonical_status
+            current_state_zh = display_state(current_state)
+            current_stage = "PREDICTIVE" if current_state == "PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED" else "STRUCTURAL"
+            next_action = str(reconciled_effective.get("required_action") or reconciled.get("required_action") or "") or "UNKNOWN"
+            next_action_zh = display_action(next_action, include_code=False)
+            current_candidate_id = str(reconciled_effective.get("current_candidate_id") or reconciled.get("current_candidate_id") or "") or current_candidate_id or completed_candidate_id or None
+            state_source = "ObjectiveReconciliationServiceV1 / canonical Structural Result"
+            execution = {
+                **execution,
+                "status": "PREDICTIVE_NOT_RUN" if current_state == "PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED" else "RUNNING" if current_state == "STRUCTURAL_RUNNING" else "STRUCTURAL_BLOCKED" if current_state in {"STRUCTURAL_BLOCKED", "CANONICAL_STATE_CONFLICT"} else "ENGINEERING_BLOCKED" if current_state == "ENGINEERING_BLOCKED" else "NOT_RUN",
+                "status_zh": current_state_zh,
+                "structural_status": display_structural_status or ("PASS" if current_state == "PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED" else current_state),
+                "candidate_id": current_candidate_id,
+                "candidate_completed": canonical_status == "PASS" and current_state != "CANONICAL_STATE_CONFLICT",
+            }
+            structural_reconciliation = {
+                "status": display_structural_status or current_state,
+                "status_zh": current_state_zh,
+                "available": current_state in {"READY_FOR_STRUCTURAL_PREFLIGHT", "STRUCTURAL_RUNNING"},
+                "candidate_id": current_candidate_id,
+                "candidate_hash": reconciled_effective.get("current_candidate_hash") or reconciled.get("current_candidate_hash"),
+                "requires_confirmation": True,
+                "scope": "STRUCTURAL_ONLY_NO_PREDICTIVE_RUN",
+                "authority_role": "STRUCTURAL_RESULT_AUTHORITY" if canonical_structural.get("present") else "STRUCTURAL_EXECUTION_EVIDENCE",
+                "canonical_ref": (canonical_item.get("path") if isinstance(canonical_item, Mapping) else None),
+                "required_action": next_action,
+            "reason_zh": "结构预检已通过，必须单独授权预测验证。" if current_state == "PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED" else "Canonical 事实存在冲突，不能自动修复运行态 projection。" if current_state == "CANONICAL_STATE_CONFLICT" else "当前结构状态由 Objective Reconciliation 决定。",
+            }
+            if current_state != "PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED":
+                predictive_authorization = {
+                    **predictive_authorization,
+                    "available": False,
+                    "status": "UNAVAILABLE",
+                    "reason_zh": "Structural 尚未通过，禁止进入 Predictive。",
+                    "action_zh": "先完成结构预检",
+                }
+            current_index = _PIPELINE_STAGES.index(current_stage)
+            stages = tuple(
+                {
+                    "stage": name,
+                    "state_display_zh": current_state_zh if name == current_stage else "已完成" if index < current_index else "未到达",
+                    "status": "CURRENT" if name == current_stage else "DONE" if index < current_index else "PENDING",
+                }
+                for index, name in enumerate(_PIPELINE_STAGES)
+            )
+        projection_state = reconciled_state if reconciled_state in {
+            "READY_FOR_STRUCTURAL_PREFLIGHT",
+            "STRUCTURAL_RUNNING",
+            "STRUCTURAL_BLOCKED",
+            "ENGINEERING_BLOCKED",
+            "CANONICAL_STATE_CONFLICT",
+            "PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED",
+        } else ""
+        return ResearchPipelineView(provenance=provenance, objective_id=objective_id, current_stage=current_stage, current_state=projection_state or orchestrator_state, current_state_zh=display_state(projection_state) if projection_state else orchestrator_state_zh, next_action=next_action, next_action_zh=next_action_zh, current_candidate_id=current_candidate_id or completed_candidate_id, remaining_frozen_candidates=daemon.remaining_frozen_candidates, last_error=last_error, state_source="ObjectiveReconciliationServiceV1 / canonical Structural Result" if projection_state else "canonical Orchestrator checkpoint + structural reconciliation" if structural_status == "PASS" else "canonical Orchestrator checkpoint" if orchestrator else "daemon canonical status", stages=stages, batch_ids=batches, candidate_count=len(current_candidates), trial_count=len(trials), recent_events=recent, execution=execution, structural_reconciliation=structural_reconciliation, predictive_authorization=predictive_authorization, predictive_trial_start=predictive_trial_start, predictive_trial_recovery=predictive_trial_recovery, governance_readiness=governance_readiness)
 
     def get_reports(self, objective_id: str) -> ReportIndexView:
         self._objective(objective_id)

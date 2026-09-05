@@ -55,6 +55,8 @@ class CanonicalAuthorityContractV1:
         "factory_trial_ledger.json is the canonical Trial lifecycle authority; daemon and orchestrator state are projections.",
         "SearchBudgetRegistryV1 is the canonical Budget authority; when multiple registries exist, authority requires an immutable or explicit canonical reference.",
         "ArtifactGraph is lineage/index evidence; a missing edge is repairable index drift and an identity/hash mismatch is a canonical conflict.",
+        "Structural provider output is execution evidence; only the reconciled Structural Result is a research fact and Structural authority.",
+        "Canonical facts flow one way into Daemon, Orchestrator, and Console projections; a stale projection never rewrites a canonical fact.",
         "Daemon and Orchestrator checkpoints are runtime projections and never replace canonical facts.",
     )
     entries: tuple[CanonicalAuthorityEntryV1, ...] = (
@@ -115,16 +117,24 @@ class CanonicalAuthorityContractV1:
             "Require one unique matching identity, DurableFrozenCandidateContractV1.from_dict PASS, and provider_candidate_payload PASS.",
         ),
         CanonicalAuthorityEntryV1(
-            "Structural Preflight",
-            "STRUCTURAL_PREFLIGHT_FACT",
-            "canonical structural preflight reconciliation artifact",
-            ("daemon structural state", "orchestrator readiness"),
-            ("objective_id", "candidate_id", "candidate_hash", "reconciliation_id"),
-            "A daemon state of STRUCTURAL_* is only a projection until the canonical reconciliation artifact is present.",
+            "Structural Provider Raw Result",
+            "STRUCTURAL_EXECUTION_EVIDENCE",
+            "explicit Structural provider execution evidence",
+            ("canonical Structural Result", "daemon structural state", "orchestrator readiness"),
+            ("objective_id", "candidate_id", "candidate_hash", "provider payload identity", "data identity", "manifest identity", "policy identity"),
+            "Provider output records what was executed; it is not the reconciled research fact and cannot authorize Predictive validation.",
+        ),
+        CanonicalAuthorityEntryV1(
+            "Structural Reconciliation",
+            "STRUCTURAL_RESULT_AUTHORITY",
+            "reports/research_daemon/<objective_id>/structural_preflight_reconciliation_canonical_v1.json",
+            ("daemon structural state", "orchestrator readiness", "Console read model"),
+            ("objective_id", "candidate_id", "candidate_hash", "durable_contract_hash", "provider payload identity", "data identity", "manifest identity", "policy identity", "result_hash"),
+            "Only the identity-bound canonical reconciled Structural Result can establish PASS, STRUCTURAL_BLOCKED, or ENGINEERING_BLOCKED.",
         ),
         CanonicalAuthorityEntryV1(
             "Predictive Authorization",
-            "PREDICTIVE_AUTHORIZATION_FACT",
+            "PREDICTIVE_AUTHORIZATION_AUTHORITY",
             "durable predictive authorization receipt",
             ("daemon predictive state", "orchestrator governance view"),
             ("objective_id", "candidate_id", "candidate_hash", "authorization_id"),
@@ -177,6 +187,14 @@ class CanonicalAuthorityContractV1:
             (),
             ("objective_id", "checkpoint hash", "state"),
             "Orchestrator state is a runtime projection and must be reconciled against canonical Trial, Budget, and Contract evidence.",
+        ),
+        CanonicalAuthorityEntryV1(
+            "Console",
+            "READ_MODEL / PROJECTION",
+            "ObjectiveReconciliationServiceV1 plus canonical authority artifacts",
+            (),
+            ("objective_id", "canonical effective state hash", "projection freshness"),
+            "Console reads reconciled canonical state and may display projection drift; it never promotes a checkpoint into authority.",
         ),
     )
 

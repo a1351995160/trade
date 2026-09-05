@@ -82,6 +82,14 @@ AI_DENIED_TRIGGERS = frozenset({
 AI_BATCH_VALIDATION_TIMEOUT_SECONDS = 30.0
 AI_BATCH_VALIDATION_STALE_AFTER_SECONDS = 120.0
 PREDICTIVE_AUTHORIZATION_REQUIRED = "PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED"
+STRUCTURAL_PROJECTION_STATES = frozenset({
+    "READY_FOR_STRUCTURAL_PREFLIGHT",
+    "STRUCTURAL_RUNNING",
+    "STRUCTURAL_BLOCKED",
+    "ENGINEERING_BLOCKED",
+    "CANONICAL_STATE_CONFLICT",
+    PREDICTIVE_AUTHORIZATION_REQUIRED,
+})
 
 
 def _safe_design_payload(value: Any) -> Any:
@@ -2273,12 +2281,35 @@ class AutonomousResearchOrchestratorV2:
             return True
         return False
 
+    def _structural_reconciliation(self) -> Mapping[str, Any] | None:
+        """Read the canonical structural snapshot without advancing research.
+
+        The orchestrator owns a runtime checkpoint, not the Structural fact.
+        This narrow adapter lets the control plane expose the reconciled
+        Structural boundary while leaving AI, Trial, and Budget actions to
+        their existing explicit services.
+        """
+
+        objective_path = self.root / "data" / "research" / "research_factory" / "objectives" / f"{self.objective_id}.json"
+        if not objective_path.is_file():
+            return None
+        try:
+            from .objective_reconciliation import ObjectiveReconciliationServiceV1
+
+            report = ObjectiveReconciliationServiceV1(self.root, self.objective_id).reconcile()
+        except (OSError, UnicodeError, ValueError, KeyError, TypeError, json.JSONDecodeError):
+            return None
+        effective_state = str(report.get("effective_state") or "")
+        conflict_level = str(report.get("conflict_level") or "")
+        return report if effective_state in STRUCTURAL_PROJECTION_STATES or conflict_level == "CANONICAL_CONFLICT" else None
+
     def step(self) -> dict[str, Any]:
         if self._handle_control():
             return self.status().to_dict()
         self._recover()
         state = OrchestratorState(str(self.checkpoint["state"]))
         snapshot = self.runtime.snapshot()
+        structural_reconciliation = self._structural_reconciliation()
         self.checkpoint["daemon_linkage"] = {"daemon_run_id": snapshot.daemon_run_id, "daemon_state": snapshot.daemon_state}
         self.checkpoint["terminal_reason"] = snapshot.terminal_reason
         if state == OrchestratorState.AI_RESEARCH_DISABLED and self.config.ai_invocation_mode != "AI_DISABLED":
@@ -2292,6 +2323,20 @@ class AutonomousResearchOrchestratorV2:
             return self._run_ai(snapshot)
         if state in {OrchestratorState.GOVERNANCE_DECISION_REQUIRED, OrchestratorState.PAUSED, OrchestratorState.SHUTDOWN, OrchestratorState.AI_HANDOFF_BLOCKED, OrchestratorState.AI_INVOCATION_UNAVAILABLE, OrchestratorState.AI_MANUAL_HANDOFF_REQUIRED, OrchestratorState.AI_RESEARCH_DISABLED, OrchestratorState.NO_PROGRESS_RESEARCH_LOOP, OrchestratorState.ENGINEERING_BLOCKED}:
             self._save()
+            return self.status().to_dict()
+        if structural_reconciliation is not None:
+            # Structural Entry is an explicit domain operation.  Seeing a
+            # READY executable candidate or a Structural result must never
+            # invoke local research, AI, Trial, or Budget code here.
+            if state == OrchestratorState.LOCAL_RESEARCH_RUNNING:
+                self._set_state(
+                    OrchestratorState.ACTIVE,
+                    "STRUCTURAL_PROJECTION_RECONCILED",
+                    effective_state=structural_reconciliation.get("effective_state"),
+                    required_action=structural_reconciliation.get("required_action"),
+                )
+            else:
+                self._save()
             return self.status().to_dict()
         if snapshot.daemon_state in TERMINAL_DAEMON_STATES or int(snapshot.budget.get("remaining", 0)) <= 0:
             return self._terminal_closeout(snapshot)
@@ -2447,10 +2492,16 @@ class AutonomousResearchOrchestratorV2:
         invocation = self.store.load_invocation()
         handoff = self._read_handoff()
         state = str(self.checkpoint["state"])
-        predictive_authorization_pending = snapshot.required_action == PREDICTIVE_AUTHORIZATION_REQUIRED
+        structural_reconciliation = self._structural_reconciliation()
+        reconciled_effective_state = str(structural_reconciliation.get("effective_state") or "") if structural_reconciliation else ""
+        predictive_authorization_pending = (
+            reconciled_effective_state == PREDICTIVE_AUTHORIZATION_REQUIRED
+            or snapshot.required_action == PREDICTIVE_AUTHORIZATION_REQUIRED
+        )
         projected_state = (
             OrchestratorState.ACTIVE.value
-            if predictive_authorization_pending and state == OrchestratorState.LOCAL_RESEARCH_RUNNING.value
+            if structural_reconciliation is not None
+            or predictive_authorization_pending and state == OrchestratorState.LOCAL_RESEARCH_RUNNING.value
             else state
         )
         ai_running = projected_state == OrchestratorState.AI_INVOCATION_RUNNING.value
@@ -2470,8 +2521,28 @@ class AutonomousResearchOrchestratorV2:
         ai_status = projected_state if projected_state in ai_states else "IDLE"
         current_candidate = self.checkpoint.get("current_candidate")
         current_trial = self.checkpoint.get("current_trial")
+        projected_daemon_state = snapshot.daemon_state
+        if structural_reconciliation is not None:
+            effective_candidate_id = (structural_reconciliation.get("effective_objective_state") or {}).get("current_candidate_id") if isinstance(structural_reconciliation.get("effective_objective_state"), Mapping) else None
+            effective_candidate_hash = (structural_reconciliation.get("effective_objective_state") or {}).get("current_candidate_hash") if isinstance(structural_reconciliation.get("effective_objective_state"), Mapping) else None
+            current_candidate = (
+                {"candidate_id": str(effective_candidate_id), "candidate_hash": str(effective_candidate_hash or "")}
+                if effective_candidate_id
+                else None
+            )
+            current_trial = None
+            projected_daemon_state = {
+                "READY_FOR_STRUCTURAL_PREFLIGHT": "READY",
+                "STRUCTURAL_RUNNING": "STRUCTURAL_RUNNING",
+                PREDICTIVE_AUTHORIZATION_REQUIRED: "STRUCTURAL_PASS",
+                "STRUCTURAL_BLOCKED": "STRUCTURAL_BLOCKED",
+                "ENGINEERING_BLOCKED": "ENGINEERING_BLOCKED",
+                "CANONICAL_STATE_CONFLICT": snapshot.daemon_state,
+            }.get(reconciled_effective_state, snapshot.daemon_state)
         next_action = (
-            PREDICTIVE_AUTHORIZATION_REQUIRED
+            str(structural_reconciliation.get("required_action") or PREDICTIVE_AUTHORIZATION_REQUIRED)
+            if structural_reconciliation is not None
+            else PREDICTIVE_AUTHORIZATION_REQUIRED
             if predictive_authorization_pending
             else "GOVERNANCE_DECISION_REQUIRED"
             if projected_state == OrchestratorState.GOVERNANCE_DECISION_REQUIRED.value
@@ -2563,8 +2634,8 @@ class AutonomousResearchOrchestratorV2:
         return ResearchOrchestratorStatusView(
             objective_id=self.objective_id,
             orchestrator_state=projected_state,
-            daemon_state=snapshot.daemon_state,
-            daemon_status_zh=ZhCNPresentation.state_name(snapshot.daemon_state),
+            daemon_state=projected_daemon_state,
+            daemon_status_zh=ZhCNPresentation.state_name(projected_daemon_state),
             ai_status=ai_status,
             current_round=None,
             current_candidate=current_candidate,
