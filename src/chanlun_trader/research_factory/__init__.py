@@ -1,6 +1,13 @@
 """AI Research Factory control-plane contracts."""
 
 from .artifact_graph import ResearchArtifactGraphV1, add_frozen_contract_node_idempotent
+from .canonical_authority import (
+    CANONICAL_AUTHORITY_CONTRACT,
+    CANONICAL_AUTHORITY_CONTRACT_V1,
+    CanonicalAuthorityContractV1,
+    CanonicalAuthorityEntryV1,
+    canonical_authority_contract,
+)
 from .agent_backend import (
     AgentBackendError,
     AgentCallEstimateV1,
@@ -234,7 +241,7 @@ __all__ = [
     "FactoryRunResultV1", "FactoryTrialRecordV1", "FailureKnowledgeAdapterV1",
     "FailureKnowledgeSnapshotV1", "FailureKnowledgeViewV1", "NoOutcomePolicyDesignContextV1", "NoOutcomeResearchContextV1", "OutcomeBlindFieldPolicyV1", "PerformanceBlindGuard",
     "PerformanceLeakError", "RESEARCH_FACTORY_CANONICAL_DEPENDENCIES_V1", "RESEARCH_PRIORITY",
-    "ResearchArtifactGraphV1", "add_frozen_contract_node_idempotent", "ResearchBatchPlanV1", "ResearchBatchState", "ResearchBatchStateMachineV1",
+    "ResearchArtifactGraphV1", "add_frozen_contract_node_idempotent", "CanonicalAuthorityContractV1", "CanonicalAuthorityEntryV1", "CANONICAL_AUTHORITY_CONTRACT", "CANONICAL_AUTHORITY_CONTRACT_V1", "canonical_authority_contract", "ResearchBatchPlanV1", "ResearchBatchState", "ResearchBatchStateMachineV1",
     "ResearchFactoryStatusV1", "ResearchFactoryTrialLedgerFacadeV1", "ResearchObjectiveV1", "ResearchAgentBackendV1", "ResearchAgentInputBuilderV1", "ResearchAgentInputV1", "ResearchProposalBatchV1", "ResearchProposalV1", "TemplateResearchAgentBackendV1", "SyntheticResearchAgentBackendV1",
     "ResearchStrategyRegistryFacadeV1", "SearchBudgetRegistryV1", "SyntheticFactoryRuntimeV1", "RunBudgetContract", "RunBudgetContractV1", "RunBudgetUsageState", "RunBudgetUsageStateV1", "trial_budget_identity",
     "CandidateNeighborhoodIndexV1", "CandidateNoveltyGateV2", "NoveltyDecisionV2", "FamilyDiversityPolicyV1", "FamilyDiversityEnforcerV1", "DiversityFreezeResultV1", "InsufficientDiverseCandidatesError", "deterministic_batch_id", "canonical_dependency_manifest",
