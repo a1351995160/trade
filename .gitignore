@@ -1,0 +1,76 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+
+# Local Python environments
+.venv/
+venv/
+
+# Large/regenerable local data (not part of source freeze)
+data/research_full.db
+data/research_300.db
+data/research.db
+data/research_full.log
+data/*.log
+data/tdx/raw/
+data/tdx/cache/
+data/cache/
+
+# Large research intermediates (rebuildable from scripts/m6_lib.py etc.)
+data/research/tradable_returns.parquet
+data/research/tradable_returns_excess.parquet
+data/research/factor_table_m6.parquet
+data/research/labels_m6.parquet
+data/research/labels_m6_excess.parquet
+data/research/daily_all.parquet
+data/research/universe_proxy_m6.parquet
+data/research/industry_features_m6.parquet
+
+# frontend deps
+frontend/node_modules/
+
+# Local research runtime and delivery outputs
+/research_ai_staging/
+/deliverables/
+/tmp/
+**/*.tsbuildinfo
+
+# Frontend build output (tracked historical files remain tracked)
+/frontend/dist/
+
+# Large local market and research runtime data
+/data/market_raw/
+/data/research/market_5m/
+/data/research/runs/
+/data/research/performance_cache/
+/data/research/audit/
+
+# Generated research runtime reports
+/reports/research_daemon/
+/reports/research_orchestrator_v2/
+/reports/research_evolution/
+/reports/research_factory/
+
+# Runtime logs and process markers
+*.log
+*.pid
+
+# Research data and serialized runtime artifacts
+*.parquet
+*.feather
+*.arrow
+*.sqlite
+*.sqlite3
+*.db
+*.jsonl
+
+# Local credentials and environment files
+.env
+.env.*
+!.env.example

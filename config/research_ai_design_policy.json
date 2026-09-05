@@ -1,0 +1,22 @@
+{
+  "default_invocation_mode": "MANUAL_HANDOFF",
+  "objective_overrides": {
+    "RESEARCH_OBJECTIVE_GOVERNED_PROMISING_FOLLOWUP_V1_97AA9C76F4453762D2BF": "ONE_SHOT"
+  },
+  "one_shot_contract": {
+    "max_ai_design_tasks": 1,
+    "max_candidates_per_task": 1,
+    "max_confirmation_candidates": 4,
+    "no_automatic_retry": true
+  },
+  "performance_blind": true,
+  "policies": {
+    "DISCOVERY": "ITERATIVE",
+    "FIXED_VALIDATION": "DISABLED",
+    "NEW_MECHANISM": "ITERATIVE",
+    "PROMISING_FOLLOWUP": "ONE_SHOT"
+  },
+  "schema_version": "research-ai-design-policy-v1",
+  "status": "PASS",
+  "updated_at": "2026-08-29T05:08:00.560089+00:00"
+}

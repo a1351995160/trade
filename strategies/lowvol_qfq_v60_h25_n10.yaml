@@ -1,0 +1,47 @@
+# ROBUST_CANDIDATE_001 — 低波动选股（QFQ 口径）
+# 状态: ROBUST_CANDIDATE = 1（TRAIN/VALIDATION/WF/Red Team/参数/成本/执行压力全部通过）
+# FINAL TEST: 未访问
+strategy_id: LOWVOL_QFQ_V60_H25_N10
+name: "低波动前10持有25日（前复权波动率）"
+alpha_family: LowVolatility
+description: >
+  PIT Top500 中，按前复权 60 日收益率标准差从小到大排序取前 10 只，
+  等权持有 25 个交易日，无短止损，始终满仓。
+universe:
+  amount_top_n: 500
+  amount_lookback: 250
+  min_amount_ma20: 0
+selection:
+  metric: qfq_60d_return_volatility
+  direction: ascending
+  top_n: 10
+backtest:
+  max_positions: 10
+  max_holding_days: 25
+  stop_loss_pct: 0.0
+  max_picks_per_day: 0
+  max_per_industry_per_day: 0
+  trailing_stop_enabled: false
+  index_filter_enabled: false
+  exposure: always_100
+known_results:
+  train:
+    start: 2022-08-01
+    end: 2024-07-31
+    total_return: 0.2483
+    max_drawdown: -0.1324
+    sharpe: 1.03
+    profit_factor: 1.68
+    trades: 190
+  validation:
+    start: 2024-08-01
+    end: 2025-07-31
+    total_return: 0.1954
+    max_drawdown: -0.0822
+    sharpe: 1.14
+    profit_factor: 2.11
+    trades: 100
+yellow_flags:
+  - "VALIDATION_SEARCH_INTENSITY = 2"
+  - "幸存者偏差未复核（需退市列表）"
+  - "行业集中度偏高（T1001 占约40%买入信号）"

@@ -1,0 +1,78 @@
+# 缠论选股交易系统一期配置
+tdx:
+  vipdoc: E:/new_tdx_mock/vipdoc
+  gbbq: E:/new_tdx_mock/T0002/hq_cache/gbbq
+  cache_dir: data/cache
+  industry_cfg: E:/new_tdx_mock/T0002/hq_cache/tdxhy.cfg
+  research_db: data/research_full.db   # tdx-research-cli 全市场快照库
+
+universe:
+  markets: [sh, sz]
+  min_list_days: 120       # 上市不足 120 个交易日的股票不参与
+  min_amount_ma20: 50000000  # 20日均成交额低于5000万的股票不参与（回测时点过滤）
+  amount_top_n: 1000       # 按成交额排名只保留前 N 只股票；0 表示全市场
+  amount_lookback: 250     # 成交额排名回看条数
+  amount_rank_mode: recent # 实盘选股用最近N条成交额排名；回测已改为 Point-In-Time 逐日排名
+
+chan:
+  macd_fast: 12
+  macd_slow: 26
+  macd_signal: 9
+  bi_gap: 4               # 顶底分型之间至少间隔的合并K线数（新笔）
+
+backtest:
+  start: "2022-08-01"
+  end: "2026-08-14"
+  data_split:
+    train_start: "2022-08-01"
+    train_end: "2024-07-31"
+    validation_start: "2024-08-01"
+    validation_end: "2025-07-31"
+    test_start: "2025-08-01"
+    test_end: "2026-08-14"
+  initial_cash: 1000000
+  max_positions: 10
+  max_picks_per_day: 0       # 回测每天最多开仓信号数，0 表示不限
+  max_per_industry_per_day: 0 # 回测行业去重已关闭（当前行业分类非时点数据）；实盘选股页仍可单独控制
+  commission_rate: 0.00025
+  min_commission: 5.0
+  stamp_tax_rate: 0.0005
+  slippage: 0.001
+  stop_loss_pct: 0.03
+  max_holding_days: 60
+  benchmark: "sh000300"   # 沪深300，用于同期收益对比
+  limit_rule: true          # 涨跌停/停牌限制：一字板不成交，停牌不成交
+
+signal_filter:
+  b1_macd_ratio_max: 0.8      # 一买背驰强度：当前MACD面积/前一笔MACD面积 < 0.8
+  b1_confirm_up: true          # 一买确认K线需收阳
+  b1_require_down_segment: true # 一买前需有已完成向下线段（线段方向过滤）
+  b1_segment_lookback: 4       # 线段过滤回看笔数
+  b2_hold_mid: true            # 二买回调需守住前一上升笔中点
+  b3_zg_margin: 0.02           # 三买回抽低点需高于 ZG*(1+margin)
+  b3_breakout_vol_ratio: 2.0   # 三买突破笔必须放量：突破笔均量 >= 前一笔均量 * 2.0
+  b3_pullback_vol_ratio: 0.0   # 三买回抽笔缩量（0 表示不启用）：回抽笔均量 <= 突破笔均量 * 阈值
+  trend_ma_fast: 5             # 均线多头过滤：收盘价 > 快线 > 慢线（0 表示不启用）
+  trend_ma_slow: 20            # 收盘价 > MA5 > MA20 才允许买入
+  max_picks_per_day: 5         # 选股页每天只取分数最高的前 N 个买点
+  max_per_industry_per_day: 1  # 行业去重：每天同一行业最多保留 1 个买点信号
+  score_cfg:
+    type_base: {B1: 3.0, B2: 2.0, B3: 1.0}
+    divergence_weight: 2.0
+    zs_weight: 1.0
+    b2_b3_merge_bonus: 1.0
+    b3_vol_strength_weight: 0.5
+    amount_weight: 0.5
+    amount_cap: 500000000
+
+index_filter:
+  enabled: true           # 大盘环境过滤：上证指数收盘 < MA 时不开新仓
+  ma_period: 20
+
+trailing_stop:
+  enabled: true           # 移动止损：浮盈达到阈值后，从最高收盘价回撤一定比例卖出
+  activate_pct: 0.05
+  trail_pct: 0.08
+
+report:
+  output_dir: data/output

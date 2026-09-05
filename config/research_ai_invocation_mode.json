@@ -1,0 +1,6 @@
+{
+  "schema_version": "research-ai-invocation-mode-v1",
+  "ai_invocation_mode": "MANUAL_HANDOFF",
+  "updated_by": "system_default",
+  "updated_at": "2026-08-29T00:00:00+08:00"
+}
