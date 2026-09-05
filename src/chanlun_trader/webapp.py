@@ -33,6 +33,7 @@ from .research_factory.predictive_authorization import PredictiveGovernanceError
 from .research_factory.predictive_trial_reauthorization import PredictiveTrialReauthorizationServiceV1
 from .research_factory.predictive_trial_start import PredictiveTrialStartError, PredictiveTrialStartServiceV1
 from .research_factory.candidate_generation import CandidateGenerationError, CandidateGenerationManagerV1
+from .research_factory.ai_design_approval import AIDesignApprovalError, AIDesignApprovalServiceV1
 from .research_factory.research_evolution_ai_design import ResearchEvolutionAIDesignServiceV1
 from .research_factory.research_proposal_governance import ResearchProposalGovernanceError, ResearchProposalGovernanceServiceV1
 from .research_factory.structural_reconciliation import reconcile_structural_pass
@@ -57,6 +58,7 @@ predictive_trial_start_service = PredictiveTrialStartServiceV1(PROJECT_ROOT)
 predictive_trial_reauthorization_service = PredictiveTrialReauthorizationServiceV1(PROJECT_ROOT)
 research_proposal_governance_service = ResearchProposalGovernanceServiceV1(PROJECT_ROOT)
 research_evolution_ai_design_service = ResearchEvolutionAIDesignServiceV1(PROJECT_ROOT)
+research_evolution_ai_design_approval_service = AIDesignApprovalServiceV1(PROJECT_ROOT)
 candidate_generation_service = CandidateGenerationManagerV1(PROJECT_ROOT)
 
 
@@ -105,10 +107,38 @@ async def candidate_generation_error_handler(_, exc: CandidateGenerationError) -
     return JSONResponse(status_code=exc.status_code, content=exc.envelope())
 
 
+@app.exception_handler(AIDesignApprovalError)
+async def ai_design_approval_error_handler(_, exc: AIDesignApprovalError) -> JSONResponse:
+    return JSONResponse(status_code=exc.status_code, content=exc.envelope())
+
+
 def _require_local_console_request(request: Request) -> None:
     host = request.client.host if request.client else None
     if host not in {"127.0.0.1", "::1", "localhost", "testclient"}:
         raise HTTPException(status_code=403, detail="研究控制台写操作仅允许本机访问")
+
+
+def _console_ai_design_approval_service() -> AIDesignApprovalServiceV1:
+    scoped_service = getattr(_console_service(), "ai_design_approval", None)
+    if scoped_service is not None:
+        try:
+            if Path(scoped_service.root).resolve() != PROJECT_ROOT.resolve():
+                return scoped_service
+        except (AttributeError, TypeError, OSError):
+            pass
+    return research_evolution_ai_design_approval_service
+
+
+def _console_candidate_generation_service() -> CandidateGenerationManagerV1:
+    scoped_service = getattr(_console_service(), "candidate_generation", None)
+    if scoped_service is not None:
+        try:
+            if Path(scoped_service.root).resolve() != PROJECT_ROOT.resolve():
+                return scoped_service
+        except (AttributeError, TypeError, OSError):
+            pass
+    return candidate_generation_service
+
 
 if (FRONTEND_DIST / "assets").exists():
     app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST / "assets")), name="assets")
@@ -743,9 +773,26 @@ def research_console_evolution_ai_design(objective_id: str) -> dict:
     return _console_service().get_evolution_ai_design(objective_id).to_dict()
 
 
+@app.get("/api/research-console/{objective_id}/evolution/ai-design/approval")
+def research_console_evolution_ai_design_approval(objective_id: str) -> dict:
+    return _console_ai_design_approval_service().evaluate(objective_id)
+
+
+@app.post("/api/research-console/{objective_id}/evolution/ai-design/approval")
+def research_console_confirm_evolution_ai_design(objective_id: str, request: Request, payload: dict[str, Any] | None = Body(default=None)) -> dict:
+    _require_local_console_request(request)
+    return _console_ai_design_approval_service().confirm(objective_id, payload or {})
+
+
 @app.get("/api/research-console/{objective_id}/candidate-proposals")
 def research_console_candidate_proposals(objective_id: str) -> dict:
     return _console_service().get_candidate_proposals(objective_id).to_dict()
+
+
+@app.post("/api/research-console/{objective_id}/candidate-proposals/generate")
+def research_console_generate_candidate_proposal(objective_id: str, request: Request) -> dict:
+    _require_local_console_request(request)
+    return _console_candidate_generation_service().generate_proposal(objective_id)
 
 
 @app.get("/api/research/evolution/proposals")

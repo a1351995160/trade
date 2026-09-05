@@ -14,6 +14,13 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 from ..presentation import ZhCNPresentation, write_report_pair
+from .ai_design_approval import (
+    AIDesignApprovalServiceV1,
+    AI_DESIGN_APPROVAL_RECEIPT_FILENAME,
+    AI_DESIGN_REJECTED,
+    GENERATE_AI_RESEARCH_DESIGN,
+    GENERATE_CANDIDATE_PROPOSAL,
+)
 from .canonical_authority import CANONICAL_AUTHORITY_CONTRACT_V1
 from .common import stable_hash
 from .durability import DurableFrozenCandidateContractV1
@@ -478,6 +485,7 @@ class ObjectiveReconciliationServiceV1:
         self.root = Path(root).resolve()
         self.objective_id = str(objective_id) if objective_id else None
         self.classifier = ObjectiveDialectClassifierV1()
+        self.ai_design_approval = AIDesignApprovalServiceV1(self.root)
 
     def discover_objective_ids(self) -> list[str]:
         directory = self.root / "data/research/research_factory/objectives"
@@ -545,6 +553,7 @@ class ObjectiveReconciliationServiceV1:
             objective_id,
             dialect,
             ctx,
+            ai_view,
             candidate_view,
             trial_view,
             budget_view,
@@ -683,7 +692,9 @@ class ObjectiveReconciliationServiceV1:
             return
         for path in sorted(directory.iterdir()):
             if path.suffix.casefold() in {".json", ".jsonl"}:
-                self._add_if_objective(ctx, "ai_design", path, "AI_DESIGN_FACT", path_scoped=True)
+                role = "AI_DESIGN_APPROVAL_AUTHORITY" if path.name == AI_DESIGN_APPROVAL_RECEIPT_FILENAME else "AI_DESIGN_FACT"
+                category = "ai_design_approval" if path.name == AI_DESIGN_APPROVAL_RECEIPT_FILENAME else "ai_design"
+                self._add_if_objective(ctx, category, path, role, path_scoped=True)
 
     def _reconcile_ai_design(self, ctx: _ReconciliationContext) -> dict[str, Any]:
         sources = ctx.sources.get("ai_design", ())
@@ -713,28 +724,9 @@ class ObjectiveReconciliationServiceV1:
             if state_source and isinstance(state_source.get("payload"), Mapping)
             else {}
         )
-        approval_sources = [
-            source
-            for source in sources
-            if any(
-                token in source["path"].name.casefold()
-                for token in ("approval", "approved", "confirmation")
-            )
-            or (
-                isinstance(source.get("payload"), Mapping)
-                and (
-                    source["payload"].get("approval_id")
-                    or source["payload"].get("approval_status")
-                    or str(source["payload"].get("status") or "").upper()
-                    in {AI_DESIGN_APPROVED, "APPROVED", "CONFIRMED"}
-                )
-            )
-        ]
-        approvals = [
-            source["meta"]["path"]
-            for source in approval_sources
-            if self._is_ai_approval(source.get("payload"))
-        ]
+        approval = self.ai_design_approval.evaluate(ctx.objective_id)
+        approval_sources = ctx.sources.get("ai_design_approval", ())
+        approvals = [source["meta"]["path"] for source in approval_sources]
         design_exists = bool(proposal_source)
         status = str(proposal.get("status") or state.get("status") or "")
         governance = proposal.get("governance") if isinstance(proposal.get("governance"), Mapping) else {}
@@ -744,18 +736,11 @@ class ObjectiveReconciliationServiceV1:
             or governance.get("requires_human_confirmation")
             or governance.get("human_confirmation_required")
         )
-        approved = bool(approvals)
-        approval_status = (
-            "APPROVED"
-            if approved
-            else "MISSING"
-            if design_exists and requires_confirmation
-            else "NOT_REQUIRED"
-            if design_exists
-            else "NOT_AVAILABLE"
-        )
-        if approval_status == "MISSING":
+        approval_status = str(approval.get("approval_status") or ("NOT_AVAILABLE" if not design_exists else "PENDING"))
+        if design_exists and approval_status == "PENDING":
             ctx.warning("AI_DESIGN_APPROVAL_EVIDENCE_MISSING")
+        if approval.get("reason_code") in {"STALE_AI_DESIGN_APPROVAL", "AI_DESIGN_APPROVAL_INTEGRITY_FAILURE", "AI_DESIGN_APPROVAL_OBJECTIVE_MISMATCH"}:
+            ctx.warning(str(approval["reason_code"]))
         return {
             "design_exists": design_exists,
             "design_status": status or None,
@@ -764,9 +749,11 @@ class ObjectiveReconciliationServiceV1:
             "requires_human_confirmation": requires_confirmation,
             "approval_status": approval_status,
             "approval_evidence": approvals,
-            "approval_evidence_missing": approval_status == "MISSING",
+            "approval_evidence_missing": approval_status == "PENDING",
+            "approval": approval,
             "state_path": state_source["meta"]["path"] if state_source else None,
             "proposal_path": proposal_source["meta"]["path"] if proposal_source else None,
+            "approval_path": approvals[0] if approvals else None,
         }
 
     def _collect_candidate_governance(self, ctx: _ReconciliationContext) -> None:
@@ -1585,6 +1572,7 @@ class ObjectiveReconciliationServiceV1:
         objective_id: str,
         dialect: Mapping[str, Any],
         ctx: _ReconciliationContext,
+        ai_view: Mapping[str, Any],
         candidate_view: Mapping[str, Any],
         trial_view: Mapping[str, Any],
         budget_view: Mapping[str, Any],
@@ -1601,54 +1589,12 @@ class ObjectiveReconciliationServiceV1:
             ),
             None,
         )
-        state_payload = next(
-            (
-                source.get("payload")
-                for source in ai_sources
-                if source["path"].name == "AI_RESEARCH_DESIGN_STATE.json"
-                and isinstance(source.get("payload"), Mapping)
-            ),
-            None,
-        )
         design_exists = proposal is not None
-        approval_sources = [
-            source
-            for source in ai_sources
-            if any(token in source["path"].name.casefold() for token in ("approval", "approved", "confirmation"))
-            or (
-                isinstance(source.get("payload"), Mapping)
-                and str(
-                    source["payload"].get("status")
-                    or source["payload"].get("approval_status")
-                    or ""
-                ).upper() in {AI_DESIGN_APPROVED, "APPROVED", "CONFIRMED"}
-            )
-            or (
-                isinstance(source.get("payload"), Mapping)
-                and source["payload"].get("approval_id")
-            )
-        ]
-        design_approved = any(
-            self._is_ai_approval(source.get("payload"))
-            for source in approval_sources
-        )
-        requires_confirmation = (
-            _bool(_first_value(state_payload, {"requires_human_confirmation", "human_confirmation_required"}))
-            if state_payload
-            else False
-        )
-        if not requires_confirmation and proposal:
-            governance = (
-                proposal.get("governance")
-                if isinstance(proposal.get("governance"), Mapping)
-                else {}
-            )
-            requires_confirmation = _bool(
-                governance.get("requires_human_confirmation")
-                or governance.get("human_confirmation_required")
-            )
-        if design_exists and requires_confirmation and not design_approved:
-            ctx.warning("AI_DESIGN_APPROVAL_EVIDENCE_MISSING")
+        approval = ai_view.get("approval") if isinstance(ai_view.get("approval"), Mapping) else {}
+        approval_status = str(approval.get("approval_status") or ai_view.get("approval_status") or "PENDING")
+        design_approved = approval_status == "APPROVED" and approval.get("candidate_generation_allowed") is True
+        design_rejected = approval_status == "REJECTED"
+        requires_confirmation = design_exists
 
         candidate_id = candidate_view.get("current_candidate_id")
         candidate_hash = candidate_view.get("current_candidate_hash")
@@ -1712,17 +1658,23 @@ class ObjectiveReconciliationServiceV1:
                 HUMAN_REVIEW_CANDIDATE_PROPOSAL,
             )
         elif design_exists:
-            if requires_confirmation and not design_approved:
+            if design_approved:
+                stage, state, action = (
+                    "AI_DESIGN_APPROVAL",
+                    AI_DESIGN_APPROVED,
+                    GENERATE_CANDIDATE_PROPOSAL,
+                )
+            elif design_rejected:
+                stage, state, action = (
+                    "AI_DESIGN_APPROVAL",
+                    AI_DESIGN_REJECTED,
+                    GENERATE_AI_RESEARCH_DESIGN,
+                )
+            else:
                 stage, state, action = (
                     "AI_DESIGN_APPROVAL",
                     AI_DESIGN_AWAITING_CONFIRMATION,
                     HUMAN_CONFIRM_AI_RESEARCH_DESIGN,
-                )
-            else:
-                stage, state, action = (
-                    "AI_RESEARCH_DESIGN",
-                    AI_DESIGN_READY,
-                    "GENERATE_CANDIDATE_PROPOSAL",
                 )
         else:
             stage, state, action = (
@@ -1732,19 +1684,21 @@ class ObjectiveReconciliationServiceV1:
             )
 
         supported = action not in {
-            HUMAN_CONFIRM_AI_RESEARCH_DESIGN,
             HUMAN_REVIEW_CANDIDATE_PROPOSAL,
             "RESOLVE_BUDGET_AUTHORITY_AMBIGUITY",
             "STOP_AND_RECONCILE_CANONICAL_CONFLICT",
         }
+        if state == AI_DESIGN_REJECTED or approval_status in {"STALE", "INVALID"}:
+            supported = False
         safe_to_resume = CANONICAL_CONFLICT not in ctx.conflicts and not budget_ambiguous
         safe_to_advance = (
             safe_to_resume
-            and state in {AI_DESIGN_READY, READY_FOR_STRUCTURAL_PREFLIGHT}
+            and state in {AI_DESIGN_APPROVED, READY_FOR_STRUCTURAL_PREFLIGHT}
             and action not in {None, STOP_RESEARCH}
         )
         if state in {
             AI_DESIGN_AWAITING_CONFIRMATION,
+            AI_DESIGN_REJECTED,
             CANDIDATE_FROZEN_PENDING_EXECUTABLE_MATERIALIZATION,
             BUDGET_EXHAUSTED,
             TRIAL_TERMINAL,
@@ -1765,6 +1719,7 @@ class ObjectiveReconciliationServiceV1:
                 None,
             ),
             "ai_design": [item["path"] for item in ctx.evidence.get("ai_design", ())],
+            "ai_design_approval": [item["path"] for item in ctx.evidence.get("ai_design_approval", ())],
             "candidate_governance": [
                 item["path"] for item in ctx.evidence.get("candidate_governance", ())
             ],
@@ -2009,7 +1964,9 @@ ObjectiveReconciliationService = ObjectiveReconciliationServiceV1
 
 __all__ = [
     "AI_DESIGN_AWAITING_CONFIRMATION",
+    "AI_DESIGN_APPROVED",
     "AI_DESIGN_READY",
+    "AI_DESIGN_REJECTED",
     "BUDGET_AUTHORITY_AMBIGUOUS",
     "BUDGET_EXHAUSTED",
     "CANDIDATE_FROZEN_PENDING_EXECUTABLE_MATERIALIZATION",

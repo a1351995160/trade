@@ -505,6 +505,7 @@ export interface ResearchEvolutionAIDesignView extends Provenance {
   input: JsonRecord
   design: JsonRecord | null
   governance: JsonRecord
+  approval: JsonRecord
   source_refs: JsonRecord
   display: JsonRecord
   output_path?: string | null

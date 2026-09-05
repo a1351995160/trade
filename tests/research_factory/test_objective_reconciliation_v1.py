@@ -242,7 +242,7 @@ def test_matrix_a_ai_design_ready_without_durable_approval_is_awaiting_confirmat
     report = ObjectiveReconciliationServiceV1(tmp_path).reconcile(objective_id)
     assert report["effective_state"] == AI_DESIGN_AWAITING_CONFIRMATION
     assert report["required_action"] == "HUMAN_CONFIRM_AI_RESEARCH_DESIGN"
-    assert report["required_action_supported"] is False
+    assert report["required_action_supported"] is True
     assert report["safe_to_advance"] is False
     assert "AI_DESIGN_APPROVAL_EVIDENCE_MISSING" in report["warnings"]
 
@@ -413,4 +413,3 @@ def test_service_is_read_only_and_cli_writes_only_reconciliation_reports(tmp_pat
     assert (output / "OBJECTIVE_RECONCILIATION_V1.json").exists()
     assert (output / "OBJECTIVE_RECONCILIATION_V1.md").exists()
     assert source_path.read_bytes() == before
-

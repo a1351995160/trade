@@ -15,7 +15,11 @@ AI_RESEARCH_DESIGN_PROPOSAL.json
   ↓
 AI_DESIGN_READY
   ↓
-等待人工确认 AI 设计结果
+AI_DESIGN_AWAITING_CONFIRMATION
+  ↓ 人工审核
+AI_DESIGN_REJECTED 或 AI_DESIGN_APPROVED
+  ↓ 仅批准后允许显式生成 Candidate Proposal
+CANDIDATE_GENERATION_ALLOWED
 ```
 
 ## 输入边界
@@ -61,7 +65,7 @@ AI_DESIGN_READY
 
 ## 明确禁止
 
-该阶段不读取或计算结果型字段，不创建 Candidate，不修改 Candidate 或 Trial，不启动 Predictive Trial，不调用预算登记或预算扣减逻辑，也不改变既有研究历史。人工确认 AI 设计结果属于后续治理动作，本 V1 在 `AI_DESIGN_READY` 停止。
+该阶段不读取或计算结果型字段，不创建 Candidate，不修改 Candidate 或 Trial，不启动 Predictive Trial，不调用预算登记或预算扣减逻辑，也不改变既有研究历史。人工确认 AI 设计结果属于后续治理动作。批准回执保存在同一 Objective 目录的 `AI_DESIGN_APPROVAL_RECEIPT.json`，并绑定 `ai_design_id`、`ai_design_hash`、输入上下文哈希和幂等键；本能力不会自行生成 Candidate Proposal。
 
 ## 验证
 

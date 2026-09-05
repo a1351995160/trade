@@ -154,6 +154,8 @@ export const consoleApi = {
   evolution: (objectiveId: string, signal?: AbortSignal) => api<ResearchEvolutionView>(endpoint(objectiveId, '/evolution'), signal),
   evolutionProposals: (objectiveId: string, signal?: AbortSignal) => api<ResearchEvolutionProposalView>(endpoint(objectiveId, '/evolution/proposals'), signal),
   evolutionAIDesign: (objectiveId: string, signal?: AbortSignal) => api<ResearchEvolutionAIDesignView>(endpoint(objectiveId, '/evolution/ai-design'), signal),
+  confirmEvolutionAIDesign: (objectiveId: string, body: Record<string, unknown>) => mutate<Record<string, unknown>>(endpoint(objectiveId, '/evolution/ai-design/approval'), body),
+  generateCandidateProposal: (objectiveId: string) => mutate<Record<string, unknown>>(endpoint(objectiveId, '/candidate-proposals/generate'), {}),
   candidateProposals: (objectiveId: string, signal?: AbortSignal) => api<CandidateProposalView>(endpoint(objectiveId, '/candidate-proposals'), signal),
   proposalList: (objectiveId?: string, status?: string, signal?: AbortSignal) => api<Record<string, unknown>>(`/api/research/evolution/proposals${objectiveId ? `?objective_id=${encodeURIComponent(objectiveId)}${status ? `&status=${encodeURIComponent(status)}` : ''}` : status ? `?status=${encodeURIComponent(status)}` : ''}`, signal),
   proposal: (proposalId: string, signal?: AbortSignal) => api<Record<string, unknown>>(`/api/research/evolution/proposals/${encodeURIComponent(proposalId)}`, signal),

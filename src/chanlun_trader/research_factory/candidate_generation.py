@@ -20,6 +20,11 @@ from typing import Any
 
 from .common import jsonable, now_timestamp, stable_hash
 from .context import PerformanceBlindGuard, PerformanceLeakError
+from .ai_design_approval import (
+    AIDesignApprovalError,
+    AIDesignApprovalServiceV1,
+    AI_DESIGN_APPROVAL_RECEIPT_FILENAME,
+)
 from .research_evolution_ai_design import (
     AI_DESIGN_READY,
     AI_RESEARCH_DESIGN_FILENAME,
@@ -400,6 +405,7 @@ class CandidateGenerationInputV1:
     source_refs: Mapping[str, str] = field(default_factory=dict)
     source_hashes: Mapping[str, str] = field(default_factory=dict)
     input_context_hash: str = ""
+    ai_design_approval_id: str = ""
 
     def __post_init__(self) -> None:
         for name in (
@@ -433,6 +439,7 @@ class CandidateGenerationInputV1:
             "available_data_capabilities": self.available_data_capabilities,
             "source_refs": self.source_refs,
             "source_hashes": self.source_hashes,
+            "ai_design_approval_id": self.ai_design_approval_id,
             "outcome_blind": True,
             "performance_data_loaded": False,
             "outcome_fields_available": False,
@@ -541,6 +548,8 @@ class CandidateGenerationManagerV1:
         self.proposal_root = self.root / "reports" / "research_candidates" / "proposals"
         self.clock = clock
         self.crash_at = crash_at
+        self.ai_design_approval = AIDesignApprovalServiceV1(self.root)
+        self.ai_design_approval_service = self.ai_design_approval
 
     def _objective_path(self, objective_id: str) -> Path:
         return self.root / "data" / "research" / "research_factory" / "objectives" / f"{_safe_id(objective_id, kind='objective_id')}.json"
@@ -622,6 +631,12 @@ class CandidateGenerationManagerV1:
                 return resolved
         raise CandidateGenerationError("MECHANISM_COVERAGE_NOT_FOUND", "未找到 Mechanism Coverage Registry", status_code=404)
 
+    def _require_ai_design_approval(self, objective_id: str) -> dict[str, Any]:
+        try:
+            return self.ai_design_approval.assert_candidate_generation_allowed(objective_id)
+        except AIDesignApprovalError as exc:
+            raise CandidateGenerationError(exc.code, exc.message_zh, status_code=exc.status_code, details=exc.details) from exc
+
     def _load_sources(self, objective_id: str) -> tuple[CandidateGenerationInputV1, dict[str, Path]]:
         objective_path = self._objective_path(objective_id)
         objective_raw = _read_json(objective_path, code="OBJECTIVE_NOT_FOUND")
@@ -648,6 +663,15 @@ class CandidateGenerationManagerV1:
             _assert_outcome_blind(design_input_raw)
         except PerformanceLeakError as exc:
             raise CandidateGenerationError("OUTCOME_FIELD_BLOCKED", "AI 研究设计输入包含被禁止的结果字段", status_code=503) from exc
+
+        approval = self._require_ai_design_approval(objective_id)
+        approval_receipt = approval.get("receipt") if isinstance(approval.get("receipt"), Mapping) else None
+        approval_path_value = approval.get("receipt_path")
+        if approval_receipt is None or not approval_path_value:
+            raise CandidateGenerationError("AI_DESIGN_APPROVAL_INTEGRITY_FAILURE", "AI 设计批准回执不完整，候选建议生成已阻断", status_code=503)
+        approval_path = (self.root / str(approval_path_value)).resolve()
+        if not approval_path.is_relative_to(self.root) or approval_path.name != AI_DESIGN_APPROVAL_RECEIPT_FILENAME:
+            raise CandidateGenerationError("AI_DESIGN_APPROVAL_INTEGRITY_FAILURE", "AI 设计批准回执路径不受信任，候选建议生成已阻断", status_code=503)
 
         proposal_id = str(objective_raw.get("parent_proposal_id") or design_raw.get("parent_proposal_id") or "")
         if not proposal_id:
@@ -712,6 +736,7 @@ class CandidateGenerationManagerV1:
         safe_coverage = _safe_coverage(coverage)
         source_refs = {
             "ai_research_design": _relative(self.root, design_path),
+            "ai_design_approval": _relative(self.root, approval_path),
             "research_evolution_proposal": _relative(self.root, proposal_path),
             "objective": _relative(self.root, objective_path),
             "objective_lineage": _relative(self.root, lineage_path),
@@ -721,6 +746,7 @@ class CandidateGenerationManagerV1:
             source_refs["ai_research_design_input"] = _relative(self.root, design_input_path)
         source_hashes = {
             "ai_research_design": str(design_raw.get("design_hash") or stable_hash(safe_design)),
+            "ai_design_approval": str(approval_receipt.get("receipt_hash") or ""),
             "ai_research_design_input": str(design_raw.get("input_context_hash") or stable_hash(design_input_raw)),
             "research_evolution_proposal": str(safe_proposal.get("proposal_hash") or stable_hash(safe_proposal)),
             "objective": stable_hash(safe_objective),
@@ -737,6 +763,7 @@ class CandidateGenerationManagerV1:
             available_data_capabilities=capabilities,
             source_refs=source_refs,
             source_hashes=source_hashes,
+            ai_design_approval_id=str(approval.get("approval_id") or ""),
         )
         return context, {
             "ai_research_design": design_path,
@@ -852,6 +879,7 @@ class CandidateGenerationManagerV1:
         }
 
     def _build_proposal(self, context: CandidateGenerationInputV1) -> dict[str, Any]:
+        self._require_ai_design_approval(context.objective_id)
         design = context.ai_research_design
         proposal = context.research_evolution_proposal
         mechanism_family = str(design.get("mechanism_family") or "").strip()
@@ -903,6 +931,8 @@ class CandidateGenerationManagerV1:
             "objective_id": context.objective_id,
             "candidate_name": candidate_name,
             "ai_research_design_id": design.get("design_id"),
+            "ai_design_approval_id": context.ai_design_approval_id,
+            "ai_design_approval_receipt_hash": context.source_hashes.get("ai_design_approval"),
             "mechanism_family": mechanism_family,
             "research_hypothesis": str(design.get("research_hypothesis") or ""),
             "candidate_design_intention": str(design.get("candidate_design_intention") or ""),
@@ -938,6 +968,8 @@ class CandidateGenerationManagerV1:
                 "status": CANDIDATE_PROPOSAL_READY,
                 "next_action": HUMAN_REVIEW_REQUIRED,
                 "requires_human_review": True,
+                "ai_design_approval_required": True,
+                "candidate_generation_allowed": True,
                 "candidate_created": False,
                 "candidate_frozen": False,
                 "structural_preflight_started": False,
@@ -955,6 +987,8 @@ class CandidateGenerationManagerV1:
                 "objective_id",
                 "candidate_name",
                 "ai_research_design_id",
+                "ai_design_approval_id",
+                "ai_design_approval_receipt_hash",
                 "mechanism_family",
                 "research_hypothesis",
                 "candidate_design_intention",
@@ -990,6 +1024,8 @@ class CandidateGenerationManagerV1:
                 "objective_id",
                 "candidate_name",
                 "ai_research_design_id",
+                "ai_design_approval_id",
+                "ai_design_approval_receipt_hash",
                 "mechanism_family",
                 "research_hypothesis",
                 "candidate_design_intention",

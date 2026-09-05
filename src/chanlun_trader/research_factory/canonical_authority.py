@@ -48,7 +48,8 @@ class CanonicalAuthorityContractV1:
     contract_id: str = "CANONICAL_AUTHORITY_AND_OBJECTIVE_RECONCILIATION_V1"
     principles: tuple[str, ...] = (
         "Objective JSON is an objective definition/creation fact; lifecycle_state and next_action are not final lifecycle truth by themselves.",
-        "AI_RESEARCH_DESIGN_PROPOSAL.json is an AI design fact; AI_DESIGN_READY does not prove AI design approval.",
+        "AI_RESEARCH_DESIGN_PROPOSAL.json is the AI design fact; AI_DESIGN_READY does not prove approval, and only the immutable AI Design Approval Receipt can authorize Candidate Proposal generation.",
+        "Objective lifecycle fields and Daemon/Orchestrator projections are never AI Design approval authority.",
         "Candidate proposal, freeze receipts, and candidate registry are governance/inventory facts, not executable frozen contract authority.",
         "Only one identity-matching DurableFrozenCandidateContractV1 that passes from_dict and provider_candidate_payload is executable frozen Candidate authority.",
         "factory_trial_ledger.json is the canonical Trial lifecycle authority; daemon and orchestrator state are projections.",
@@ -75,11 +76,11 @@ class CanonicalAuthorityContractV1:
         ),
         CanonicalAuthorityEntryV1(
             "AI Design Approval",
-            "AI_DESIGN_APPROVAL_FACT",
-            "durable AI design approval evidence/receipt",
-            ("AI_RESEARCH_DESIGN_STATE.json", "daemon/orchestrator state"),
+            "AI_DESIGN_APPROVAL_AUTHORITY",
+            "reports/research_evolution/ai_design/<objective_id>/AI_DESIGN_APPROVAL_RECEIPT.json",
+            ("AI_RESEARCH_DESIGN_STATE.json", "Objective lifecycle", "daemon/orchestrator state", "console AI design view"),
             ("objective_id", "design_id", "design_hash", "approval_id"),
-            "Without durable approval evidence report AI_DESIGN_APPROVAL_EVIDENCE_MISSING and do not infer approval.",
+            "Only an immutable, integrity-checked receipt bound to the current design hash and source context can authorize Candidate Proposal generation; lifecycle fields and runtime projections cannot replace it.",
         ),
         CanonicalAuthorityEntryV1(
             "Candidate Proposal Governance",

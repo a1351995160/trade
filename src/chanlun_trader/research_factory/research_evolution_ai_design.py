@@ -40,6 +40,19 @@ AI_RESEARCH_DESIGN_INPUT_SCHEMA_VERSION = "research-evolution-ai-design-input-v1
 AI_RESEARCH_DESIGN_STATE_SCHEMA_VERSION = "research-evolution-ai-design-state-v1"
 AI_RESEARCH_DESIGN_VIEW_SCHEMA_VERSION = "research-evolution-ai-design-view-v1"
 
+AI_DESIGN_IDENTITY_FIELDS = (
+    "objective_id",
+    "parent_proposal_id",
+    "parent_proposal_hash",
+    "input_context_hash",
+    "research_hypothesis",
+    "mechanism_family",
+    "candidate_design_intention",
+    "allowed_factors",
+    "excluded_mechanisms",
+    "validation_expectation",
+)
+
 _IDENTIFIER_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,254}$")
 _FAILURE_CONSTRAINTS_ZH = {
     "STATISTICAL_FAILURE": "保持假设族和验证边界独立，先完成研究设计与统计契约预检。",
@@ -282,6 +295,18 @@ def _safe_landscape(payload: Mapping[str, Any]) -> dict[str, Any]:
 
 def _source_hash(payload: Any) -> str:
     return stable_hash(payload)
+
+
+def ai_design_identity(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Return the canonical identity payload used by the durable design hash."""
+
+    return {key: payload.get(key) for key in AI_DESIGN_IDENTITY_FIELDS}
+
+
+def ai_design_identity_hash(payload: Mapping[str, Any]) -> str:
+    """Calculate the canonical hash of one AI Design identity."""
+
+    return stable_hash(ai_design_identity(payload))
 
 
 @dataclass(frozen=True)
@@ -672,21 +697,7 @@ class ResearchEvolutionAIDesignServiceV1:
         }
 
     def _design_identity(self, payload: Mapping[str, Any]) -> dict[str, Any]:
-        return {
-            key: payload.get(key)
-            for key in (
-                "objective_id",
-                "parent_proposal_id",
-                "parent_proposal_hash",
-                "input_context_hash",
-                "research_hypothesis",
-                "mechanism_family",
-                "candidate_design_intention",
-                "allowed_factors",
-                "excluded_mechanisms",
-                "validation_expectation",
-            )
-        }
+        return ai_design_identity(payload)
 
     def _state_for(self, design: Mapping[str, Any]) -> dict[str, Any]:
         return {
@@ -917,6 +928,7 @@ if __name__ == "__main__":
 
 __all__ = [
     "AI_DESIGN_READY",
+    "AI_DESIGN_IDENTITY_FIELDS",
     "AI_RESEARCH_DESIGN_FILENAME",
     "AI_RESEARCH_DESIGN_INPUT_FILENAME",
     "AI_RESEARCH_DESIGN_INPUT_SCHEMA_VERSION",
@@ -935,4 +947,6 @@ __all__ = [
     "ResearchEvolutionAIDesignService",
     "ResearchEvolutionAIDesignServiceV1",
     "TemplateEvolutionAIDesignBackendV1",
+    "ai_design_identity",
+    "ai_design_identity_hash",
 ]

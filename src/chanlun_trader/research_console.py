@@ -33,6 +33,7 @@ from .research_factory.artifact_graph import ResearchArtifactGraphV1
 from .research_factory.failure_adapter import FailureKnowledgeSnapshotV1
 from .research_factory.predictive_authorization import PredictiveGovernanceError, PredictiveGovernanceServiceV1
 from .research_factory.predictive_trial_start import PredictiveTrialStartError, PredictiveTrialStartServiceV1
+from .research_factory.ai_design_approval import AIDesignApprovalError, AIDesignApprovalServiceV1
 from .research_factory.research_evolution_ai_design import ResearchEvolutionAIDesignError, ResearchEvolutionAIDesignServiceV1
 from .research_factory.candidate_generation import CandidateGenerationError, CandidateGenerationManagerV1
 from .research_factory.promising_followup_scope import candidate_scope_info, load_scope_manifest
@@ -413,6 +414,7 @@ class ResearchEvolutionAIDesignView(ReadModel):
     input: Mapping[str, Any] = field(default_factory=dict)
     design: Mapping[str, Any] | None = None
     governance: Mapping[str, Any] = field(default_factory=dict)
+    approval: Mapping[str, Any] = field(default_factory=dict)
     source_refs: Mapping[str, Any] = field(default_factory=dict)
     display: Mapping[str, Any] = field(default_factory=dict)
     output_path: str | None = None
@@ -745,6 +747,7 @@ class ResearchConsoleReadService:
         self.predictive_governance = PredictiveGovernanceServiceV1(self.root)
         self.predictive_trial_start = PredictiveTrialStartServiceV1(self.root, auto_run=False)
         self.evolution_ai_design = ResearchEvolutionAIDesignServiceV1(self.root)
+        self.ai_design_approval = AIDesignApprovalServiceV1(self.root)
         self.candidate_generation = CandidateGenerationManagerV1(self.root)
 
     @property
@@ -3016,8 +3019,27 @@ class ResearchConsoleReadService:
         self._objective(objective_id)
         try:
             model = self.evolution_ai_design.get_design(objective_id)
+            approval = self.ai_design_approval.evaluate(objective_id)
+            model = dict(model)
+            model["approval"] = approval
+            governance = dict(model.get("governance") or {})
+            governance["approval"] = approval
+            governance["approval_status"] = approval.get("approval_status")
+            governance["candidate_generation_allowed"] = bool(approval.get("candidate_generation_allowed"))
+            governance["structural_preflight_ready"] = False
+            governance["safe_to_advance"] = bool(approval.get("safe_to_advance"))
+            if model.get("available"):
+                model["status"] = str(approval.get("effective_state") or "AI_DESIGN_AWAITING_CONFIRMATION")
+                governance["next_action"] = approval.get("required_action")
+            model["governance"] = governance
+            source_refs = dict(model.get("source_refs") or {})
+            if approval.get("receipt_path"):
+                source_refs["ai_design_approval"] = approval["receipt_path"]
+            model["source_refs"] = source_refs
             PerformanceBlindGuard.assert_blind(model)
         except ResearchEvolutionAIDesignError as exc:
+            raise ResearchConsoleReadError(exc.code, exc.message_zh, status_code=exc.status_code, details=exc.details) from exc
+        except AIDesignApprovalError as exc:
             raise ResearchConsoleReadError(exc.code, exc.message_zh, status_code=exc.status_code, details=exc.details) from exc
         except PerformanceLeakError as exc:
             raise ResearchConsoleReadError("OUTCOME_LEAK_DETECTED", "AI 研究设计视图包含被禁止的结果字段", status_code=503) from exc
@@ -3025,6 +3047,20 @@ class ResearchConsoleReadService:
         design = model.get("design") if isinstance(model.get("design"), Mapping) else None
         if isinstance(design, Mapping):
             generated_at = _parse_timestamp(design.get("generated_at"))
+        approval = model.get("approval") if isinstance(model.get("approval"), Mapping) else {}
+        effective_status = str(model.get("status") or "NEED_AI_RESEARCH_DESIGN")
+        if effective_status == "AI_DESIGN_APPROVED":
+            title_zh = "AI 研究设计已批准"
+            message_zh = "AI 研究设计已批准；现在只允许显式生成 Candidate Proposal，不会自动生成。"
+        elif effective_status == "AI_DESIGN_REJECTED":
+            title_zh = "AI 研究设计已拒绝"
+            message_zh = "AI 研究设计已拒绝；Candidate Proposal 生成已关闭，请先生成具有新身份和新哈希的设计。"
+        elif model.get("available"):
+            title_zh = "等待人工确认 AI 研究设计"
+            message_zh = "设计提案已停在人工确认边界；请先完成批准或拒绝，页面不会自动创建 Candidate。"
+        else:
+            title_zh = "等待 AI 研究设计"
+            message_zh = "当前目标已创建，正在等待一次明确的 AI 研究设计生成；页面只展示脱敏研究上下文。"
         return ResearchEvolutionAIDesignView(
             provenance=self._provenance(
                 source_id="research_evolution_ai_design_v1",
@@ -3037,14 +3073,15 @@ class ResearchConsoleReadService:
             ),
             objective_id=objective_id,
             available=bool(model.get("available")),
-            status=str(model.get("status") or "NEED_AI_RESEARCH_DESIGN"),
+            status=effective_status,
             input=model.get("input") if isinstance(model.get("input"), Mapping) else {},
             design=design,
             governance=model.get("governance") if isinstance(model.get("governance"), Mapping) else {},
+            approval=approval,
             source_refs=model.get("source_refs") if isinstance(model.get("source_refs"), Mapping) else {},
             display={
-                "title_zh": "AI 研究设计已生成" if model.get("available") else "等待 AI 研究设计",
-                "message_zh": "设计提案已停在人工确认边界；不会自动创建 Candidate、启动 Trial 或消耗预算。" if model.get("available") else "当前目标已创建，正在等待一次明确的 AI 研究设计生成；页面只展示脱敏研究上下文。",
+                "title_zh": title_zh,
+                "message_zh": message_zh,
             },
             output_path=str(model.get("output_path")) if model.get("output_path") else None,
             outcome_blind=bool(model.get("outcome_blind", True)),

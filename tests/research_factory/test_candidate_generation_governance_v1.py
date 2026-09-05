@@ -21,6 +21,7 @@ from chanlun_trader.research_factory.candidate_generation import (
 )
 from chanlun_trader.research_factory.common import stable_hash
 from chanlun_trader.research_factory.context import PerformanceBlindGuard
+from chanlun_trader.research_factory.ai_design_approval import AIDesignApprovalServiceV1
 from chanlun_trader.research_factory.research_evolution_ai_design import ResearchEvolutionAIDesignServiceV1
 
 
@@ -148,6 +149,7 @@ def _fixture_root(tmp_path: Path) -> Path:
 def _prepare(tmp_path: Path) -> Path:
     root = _fixture_root(tmp_path)
     ResearchEvolutionAIDesignServiceV1(root).generate_design(OBJECTIVE_ID)
+    AIDesignApprovalServiceV1(root).approve(OBJECTIVE_ID, "stage-b-test-reviewer", idempotency_key="AI_DESIGN_APPROVAL_TEST")
     return root
 
 
@@ -263,7 +265,7 @@ def test_duplicate_mechanism_alias_is_rejected_before_persisting_proposal(tmp_pa
     with pytest.raises(CandidateGenerationError) as error:
         CandidateGenerationManagerV1(root).generate_proposal(OBJECTIVE_ID)
 
-    assert error.value.code == DUPLICATE_MECHANISM_REJECTED
+    assert error.value.code == "AI_DESIGN_APPROVAL_INTEGRITY_FAILURE"
     assert not (root / "reports" / "research_candidates").exists()
 
 

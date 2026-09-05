@@ -1245,7 +1245,7 @@ onBeforeUnmount(() => { controller?.abort(); if (pollTimer) window.clearInterval
         </template>
 
         <template v-else-if="view === 'evolution-ai-design'">
-          <ResearchEvolutionAIDesign :model="evolutionAIDesign" :objective-id="objectiveId" @navigate="navigate" />
+          <ResearchEvolutionAIDesign :model="evolutionAIDesign" :objective-id="objectiveId" @navigate="navigate" @refresh="loadView(true)" />
         </template>
 
         <template v-else-if="view === 'candidate-proposals'">

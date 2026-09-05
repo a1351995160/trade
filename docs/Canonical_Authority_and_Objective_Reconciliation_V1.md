@@ -12,7 +12,7 @@
 |---|---|---|---|
 | Objective Definition | data/research/research_factory/objectives/<objective_id>.json | lifecycle 与 next-action 展示 | JSON 是定义/创建事实；动态生命周期字段不能单独决定最终状态 |
 | AI Research Design | AI_RESEARCH_DESIGN_PROPOSAL.json | AI_RESEARCH_DESIGN_STATE.json | AI_DESIGN_READY 不等于 AI_DESIGN_APPROVED |
-| AI Design Approval | 持久化批准凭证/receipt | AI design state | 没有凭证时输出 AI_DESIGN_APPROVAL_EVIDENCE_MISSING，不得推断批准 |
+| AI Design Approval | `reports/research_evolution/ai_design/<objective_id>/AI_DESIGN_APPROVAL_RECEIPT.json`（`AI_DESIGN_APPROVAL_AUTHORITY`） | AI design state、Objective lifecycle、Daemon / Orchestrator、Console | 只有绑定当前 design/source context hash 且 receipt integrity PASS 的不可变回执可以证明批准；没有凭证时输出 AI_DESIGN_APPROVAL_EVIDENCE_MISSING，不得推断批准 |
 | Candidate Governance | Proposal、Review、Freeze Receipt、CANDIDATE_REGISTRY.json | Candidate state | 这些是治理/库存事实，不是 executable contract |
 | Executable Candidate | DurableFrozenCandidateContractV1 | daemon contract cache | 必须唯一匹配 objective_id、candidate_id、candidate_hash，并通过 from_dict() 与 provider_candidate_payload() |
 | Structural Preflight | canonical structural reconciliation | daemon/orchestrator structural state | 不把运行中的 Structural 状态提升为事实 |
@@ -38,10 +38,11 @@ ObjectiveDialectClassifierV1 输出：
 有效状态不改写任何输入来源。典型路径如下：
 
 1. Objective 存在但没有 AI Design：NEED_AI_RESEARCH_DESIGN；
-2. AI Design 已生成且需要人工确认但没有持久化批准：AI_DESIGN_AWAITING_CONFIRMATION；
-3. 已有治理 Freeze Receipt 与 Candidate Registry，但没有完整 Durable Contract：CANDIDATE_FROZEN_PENDING_EXECUTABLE_MATERIALIZATION；
-4. 唯一完整 Durable Contract 通过两项校验：READY_FOR_STRUCTURAL_PREFLIGHT；
-5. canonical Budget 耗尽或 Trial 已终态时，不能采信 stale 的 daemon ACTIVE/RUNNING 投影。
+2. AI Design 已生成且没有有效持久化批准：AI_DESIGN_AWAITING_CONFIRMATION，required_action 为 HUMAN_CONFIRM_AI_RESEARCH_DESIGN 且 required_action_supported=true；
+3. AI Design 取得有效 APPROVED 回执：AI_DESIGN_APPROVED，required_action 为 GENERATE_CANDIDATE_PROPOSAL，safe_to_advance=true，但 structural_preflight_ready=false；
+4. 已有治理 Freeze Receipt 与 Candidate Registry，但没有完整 Durable Contract：CANDIDATE_FROZEN_PENDING_EXECUTABLE_MATERIALIZATION；
+5. 唯一完整 Durable Contract 通过两项校验：READY_FOR_STRUCTURAL_PREFLIGHT；
+6. canonical Budget 耗尽或 Trial 已终态时，不能采信 stale 的 daemon ACTIVE/RUNNING 投影。
 
 Candidate 治理 Freeze 与 executable freeze 是两个独立闸门。只有第 4 步成立时，报告才会将 structural_preflight_ready 置为 true。
 
@@ -76,4 +77,3 @@ CLI 只写：
 - reports/research_reconciliation/CURRENT_OBJECTIVE_RECONCILIATION_INDEX_V1.md
 
 JSON 面向机器，Markdown 使用简体中文。服务本身的 reconcile() 只读；只有显式调用报告写入方法或 CLI 时才产生上述报告文件。
-
