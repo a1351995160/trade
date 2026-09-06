@@ -34,6 +34,7 @@
 - 稳定 `action_id`、`action_type` 与 `idempotency_key`；
 - `objective_id`、`candidate_id`、`candidate_hash`、`trial_id`；
 - `required_state`、`source_state`、`source_context_id`、`source_context_hash`、`source_reconciliation_hash`；
+- 对自动领域动作还要携带 `expected_domain_identity`，用于把恢复证据绑定到同一 Objective、Design/Approval、Proposal、Preview、Confirmation 和 Durable Contract lineage；
 - 所需 capabilities、authorities、confirmation、budget effect、performance access 与 `outcome_blind=true`。
 
 Phase 2 支持的动作标识包括 `RECONCILE_OBJECTIVE`、`BUILD_SAFE_RUNTIME_CONTEXT`、`GENERATE_AI_DESIGN`、`WAIT_FOR_AI_DESIGN_CONFIRMATION`、`GENERATE_CANDIDATE_PROPOSAL`、`WAIT_FOR_CANDIDATE_GOVERNANCE_FREEZE`、`CREATE_EXECUTABLE_MATERIALIZATION_PREVIEW`、`WAIT_FOR_EXECUTABLE_MATERIALIZATION_CONFIRMATION`、`RECOVER_EXECUTABLE_MATERIALIZATION`、`RUN_STRUCTURAL_PREFLIGHT`、`WAIT_FOR_PREDICTIVE_AUTHORIZATION`、`START_PREDICTIVE_TRIAL`、`WAIT_FOR_TRIAL_RESULT`、`RECONCILE_TRIAL`、`STOP_OBJECTIVE` 和 `BLOCKED`。
@@ -90,6 +91,8 @@ AI Design、Structural Entry、Predictive Trial 和性能读取能力全部声�
 `action_execution_receipts.jsonl` 只追加以下阶段性回执：`STARTED`、`RECOVERY_RETRY_ALLOWED`、`COMPLETED`、`FAILED`。同一 `idempotency_key` 的 `COMPLETED` 回执永远优先返回幂等结果，不重复调用领域服务。
 
 若进程在副作用发生前崩溃，下一轮发现旧 `STARTED` 且 canonical state 未体现副作用，追加 retry marker 后以同一 identity 重试。若副作用已发生，下一轮通过 reconciliation 直接补齐 `recovered=true` 的完成回执。若状态/hash/context/reconciliation 变化，旧 action 失效并返回 `STALE_RESEARCH_ACTION`，不会把旧计划强行套到新事实。
+
+恢复判断发生在 stale rejection 之前，但不是粗粒度状态判断。`SideEffectRecoveryEvidenceV1` 只接受当前 canonical artifact 通过现有完整性校验且与具体 Action identity 精确匹配：Candidate Proposal 绑定 Objective、AI Design/Approval、source context、Proposal hash 与 lineage；Materialization Preview 绑定 Proposal/Candidate/Freeze/Design/Approval/source context/Preview hash；Materialization Recovery 还必须通过 Phase 1 的 Confirmation、Preview、Durable Contract reconciliation，并保持 `READY_FOR_STRUCTURAL_PREFLIGHT`。没有副作用时才进入 freshness 检查和同一 idempotency identity 的 retry；发现同类型但错误 identity 的 artifact 时返回 `RECOVERY_SIDE_EFFECT_IDENTITY_MISMATCH`，不 retry、不覆盖、不补写 `COMPLETED`。
 
 同一 Objective 使用 daemon-style lock；并发 tick 被拒绝。控制平面不使用 `git reset`、不覆盖人工文件、不删除旧回执。
 

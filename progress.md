@@ -382,3 +382,26 @@
 - `tests/research_console/test_research_console_read_boundary_v1.py`：同步新增一读一写两条控制平面路由的边界计数与路径断言。
 - `progress.md`：追加本轮 Phase 2 实施与验证记录。
 - 回滚方式：本轮提交后在该分支执行 `git revert --no-edit <本轮 commit SHA>`；不删除旧 Phase 1 branch，不修改 `main`，不 force push，不触碰真实 Research Workspace。
+
+## 2026-09-06 - Task: PHASE2_CRASH_RECOVERY_CLOSURE_V1
+
+### What was done
+
+修复 Phase 2 Control Plane 在 `STARTED` receipt 已写入、Candidate Proposal/Materialization domain side effect 已成功、但 `COMPLETED` receipt 尚未写入时的 restart recovery 顺序。新增 identity-bound、canonical-backed、outcome-blind 的 `SideEffectRecoveryEvidenceV1`：恢复识别先于 stale rejection；精确匹配时只补写 `recovered=true` 的 `COMPLETED`，无副作用时才按同一 idempotency identity retry，错误 identity 直接 fail closed。Proposal、Preview、Confirmation、Durable Contract 均复用现有完整性与 Phase 1 materialization reconciliation，不改变 journal 的 runtime evidence 定位或任何人工/预测闸门。
+
+### Testing
+
+- `python -m compileall -q src`：通过。
+- `python -m pytest --collect-only -q`：674 项可收集，1 项既有 legacy integration skip。
+- Phase 1 deterministic regression suite：`235 passed, 12 deselected, 3 warnings`。
+- Phase 2 control-plane suite：`24 passed, 3 warnings`；其中新增/强化 T1–T7 覆盖三类 post-side-effect/pre-COMPLETED crash、wrong identity、safe retry、stale fail-closed 与 completed replay exact-once。
+- `npm ci && npm run build`：通过；仅有既有 chunk size warning。
+- `git diff --check`：通过。
+
+### Notes
+
+- `src/chanlun_trader/research_factory/autonomous_control_plane.py`：新增 recovery evidence、Action domain identity 绑定、严格 resolver 和 stale 前 recovery 顺序。
+- `tests/research_factory/test_autonomous_control_plane_v1.py`：新增 Crash Matrix A–F 的确定性控制面测试，并确认 domain provider 不被重复调用。
+- `docs/PHASE2_AUTONOMOUS_RESEARCH_CONTROL_PLANE_V1.md`：记录 identity-bound recovery 规则与 fail-closed 行为。
+- `progress.md`：记录本轮实现与本地门禁结果。
+- 回滚方式：在该分支执行 `git revert --no-edit HEAD`（当前提交）；不 merge、不 force push、不修改 `main`，不触碰真实 Research Workspace。

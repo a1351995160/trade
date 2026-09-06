@@ -7,7 +7,7 @@ already-permitted side-effectful action and then stops for reconciliation.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 import argparse
 import json
 from pathlib import Path
@@ -22,6 +22,7 @@ from .candidate_executable_materialization import (
     EXECUTABLE_MATERIALIZATION_PREVIEW_READY,
     EXECUTABLE_MATERIALIZATION_RECOVERY_REQUIRED,
     CandidateExecutableMaterializationManagerV1,
+    inspect_materialization_preview,
 )
 from .candidate_generation import CandidateGenerationError, CandidateGenerationManagerV1
 from .common import now_timestamp, stable_hash
@@ -100,6 +101,11 @@ CONTEXT_FRESH = "FRESH"
 CONTEXT_UNAVAILABLE = "UNAVAILABLE"
 DEFAULT_MAX_TICKS = 20
 
+RECOVERY_SIDE_EFFECT_NOT_FOUND = "RECOVERY_SIDE_EFFECT_NOT_FOUND"
+RECOVERY_SIDE_EFFECT_IDENTITY_MATCH = "RECOVERY_SIDE_EFFECT_IDENTITY_MATCH"
+RECOVERY_SIDE_EFFECT_IDENTITY_MISMATCH = "RECOVERY_SIDE_EFFECT_IDENTITY_MISMATCH"
+RECOVERY_SIDE_EFFECT_INTEGRITY_FAILURE = "RECOVERY_SIDE_EFFECT_INTEGRITY_FAILURE"
+
 _IDENTIFIER_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 _ALLOWED_CONTEXT_PATHS = frozenset({
     ("trial", "trials", "performance_accessed"),
@@ -168,6 +174,7 @@ class ResearchActionV1:
     idempotency_key: str
     created_at: str
     required_confirmation: str | None = None
+    expected_domain_identity: Mapping[str, Any] = field(default_factory=dict)
 
     @classmethod
     def create(
@@ -193,6 +200,7 @@ class ResearchActionV1:
         idempotency_key: str | None = None,
         created_at: str = "",
         required_confirmation: str | None = None,
+        expected_domain_identity: Mapping[str, Any] | None = None,
     ) -> "ResearchActionV1":
         identity = {
             "action_type": str(action_type),
@@ -207,6 +215,7 @@ class ResearchActionV1:
             "source_reconciliation_hash": str(source_reconciliation_hash),
             "required_capabilities": sorted(set(_tuple_strings(required_capabilities))),
             "required_authorities": sorted(set(_tuple_strings(required_authorities))),
+            "expected_domain_identity": dict(expected_domain_identity or {}),
         }
         stable_id = f"RESEARCH_ACTION_{stable_hash(identity)[:24].upper()}"
         stable_key = idempotency_key or f"AUTONOMOUS_ACTION_{stable_hash(identity)[:32].upper()}"
@@ -232,6 +241,7 @@ class ResearchActionV1:
             idempotency_key=str(stable_key),
             created_at=str(created_at),
             required_confirmation=str(required_confirmation) if required_confirmation else None,
+            expected_domain_identity=dict(expected_domain_identity or {}),
         )
 
     @classmethod
@@ -258,6 +268,7 @@ class ResearchActionV1:
             idempotency_key=str(payload.get("idempotency_key") or ""),
             created_at=str(payload.get("created_at") or ""),
             required_confirmation=str(payload.get("required_confirmation")) if payload.get("required_confirmation") else None,
+            expected_domain_identity=dict(payload.get("expected_domain_identity") or {}) if isinstance(payload.get("expected_domain_identity"), Mapping) else {},
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -284,7 +295,49 @@ class ResearchActionV1:
             "idempotency_key": self.idempotency_key,
             "created_at": self.created_at,
             "required_confirmation": self.required_confirmation,
+            "expected_domain_identity": dict(self.expected_domain_identity),
         }
+
+
+@dataclass(frozen=True)
+class SideEffectRecoveryEvidenceV1:
+    """Canonical, outcome-blind proof used to close a prior STARTED action."""
+
+    matched: bool
+    reason_code: str
+    action_id: str
+    action_type: str
+    objective_id: str
+    candidate_id: str
+    candidate_hash: str
+    domain_identity: Mapping[str, Any]
+    domain_hash: str
+    canonical_refs: Mapping[str, Any]
+    reconciliation_hash: str
+    safe_to_mark_completed: bool
+    side_effect_present: bool = False
+
+    def to_dict(self) -> dict[str, Any]:
+        payload = {
+            "matched": self.matched,
+            "reason_code": self.reason_code,
+            "action_id": self.action_id,
+            "action_type": self.action_type,
+            "objective_id": self.objective_id,
+            "candidate_id": self.candidate_id,
+            "candidate_hash": self.candidate_hash,
+            "domain_identity": dict(self.domain_identity),
+            "domain_hash": self.domain_hash,
+            "canonical_refs": dict(self.canonical_refs),
+            "reconciliation_hash": self.reconciliation_hash,
+            "safe_to_mark_completed": self.safe_to_mark_completed,
+            "side_effect_present": self.side_effect_present,
+            "outcome_blind": True,
+            "performance_data_loaded": False,
+            "outcome_fields_available": False,
+        }
+        PerformanceBlindGuard.assert_blind(payload)
+        return payload
 
 
 @dataclass(frozen=True)
@@ -717,6 +770,212 @@ class AutonomousResearchControlPlaneV1:
         candidate_hash = str(report.get("current_candidate_hash") or candidate.get("current_candidate_hash") or "")
         return candidate_id, candidate_hash
 
+    @staticmethod
+    def _reference_values(report: Mapping[str, Any], key: str) -> tuple[str, ...]:
+        refs = report.get("canonical_refs") if isinstance(report.get("canonical_refs"), Mapping) else {}
+        value = refs.get(key)
+        if isinstance(value, str):
+            return (value,) if value else ()
+        if isinstance(value, (list, tuple, set, frozenset)):
+            return tuple(sorted({str(item) for item in value if item}))
+        return ()
+
+    def _canonical_payloads(
+        self,
+        objective_id: str,
+        report: Mapping[str, Any],
+        category: str,
+        names: Iterable[str],
+    ) -> tuple[tuple[str, Mapping[str, Any] | None], ...]:
+        wanted = {str(name) for name in names}
+        refs = list(self._reference_values(report, category))
+        known = {
+            "candidate_governance": (
+                f"reports/research_candidates/proposals/{objective_id}/CANDIDATE_PROPOSAL.json",
+                f"reports/research_candidates/proposals/{objective_id}/CANDIDATE_FREEZE_RECEIPT.json",
+            ),
+            "executable_materialization": (
+                f"reports/research_candidates/proposals/{objective_id}/EXECUTABLE_MATERIALIZATION_PREVIEW.json",
+                f"reports/research_candidates/proposals/{objective_id}/EXECUTABLE_MATERIALIZATION_CONFIRMATION.json",
+            ),
+            "ai_design": (f"reports/research_evolution/ai_design/{objective_id}/AI_RESEARCH_DESIGN_PROPOSAL.json",),
+            "ai_design_approval": (f"reports/research_evolution/ai_design/{objective_id}/AI_DESIGN_APPROVAL_RECEIPT.json",),
+        }.get(category, ())
+        refs.extend(known)
+        results: list[tuple[str, Mapping[str, Any] | None]] = []
+        seen: set[str] = set()
+        for ref in refs:
+            path = (self.root / str(ref)).resolve()
+            try:
+                path.relative_to(self.root)
+            except ValueError:
+                continue
+            if path.name not in wanted or str(path) in seen or not path.exists():
+                continue
+            seen.add(str(path))
+            payload: Mapping[str, Any] | None = None
+            try:
+                raw = json.loads(path.read_text(encoding="utf-8"))
+                if isinstance(raw, Mapping):
+                    payload = raw
+            except (OSError, UnicodeError, json.JSONDecodeError):
+                payload = None
+            results.append((path.relative_to(self.root).as_posix(), payload))
+        return tuple(results)
+
+    def _recovery_canonical_refs(self, report: Mapping[str, Any]) -> dict[str, Any]:
+        return {
+            key: list(self._reference_values(report, key))
+            for key in (
+                "ai_design",
+                "ai_design_approval",
+                "candidate_governance",
+                "executable_materialization",
+                "durable_frozen_contract",
+            )
+            if self._reference_values(report, key)
+        }
+
+    def _current_ai_design_identity(self, objective_id: str, report: Mapping[str, Any]) -> dict[str, str]:
+        ai_view = _mapping(report.get("ai_design_reconciliation"))
+        approval = _mapping(ai_view.get("approval"))
+        receipt = _mapping(approval.get("receipt"))
+        design_payload = next(
+            (payload for _, payload in self._canonical_payloads(objective_id, report, "ai_design", {"AI_RESEARCH_DESIGN_PROPOSAL.json"}) if payload is not None),
+            {},
+        )
+        approval_payload = next(
+            (payload for _, payload in self._canonical_payloads(objective_id, report, "ai_design_approval", {"AI_DESIGN_APPROVAL_RECEIPT.json"}) if payload is not None),
+            {},
+        )
+        return {
+            "ai_design_id": str(ai_view.get("design_id") or design_payload.get("design_id") or ""),
+            "ai_design_hash": str(ai_view.get("design_hash") or design_payload.get("design_hash") or ""),
+            "ai_design_approval_id": str(approval.get("approval_id") or approval_payload.get("approval_id") or receipt.get("approval_id") or ""),
+            "ai_design_approval_hash": str(receipt.get("receipt_hash") or approval_payload.get("receipt_hash") or ""),
+            "design_source_context_id": str(design_payload.get("source_context_id") or receipt.get("source_context_id") or ""),
+            "design_source_context_hash": str(design_payload.get("source_context_hash") or design_payload.get("input_context_hash") or receipt.get("source_context_hash") or ""),
+        }
+
+    def _proposal_payload(self, objective_id: str, report: Mapping[str, Any]) -> Mapping[str, Any] | None:
+        return next(
+            (payload for _, payload in self._canonical_payloads(objective_id, report, "candidate_governance", {"CANDIDATE_PROPOSAL.json"}) if payload is not None),
+            None,
+        )
+
+    @staticmethod
+    def _proposal_identity(proposal: Mapping[str, Any], ai_identity: Mapping[str, Any]) -> dict[str, Any]:
+        source_hashes = _mapping(proposal.get("source_hashes"))
+        lineage = _mapping(proposal.get("lineage"))
+        candidate_hash = CandidateGenerationManagerV1._candidate_hash_for_proposal(proposal)  # noqa: SLF001 - derive the canonical preview identity
+        return {
+            "objective_id": str(proposal.get("objective_id") or ""),
+            "candidate_id": CandidateGenerationManagerV1._candidate_id_for_hash(candidate_hash),  # noqa: SLF001 - derive the canonical preview identity
+            "candidate_hash": candidate_hash,
+            "proposal_id": str(proposal.get("proposal_id") or ""),
+            "proposal_hash": str(proposal.get("proposal_hash") or ""),
+            "ai_design_id": str(proposal.get("ai_research_design_id") or ""),
+            "ai_design_hash": str(source_hashes.get("ai_research_design") or ""),
+            "ai_design_approval_id": str(proposal.get("ai_design_approval_id") or ""),
+            "ai_design_approval_hash": str(proposal.get("ai_design_approval_receipt_hash") or ""),
+            "design_source_context_id": str(ai_identity.get("design_source_context_id") or ""),
+            "design_source_context_hash": str(source_hashes.get("ai_research_design_input") or ai_identity.get("design_source_context_hash") or ""),
+            "source_context_id": str(proposal.get("source_context_id") or ""),
+            "source_context_hash": str(proposal.get("source_context_hash") or ""),
+            "domain_source_context_id": str(proposal.get("source_context_id") or ""),
+            "domain_source_context_hash": str(proposal.get("source_context_hash") or ""),
+            "input_context_hash": str(proposal.get("input_context_hash") or ""),
+            "lineage_id": str(lineage.get("lineage_id") or ""),
+        }
+
+    @staticmethod
+    def _proposal_is_valid(proposal: Mapping[str, Any], objective_id: str) -> bool:
+        try:
+            PerformanceBlindGuard.assert_blind(proposal)
+            identity = CandidateGenerationManagerV1._identity(proposal)  # noqa: SLF001 - canonical proposal identity validation
+        except (PerformanceLeakError, AttributeError, TypeError):
+            return False
+        proposal_hash = str(proposal.get("proposal_hash") or "")
+        proposal_id = str(proposal.get("proposal_id") or "")
+        source_context_id = str(proposal.get("source_context_id") or "")
+        source_context_hash = str(proposal.get("source_context_hash") or "")
+        source_hashes = _mapping(proposal.get("source_hashes"))
+        return bool(
+            str(proposal.get("objective_id") or "") == objective_id
+            and str(proposal.get("status") or "") == CANDIDATE_PROPOSAL_READY
+            and proposal_hash
+            and proposal_hash == stable_hash(identity)
+            and proposal_id == f"CANDIDATE_PROPOSAL_{proposal_hash[:24].upper()}"
+            and source_context_id
+            and source_context_hash
+            and str(proposal.get("input_context_hash") or source_context_hash) == source_context_hash
+            and str(source_hashes.get("safe_runtime_context") or "") == source_context_hash
+            and str(source_hashes.get("ai_research_design_input") or "")
+        )
+
+    @staticmethod
+    def _identity_matches(expected: Mapping[str, Any], actual: Mapping[str, Any]) -> bool:
+        if not expected:
+            return False
+        for key, value in expected.items():
+            if value in (None, "", (), [], {}, False) or actual.get(key) in (None, "", (), [], {}, False):
+                return False
+            if actual.get(key) != value:
+                return False
+        return True
+
+    def _expected_domain_identity(self, objective_id: str, report: Mapping[str, Any], action_type: str) -> dict[str, Any]:
+        ai_identity = self._current_ai_design_identity(objective_id, report)
+        if action_type == GENERATE_CANDIDATE_PROPOSAL:
+            try:
+                proposal_context = self.context_builder.build(objective_id, purpose="CANDIDATE_PROPOSAL")
+                proposal_context_identity = {
+                    "domain_source_context_id": proposal_context.context_id,
+                    "domain_source_context_hash": proposal_context.context_hash,
+                }
+            except SafeRuntimeContextError:
+                proposal_context_identity = {
+                    "domain_source_context_id": "",
+                    "domain_source_context_hash": "",
+                }
+            return {"objective_id": objective_id, **ai_identity, **proposal_context_identity}
+
+        proposal = self._proposal_payload(objective_id, report)
+        candidate_id, candidate_hash = self._candidate_identity(report, None)
+        base = {"objective_id": objective_id, **ai_identity, "candidate_id": candidate_id, "candidate_hash": candidate_hash}
+        if isinstance(proposal, Mapping):
+            base.update({
+                "proposal_id": str(proposal.get("proposal_id") or ""),
+                "proposal_hash": str(proposal.get("proposal_hash") or ""),
+            })
+        if action_type == CREATE_EXECUTABLE_MATERIALIZATION_PREVIEW:
+            freeze = next(
+                (payload for _, payload in self._canonical_payloads(objective_id, report, "candidate_governance", {"CANDIDATE_FREEZE_RECEIPT.json"}) if payload is not None),
+                {},
+            )
+            base["freeze_receipt_hash"] = str(freeze.get("receipt_hash") or "")
+            base["source_context_id"] = ai_identity.get("design_source_context_id", "")
+            base["source_context_hash"] = ai_identity.get("design_source_context_hash", "")
+            return base
+        if action_type == RECOVER_EXECUTABLE_MATERIALIZATION:
+            materialization = _mapping(_mapping(report.get("candidate_reconciliation")).get("materialization"))
+            preview = _mapping(materialization.get("preview"))
+            confirmation = _mapping(materialization.get("confirmation"))
+            base.update({
+                "preview_id": str(preview.get("preview_id") or ""),
+                "preview_hash": str(preview.get("preview_hash") or ""),
+                "confirmation_id": str(confirmation.get("confirmation_id") or ""),
+                "confirmation_hash": str(confirmation.get("receipt_hash") or ""),
+                "durable_contract_hash": str(preview.get("durable_contract_hash") or ""),
+                "source_context_id": str(preview.get("source_context_id") or ""),
+                "source_context_hash": str(preview.get("source_context_hash") or ""),
+                "ai_design_id": str(preview.get("ai_design_id") or ai_identity.get("ai_design_id") or ""),
+                "ai_design_hash": str(preview.get("ai_design_hash") or ai_identity.get("ai_design_hash") or ""),
+                "ai_design_approval_hash": str(preview.get("ai_design_approval_hash") or ai_identity.get("ai_design_approval_hash") or ""),
+            })
+            return base
+        return {}
+
     def _predictive_authorization(self, objective_id: str, candidate_id: str, candidate_hash: str) -> dict[str, Any]:
         """Read only allowlisted authorization metadata after Structural PASS."""
         path = self.root / "reports" / "research_orchestrator_v2" / objective_id / "predictive_governance_decisions.jsonl"
@@ -844,6 +1103,7 @@ class AutonomousResearchControlPlaneV1:
             outcome_blind=True,
             created_at=_clock_text(self.clock),
             required_confirmation=confirmation,
+            expected_domain_identity=self._expected_domain_identity(objective_id, report, action_type),
         )
 
     def _plan(self, objective_id: str, report: Mapping[str, Any], context: SafeRuntimeContextV1 | None) -> tuple[ResearchActionV1, dict[str, Any]]:
@@ -969,17 +1229,191 @@ class AutonomousResearchControlPlaneV1:
         raise AutonomousControlPlaneError("ACTION_NOT_AUTOMATIC", "当前动作不能由控制平面自动执行。")
 
     @staticmethod
-    def _side_effect_present(action: ResearchActionV1, report: Mapping[str, Any]) -> bool:
-        candidate = _mapping(report.get("candidate_reconciliation"))
-        materialization = _mapping(candidate.get("materialization"))
-        state = str(report.get("effective_state") or "")
+    def _preview_identity(preview: Mapping[str, Any], ai_identity: Mapping[str, Any]) -> dict[str, Any]:
+        return {
+            "objective_id": str(preview.get("objective_id") or ""),
+            "proposal_id": str(preview.get("proposal_id") or ""),
+            "proposal_hash": str(preview.get("source_candidate_proposal_hash") or ""),
+            "candidate_id": str(preview.get("candidate_id") or ""),
+            "candidate_hash": str(preview.get("candidate_hash") or ""),
+            "freeze_receipt_hash": str(preview.get("freeze_receipt_hash") or ""),
+            "ai_design_id": str(preview.get("ai_design_id") or ""),
+            "ai_design_hash": str(preview.get("ai_design_hash") or ""),
+            "ai_design_approval_id": str(ai_identity.get("ai_design_approval_id") or ""),
+            "ai_design_approval_hash": str(preview.get("ai_design_approval_hash") or ""),
+            "source_context_id": str(preview.get("source_context_id") or ""),
+            "source_context_hash": str(preview.get("source_context_hash") or ""),
+            "design_source_context_id": str(preview.get("source_context_id") or ""),
+            "design_source_context_hash": str(preview.get("source_context_hash") or ""),
+            "preview_id": str(preview.get("preview_id") or ""),
+            "preview_hash": str(preview.get("preview_hash") or ""),
+            "durable_contract_hash": str(preview.get("durable_contract_hash") or ""),
+        }
+
+    def _recovery_evidence(
+        self,
+        action: ResearchActionV1,
+        report: Mapping[str, Any],
+        *,
+        matched: bool,
+        reason_code: str,
+        domain_identity: Mapping[str, Any] | None = None,
+        domain_hash: str = "",
+        side_effect_present: bool = False,
+    ) -> SideEffectRecoveryEvidenceV1:
+        domain = dict(domain_identity or {})
+        evidence = SideEffectRecoveryEvidenceV1(
+            matched=bool(matched),
+            reason_code=str(reason_code),
+            action_id=action.action_id,
+            action_type=action.action_type,
+            objective_id=action.objective_id,
+            candidate_id=str(domain.get("candidate_id") or action.candidate_id),
+            candidate_hash=str(domain.get("candidate_hash") or action.candidate_hash),
+            domain_identity=domain,
+            domain_hash=str(domain_hash or ""),
+            canonical_refs=self._recovery_canonical_refs(report),
+            reconciliation_hash=str(report.get("report_hash") or stable_hash(report)),
+            safe_to_mark_completed=bool(matched),
+            side_effect_present=bool(side_effect_present),
+        )
+        evidence.to_dict()
+        return evidence
+
+    def _reconcile_started_action_side_effect(
+        self,
+        action: ResearchActionV1,
+        report: Mapping[str, Any],
+    ) -> SideEffectRecoveryEvidenceV1:
+        """Resolve a prior STARTED action against current canonical evidence.
+
+        This resolver deliberately runs before freshness rejection.  It only
+        returns ``matched`` when the current domain artifact is bound to the
+        action's expected identity and passes the existing canonical validators.
+        """
+
+        expected = dict(action.expected_domain_identity or {})
+        candidate_view = _mapping(report.get("candidate_reconciliation"))
+        materialization = _mapping(candidate_view.get("materialization"))
+        ai_identity = self._current_ai_design_identity(action.objective_id, report)
+
         if action.action_type == GENERATE_CANDIDATE_PROPOSAL:
-            return bool(candidate.get("proposal_present"))
+            entries = self._canonical_payloads(
+                action.objective_id,
+                report,
+                "candidate_governance",
+                {"CANDIDATE_PROPOSAL.json"},
+            )
+            present = bool(entries) or bool(candidate_view.get("proposal_present"))
+            if not present:
+                return self._recovery_evidence(action, report, matched=False, reason_code=RECOVERY_SIDE_EFFECT_NOT_FOUND)
+            for _, proposal in entries:
+                if proposal is None or not self._proposal_is_valid(proposal, action.objective_id):
+                    continue
+                actual = self._proposal_identity(proposal, ai_identity)
+                if expected and self._identity_matches(expected, actual):
+                    return self._recovery_evidence(
+                        action,
+                        report,
+                        matched=True,
+                        reason_code=RECOVERY_SIDE_EFFECT_IDENTITY_MATCH,
+                        domain_identity=actual,
+                        domain_hash=str(actual.get("proposal_hash") or ""),
+                        side_effect_present=True,
+                    )
+            return self._recovery_evidence(
+                action,
+                report,
+                matched=False,
+                reason_code=RECOVERY_SIDE_EFFECT_IDENTITY_MISMATCH,
+                side_effect_present=True,
+            )
+
         if action.action_type == CREATE_EXECUTABLE_MATERIALIZATION_PREVIEW:
-            return bool(materialization.get("preview_ready")) or state == EXECUTABLE_MATERIALIZATION_PREVIEW_READY
+            preview = materialization.get("preview")
+            present = bool(materialization.get("preview_present")) or isinstance(preview, Mapping)
+            if not present:
+                return self._recovery_evidence(action, report, matched=False, reason_code=RECOVERY_SIDE_EFFECT_NOT_FOUND)
+            if not isinstance(preview, Mapping):
+                return self._recovery_evidence(action, report, matched=False, reason_code=RECOVERY_SIDE_EFFECT_INTEGRITY_FAILURE, side_effect_present=True)
+            preview_check = inspect_materialization_preview(preview)
+            actual = self._preview_identity(preview, ai_identity)
+            current = materialization.get("preview_valid") is True and not materialization.get("preview_binding_mismatches")
+            if preview_check.get("valid") and preview_check.get("ready") and current and expected and self._identity_matches(expected, actual):
+                return self._recovery_evidence(
+                    action,
+                    report,
+                    matched=True,
+                    reason_code=RECOVERY_SIDE_EFFECT_IDENTITY_MATCH,
+                    domain_identity=actual,
+                    domain_hash=str(actual.get("preview_hash") or ""),
+                    side_effect_present=True,
+                )
+            return self._recovery_evidence(
+                action,
+                report,
+                matched=False,
+                reason_code=RECOVERY_SIDE_EFFECT_IDENTITY_MISMATCH,
+                domain_identity=actual,
+                domain_hash=str(actual.get("preview_hash") or ""),
+                side_effect_present=True,
+            )
+
         if action.action_type == RECOVER_EXECUTABLE_MATERIALIZATION:
-            return bool(candidate.get("executable_frozen_candidate")) or state == READY_FOR_STRUCTURAL_PREFLIGHT
-        return False
+            preview = materialization.get("preview")
+            confirmation = materialization.get("confirmation")
+            contract_present = bool(materialization.get("contract_present"))
+            if not contract_present:
+                contract_entries = candidate_view.get("durable_contracts")
+                if isinstance(contract_entries, (list, tuple)) and any(isinstance(item, Mapping) for item in contract_entries):
+                    return self._recovery_evidence(action, report, matched=False, reason_code=RECOVERY_SIDE_EFFECT_IDENTITY_MISMATCH, side_effect_present=True)
+                return self._recovery_evidence(action, report, matched=False, reason_code=RECOVERY_SIDE_EFFECT_NOT_FOUND)
+            if not isinstance(preview, Mapping) or not isinstance(confirmation, Mapping):
+                return self._recovery_evidence(action, report, matched=False, reason_code=RECOVERY_SIDE_EFFECT_INTEGRITY_FAILURE, side_effect_present=True)
+            preview_check = inspect_materialization_preview(preview)
+            proposal_id = str(expected.get("proposal_id") or preview.get("proposal_id") or "")
+            if not proposal_id:
+                return self._recovery_evidence(action, report, matched=False, reason_code=RECOVERY_SIDE_EFFECT_IDENTITY_MISMATCH, side_effect_present=True)
+            try:
+                state = CandidateExecutableMaterializationManagerV1(self.root).read_state(action.objective_id, proposal_id)
+            except (CandidateExecutableMaterializationError, OSError, ValueError):
+                state = {}
+            actual = self._preview_identity(preview, ai_identity)
+            actual.update({
+                "confirmation_id": str(confirmation.get("confirmation_id") or ""),
+                "confirmation_hash": str(confirmation.get("receipt_hash") or ""),
+                "durable_contract_hash": str(state.get("durable_contract_hash") or preview.get("durable_contract_hash") or ""),
+            })
+            exact_state = (
+                str(state.get("materialization_state") or "") == READY_FOR_STRUCTURAL_PREFLIGHT
+                and state.get("materialization_confirmation_valid") is True
+                and state.get("materialization_contract_present") is True
+                and state.get("materialization_identity_match") is True
+                and preview_check.get("valid") is True
+                and preview_check.get("ready") is True
+                and materialization.get("confirmation_valid") is True
+            )
+            if exact_state and expected and self._identity_matches(expected, actual):
+                return self._recovery_evidence(
+                    action,
+                    report,
+                    matched=True,
+                    reason_code=RECOVERY_SIDE_EFFECT_IDENTITY_MATCH,
+                    domain_identity=actual,
+                    domain_hash=str(actual.get("durable_contract_hash") or ""),
+                    side_effect_present=True,
+                )
+            return self._recovery_evidence(
+                action,
+                report,
+                matched=False,
+                reason_code=RECOVERY_SIDE_EFFECT_IDENTITY_MISMATCH,
+                domain_identity=actual,
+                domain_hash=str(actual.get("durable_contract_hash") or ""),
+                side_effect_present=True,
+            )
+
+        return self._recovery_evidence(action, report, matched=False, reason_code=RECOVERY_SIDE_EFFECT_NOT_FOUND)
 
     @staticmethod
     def _side_effect_refs(report: Mapping[str, Any]) -> tuple[str, ...]:
@@ -1006,6 +1440,46 @@ class AutonomousResearchControlPlaneV1:
         report = self.reconciliation.reconcile(action.objective_id)
         current_context, freshness = self._build_context(action.objective_id)
         current_report_hash = str(report.get("report_hash") or "")
+
+        prior_receipt = existing_receipt
+        if prior_receipt is not None and prior_receipt.execution_status == EXECUTION_STARTED:
+            recovery_evidence = self._reconcile_started_action_side_effect(action, report)
+            if recovery_evidence.matched and current_context is not None:
+                recovered = journal.complete(
+                    action,
+                    resulting_reconciliation_hash=recovery_evidence.reconciliation_hash,
+                    resulting_state=self._effective_state(report),
+                    side_effect_refs=self._side_effect_refs(report),
+                    result_summary={
+                        "recovered_from_started": True,
+                        "recovery_reason_code": recovery_evidence.reason_code,
+                        "domain_hash": recovery_evidence.domain_hash,
+                    },
+                    recovered=True,
+                )
+                return {
+                    "execution_status": EXECUTION_COMPLETED,
+                    "idempotent": True,
+                    "recovered": True,
+                    "recovery_evidence": recovery_evidence.to_dict(),
+                    "receipt": recovered.to_dict(),
+                    "safe_to_advance": False,
+                }
+            if recovery_evidence.matched:
+                recovery_evidence = replace(
+                    recovery_evidence,
+                    matched=False,
+                    reason_code=RECOVERY_SIDE_EFFECT_INTEGRITY_FAILURE,
+                    safe_to_mark_completed=False,
+                )
+            if recovery_evidence.side_effect_present:
+                return {
+                    "execution_status": DENY,
+                    "reason_code": recovery_evidence.reason_code,
+                    "reason_zh": "当前存在与 STARTED Action 不匹配的领域副作用，控制平面拒绝自动恢复或覆盖。",
+                    "recovery_evidence": recovery_evidence.to_dict(),
+                    "safe_to_advance": False,
+                }
         if current_report_hash != action.source_reconciliation_hash:
             return {
                 "execution_status": DENY,
@@ -1033,20 +1507,9 @@ class AutonomousResearchControlPlaneV1:
             return {"execution_status": "DRY_RUN", "reason_code": "DRY_RUN_NO_SIDE_EFFECT", "reason_zh": "Dry-run 未执行动作。", "permission": permission.to_dict(), "safe_to_advance": False}
 
         try:
-            prior_receipt = existing_receipt
             status, receipt = journal.begin(action)
             if status == EXECUTION_COMPLETED:
                 return {"execution_status": EXECUTION_COMPLETED, "idempotent": True, "receipt": receipt.to_dict(), "safe_to_advance": False}
-            if prior_receipt is not None and prior_receipt.execution_status == EXECUTION_STARTED and self._side_effect_present(action, report):
-                recovered = journal.complete(
-                    action,
-                    resulting_reconciliation_hash=current_report_hash,
-                    resulting_state=self._effective_state(report),
-                    side_effect_refs=self._side_effect_refs(report),
-                    result_summary={"recovered_from_started": True},
-                    recovered=True,
-                )
-                return {"execution_status": EXECUTION_COMPLETED, "idempotent": True, "recovered": True, "receipt": recovered.to_dict(), "safe_to_advance": False}
             if prior_receipt is not None and prior_receipt.execution_status == EXECUTION_STARTED:
                 journal.allow_retry(action)
                 _, receipt = journal.begin(action, allow_retry=True)
@@ -1069,16 +1532,19 @@ class AutonomousResearchControlPlaneV1:
             }
         except (CandidateGenerationError, CandidateExecutableMaterializationError, AutonomousControlPlaneError) as exc:
             post_report = self.reconciliation.reconcile(action.objective_id)
-            if self._side_effect_present(action, post_report):
+            post_evidence = self._reconcile_started_action_side_effect(action, post_report)
+            if post_evidence.matched:
                 recovered = journal.complete(
                     action,
-                    resulting_reconciliation_hash=str(post_report.get("report_hash") or ""),
+                    resulting_reconciliation_hash=post_evidence.reconciliation_hash,
                     resulting_state=self._effective_state(post_report),
                     side_effect_refs=self._side_effect_refs(post_report),
-                    result_summary={"recovered_after_domain_error": True},
+                    result_summary={"recovered_after_domain_error": True, "domain_hash": post_evidence.domain_hash},
                     recovered=True,
                 )
-                return {"execution_status": EXECUTION_COMPLETED, "idempotent": True, "recovered": True, "receipt": recovered.to_dict(), "safe_to_advance": False}
+                return {"execution_status": EXECUTION_COMPLETED, "idempotent": True, "recovered": True, "recovery_evidence": post_evidence.to_dict(), "receipt": recovered.to_dict(), "safe_to_advance": False}
+            if post_evidence.side_effect_present:
+                return {"execution_status": DENY, "reason_code": post_evidence.reason_code, "reason_zh": "领域副作用存在但未通过 Action identity 校验，控制平面保持 fail closed。", "recovery_evidence": post_evidence.to_dict(), "safe_to_advance": False}
             code = getattr(exc, "code", "AUTONOMOUS_ACTION_FAILED")
             message = getattr(exc, "message_zh", str(exc))
             failed = journal.fail(action, error_code=code, error_message_zh=message)
@@ -1087,16 +1553,19 @@ class AutonomousResearchControlPlaneV1:
             return {"execution_status": "FAILED", "reason_code": "ACTION_JOURNAL_FAILURE", "reason_zh": str(exc), "safe_to_advance": False}
         except Exception as exc:
             post_report = self.reconciliation.reconcile(action.objective_id)
-            if self._side_effect_present(action, post_report):
+            post_evidence = self._reconcile_started_action_side_effect(action, post_report)
+            if post_evidence.matched:
                 recovered = journal.complete(
                     action,
-                    resulting_reconciliation_hash=str(post_report.get("report_hash") or ""),
+                    resulting_reconciliation_hash=post_evidence.reconciliation_hash,
                     resulting_state=self._effective_state(post_report),
                     side_effect_refs=self._side_effect_refs(post_report),
-                    result_summary={"recovered_after_unexpected_error": True},
+                    result_summary={"recovered_after_unexpected_error": True, "domain_hash": post_evidence.domain_hash},
                     recovered=True,
                 )
-                return {"execution_status": EXECUTION_COMPLETED, "idempotent": True, "recovered": True, "receipt": recovered.to_dict(), "safe_to_advance": False}
+                return {"execution_status": EXECUTION_COMPLETED, "idempotent": True, "recovered": True, "recovery_evidence": post_evidence.to_dict(), "receipt": recovered.to_dict(), "safe_to_advance": False}
+            if post_evidence.side_effect_present:
+                return {"execution_status": DENY, "reason_code": post_evidence.reason_code, "reason_zh": "领域副作用存在但未通过 Action identity 校验，控制平面保持 fail closed。", "recovery_evidence": post_evidence.to_dict(), "safe_to_advance": False}
             return {"execution_status": "FAILED", "reason_code": type(exc).__name__, "reason_zh": str(exc), "safe_to_advance": False}
 
     def execute_action(self, action: ResearchActionV1 | Mapping[str, Any], *, dry_run: bool = False) -> dict[str, Any]:
@@ -1279,10 +1748,15 @@ __all__ = [
     "GENERATE_CANDIDATE_PROPOSAL",
     "PREDICTIVE_AUTHORIZATION_REQUIRED",
     "RECOVER_EXECUTABLE_MATERIALIZATION",
+    "RECOVERY_SIDE_EFFECT_IDENTITY_MATCH",
+    "RECOVERY_SIDE_EFFECT_IDENTITY_MISMATCH",
+    "RECOVERY_SIDE_EFFECT_INTEGRITY_FAILURE",
+    "RECOVERY_SIDE_EFFECT_NOT_FOUND",
     "RECONCILE_OBJECTIVE",
     "RECONCILE_TRIAL",
     "ResearchActionPermissionV1",
     "ResearchActionV1",
+    "SideEffectRecoveryEvidenceV1",
     "RUN_STRUCTURAL_PREFLIGHT",
     "START_PREDICTIVE_TRIAL",
     "WAIT_FOR_AI_DESIGN_CONFIRMATION",
