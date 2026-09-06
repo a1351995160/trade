@@ -38,9 +38,13 @@ Preview 会比较治理来源和 Durable Contract 的机制、因子角色/方�
 
 确认请求必须显式提供 `confirmed=true`、当前 `preview_hash`、`reviewer` 和 `idempotency_key`。确认回执为 Candidate Proposal 目录下的 `EXECUTABLE_MATERIALIZATION_CONFIRMATION.json`，不可覆盖，记录 Preview、Candidate、Contract、reviewer、时间、幂等键和回执 hash。相同身份与内容重复确认返回幂等成功；同一身份不同 hash 或不同确认上下文返回冲突。
 
+确认回执采用 confirmation schema v2，只表达人工批准事实，不表达 Structural Ready：`confirmation_status=CONFIRMED`、`materialization_complete=false`、`contract_materialization_required=true`、`resulting_state=EXECUTABLE_MATERIALIZATION_RECOVERY_REQUIRED`、`next_action=RECOVER_EXECUTABLE_MATERIALIZATION`，并固定 `automatic_structural_preflight=false`。回执本身不包含 `structural_preflight_ready=true`；只有 Preview + Receipt + Durable Contract 完整对账后，Objective Reconciliation 才能派生 `READY_FOR_STRUCTURAL_PREFLIGHT`。
+
+确认前必须比较已有 Durable Contract 的 `content_hash` 与 Preview 的 `durable_contract_hash`。Candidate ID/hash 相同但 Contract 内容 hash 不同仍是 `CANONICAL_CANDIDATE_IDENTITY_CONFLICT`，不得先写 Receipt 或复用旧 Contract。
+
 ## 恢复与对账
 
-写入 Durable Store 后、写入确认回执前发生中断时，系统可通过现有 Durable Contract 加确认回执的恢复检查识别 `contract_written_receipt_missing`，不得重复追加合同。Proposal、Registry、Preview、Durable Store 的身份或 hash 不一致时 fail-closed，保持 `safe_to_advance=false`。
+确认回执落盘后、写入 Durable Store 前发生中断时，系统可通过 immutable Preview 和确认回执确定性恢复同一份 Durable Contract，不得重复追加合同。Proposal、Registry、Preview、Durable Store 的身份或 hash 不一致时 fail-closed，保持 `safe_to_advance=false`。
 
 Objective Reconciliation 的行为如下：
 

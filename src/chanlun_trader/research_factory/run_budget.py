@@ -57,13 +57,15 @@ RunBudgetUsageState = RunBudgetUsageStateV1
 
 def trial_budget_identity(*, run_id: str, batch_id: str, trial_id: str, candidate_id: str, candidate_hash: str) -> str:
     """Return the deterministic, single-consumption identity for one trial."""
-    return f"RUN-TRIAL-{stable_hash({
+    payload = {
         "run_id": str(run_id),
         "batch_id": str(batch_id),
         "trial_id": str(trial_id),
         "candidate_id": str(candidate_id),
         "candidate_hash": str(candidate_hash),
-    })[:24]}"
+    }
+    digest = stable_hash(payload)[:24]
+    return f"RUN-TRIAL-{digest}"
 
 
 class AutonomousRunBudgetV1:

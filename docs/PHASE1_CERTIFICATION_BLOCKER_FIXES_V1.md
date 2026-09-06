@@ -16,6 +16,8 @@
 
 `Durable Contract alone is NOT sufficient executable authority.`
 
+`EXECUTABLE_MATERIALIZATION_CONFIRMATION.json` 是 `HUMAN_EXECUTABLE_MATERIALIZATION_APPROVAL_AUTHORITY`，不是 READY 状态工件。它使用 confirmation schema v2，固定记录 `confirmation_status=CONFIRMED`、`materialization_complete=false`、`contract_materialization_required=true`、`resulting_state=EXECUTABLE_MATERIALIZATION_RECOVERY_REQUIRED` 和 `next_action=RECOVER_EXECUTABLE_MATERIALIZATION`；它不得写入或宣称 `structural_preflight_ready=true`。只有 Preview、Receipt、Durable Contract 的完整身份和 hash 对账成功后，Objective Reconciliation 才能派生 READY。
+
 Candidate Registry、Freeze Receipt、Preview、Durable Contract 或 Confirmation Receipt 任一单独工件都不能授权 Structural。Executable Candidate Authority 必须同时满足：
 
 ```text
@@ -40,6 +42,8 @@ immutable Preview
 Receipt 至少绑定 `objective_id`、`proposal_id`、`preview_id`、`preview_hash`、`candidate_id`、`candidate_hash`、`durable_contract_hash`、AI Design identity、AI Design approval hash、`source_context_id`、`source_context_hash`、`reviewer`、`confirmed_at`、`idempotency_key` 和 `receipt_hash`。Receipt 使用 create-only 写入，不能覆盖；Contract Registry 使用既有 canonical identity 检查，不能覆盖冲突记录。
 
 Receipt 先落盘的意义是：如果在 Receipt 与 Contract 之间崩溃，重启后能够证明“人工确认已经发生”，但仍不会把未完成的物化当作 executable。恢复接口只从当前 immutable Preview 重建同一份 Contract，不能调用 AI、创建 Candidate、修改参数、创建 Trial、消费 Budget、访问 Performance 或启动 Structural。
+
+如果已有 Durable Contract 与 Preview 的 Candidate ID/hash 相同但 `content_hash` 不同，确认在写入 Receipt 之前返回 `CANONICAL_CANDIDATE_IDENTITY_CONFLICT`；不会创建 Receipt、写 executable state、启动 Structural、创建 Trial、改变 Budget 或访问 Performance。
 
 相同 Preview/Candidate/Contract identity 的重试是 exact-once；不同 `idempotency_key`、reviewer 或任何身份/哈希冲突均为 `MATERIALIZATION_IDEMPOTENCY_CONFLICT` 或 `CANONICAL_CONFLICT`，系统不自动选择、不覆盖、不修复。
 
@@ -108,7 +112,7 @@ Preview、Confirmation、Recovery、Reconciliation、AI Design freshness 和 Man
 
 `.github/workflows/phase1-certification.yml` 名称为 `Phase 1 Certification`，在 Pull Request 和 `codex/**` push 触发。它只 checkout 当前仓库，执行：
 
-- `git diff --check`
+- push 使用 `git diff-tree --check --no-commit-id -r HEAD`，Pull Request 使用 base...head cumulative patch 的 `git diff --check`
 - `python -m compileall -q src`
 - `python -m pytest --collect-only -q`
 - 明确列出的 Phase 1 governance deterministic suite

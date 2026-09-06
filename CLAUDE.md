@@ -23,6 +23,8 @@
 
 - 守护进程修复冻结合同身份冲突时，跨报告/合同扫描必须按 `candidate_id` 缓存；不得在逐历史记录加载路径中重复扫描全量报告。
 - 已接入但 Provider 不兼容的冻结合同不能原地改写或删除；只能在确认无 TrialLedger、无 PerformanceAccess、无候选预算预留后追加哈希链纠错事件。`ONE_SHOT` 已接受调用对应的唯一候选被失效后，恢复逻辑必须进入 `GOVERNANCE_DECISION_REQUIRED`，不得生成第二份 AI 交接。
+- Executable Materialization confirm 必须在写入 Confirmation Receipt 前比较已有 Durable Contract `content_hash` 与 immutable Preview 的 `durable_contract_hash`；Candidate ID/hash 相同但内容 hash 不同仍是 canonical conflict。
+- Executable Materialization Confirmation Receipt 只证明人工批准，不是 READY 状态工件；应保持 `materialization_complete=false`、`contract_materialization_required=true`，不能单独宣称 `structural_preflight_ready=true`。
 
 ## Structural Provider pitfalls
 

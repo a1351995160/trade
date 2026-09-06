@@ -45,7 +45,7 @@ from .durability import (
 
 EXECUTABLE_MATERIALIZATION_SCHEMA_VERSION = "candidate-executable-materialization-bridge-v1"
 EXECUTABLE_MATERIALIZATION_PREVIEW_SCHEMA_VERSION = "executable-materialization-preview-v1"
-EXECUTABLE_MATERIALIZATION_CONFIRMATION_SCHEMA_VERSION = "executable-materialization-confirmation-v1"
+EXECUTABLE_MATERIALIZATION_CONFIRMATION_SCHEMA_VERSION = "executable-materialization-confirmation-v2"
 EXECUTABLE_MATERIALIZATION_PREVIEW_FILENAME = "EXECUTABLE_MATERIALIZATION_PREVIEW.json"
 EXECUTABLE_MATERIALIZATION_CONFIRMATION_FILENAME = "EXECUTABLE_MATERIALIZATION_CONFIRMATION.json"
 EXECUTABLE_MATERIALIZATION_RECEIPT_FILENAME = EXECUTABLE_MATERIALIZATION_CONFIRMATION_FILENAME
@@ -87,6 +87,15 @@ MATERIALIZATION_CONFIRMATION_REQUIRED_FIELDS = (
     "reviewer",
     "confirmed_at",
     "idempotency_key",
+    "confirmation_status",
+    "materialization_complete",
+    "contract_materialization_required",
+    "resulting_state",
+    "next_action",
+    "automatic_structural_preflight",
+    "automatic_trial_started",
+    "ai_called",
+    "budget_consumed",
     "receipt_hash",
 )
 _SEMANTIC_FIELDS = (
@@ -503,6 +512,24 @@ def inspect_materialization_confirmation(
     if str(receipt.get("receipt_hash") or "") != expected_hash:
         result["reason_code"] = INTEGRITY_FAILURE
         return result
+    if receipt.get("confirmation_status") != "CONFIRMED":
+        result["reason_code"] = INTEGRITY_FAILURE
+        return result
+    if receipt.get("materialization_complete") is not False:
+        result["reason_code"] = INTEGRITY_FAILURE
+        return result
+    if receipt.get("contract_materialization_required") is not True:
+        result["reason_code"] = INTEGRITY_FAILURE
+        return result
+    if str(receipt.get("resulting_state") or "") != EXECUTABLE_MATERIALIZATION_RECOVERY_REQUIRED:
+        result["reason_code"] = INTEGRITY_FAILURE
+        return result
+    if str(receipt.get("next_action") or "") != RECOVER_EXECUTABLE_MATERIALIZATION:
+        result["reason_code"] = INTEGRITY_FAILURE
+        return result
+    if receipt.get("structural_preflight_ready") not in (None, False):
+        result["reason_code"] = INTEGRITY_FAILURE
+        return result
     if receipt.get("automatic_structural_preflight") not in (None, False):
         result["reason_code"] = INTEGRITY_FAILURE
         return result
@@ -510,9 +537,6 @@ def inspect_materialization_confirmation(
         result["reason_code"] = INTEGRITY_FAILURE
         return result
     if receipt.get("ai_called") not in (None, False) or receipt.get("budget_consumed") not in (None, False):
-        result["reason_code"] = INTEGRITY_FAILURE
-        return result
-    if str(receipt.get("next_action") or "") != RUN_STRUCTURAL_PREFLIGHT or receipt.get("structural_preflight_ready") is not True:
         result["reason_code"] = INTEGRITY_FAILURE
         return result
     if objective_id not in (None, "") and str(receipt.get("objective_id")) != str(objective_id):
@@ -1255,6 +1279,7 @@ class CandidateExecutableMaterializationManagerV1:
                 return self._state_model(context, state=CANONICAL_CANDIDATE_IDENTITY_CONFLICT, next_action=None, preview=preview, confirmation=confirmation, safe_to_advance=False, reason_code=CANONICAL_CANDIDATE_IDENTITY_CONFLICT)
             contract: DurableFrozenCandidateContractV1 | None = None
             invalid_contract = False
+            expected_contract_hash = str((preview or {}).get("durable_contract_hash") or "")
             for item in matching:
                 raw = item["raw"]
                 if str(raw.get("candidate_hash") or "") != context.candidate_hash:
@@ -1266,6 +1291,17 @@ class CandidateExecutableMaterializationManagerV1:
                     del exc
                     invalid_contract = True
                     continue
+                if expected_contract_hash and candidate_contract.content_hash != expected_contract_hash:
+                    return self._state_model(
+                        context,
+                        state=CANONICAL_CANDIDATE_IDENTITY_CONFLICT,
+                        next_action=None,
+                        preview=preview,
+                        confirmation=confirmation,
+                        contract=candidate_contract,
+                        safe_to_advance=False,
+                        reason_code=CANONICAL_CANDIDATE_IDENTITY_CONFLICT,
+                    )
                 if contract is not None and contract.content_hash != candidate_contract.content_hash:
                     return self._state_model(context, state=CANONICAL_CANDIDATE_IDENTITY_CONFLICT, next_action=None, preview=preview, confirmation=confirmation, contract=contract, safe_to_advance=False, reason_code=CANONICAL_CANDIDATE_IDENTITY_CONFLICT)
                 contract = candidate_contract
@@ -1469,9 +1505,11 @@ class CandidateExecutableMaterializationManagerV1:
             "confirmed_at": self.clock(),
             "idempotency_key": idempotency_key,
             "durable_contract_path": _relative(self.root, target),
-            "resulting_state": EXECUTABLE_CANDIDATE_FROZEN,
-            "next_action": RUN_STRUCTURAL_PREFLIGHT,
-            "structural_preflight_ready": True,
+            "confirmation_status": "CONFIRMED",
+            "materialization_complete": False,
+            "contract_materialization_required": True,
+            "resulting_state": EXECUTABLE_MATERIALIZATION_RECOVERY_REQUIRED,
+            "next_action": RECOVER_EXECUTABLE_MATERIALIZATION,
             "automatic_structural_preflight": False,
             "automatic_trial_started": False,
             "ai_called": False,
@@ -1542,6 +1580,19 @@ class CandidateExecutableMaterializationManagerV1:
             if contract.candidate_id != context.candidate_id or contract.candidate_hash != context.candidate_hash or str(preview.get("durable_contract_hash") or "") != contract.content_hash:
                 raise CandidateExecutableMaterializationError(CANONICAL_CANDIDATE_IDENTITY_CONFLICT, "Preview Contract 与 Governance Freeze 身份不一致", status_code=409)
             existing_contract, existing_target = self._existing_contract(context)
+            if existing_contract is not None and existing_contract.content_hash != contract.content_hash:
+                raise CandidateExecutableMaterializationError(
+                    CANONICAL_CANDIDATE_IDENTITY_CONFLICT,
+                    "已有 Durable Contract 与 immutable Preview 的 content hash 不一致，物化已阻断",
+                    status_code=409,
+                    details={
+                        "candidate_id": context.candidate_id,
+                        "candidate_hash": context.candidate_hash,
+                        "preview_contract_hash": contract.content_hash,
+                        "existing_contract_hash": existing_contract.content_hash,
+                        "safe_to_advance": False,
+                    },
+                )
             self._validate_safe_runtime_context(context.objective_id, context.proposal)
             target = existing_target or (self.root / "data/research/research_factory/batches" / context.batch_id / "durable_frozen_candidate_contracts.json")
             confirmation_path = self._confirmation_path(context)

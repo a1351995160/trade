@@ -14,7 +14,7 @@
 | AI Research Design | AI_RESEARCH_DESIGN_PROPOSAL.json | AI_RESEARCH_DESIGN_STATE.json | AI_DESIGN_READY 不等于 AI_DESIGN_APPROVED |
 | AI Design Approval | `reports/research_evolution/ai_design/<objective_id>/AI_DESIGN_APPROVAL_RECEIPT.json`（`AI_DESIGN_APPROVAL_AUTHORITY`） | AI design state、Objective lifecycle、Daemon / Orchestrator、Console | 只有绑定当前 design/source context hash 且 receipt integrity PASS 的不可变回执可以证明批准；没有凭证时输出 AI_DESIGN_APPROVAL_EVIDENCE_MISSING，不得推断批准 |
 | Candidate Governance | Proposal、Review、Freeze Receipt、CANDIDATE_REGISTRY.json | Candidate state | 这些是治理/库存事实，不是 executable contract |
-| Executable Candidate | DurableFrozenCandidateContractV1 | daemon contract cache | 必须唯一匹配 objective_id、candidate_id、candidate_hash，并通过 from_dict() 与 provider_candidate_payload() |
+| Executable Candidate | DurableFrozenCandidateContractV1 + matching Materialization Confirmation Receipt | daemon contract cache | 必须唯一匹配 objective_id、candidate_id、candidate_hash、Preview durable_contract_hash，并通过 from_dict()、provider_candidate_payload() 和 Receipt identity reconciliation |
 | Structural Preflight | canonical structural reconciliation | daemon/orchestrator structural state | 不把运行中的 Structural 状态提升为事实 |
 | Predictive Authorization | 持久化授权凭证 | daemon/orchestrator predictive state | 不从 Structural PASS 推断授权 |
 | Trial Lifecycle | factory_trial_ledger.json | daemon/orchestrator checkpoint、Trial Registry | 按 trial_id、Candidate identity、事件和终态对账，不按时间戳覆盖 |
@@ -44,7 +44,7 @@ ObjectiveDialectClassifierV1 输出：
 5. 唯一完整 Durable Contract 通过两项校验：READY_FOR_STRUCTURAL_PREFLIGHT；
 6. canonical Budget 耗尽或 Trial 已终态时，不能采信 stale 的 daemon ACTIVE/RUNNING 投影。
 
-Candidate 治理 Freeze 与 executable freeze 是两个独立闸门。只有第 4 步成立时，报告才会将 structural_preflight_ready 置为 true。
+Candidate 治理 Freeze 与 executable freeze 是两个独立闸门。Receipt-only 只能进入 `EXECUTABLE_MATERIALIZATION_RECOVERY_REQUIRED`；只有 Preview、Receipt、Durable Contract 的 full identity/hash match 成立时，报告才会将 `structural_preflight_ready` 置为 true。
 
 ## 对账与冲突
 

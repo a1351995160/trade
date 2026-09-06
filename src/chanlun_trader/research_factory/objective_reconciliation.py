@@ -1175,6 +1175,21 @@ class ObjectiveReconciliationServiceV1:
             for item in target_entries
             if item["from_dict"] == "PASS" and item["provider_candidate_payload"] == "PASS"
         ]
+        preview_contract_hash = str((materialization_preview or {}).get("durable_contract_hash") or "") if isinstance(materialization_preview, Mapping) else ""
+        mismatched_preview_contracts = [
+            item
+            for item in valid_target_entries
+            if preview_contract_hash and str(item.get("content_hash") or "") != preview_contract_hash
+        ]
+        if mismatched_preview_contracts:
+            ctx.conflict(
+                "CANONICAL_CANDIDATE_IDENTITY_CONFLICT",
+                CANONICAL_CONFLICT,
+                candidate_id=target_id,
+                candidate_hash=target_hash,
+                preview_contract_hash=preview_contract_hash,
+                durable_contract_hashes=sorted({str(item.get("content_hash") or "") for item in mismatched_preview_contracts}),
+            )
         contract_for_confirmation = None
         if len(valid_target_entries) == 1:
             raw_contract = next(

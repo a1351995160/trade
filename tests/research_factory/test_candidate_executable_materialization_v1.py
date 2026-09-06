@@ -15,6 +15,7 @@ from chanlun_trader.research_factory.candidate_executable_materialization import
     CandidateExecutableMaterializationError,
     CandidateExecutableMaterializationManagerV1,
     EXECUTABLE_MATERIALIZATION_CONFIRMATION_MISSING,
+    EXECUTABLE_MATERIALIZATION_CONFIRMATION_SCHEMA_VERSION,
     EXECUTABLE_CONTRACT_INVALID,
     EXECUTABLE_MATERIALIZATION_INCOMPLETE,
     EXECUTABLE_MATERIALIZATION_PREVIEW_READY,
@@ -22,6 +23,7 @@ from chanlun_trader.research_factory.candidate_executable_materialization import
     INTEGRITY_FAILURE,
     MATERIALIZATION_IDEMPOTENCY_CONFLICT,
     READY_FOR_STRUCTURAL_PREFLIGHT,
+    RECOVER_EXECUTABLE_MATERIALIZATION,
     RUN_STRUCTURAL_PREFLIGHT,
     STALE_EXECUTABLE_MATERIALIZATION_PREVIEW,
 )
@@ -444,6 +446,114 @@ def test_crash_after_confirmation_receipt_is_recoverable_without_contract_or_sid
     assert len(_durable_paths(root)) == 1
     assert len(json.loads(_durable_paths(root)[0].read_text(encoding="utf-8"))["contracts"]) == 1
     assert budget_path.read_bytes() == budget_before
+
+
+def test_receipt_only_is_not_structural_ready_and_structural_entry_rejects(tmp_path: Path) -> None:
+    root, proposal, _ = _bridge_fixture(tmp_path / "receipt-semantics")
+    manager = CandidateExecutableMaterializationManagerV1(root, crash_at="after_confirmation_receipt")
+    preview = manager.create_preview(OBJECTIVE_ID, proposal["proposal_id"])
+
+    with pytest.raises(RuntimeError, match="after_confirmation_receipt"):
+        manager.confirm(OBJECTIVE_ID, proposal["proposal_id"], {
+            "confirmed": True,
+            "reviewer": "bridge-reviewer",
+            "preview_hash": preview["preview_hash"],
+            "idempotency_key": "RECEIPT_SEMANTICS_V1",
+        })
+
+    confirmation_path = root / "reports/research_candidates/proposals" / OBJECTIVE_ID / "EXECUTABLE_MATERIALIZATION_CONFIRMATION.json"
+    receipt = json.loads(confirmation_path.read_text(encoding="utf-8"))
+    assert receipt["schema_version"] == EXECUTABLE_MATERIALIZATION_CONFIRMATION_SCHEMA_VERSION
+    assert receipt["confirmation_status"] == "CONFIRMED"
+    assert receipt["materialization_complete"] is False
+    assert receipt["contract_materialization_required"] is True
+    assert receipt["resulting_state"] == EXECUTABLE_MATERIALIZATION_RECOVERY_REQUIRED
+    assert receipt["next_action"] == RECOVER_EXECUTABLE_MATERIALIZATION
+    assert receipt["automatic_structural_preflight"] is False
+    assert receipt.get("structural_preflight_ready") is not True
+
+    state = CandidateExecutableMaterializationManagerV1(root).read_state(OBJECTIVE_ID, proposal["proposal_id"])
+    assert state["materialization_state"] == EXECUTABLE_MATERIALIZATION_RECOVERY_REQUIRED
+    assert state["structural_preflight_ready"] is False
+    assert state["executable_candidate_frozen"] is False
+    assert state["safe_to_advance"] is False
+    assert state["materialization_contract_present"] is False
+
+    report = ObjectiveReconciliationServiceV1(root).reconcile(OBJECTIVE_ID)
+    assert report["effective_state"] == EXECUTABLE_MATERIALIZATION_RECOVERY_REQUIRED
+    assert report["structural_preflight_ready"] is False
+    assert report["candidate_reconciliation"]["executable_frozen_candidate"] is False
+
+    class CountingRuntime:
+        structural_calls = 0
+
+        def structural_preflight(self, *args: object, **kwargs: object) -> object:
+            self.structural_calls += 1
+            return None
+
+    runtime = CountingRuntime()
+    with pytest.raises(StructuralEntryError):
+        StructuralEntryServiceV1(root, runtime=runtime).start(OBJECTIVE_ID, candidate_id=preview["candidate_id"])
+    assert runtime.structural_calls == 0
+
+
+def test_existing_contract_same_candidate_identity_but_different_content_hash_fails_before_receipt(tmp_path: Path) -> None:
+    root, proposal, contract = _bridge_fixture(tmp_path / "existing-contract-mismatch")
+    manager = CandidateExecutableMaterializationManagerV1(root)
+    preview = manager.create_preview(OBJECTIVE_ID, proposal["proposal_id"])
+    target = root / "data/research/research_factory/batches" / BATCH_ID / "durable_frozen_candidate_contracts.json"
+    conflicting_payload = contract.to_dict()
+    conflicting_payload["created_frozen_timestamp"] = "2026-09-06T00:00:00+08:00"
+    conflicting_payload["content_hash"] = stable_hash({key: value for key, value in conflicting_payload.items() if key != "content_hash"})
+    conflicting = DurableFrozenCandidateContractV1.from_dict(conflicting_payload)
+    registry = DurableFrozenCandidateContractRegistryV1(target)
+    registry.append(conflicting)
+    registry.write()
+    budget_path = root / "data/research/research_factory/batches" / BATCH_ID / "search_budget_registry.json"
+    budget_before = budget_path.read_bytes()
+    confirmation_path = root / "reports/research_candidates/proposals" / OBJECTIVE_ID / "EXECUTABLE_MATERIALIZATION_CONFIRMATION.json"
+
+    with pytest.raises(CandidateExecutableMaterializationError) as error:
+        manager.confirm(OBJECTIVE_ID, proposal["proposal_id"], {
+            "confirmed": True,
+            "reviewer": "bridge-reviewer",
+            "preview_hash": preview["preview_hash"],
+            "idempotency_key": "EXISTING_CONTRACT_MISMATCH_V1",
+        })
+
+    assert error.value.code == "CANONICAL_CANDIDATE_IDENTITY_CONFLICT"
+    assert error.value.details["preview_contract_hash"] == preview["durable_contract_hash"]
+    assert error.value.details["existing_contract_hash"] == conflicting.content_hash
+    assert not confirmation_path.exists()
+    assert not (root / "reports/research_daemon").exists()
+    assert budget_path.read_bytes() == budget_before
+
+    state = manager.read_state(OBJECTIVE_ID, proposal["proposal_id"])
+    assert state["materialization_state"] == "CANONICAL_CANDIDATE_IDENTITY_CONFLICT"
+    assert state["structural_preflight_ready"] is False
+    assert state["executable_candidate_frozen"] is False
+    assert state["materialization_confirmation_present"] is False
+    assert state["materialization_contract_present"] is True
+    assert state["materialization_identity_match"] is False
+    assert len(json.loads(target.read_text(encoding="utf-8"))["contracts"]) == 1
+
+    report = ObjectiveReconciliationServiceV1(root).reconcile(OBJECTIVE_ID)
+    assert report["conflict_level"] == "CANONICAL_CONFLICT"
+    assert "CANONICAL_CANDIDATE_IDENTITY_CONFLICT" in report["conflicts"]
+    assert report["structural_preflight_ready"] is False
+    assert report["candidate_reconciliation"]["executable_frozen_candidate"] is False
+
+    class CountingRuntime:
+        structural_calls = 0
+
+        def structural_preflight(self, *args: object, **kwargs: object) -> object:
+            self.structural_calls += 1
+            return None
+
+    runtime = CountingRuntime()
+    with pytest.raises(StructuralEntryError):
+        StructuralEntryServiceV1(root, runtime=runtime).start(OBJECTIVE_ID, candidate_id=contract.candidate_id)
+    assert runtime.structural_calls == 0
 
 
 def test_crash_after_contract_append_restarts_to_ready_and_retries_exactly_once(tmp_path: Path) -> None:
