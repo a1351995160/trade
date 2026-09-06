@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ConsoleApiError, consoleApi, DEFAULT_OBJECTIVE_ID } from './api'
-import type { AIInvocationModeView, AIResearchTaskListResponse, AIStatusView, CandidateDetailView, CandidateListResponse, CandidateProposalView, CandidateSummaryView, CloseoutView, ContractCorrectionPreview, DaemonHealthView, DaemonStatusView, DashboardView, DataHealthView, GovernanceActionChoice, GovernanceChoice, GovernanceDecisionView, GovernanceExecutionPreview, GovernanceExecutionReceipt, GovernancePreviewCatalog, ManualAIHandoffView, NoOutcomeHandoffView, OperationResult, OperationsView, OrchestratorEventView, OrchestratorEventsView, OrchestratorStatusView, ParentCandidateIdentityRef, PredictiveAuthorizationPreview, PredictiveTrialResumePreview, PredictiveTrialStartPreview, ResearchEvolutionAIDesignView, ResearchEvolutionProposalView, ResearchEvolutionView, ResearchObjectiveListView, ResearchObjectiveSummaryView, ResearchPipelineView, ReportIndexView, SearchBudgetView, ShadowDailyView, StructuralPreflightView, TrialDetailView, TrialReconciliationPreview, TrialSummaryView } from './types'
+import type { AIInvocationModeView, AIResearchTaskListResponse, AIStatusView, AutonomousControlPlaneView, CandidateDetailView, CandidateListResponse, CandidateProposalView, CandidateSummaryView, CloseoutView, ContractCorrectionPreview, DaemonHealthView, DaemonStatusView, DashboardView, DataHealthView, GovernanceActionChoice, GovernanceChoice, GovernanceDecisionView, GovernanceExecutionPreview, GovernanceExecutionReceipt, GovernancePreviewCatalog, ManualAIHandoffView, NoOutcomeHandoffView, OperationResult, OperationsView, OrchestratorEventView, OrchestratorEventsView, OrchestratorStatusView, ParentCandidateIdentityRef, PredictiveAuthorizationPreview, PredictiveTrialResumePreview, PredictiveTrialStartPreview, ResearchEvolutionAIDesignView, ResearchEvolutionProposalView, ResearchEvolutionView, ResearchObjectiveListView, ResearchObjectiveSummaryView, ResearchPipelineView, ReportIndexView, SearchBudgetView, ShadowDailyView, StructuralPreflightView, TrialDetailView, TrialReconciliationPreview, TrialSummaryView } from './types'
 import { candidatePresentation, displayClassification, displayExecutionFeasibility, displayFactor, displayMechanism, displayPIT, displayReason, displayState, formatBytes, formatCoverage, formatDate, freshnessLabel, humanReportCategory, humanReportTitle, objectivePresentation, sourceLabel, stageLabel, termHelp, timingLabel } from './presentation'
 import CandidateDisplayName from './components/CandidateDisplayName.vue'
 import CandidateId from './components/CandidateId.vue'
@@ -52,6 +52,7 @@ const evolutionAIDesign = ref<ResearchEvolutionAIDesignView | null>(null)
 const candidateProposals = ref<CandidateProposalView | null>(null)
 const openedReport = ref<Record<string, unknown> | null>(null)
 const orchestrator = ref<OrchestratorStatusView | null>(null)
+const autonomousControlPlane = ref<AutonomousControlPlaneView | null>(null)
 const orchestratorEvents = ref<OrchestratorEventsView | null>(null)
 const aiStatus = ref<AIStatusView | null>(null)
 const manualAiHandoff = ref<ManualAIHandoffView | null>(null)
@@ -98,6 +99,7 @@ const toasts = ref<{ id: string; title: string; body: string }[]>([])
 const pendingOperation = ref<string | null>(null)
 const pendingGovernance = ref<GovernanceActionChoice | null>(null)
 const operationBusy = ref(false)
+const autonomousTickBusy = ref(false)
 const governanceBusy = ref(false)
 const structuralReconciliationBusy = ref(false)
 const predictiveAuthorizationBusy = ref(false)
@@ -822,18 +824,20 @@ async function loadView(silent = false) {
         break
       }
       case 'autonomous': {
-        const [nextOrchestrator, nextEvents, nextPipeline, nextCloseout, nextGovernance] = await Promise.all([
+        const [nextOrchestrator, nextEvents, nextPipeline, nextCloseout, nextGovernance, nextControlPlane] = await Promise.all([
           read(() => consoleApi.orchestrator(objectiveId.value, signal), issues),
           read(() => consoleApi.orchestratorEvents(objectiveId.value, 50, signal), issues),
           read(() => consoleApi.pipeline(objectiveId.value, signal), issues),
           readOptional(() => consoleApi.closeout(objectiveId.value, signal), issues, ['CLOSEOUT_NOT_FOUND']),
           readOptional(() => consoleApi.governanceDecision(objectiveId.value, signal), issues, ['GOVERNANCE_NOT_FOUND']),
+          read(() => consoleApi.autonomousControlPlane(objectiveId.value, signal), issues),
         ])
         if (nextOrchestrator) orchestrator.value = nextOrchestrator
         applyEvents(nextEvents)
         if (nextPipeline) pipeline.value = nextPipeline
         if (nextCloseout) closeout.value = nextCloseout
         if (nextGovernance) governance.value = nextGovernance
+        if (nextControlPlane) autonomousControlPlane.value = nextControlPlane
         break
       }
       case 'ai-researcher': {
@@ -1015,6 +1019,18 @@ function startPolling() {
 }
 function onVisibilityChange() { if (!document.hidden && !requestActive) loadView(true) }
 function refresh() { loadView(true) }
+async function runAutonomousTick() {
+  if (autonomousTickBusy.value) return
+  autonomousTickBusy.value = true
+  try {
+    autonomousControlPlane.value = await consoleApi.autonomousControlPlaneTick(objectiveId.value)
+    pageError.value = null
+    toasts.value = [{ id: `autonomous-${Date.now()}`, title: '自主 tick 已完成', body: autonomousControlPlane.value.stop_reason === 'ONE_ACTION_EXECUTED' ? '已执行一个允许的动作，并已停止等待下一次对账。' : '当前动作已按权限与人工边界停止。' }, ...toasts.value].slice(0, 4)
+    await loadView(true)
+  } catch (error) {
+    pageError.value = error instanceof ConsoleApiError ? error : new ConsoleApiError('自主 tick 未完成，请查看当前研究状态。')
+  } finally { autonomousTickBusy.value = false }
+}
 async function openReport(item: Record<string, unknown>) {
   const id = reportId(item)
   if (!id) return
@@ -1058,6 +1074,7 @@ onBeforeUnmount(() => { controller?.abort(); if (pollTimer) window.clearInterval
         <template v-else-if="view === 'autonomous'">
           <div class="page-heading"><div><span class="eyebrow">{{ pageMeta.eyebrow }}</span><h1>{{ pageMeta.title }}</h1><p>{{ pageMeta.description }}</p></div><FreshnessBadge v-if="orchestrator" :state="orchestrator.freshness_state" source="自主研究编排器" :generated-at="orchestrator.source_generated_at" /></div>
           <section class="autonomous-status surface"><div><span class="eyebrow">当前研究状态</span><h2>{{ topStatus }}</h2><p>状态由自主研究编排器读取；研究守护进程只作为运行层上下文。</p></div><div class="status-pair"><span class="status-chip tone-active">编排状态 · {{ canonicalStateZh }}</span><span class="status-chip tone-muted">本地执行状态 · {{ daemonStateZh }}</span></div></section>
+          <section class="surface padded autonomous-control-panel" data-testid="autonomous-control-plane"><div class="section-heading"><div><span class="eyebrow">Autonomous Research Control Plane</span><h2>下一步动作与执行边界</h2><p>每次只对账、计划并最多执行一个允许动作；执行后立即停止，下一步必须重新读取 canonical 状态。</p></div><button class="button-primary" type="button" :disabled="autonomousTickBusy || !objectiveIdExplicit" @click="runAutonomousTick">{{ autonomousTickBusy ? '执行中…' : '运行一次 Autonomous Tick' }}</button></div><div class="autonomous-control-grid"><dl class="detail-list"><div><dt>Canonical 状态</dt><dd>{{ autonomousControlPlane?.decision.current_effective_state || '正在读取' }}</dd></div><div><dt>Next Action</dt><dd><code>{{ autonomousControlPlane?.decision.selected_action?.action_type || '暂无' }}</code></dd></div><div><dt>权限</dt><dd><span class="status-chip" :class="autonomousControlPlane?.decision.permission?.permission === 'ALLOW_AUTOMATIC' ? 'tone-success' : autonomousControlPlane?.decision.permission?.permission === 'ALLOW_MANUAL_ONLY' ? 'tone-governance' : 'tone-attention'">{{ autonomousControlPlane?.decision.permission?.permission || '暂无' }}</span></dd></div><div><dt>自动 / 人工</dt><dd>{{ autonomousControlPlane?.decision.automatic_execution ? '允许自动执行' : autonomousControlPlane?.decision.requires_human ? '必须人工确认' : '已阻断' }}</dd></div></dl><dl class="detail-list"><div><dt>阻断原因</dt><dd>{{ autonomousControlPlane?.stop_reason || '暂无' }}<small class="objective-source">{{ autonomousControlPlane?.decision.permission?.reason_zh || '' }}</small></dd></div><div><dt>上下文新鲜度</dt><dd>{{ autonomousControlPlane?.context?.freshness?.status || '暂无' }}</dd></div><div><dt>预算摘要</dt><dd>{{ autonomousControlPlane?.budget?.used ?? '—' }} / {{ autonomousControlPlane?.budget?.total ?? '—' }}，剩余 {{ autonomousControlPlane?.budget?.remaining ?? '—' }}</dd></div><div><dt>最近执行回执</dt><dd>{{ autonomousControlPlane?.execution?.execution_status || '本 tick 未执行' }}</dd></div></dl></div><p class="plain-note">OutcomeBlind：{{ autonomousControlPlane?.outcome_blind ? '是' : '否' }} · Predictive Trial、Final、Prospective、Real Order 本轮不由控制平面执行。</p><TechnicalDetails compact label="查看决策与回执身份" :raw="technicalEntries({ decision_id: autonomousControlPlane?.decision?.decision_id, decision_hash: autonomousControlPlane?.decision?.decision_hash, action_id: autonomousControlPlane?.decision?.selected_action?.action_id, source_reconciliation_hash: autonomousControlPlane?.decision?.source_reconciliation_hash, source_context_hash: autonomousControlPlane?.decision?.source_context_hash, receipt_hash: autonomousControlPlane?.execution?.receipt?.receipt_hash })" /></section>
           <section class="dashboard-grid autonomous-grid"><article class="surface padded"><div class="section-heading"><div><span class="eyebrow">研究目标</span><h2>当前研究目标</h2></div><span class="status-chip tone-attention">不可变</span></div><strong class="objective-title">{{ objectiveDisplay.name }}</strong><p class="candidate-summary">{{ canonicalStateZh }}。页面只展示此研究目标已登记的状态、候选和预算，不把其他研究轮次的数据拼接进来。</p><TechnicalDetails :entries="{ 研究目标技术编号: objectiveId, 当前状态: canonicalState, 当前终态原因: orchestrator?.terminal_reason || '当前未登记终态原因' }" /></article><article class="surface padded"><div class="section-heading"><div><span class="eyebrow">预算与结果</span><h2>本轮研究摘要</h2></div></div><div class="metric-grid compact-metrics"><div><span>已使用 / 总额</span><b>{{ budgetValue('used') }} / {{ budgetValue('total') }}</b></div><div><span>剩余</span><b>{{ budgetValue('remaining') }}</b></div><div><span>研究通过</span><b>{{ countFor('RESEARCH_PASSED') }}</b></div><div><span>有潜力</span><b>{{ countFor('PROMISING') }}</b></div><div><span>尚未正式验证</span><b>{{ closeout?.unevaluated_candidates.count ?? '暂无收官数据' }}</b></div><div><span>稳健 Alpha</span><b>{{ closeout ? (closeout.robust_alpha_established ? '已建立' : '未建立') : '暂无收官数据' }}</b></div></div></article></section>
           <section class="surface padded"><div class="section-heading"><div><span class="eyebrow">运行与收官</span><h2>当前研究上下文</h2></div><button class="text-button" type="button" @click="navigate('/research/operations')">查看运行控制 →</button></div><dl class="detail-list"><div><dt>当前候选策略</dt><dd>{{ orchestrator?.current_candidate ? nameFor(String(orchestrator.current_candidate.candidate_id || '')) : '当前终态无正在处理的候选策略' }}<TechnicalDetails compact :entries="{ 候选策略技术编号: orchestrator?.current_candidate?.candidate_id || '无' }" /></dd></div><div><dt>当前预测试验</dt><dd>{{ orchestrator?.current_trial?.trial_id || '当前终态无正在处理的预测试验' }}</dd></div><div><dt>终态原因</dt><dd>{{ terminalReasonZh }}<TechnicalDetails compact :entries="{ 原因代码: orchestrator?.terminal_reason || '未提供' }" /></dd></div><div><dt>自动收官</dt><dd>{{ orchestrator?.closeout_complete ? '已完成' : '尚未完成' }} · <button class="text-button" type="button" @click="navigate('/research/closeout')">打开收官页</button></dd></div><div><dt>治理决策</dt><dd>{{ orchestrator?.waiting_for_governance ? '等待人工决定' : '当前无需治理决定' }} · <button v-if="orchestrator?.waiting_for_governance" class="text-button" type="button" @click="navigate('/research/governance')">打开治理页</button></dd></div><div><dt>必须的人工动作</dt><dd>{{ orchestrator?.waiting_for_governance ? '选择并明确确认治理决定' : '当前没有必须的人工动作' }}</dd></div></dl></section>
           <section class="surface pipeline-surface"><div class="section-heading"><div><span class="eyebrow">完整生命周期</span><h2>研究流程</h2><p>候选设计、冻结、结构预检、预测验证、统计判断与最终分类均来自已登记状态。</p></div><button class="text-button" type="button" @click="navigate('/research/pipeline')">查看详细进度 →</button></div><PipelineStepper :stages="pipeline?.stages || [{ stage: 'HYPOTHESIS' }, { stage: 'CANDIDATE' }, { stage: 'FREEZE' }, { stage: 'STRUCTURAL' }, { stage: 'PREDICTIVE' }, { stage: 'STATISTICAL' }, { stage: 'FINAL_CLASSIFICATION' }]" :current-stage="pipeline?.current_stage || orchestrator?.orchestrator_state" /></section>

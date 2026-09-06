@@ -615,8 +615,8 @@ def test_fastapi_console_routes_keep_reads_separate_from_protected_writes(consol
     console_routes = [route for route in webapp.app.routes if getattr(route, "path", "").startswith("/api/research-console/")]
     read_routes = [route for route in console_routes if getattr(route, "methods", set()) <= {"GET"}]
     write_routes = [route for route in console_routes if "POST" in getattr(route, "methods", set())]
-    assert len(read_routes) == 45
-    assert len(write_routes) == 24
+    assert len(read_routes) == 46
+    assert len(write_routes) == 25
     assert all(getattr(route, "methods", set()) <= {"GET"} for route in read_routes)
     assert all(getattr(route, "methods", set()) <= {"POST"} for route in write_routes)
     assert all("shell" not in getattr(route, "path", "").lower() for route in console_routes)
@@ -628,9 +628,11 @@ def test_fastapi_console_routes_keep_reads_separate_from_protected_writes(consol
     assert any(route.path.endswith("/evolution/ai-design/approval") for route in read_routes)
     assert any(route.path.endswith("/candidate-proposals") for route in read_routes)
     assert any(route.path.endswith("/candidate-proposals/materialization") for route in read_routes)
+    assert any(route.path.endswith("/autonomous-control-plane") for route in read_routes)
     assert any(route.path.endswith("/candidate-proposals/generate") for route in write_routes)
     assert any(route.path.endswith("/candidate-proposals/materialization/preview") for route in write_routes)
     assert any(route.path.endswith("/candidate-proposals/materialization/confirm") for route in write_routes)
+    assert any(route.path.endswith("/autonomous-control-plane/tick") for route in write_routes)
     with TestClient(webapp.app) as client:
         objectives = client.get("/api/research-console/objectives")
         assert objectives.status_code == 200

@@ -21,6 +21,7 @@
 | Budget | SearchBudgetRegistryV1 | daemon/orchestrator budget view | 多个 registry 必须通过不可变治理/Objective receipt 或显式 canonical ref 选定，否则歧义 |
 | Lineage | ArtifactGraph 与不可变 lineage | console、checkpoint canonical_refs | 缺边是 REPAIRABLE_INDEX_DRIFT；身份/哈希冲突是 CANONICAL_CONFLICT |
 | Daemon / Orchestrator | 无，二者均为 RUNTIME_PROJECTION | — | checkpoint 不是 canonical truth |
+| Autonomous Research Control Plane | 无，Decision 与 Action Execution Receipt 均为 RUNTIME_DECISION_EVIDENCE | Console、控制平面状态、下一动作与恢复记录 | 只读 canonical facts；不能替代 Objective、Candidate、Trial、Budget、Structural、Predictive、Final、Prospective 或 Real Order authority |
 
 ## Objective Dialect
 
@@ -77,3 +78,18 @@ CLI 只写：
 - reports/research_reconciliation/CURRENT_OBJECTIVE_RECONCILIATION_INDEX_V1.md
 
 JSON 面向机器，Markdown 使用简体中文。服务本身的 reconcile() 只读；只有显式调用报告写入方法或 CLI 时才产生上述报告文件。
+
+## Autonomous Control Plane V1 边界
+
+`AutonomousResearchControlPlaneV1` 是 Phase 2 的单 Objective、结果盲化控制平面。它先执行 Objective Reconciliation，再构建 SafeRuntimeContext、解析 Capability 与 Permission，最后最多执行一个已经获得自动权限的副作用动作；动作完成后立即停止并等待下一轮 canonical reconciliation。
+
+控制平面只允许自动执行以下三类已有治理服务动作：生成 Candidate Proposal、创建 Executable Materialization Preview、恢复已经人工确认的同一 Materialization。AI Design 生成、Candidate Governance Freeze、Executable Materialization Confirmation、Structural Entry、Predictive Authorization 与 Trial 结果对账均停在人工闸门；Phase 2 不启动 Predictive Trial，不读取性能结果，不执行 Final Test、Prospective Simulation 或 Real Order。
+
+运行时决策写入 `reports/research_control_plane/<objective_id>/AUTONOMOUS_RESEARCH_DECISION_V1.json`，精确一次执行回执写入 `action_execution_receipts.jsonl`。这些文件只能证明控制平面观察到的状态、计划与执行尝试，不能建立任何 canonical authority。回执若停留在 `STARTED`，下一轮只允许先通过 canonical state 判断是否已经产生副作用：已产生则补齐完成回执，否则显式标记 retry 后重试同一 idempotency key。
+
+CLI 示例：
+
+    python -m chanlun_trader.research_factory.autonomous_control_plane --root . --objective-id <OBJECTIVE_ID> --inspect --json
+    python -m chanlun_trader.research_factory.autonomous_control_plane --root . --objective-id <OBJECTIVE_ID> --tick --dry-run --json
+
+`inspect` 与 `--dry-run` 不产生运行时写入。Web Console 只通过同一只读读模型展示状态，并通过本机请求触发单 tick；服务端拒绝非本机控制请求。

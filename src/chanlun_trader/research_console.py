@@ -47,6 +47,7 @@ from .research_factory.candidate_executable_materialization import (
 )
 from .research_factory.objective_reconciliation import ObjectiveReconciliationServiceV1
 from .research_factory.safe_runtime_context import SafeRuntimeContextBuilderV1, SafeRuntimeContextError
+from .research_factory.autonomous_control_plane import AutonomousControlPlaneError, AutonomousResearchControlPlaneV1
 from .research_factory.promising_followup_scope import candidate_scope_info, load_scope_manifest
 from .research_factory.research_evolution_proposal import COVERAGE_FILENAME, PROPOSAL_FILENAME
 from .research_factory.research_proposal_governance import ResearchProposalGovernanceError, ResearchProposalGovernanceServiceV1
@@ -765,6 +766,7 @@ class ResearchConsoleReadService:
         self.objective_reconciliation = ObjectiveReconciliationServiceV1(self.root)
         self.safe_runtime_context = SafeRuntimeContextBuilderV1(self.root, clock=self._clock)
         self.safe_runtime_context_builder = self.safe_runtime_context
+        self.autonomous_control_plane = AutonomousResearchControlPlaneV1(self.root, clock=self._clock)
 
     @property
     def cache_stats(self) -> dict[str, int]:
@@ -3269,6 +3271,20 @@ class ResearchConsoleReadService:
             raise ResearchConsoleReadError(exc.code, exc.message_zh, status_code=exc.status_code, details=exc.details) from exc
         except PerformanceLeakError as exc:
             raise ResearchConsoleReadError("OUTCOME_LEAK_DETECTED", "安全运行时上下文包含被禁止的绩效字段", status_code=503) from exc
+
+    def get_autonomous_control_plane(self, objective_id: str) -> dict[str, Any]:
+        """Return a read-only control-plane decision projection."""
+        self._objective(objective_id)
+        try:
+            payload = self.autonomous_control_plane.inspect(objective_id)
+            PerformanceBlindGuard.assert_blind(payload)
+            return payload
+        except ResearchConsoleReadError:
+            raise
+        except AutonomousControlPlaneError as exc:
+            raise ResearchConsoleReadError(exc.code, exc.message_zh, status_code=exc.status_code, details=exc.details) from exc
+        except PerformanceLeakError as exc:
+            raise ResearchConsoleReadError("OUTCOME_LEAK_DETECTED", "控制平面视图包含被禁止的绩效字段", status_code=503) from exc
 
     def get_candidate_proposals(self, objective_id: str) -> CandidateProposalView:
         """Read Candidate Proposal governance without generating or freezing anything."""

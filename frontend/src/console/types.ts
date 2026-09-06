@@ -38,6 +38,67 @@ export interface DashboardView extends Provenance {
   predictive_trial_recovery?: PredictiveTrialResumePreview
 }
 
+export interface AutonomousResearchActionView {
+  action_id: string
+  action_type: string
+  objective_id: string
+  candidate_id: string
+  candidate_hash: string
+  trial_id: string
+  required_state: string
+  source_state: string
+  source_context_id: string
+  source_context_hash: string
+  source_reconciliation_hash: string
+  required_capabilities: string[]
+  required_authorities: string[]
+  human_confirmation_required: boolean
+  automatic_execution_allowed: boolean
+  budget_effect: JsonRecord
+  performance_access_required: boolean
+  outcome_blind: boolean
+  idempotency_key: string
+  created_at: string
+  required_confirmation: string | null
+}
+
+export interface AutonomousResearchDecisionView {
+  decision_id: string
+  objective_id: string
+  source_reconciliation_hash: string
+  source_context_id: string
+  source_context_hash: string
+  current_effective_state: string
+  available_capabilities: string[]
+  candidate_actions: AutonomousResearchActionView[]
+  selected_action: AutonomousResearchActionView
+  permission: JsonRecord
+  blocking_reasons: string[]
+  requires_human: boolean
+  automatic_execution: boolean
+  decision_timestamp: string
+  outcome_blind: boolean
+  decision_hash: string
+  control_state: string
+}
+
+export interface AutonomousControlPlaneView {
+  schema_version: string
+  objective_id: string
+  dry_run: boolean
+  control_state: string
+  stop_reason: string
+  decision: AutonomousResearchDecisionView
+  reconciliation: JsonRecord
+  context: JsonRecord
+  budget: JsonRecord
+  capabilities: JsonRecord
+  authorization: JsonRecord
+  execution: JsonRecord | null
+  continue_loop: boolean
+  outcome_blind: boolean
+}
+
 export interface DaemonStatusView extends Provenance {
   objective_id: string
   daemon_state: string

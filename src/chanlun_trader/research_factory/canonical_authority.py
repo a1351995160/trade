@@ -58,6 +58,7 @@ class CanonicalAuthorityContractV1:
         "Structural provider output is execution evidence; only the reconciled Structural Result is a research fact and Structural authority.",
         "Canonical facts flow one way into Daemon, Orchestrator, and Console projections; a stale projection never rewrites a canonical fact.",
         "Daemon and Orchestrator checkpoints are runtime projections and never replace canonical facts.",
+        "Autonomous Research Decisions and Action Execution Receipts are runtime decision evidence only; they cannot create or replace Objective, Candidate, Trial, Budget, Structural, Predictive, Final, Prospective, or Real Order authority.",
     )
     entries: tuple[CanonicalAuthorityEntryV1, ...] = (
         CanonicalAuthorityEntryV1(
@@ -203,6 +204,14 @@ class CanonicalAuthorityContractV1:
             (),
             ("objective_id", "canonical effective state hash", "projection freshness"),
             "Console reads reconciled canonical state and may display projection drift; it never promotes a checkpoint into authority.",
+        ),
+        CanonicalAuthorityEntryV1(
+            "Autonomous Research Decision",
+            "RUNTIME_DECISION_EVIDENCE",
+            "reports/research_control_plane/<objective_id>/AUTONOMOUS_RESEARCH_DECISION_V1.json and action_execution_receipts.jsonl",
+            ("Console control-plane view", "CLI inspect/tick output", "loop runtime status"),
+            ("decision_id", "objective_id", "source_reconciliation_hash", "source_context_id", "source_context_hash", "decision_hash"),
+            "A decision artifact explains one outcome-blind runtime choice and its exact-once execution evidence. It cannot establish canonical lifecycle, approvals, Candidate identity, Trial identity, Budget consumption, Structural result, Predictive authorization, Final, Prospective, or Real Order facts.",
         ),
     )
 
