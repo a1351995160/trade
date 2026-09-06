@@ -15,7 +15,6 @@ from chanlun_trader.research_factory.objective_reconciliation import (
     ObjectiveDialectClassifierV1,
     ObjectiveReconciliationServiceV1,
     PROJECTION_DRIFT,
-    READY_FOR_STRUCTURAL_PREFLIGHT,
     REPAIRABLE_INDEX_DRIFT,
 )
 
@@ -278,7 +277,7 @@ def test_matrix_c_registry_and_contract_hash_mismatch_is_canonical_conflict(
     assert report["safe_to_resume"] is False
 
 
-def test_matrix_d_unique_full_contract_is_ready_for_structural_preflight(
+def test_matrix_d_unique_full_contract_without_confirmation_is_blocked(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -290,8 +289,10 @@ def test_matrix_d_unique_full_contract_is_ready_for_structural_preflight(
     contract = report["candidate_reconciliation"]["durable_contracts"][0]
     assert contract["from_dict"] == "PASS"
     assert contract["provider_candidate_payload"] == "PASS"
-    assert report["effective_state"] == READY_FOR_STRUCTURAL_PREFLIGHT
-    assert report["structural_preflight_ready"] is True
+    assert report["effective_state"] == "EXECUTABLE_MATERIALIZATION_CONFIRMATION_MISSING"
+    assert report["required_action"] == "HUMAN_CONFIRM_EXECUTABLE_MATERIALIZATION"
+    assert report["structural_preflight_ready"] is False
+    assert report["candidate_reconciliation"]["executable_frozen_candidate"] is False
 
 
 def test_matrix_e_canonical_budget_wins_over_stale_daemon_budget_projection(tmp_path: Path) -> None:

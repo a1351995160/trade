@@ -14,10 +14,13 @@ from chanlun_trader.research_factory.candidate_executable_materialization import
     CANDIDATE_SEMANTIC_DRIFT,
     CandidateExecutableMaterializationError,
     CandidateExecutableMaterializationManagerV1,
+    EXECUTABLE_MATERIALIZATION_CONFIRMATION_MISSING,
     EXECUTABLE_CONTRACT_INVALID,
     EXECUTABLE_MATERIALIZATION_INCOMPLETE,
     EXECUTABLE_MATERIALIZATION_PREVIEW_READY,
+    EXECUTABLE_MATERIALIZATION_RECOVERY_REQUIRED,
     INTEGRITY_FAILURE,
+    MATERIALIZATION_IDEMPOTENCY_CONFLICT,
     READY_FOR_STRUCTURAL_PREFLIGHT,
     RUN_STRUCTURAL_PREFLIGHT,
     STALE_EXECUTABLE_MATERIALIZATION_PREVIEW,
@@ -29,10 +32,12 @@ from chanlun_trader.research_factory.candidate_generation import (
 )
 from chanlun_trader.research_factory.common import stable_hash
 from chanlun_trader.research_factory.durability import (
+    DurableFrozenCandidateContractRegistryV1,
     DurableFrozenCandidateContractV1,
     FROZEN_CANDIDATE_CONTRACT_REGISTRY_SCHEMA,
 )
 from chanlun_trader.research_factory.objective_reconciliation import ObjectiveReconciliationServiceV1
+from chanlun_trader.research_factory.structural_entry import StructuralEntryError, StructuralEntryServiceV1
 from chanlun_trader.research_factory.research_evolution_ai_design import ResearchEvolutionAIDesignServiceV1
 from chanlun_trader.research.strategy_candidate import StrategyCandidateSpec
 from chanlun_trader.research.strategy_semantic import build_semantic_record
@@ -158,6 +163,12 @@ def _semantic_contract_fixture() -> DurableFrozenCandidateContractV1:
 
 def _bridge_fixture(tmp_path: Path) -> tuple[Path, dict, DurableFrozenCandidateContractV1]:
     root = _fixture_root(tmp_path)
+    _write_json(root, f"data/research/research_factory/batches/{BATCH_ID}/search_budget_registry.json", {
+        "objective_id": OBJECTIVE_ID,
+        "used": 0,
+        "reserved": 0,
+        "total": 4,
+    })
     ResearchEvolutionAIDesignServiceV1(root).generate_design(OBJECTIVE_ID)
     AIDesignApprovalServiceV1(root).approve(OBJECTIVE_ID, "bridge-reviewer", idempotency_key="BRIDGE_AI_APPROVAL_V1")
     proposal = CandidateGenerationManagerV1(root).generate_proposal(OBJECTIVE_ID)
@@ -389,7 +400,195 @@ def test_confirm_writes_one_valid_contract_without_budget_trial_structural_or_ai
     assert repeated["idempotent"] is True
     assert len(json.loads(paths[0].read_text(encoding="utf-8"))["contracts"]) == 1
     confirmation = json.loads((root / "reports/research_candidates/proposals" / OBJECTIVE_ID / "EXECUTABLE_MATERIALIZATION_CONFIRMATION.json").read_text(encoding="utf-8"))
-    assert {"confirmation_id", "preview_id", "preview_hash", "candidate_id", "candidate_hash", "reviewer", "confirmed_at", "idempotency_key", "receipt_hash"} <= set(confirmation)
+    assert {
+        "confirmation_id", "objective_id", "proposal_id", "preview_id", "preview_hash",
+        "candidate_id", "candidate_hash", "durable_contract_hash", "ai_design_id",
+        "ai_design_hash", "ai_design_approval_hash", "source_context_id", "source_context_hash",
+        "reviewer", "confirmed_at", "idempotency_key", "receipt_hash",
+    } <= set(confirmation)
+
+
+def test_crash_after_confirmation_receipt_is_recoverable_without_contract_or_side_effects(tmp_path: Path) -> None:
+    root, proposal, _ = _bridge_fixture(tmp_path / "receipt-first")
+    manager = CandidateExecutableMaterializationManagerV1(root, crash_at="after_confirmation_receipt")
+    preview = manager.create_preview(OBJECTIVE_ID, proposal["proposal_id"])
+    budget_path = root / "data/research/research_factory/batches" / BATCH_ID / "search_budget_registry.json"
+    budget_before = budget_path.read_bytes()
+
+    with pytest.raises(RuntimeError, match="after_confirmation_receipt"):
+        manager.confirm(OBJECTIVE_ID, proposal["proposal_id"], {
+            "confirmed": True,
+            "reviewer": "bridge-reviewer",
+            "preview_hash": preview["preview_hash"],
+            "idempotency_key": "CRASH_AFTER_RECEIPT_V1",
+        })
+
+    confirmation_path = root / "reports/research_candidates/proposals" / OBJECTIVE_ID / "EXECUTABLE_MATERIALIZATION_CONFIRMATION.json"
+    assert confirmation_path.exists()
+    assert not _durable_paths(root)
+    after_restart = CandidateExecutableMaterializationManagerV1(root).read_state(OBJECTIVE_ID, proposal["proposal_id"])
+    assert after_restart["materialization_state"] == EXECUTABLE_MATERIALIZATION_RECOVERY_REQUIRED
+    assert after_restart["materialization_confirmation_present"] is True
+    assert after_restart["materialization_confirmation_valid"] is True
+    assert after_restart["materialization_contract_present"] is False
+    assert after_restart["structural_preflight_ready"] is False
+    assert after_restart["safe_to_advance"] is False
+    reconciled = ObjectiveReconciliationServiceV1(root).reconcile(OBJECTIVE_ID)
+    assert reconciled["effective_state"] == EXECUTABLE_MATERIALIZATION_RECOVERY_REQUIRED
+    assert reconciled["required_action"] == "RECOVER_EXECUTABLE_MATERIALIZATION"
+    assert reconciled["structural_preflight_ready"] is False
+
+    recovered = CandidateExecutableMaterializationManagerV1(root).recover(OBJECTIVE_ID, proposal["proposal_id"])
+    assert recovered["materialization_state"] == READY_FOR_STRUCTURAL_PREFLIGHT
+    assert recovered["recovered"] is True
+    assert len(_durable_paths(root)) == 1
+    assert len(json.loads(_durable_paths(root)[0].read_text(encoding="utf-8"))["contracts"]) == 1
+    assert budget_path.read_bytes() == budget_before
+
+
+def test_crash_after_contract_append_restarts_to_ready_and_retries_exactly_once(tmp_path: Path) -> None:
+    root, proposal, _ = _bridge_fixture(tmp_path / "contract-first-restart")
+    manager = CandidateExecutableMaterializationManagerV1(root, crash_at="after_durable_contract_append")
+    preview = manager.create_preview(OBJECTIVE_ID, proposal["proposal_id"])
+    request = {
+        "confirmed": True,
+        "reviewer": "bridge-reviewer",
+        "preview_hash": preview["preview_hash"],
+        "idempotency_key": "CRASH_AFTER_CONTRACT_V1",
+    }
+    with pytest.raises(RuntimeError, match="after_durable_contract_append"):
+        manager.confirm(OBJECTIVE_ID, proposal["proposal_id"], request)
+
+    restarted = CandidateExecutableMaterializationManagerV1(root)
+    state = restarted.read_state(OBJECTIVE_ID, proposal["proposal_id"])
+    assert state["materialization_state"] == READY_FOR_STRUCTURAL_PREFLIGHT
+    assert state["materialization_confirmation_valid"] is True
+    assert state["materialization_identity_match"] is True
+    assert state["required_action"] == RUN_STRUCTURAL_PREFLIGHT
+    reconciled = ObjectiveReconciliationServiceV1(root).reconcile(OBJECTIVE_ID)
+    assert reconciled["effective_state"] == READY_FOR_STRUCTURAL_PREFLIGHT
+    assert reconciled["required_action"] == RUN_STRUCTURAL_PREFLIGHT
+    assert len(_durable_paths(root)) == 1
+    assert len(json.loads(_durable_paths(root)[0].read_text(encoding="utf-8"))["contracts"]) == 1
+
+    recovered = restarted.recover(OBJECTIVE_ID, proposal["proposal_id"])
+    assert recovered["materialization_state"] == READY_FOR_STRUCTURAL_PREFLIGHT
+    repeated = restarted.confirm(OBJECTIVE_ID, proposal["proposal_id"], request)
+    assert repeated["idempotent"] is True
+    assert len(json.loads(_durable_paths(root)[0].read_text(encoding="utf-8"))["contracts"]) == 1
+
+
+def test_different_materialization_idempotency_key_conflicts_without_overwrite(tmp_path: Path) -> None:
+    root, proposal, _ = _bridge_fixture(tmp_path)
+    manager = CandidateExecutableMaterializationManagerV1(root)
+    preview = manager.create_preview(OBJECTIVE_ID, proposal["proposal_id"])
+    request = {
+        "confirmed": True,
+        "reviewer": "bridge-reviewer",
+        "preview_hash": preview["preview_hash"],
+        "idempotency_key": "IDEMPOTENCY_ORIGINAL_V1",
+    }
+    manager.confirm(OBJECTIVE_ID, proposal["proposal_id"], request)
+    confirmation_path = root / "reports/research_candidates/proposals" / OBJECTIVE_ID / "EXECUTABLE_MATERIALIZATION_CONFIRMATION.json"
+    contract_path = _durable_paths(root)[0]
+    confirmation_before = confirmation_path.read_bytes()
+    contract_before = contract_path.read_bytes()
+
+    with pytest.raises(CandidateExecutableMaterializationError) as error:
+        manager.confirm(OBJECTIVE_ID, proposal["proposal_id"], {**request, "idempotency_key": "IDEMPOTENCY_OTHER_V1"})
+    assert error.value.code == MATERIALIZATION_IDEMPOTENCY_CONFLICT
+    assert confirmation_path.read_bytes() == confirmation_before
+    assert contract_path.read_bytes() == contract_before
+    assert manager.read_state(OBJECTIVE_ID, proposal["proposal_id"])["materialization_state"] == READY_FOR_STRUCTURAL_PREFLIGHT
+
+
+def test_contract_only_crash_state_is_fail_closed_at_reconciliation_and_structural_entry(tmp_path: Path) -> None:
+    root, proposal, contract = _bridge_fixture(tmp_path / "contract-only")
+    manager = CandidateExecutableMaterializationManagerV1(root)
+    preview = manager.create_preview(OBJECTIVE_ID, proposal["proposal_id"])
+    target = root / "data/research/research_factory/batches" / BATCH_ID / "durable_frozen_candidate_contracts.json"
+    registry = DurableFrozenCandidateContractRegistryV1(target)
+    registry.append(contract)
+    registry.write()
+
+    state = manager.read_state(OBJECTIVE_ID, proposal["proposal_id"])
+    assert state["materialization_state"] == EXECUTABLE_MATERIALIZATION_CONFIRMATION_MISSING
+    assert state["structural_preflight_ready"] is False
+    assert state["safe_to_advance"] is False
+    report = ObjectiveReconciliationServiceV1(root).reconcile(OBJECTIVE_ID)
+    assert report["effective_state"] == EXECUTABLE_MATERIALIZATION_CONFIRMATION_MISSING
+    assert report["required_action"] == "HUMAN_CONFIRM_EXECUTABLE_MATERIALIZATION"
+    assert report["candidate_reconciliation"]["executable_frozen_candidate"] is False
+    assert report["candidate_reconciliation"]["materialization_confirmation_present"] is False
+
+    class CountingRuntime:
+        structural_calls = 0
+
+        def structural_preflight(self, *args: object, **kwargs: object) -> object:
+            self.structural_calls += 1
+            return None
+
+    runtime = CountingRuntime()
+    with pytest.raises(StructuralEntryError) as error:
+        StructuralEntryServiceV1(root, runtime=runtime).start(OBJECTIVE_ID, candidate_id=contract.candidate_id)
+    assert error.value.code == "STRUCTURAL_ENTRY_GATE_BLOCKED"
+    assert runtime.structural_calls == 0
+    assert preview["durable_contract_hash"] == contract.content_hash
+
+
+def test_confirmation_and_contract_tamper_or_identity_mismatch_never_become_ready(tmp_path: Path) -> None:
+    root, proposal, _ = _bridge_fixture(tmp_path / "receipt-tamper")
+    manager = CandidateExecutableMaterializationManagerV1(root)
+    preview = manager.create_preview(OBJECTIVE_ID, proposal["proposal_id"])
+    manager.confirm(OBJECTIVE_ID, proposal["proposal_id"], {
+        "confirmed": True,
+        "reviewer": "bridge-reviewer",
+        "preview_hash": preview["preview_hash"],
+        "idempotency_key": "TAMPER_RECEIPT_V1",
+    })
+    receipt_path = root / "reports/research_candidates/proposals" / OBJECTIVE_ID / "EXECUTABLE_MATERIALIZATION_CONFIRMATION.json"
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    receipt["reviewer"] = "attacker"
+    receipt_path.write_text(json.dumps(receipt, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    tampered = CandidateExecutableMaterializationManagerV1(root).read_state(OBJECTIVE_ID, proposal["proposal_id"])
+    assert tampered["materialization_state"] == INTEGRITY_FAILURE
+    assert tampered["structural_preflight_ready"] is False
+
+    root2, proposal2, contract2 = _bridge_fixture(tmp_path / "contract-tamper")
+    manager2 = CandidateExecutableMaterializationManagerV1(root2)
+    preview2 = manager2.create_preview(OBJECTIVE_ID, proposal2["proposal_id"])
+    manager2.confirm(OBJECTIVE_ID, proposal2["proposal_id"], {
+        "confirmed": True,
+        "reviewer": "bridge-reviewer",
+        "preview_hash": preview2["preview_hash"],
+        "idempotency_key": "TAMPER_CONTRACT_V1",
+    })
+    contract_path = _durable_paths(root2)[0]
+    stored = json.loads(contract_path.read_text(encoding="utf-8"))
+    stored["contracts"][0]["mechanism"] = "tampered-mechanism"
+    contract_path.write_text(json.dumps(stored, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    invalid = CandidateExecutableMaterializationManagerV1(root2).read_state(OBJECTIVE_ID, proposal2["proposal_id"])
+    assert invalid["materialization_state"] == EXECUTABLE_CONTRACT_INVALID
+    assert invalid["structural_preflight_ready"] is False
+
+    root3, proposal3, contract3 = _bridge_fixture(tmp_path / "identity-mismatch")
+    manager3 = CandidateExecutableMaterializationManagerV1(root3)
+    preview3 = manager3.create_preview(OBJECTIVE_ID, proposal3["proposal_id"])
+    manager3.confirm(OBJECTIVE_ID, proposal3["proposal_id"], {
+        "confirmed": True,
+        "reviewer": "bridge-reviewer",
+        "preview_hash": preview3["preview_hash"],
+        "idempotency_key": "MISMATCH_CONTRACT_V1",
+    })
+    contract_path3 = _durable_paths(root3)[0]
+    stored3 = json.loads(contract_path3.read_text(encoding="utf-8"))
+    stored3["contracts"][0]["candidate_hash"] = "OTHER_HASH"
+    stored3["contracts"][0]["content_hash"] = stable_hash({key: value for key, value in stored3["contracts"][0].items() if key != "content_hash"})
+    contract_path3.write_text(json.dumps(stored3, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    mismatch = CandidateExecutableMaterializationManagerV1(root3).read_state(OBJECTIVE_ID, proposal3["proposal_id"])
+    assert mismatch["materialization_state"] == "CANONICAL_CANDIDATE_IDENTITY_CONFLICT"
+    assert mismatch["structural_preflight_ready"] is False
+    assert contract3.candidate_hash != "OTHER_HASH"
 
 
 def test_identity_conflict_and_invalid_provider_never_become_structural_ready(tmp_path: Path) -> None:

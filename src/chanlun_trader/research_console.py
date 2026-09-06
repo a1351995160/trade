@@ -36,7 +36,15 @@ from .research_factory.predictive_trial_start import PredictiveTrialStartError, 
 from .research_factory.ai_design_approval import AIDesignApprovalError, AIDesignApprovalServiceV1
 from .research_factory.research_evolution_ai_design import ResearchEvolutionAIDesignError, ResearchEvolutionAIDesignServiceV1
 from .research_factory.candidate_generation import CandidateGenerationError, CandidateGenerationManagerV1
-from .research_factory.candidate_executable_materialization import CandidateExecutableMaterializationError, CandidateExecutableMaterializationManagerV1
+from .research_factory.candidate_executable_materialization import (
+    CandidateExecutableMaterializationError,
+    CandidateExecutableMaterializationManagerV1,
+    EXECUTABLE_CONTRACT_INVALID,
+    EXECUTABLE_MATERIALIZATION_CONFIRMATION_MISSING,
+    EXECUTABLE_MATERIALIZATION_PREVIEW_READY,
+    EXECUTABLE_MATERIALIZATION_RECOVERY_REQUIRED,
+    INTEGRITY_FAILURE,
+)
 from .research_factory.objective_reconciliation import ObjectiveReconciliationServiceV1
 from .research_factory.safe_runtime_context import SafeRuntimeContextBuilderV1, SafeRuntimeContextError
 from .research_factory.promising_followup_scope import candidate_scope_info, load_scope_manifest
@@ -923,6 +931,11 @@ class ResearchConsoleReadService:
             reconciled_conflict = bool(reconciled and str(reconciled.get("conflict_level") or "") == "CANONICAL_CONFLICT")
             if reconciled_state in {
                 "READY_FOR_STRUCTURAL_PREFLIGHT",
+                EXECUTABLE_MATERIALIZATION_PREVIEW_READY,
+                EXECUTABLE_MATERIALIZATION_RECOVERY_REQUIRED,
+                EXECUTABLE_MATERIALIZATION_CONFIRMATION_MISSING,
+                EXECUTABLE_CONTRACT_INVALID,
+                INTEGRITY_FAILURE,
                 "STRUCTURAL_RUNNING",
                 "STRUCTURAL_BLOCKED",
                 "ENGINEERING_BLOCKED",
@@ -1151,6 +1164,11 @@ class ResearchConsoleReadService:
             reconciled_state = "CANONICAL_STATE_CONFLICT"
         if reconciled_state in {
             "READY_FOR_STRUCTURAL_PREFLIGHT",
+            EXECUTABLE_MATERIALIZATION_PREVIEW_READY,
+            EXECUTABLE_MATERIALIZATION_RECOVERY_REQUIRED,
+            EXECUTABLE_MATERIALIZATION_CONFIRMATION_MISSING,
+            EXECUTABLE_CONTRACT_INVALID,
+            INTEGRITY_FAILURE,
             "STRUCTURAL_RUNNING",
             "STRUCTURAL_BLOCKED",
             "ENGINEERING_BLOCKED",
@@ -2560,6 +2578,11 @@ class ResearchConsoleReadService:
         daemon_state = daemon.daemon_state
         if reconciled_state in {
             "READY_FOR_STRUCTURAL_PREFLIGHT",
+            EXECUTABLE_MATERIALIZATION_PREVIEW_READY,
+            EXECUTABLE_MATERIALIZATION_RECOVERY_REQUIRED,
+            EXECUTABLE_MATERIALIZATION_CONFIRMATION_MISSING,
+            EXECUTABLE_CONTRACT_INVALID,
+            INTEGRITY_FAILURE,
             "STRUCTURAL_RUNNING",
             "STRUCTURAL_BLOCKED",
             "ENGINEERING_BLOCKED",
@@ -2571,6 +2594,11 @@ class ResearchConsoleReadService:
             # running by itself.
             daemon_state = {
                 "READY_FOR_STRUCTURAL_PREFLIGHT": "READY",
+                EXECUTABLE_MATERIALIZATION_PREVIEW_READY: EXECUTABLE_MATERIALIZATION_PREVIEW_READY,
+                EXECUTABLE_MATERIALIZATION_RECOVERY_REQUIRED: EXECUTABLE_MATERIALIZATION_RECOVERY_REQUIRED,
+                EXECUTABLE_MATERIALIZATION_CONFIRMATION_MISSING: EXECUTABLE_MATERIALIZATION_CONFIRMATION_MISSING,
+                EXECUTABLE_CONTRACT_INVALID: EXECUTABLE_CONTRACT_INVALID,
+                INTEGRITY_FAILURE: INTEGRITY_FAILURE,
                 "STRUCTURAL_RUNNING": "STRUCTURAL_RUNNING",
                 "PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED": "STRUCTURAL_PASS",
                 "STRUCTURAL_BLOCKED": "STRUCTURAL_BLOCKED",
@@ -2579,7 +2607,7 @@ class ResearchConsoleReadService:
             }.get(reconciled_state, daemon.daemon_state)
             orchestrator_state = "ACTIVE"
             orchestrator_state_zh = display_state(reconciled_state)
-            lifecycle_stage = "PREDICTIVE" if reconciled_state == "PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED" else "STRUCTURAL"
+            lifecycle_stage = "PREDICTIVE" if reconciled_state == "PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED" else "CANDIDATE" if reconciled_state in {EXECUTABLE_MATERIALIZATION_PREVIEW_READY, EXECUTABLE_MATERIALIZATION_RECOVERY_REQUIRED, EXECUTABLE_MATERIALIZATION_CONFIRMATION_MISSING, EXECUTABLE_CONTRACT_INVALID, INTEGRITY_FAILURE} else "STRUCTURAL"
             research_running = reconciled_state == "STRUCTURAL_RUNNING"
             required_action = str(reconciled_effective.get("required_action") or reconciled.get("required_action") or "") or None
             dashboard_candidate_id = str(reconciled_effective.get("current_candidate_id") or reconciled.get("current_candidate_id") or "") or dashboard_candidate_id
@@ -3279,9 +3307,18 @@ class ResearchConsoleReadService:
         if materialization_state == "READY_FOR_STRUCTURAL_PREFLIGHT":
             title_zh = "Candidate 执行合同已冻结"
             message_zh = "DurableFrozenCandidateContractV1 已通过 provider 校验；当前仅具备结构预检资格，不会自动启动 Structural。"
-        elif materialization_state == "EXECUTABLE_MATERIALIZATION_PREVIEW_READY":
+        elif materialization_state == EXECUTABLE_MATERIALIZATION_PREVIEW_READY:
             title_zh = "等待确认执行合同预览"
             message_zh = "Candidate Governance Freeze 已完成；执行合同预览已生成，仍需第二次人工确认。"
+        elif materialization_state == EXECUTABLE_MATERIALIZATION_RECOVERY_REQUIRED:
+            title_zh = "执行合同等待恢复"
+            message_zh = "人工确认凭证已持久化但 Durable Contract 尚未完成；只允许按同一 immutable Preview 做确定性恢复，不会自动启动 Structural。"
+        elif materialization_state == EXECUTABLE_MATERIALIZATION_CONFIRMATION_MISSING:
+            title_zh = "缺少执行合同人工确认"
+            message_zh = "DurableFrozenCandidateContractV1 单独不构成 Executable Authority；请重新确认当前 immutable Preview。"
+        elif materialization_state in {EXECUTABLE_CONTRACT_INVALID, INTEGRITY_FAILURE, "CANONICAL_CANDIDATE_IDENTITY_CONFLICT", "CANONICAL_STATE_CONFLICT"}:
+            title_zh = "执行合同治理已阻断"
+            message_zh = "执行合同、确认凭证或 canonical 身份存在完整性问题，系统不会自动修复或进入 Structural。"
         elif status in {"FROZEN", "CANDIDATE_GOVERNANCE_FROZEN"}:
             title_zh = "Candidate Governance Freeze 已完成"
             message_zh = "Candidate 已完成治理冻结，但尚未生成执行合同；请显式创建 Materialization Preview。"

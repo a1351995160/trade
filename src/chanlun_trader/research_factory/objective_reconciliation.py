@@ -26,6 +26,11 @@ from .common import stable_hash
 from .durability import DurableFrozenCandidateContractV1
 from .candidate_executable_materialization import (
     CANONICAL_CANDIDATE_IDENTITY_CONFLICT,
+    EXECUTABLE_MATERIALIZATION_CONFIRMATION_MISSING,
+    EXECUTABLE_MATERIALIZATION_RECOVERY_REQUIRED,
+    INTEGRITY_FAILURE,
+    inspect_materialization_confirmation,
+    inspect_materialization_preview,
 )
 
 
@@ -64,6 +69,7 @@ HUMAN_CONFIRM_AI_RESEARCH_DESIGN = "HUMAN_CONFIRM_AI_RESEARCH_DESIGN"
 HUMAN_REVIEW_CANDIDATE_PROPOSAL = "HUMAN_REVIEW_CANDIDATE_PROPOSAL"
 CREATE_EXECUTABLE_MATERIALIZATION_PREVIEW = "CREATE_EXECUTABLE_MATERIALIZATION_PREVIEW"
 HUMAN_CONFIRM_EXECUTABLE_MATERIALIZATION = "HUMAN_CONFIRM_EXECUTABLE_MATERIALIZATION"
+RECOVER_EXECUTABLE_MATERIALIZATION = "RECOVER_EXECUTABLE_MATERIALIZATION"
 RUN_STRUCTURAL_PREFLIGHT = "RUN_STRUCTURAL_PREFLIGHT"
 RECONCILE_STRUCTURAL = "RECONCILE_STRUCTURAL"
 ENGINEERING_REVIEW_REQUIRED = "ENGINEERING_REVIEW_REQUIRED"
@@ -855,6 +861,85 @@ class ObjectiveReconciliationServiceV1:
                 elif any(token in name for token in ("predictive", "authorization", "authorisation")):
                     self._add_if_objective(ctx, "predictive_authorization", path, "PREDICTIVE_AUTHORIZATION_AUTHORITY", path_scoped=True)
 
+    @staticmethod
+    def _source_hash_by_name(ctx: _ReconciliationContext, category: str, names: set[str]) -> str | None:
+        for source in ctx.sources.get(category, ()):
+            if source["path"].name in names:
+                return str(source["meta"].get("source_hash") or "") or None
+        return None
+
+    def _preview_source_bindings_current(
+        self,
+        ctx: _ReconciliationContext,
+        preview: Mapping[str, Any],
+        candidate_view: Mapping[str, Any],
+    ) -> tuple[bool, list[str]]:
+        """Compare immutable Preview source bindings with current canonical facts."""
+
+        bindings = preview.get("source_bindings") if isinstance(preview.get("source_bindings"), Mapping) else {}
+        if not bindings:
+            return False, ["source_bindings"]
+        expected = {
+            "proposal_document_hash": self._source_hash_by_name(ctx, "candidate_governance", {"CANDIDATE_PROPOSAL.json"}),
+            "freeze_receipt_document_hash": self._source_hash_by_name(ctx, "candidate_governance", {"CANDIDATE_FREEZE_RECEIPT.json"}),
+            "candidate_registry_document_hash": self._source_hash_by_name(ctx, "candidate_governance", {"CANDIDATE_REGISTRY.json"}),
+            "objective_document_hash": self._source_hash_by_name(ctx, "objective_definition", {f"{ctx.objective_id}.json"}),
+            "lineage_document_hash": self._source_hash_by_name(ctx, "lineage", {f"{ctx.objective_id}.json"}),
+            "ai_design_document_hash": self._source_hash_by_name(ctx, "ai_design", {"AI_RESEARCH_DESIGN_PROPOSAL.json"}),
+            "ai_design_approval_document_hash": self._source_hash_by_name(ctx, "ai_design_approval", {AI_DESIGN_APPROVAL_RECEIPT_FILENAME}),
+        }
+        mismatches = [
+            key
+            for key, current_hash in expected.items()
+            if not current_hash or str(bindings.get(key) or "") != current_hash
+        ]
+        registry_source = next(
+            (
+                source
+                for source in ctx.sources.get("candidate_governance", ())
+                if source["path"].name == "CANDIDATE_REGISTRY.json"
+            ),
+            None,
+        )
+        candidate_id = str(preview.get("candidate_id") or candidate_view.get("current_candidate_id") or "")
+        candidate_hash = str(preview.get("candidate_hash") or candidate_view.get("current_candidate_hash") or "")
+        registry_entry_hash = None
+        if registry_source and isinstance(registry_source.get("payload"), Mapping):
+            rows = registry_source["payload"].get("candidates")
+            if isinstance(rows, list):
+                entry = next(
+                    (
+                        item
+                        for item in rows
+                        if isinstance(item, Mapping)
+                        and str(item.get("candidate_id") or "") == candidate_id
+                        and str(item.get("candidate_hash") or "") == candidate_hash
+                    ),
+                    None,
+                )
+                if entry is not None:
+                    registry_entry_hash = stable_hash(entry)
+        if not registry_entry_hash or str(bindings.get("candidate_registry_entry_hash") or "") != registry_entry_hash:
+            mismatches.append("candidate_registry_entry_hash")
+
+        design_source = next(
+            (
+                source
+                for source in ctx.sources.get("ai_design", ())
+                if source["path"].name == "AI_RESEARCH_DESIGN_PROPOSAL.json"
+                and isinstance(source.get("payload"), Mapping)
+            ),
+            None,
+        )
+        design = design_source.get("payload") if design_source else {}
+        current_context_id = str(design.get("source_context_id") or "")
+        current_context_hash = str(design.get("source_context_hash") or design.get("input_context_hash") or "")
+        if not current_context_id or str(preview.get("source_context_id") or "") != current_context_id or str(bindings.get("source_context_id") or "") != current_context_id:
+            mismatches.append("source_context_id")
+        if not current_context_hash or str(preview.get("source_context_hash") or "") != current_context_hash or str(bindings.get("source_context_hash") or "") != current_context_hash:
+            mismatches.append("source_context_hash")
+        return not mismatches, sorted(set(mismatches))
+
     def _collect_validation_and_final(self, ctx: _ReconciliationContext) -> None:
         for path in sorted((self.root / "data/research/research_factory/batches").glob("*/trial_registry.json")):
             self._add_if_objective(ctx, "validation_final_adjudication", path, "VALIDATION_FINAL_ADJUDICATION_FACT")
@@ -872,27 +957,36 @@ class ObjectiveReconciliationServiceV1:
         proposal_present = False
         registry_present = False
         freeze_receipt_present = False
-        materialization_preview = next(
+        preview_source = next(
             (
-                source.get("payload")
+                source
                 for source in ctx.sources.get("executable_materialization", ())
-                if source["path"].name == "EXECUTABLE_MATERIALIZATION_PREVIEW.json" and isinstance(source.get("payload"), Mapping)
+                if source["path"].name == "EXECUTABLE_MATERIALIZATION_PREVIEW.json"
             ),
             None,
         )
-        materialization_confirmation = next(
+        confirmation_source = next(
             (
-                source.get("payload")
+                source
                 for source in ctx.sources.get("executable_materialization", ())
-                if source["path"].name == "EXECUTABLE_MATERIALIZATION_CONFIRMATION.json" and isinstance(source.get("payload"), Mapping)
+                if source["path"].name == "EXECUTABLE_MATERIALIZATION_CONFIRMATION.json"
             ),
             None,
         )
-        preview_valid = bool(
-            isinstance(materialization_preview, Mapping)
-            and str(materialization_preview.get("preview_hash") or "")
-            == stable_hash({key: value for key, value in materialization_preview.items() if key != "preview_hash"})
-        )
+        materialization_preview = preview_source.get("payload") if preview_source else None
+        materialization_confirmation = confirmation_source.get("payload") if confirmation_source else None
+        preview_check = inspect_materialization_preview(materialization_preview)
+        preview_valid = bool(preview_check.get("valid") and preview_check.get("ready"))
+        preview_binding_mismatches: list[str] = []
+        if preview_valid and isinstance(materialization_preview, Mapping):
+            preview_current, preview_binding_mismatches = self._preview_source_bindings_current(ctx, materialization_preview, {
+                "current_candidate_id": materialization_preview.get("candidate_id"),
+                "current_candidate_hash": materialization_preview.get("candidate_hash"),
+            })
+            if not preview_current:
+                preview_valid = False
+                preview_check["reason_code"] = "STALE_EXECUTABLE_MATERIALIZATION_PREVIEW"
+                preview_check["mismatched_fields"] = preview_binding_mismatches
         for source in ctx.sources.get("candidate_governance", ()):
             path_name = source["path"].name.casefold()
             proposal_present = proposal_present or "candidate_proposal" in path_name
@@ -948,12 +1042,23 @@ class ObjectiveReconciliationServiceV1:
             "structural_preflight_ready": False,
             "durable_contract_invalid": False,
             "materialization": {
-                "preview_present": materialization_preview is not None,
+                "preview_present": preview_source is not None,
                 "preview_valid": preview_valid,
-                "preview_ready": preview_valid and str((materialization_preview or {}).get("status") or "") == EXECUTABLE_MATERIALIZATION_PREVIEW_READY,
+                "preview_ready": preview_valid,
                 "preview": dict(materialization_preview) if isinstance(materialization_preview, Mapping) else None,
-                "confirmation_present": materialization_confirmation is not None,
+                "preview_hash": (materialization_preview or {}).get("preview_hash") if isinstance(materialization_preview, Mapping) else None,
+                 "preview_reason_code": preview_check.get("reason_code"),
+                 "preview_binding_mismatches": preview_binding_mismatches,
+                "preview_path": preview_source["meta"]["path"] if preview_source else None,
+                "confirmation_present": confirmation_source is not None,
+                "confirmation_valid": False,
+                "confirmation_hash": (materialization_confirmation or {}).get("receipt_hash") if isinstance(materialization_confirmation, Mapping) else None,
                 "confirmation": dict(materialization_confirmation) if isinstance(materialization_confirmation, Mapping) else None,
+                "confirmation_reason_code": None,
+                "contract_present": False,
+                "identity_match": False,
+                "recovery_required": False,
+                "confirmation_path": confirmation_source["meta"]["path"] if confirmation_source else None,
                 "source_paths": sorted(source["meta"]["path"] for source in ctx.sources.get("executable_materialization", ())),
             },
             "current_candidate_id": only_candidate,
@@ -1057,7 +1162,78 @@ class ObjectiveReconciliationServiceV1:
             and (not target_id or item["candidate_id"] == target_id)
             and (not target_hash or item["candidate_hash"] == target_hash)
         }
-        executable = len(unique_passes) == 1
+        materialization = candidate_view.get("materialization") if isinstance(candidate_view.get("materialization"), Mapping) else {}
+        target_entries = [
+            item
+            for item in entries
+            if item["identity_match"]
+            and (not target_id or item["candidate_id"] == target_id)
+            and (not target_hash or item["candidate_hash"] == target_hash)
+        ]
+        valid_target_entries = [
+            item
+            for item in target_entries
+            if item["from_dict"] == "PASS" and item["provider_candidate_payload"] == "PASS"
+        ]
+        contract_for_confirmation = None
+        if len(valid_target_entries) == 1:
+            raw_contract = next(
+                (
+                    raw
+                    for source in ctx.sources.get("durable_frozen_contract", ())
+                    for raw in _contract_payloads(source.get("payload"))
+                    if raw.get("candidate_id") == valid_target_entries[0]["candidate_id"]
+                    and raw.get("candidate_hash") == valid_target_entries[0]["candidate_hash"]
+                    and str((raw.get("policy_identity") if isinstance(raw.get("policy_identity"), Mapping) else {}).get("objective_id") or raw.get("objective_id") or "") == ctx.objective_id
+                ),
+                None,
+            )
+            if isinstance(raw_contract, Mapping):
+                try:
+                    contract_for_confirmation = DurableFrozenCandidateContractV1.from_dict(raw_contract)
+                except Exception:
+                    contract_for_confirmation = None
+        confirmation_check = inspect_materialization_confirmation(
+            materialization.get("confirmation"),
+            preview=materialization.get("preview") if isinstance(materialization.get("preview"), Mapping) else None,
+            contract=contract_for_confirmation,
+            objective_id=ctx.objective_id,
+            proposal_id=str((materialization.get("preview") or {}).get("proposal_id") or "") if isinstance(materialization.get("preview"), Mapping) else None,
+        )
+        materialization["confirmation_valid"] = bool(confirmation_check.get("valid"))
+        materialization["confirmation_reason_code"] = confirmation_check.get("reason_code")
+        materialization["contract_present"] = bool(target_entries)
+        materialization["identity_match"] = bool(
+            confirmation_check.get("valid")
+            and confirmation_check.get("identity_match")
+            and len(valid_target_entries) == 1
+        )
+        materialization["recovery_required"] = bool(
+            confirmation_check.get("valid")
+            and len(valid_target_entries) == 0
+        )
+        if materialization.get("preview_present") and not materialization.get("preview_valid"):
+            ctx.conflict(
+                "EXECUTABLE_MATERIALIZATION_PREVIEW_INTEGRITY_FAILURE",
+                CANONICAL_CONFLICT,
+                preview_path=materialization.get("preview_path"),
+                reason_code=materialization.get("preview_reason_code") or INTEGRITY_FAILURE,
+            )
+        if materialization.get("confirmation_present") and not confirmation_check.get("valid"):
+            ctx.conflict(
+                "EXECUTABLE_MATERIALIZATION_CONFIRMATION_INTEGRITY_FAILURE",
+                CANONICAL_CONFLICT,
+                confirmation_path=materialization.get("confirmation_path"),
+                reason_code=confirmation_check.get("reason_code"),
+                mismatched_fields=confirmation_check.get("mismatched_fields", []),
+            )
+        executable = bool(
+            len(unique_passes) == 1
+            and len(valid_target_entries) == 1
+            and materialization.get("preview_valid") is True
+            and materialization.get("confirmation_valid") is True
+            and materialization.get("identity_match") is True
+        )
         candidate_view["durable_contracts"] = entries
         candidate_view["executable_frozen_candidate"] = executable
         candidate_view["structural_preflight_ready"] = executable
@@ -1070,7 +1246,14 @@ class ObjectiveReconciliationServiceV1:
         candidate_view["current_candidate_id"] = target_id
         candidate_view["current_candidate_hash"] = target_hash
         candidate_view["contract_identity_count"] = len(by_candidate)
-        candidate_view["unique_executable_identity_count"] = len(unique_passes)
+        candidate_view["unique_executable_identity_count"] = len(unique_passes) if executable else 0
+        candidate_view["unique_contract_identity_count"] = len(unique_passes)
+        candidate_view["materialization_confirmation_present"] = bool(materialization.get("confirmation_present"))
+        candidate_view["materialization_confirmation_valid"] = bool(materialization.get("confirmation_valid"))
+        candidate_view["materialization_confirmation_hash"] = materialization.get("confirmation_hash")
+        candidate_view["materialization_contract_present"] = bool(materialization.get("contract_present"))
+        candidate_view["materialization_identity_match"] = bool(materialization.get("identity_match"))
+        candidate_view["materialization_recovery_required"] = bool(materialization.get("recovery_required"))
 
     def _reconcile_trials(self, ctx: _ReconciliationContext) -> dict[str, Any]:
         grouped: dict[str, list[dict[str, Any]]] = {}
@@ -1929,6 +2112,10 @@ class ObjectiveReconciliationServiceV1:
         executable_invalid = bool(candidate_view.get("durable_contract_invalid"))
         materialization = candidate_view.get("materialization") if isinstance(candidate_view.get("materialization"), Mapping) else {}
         materialization_preview_ready = bool(materialization.get("preview_ready"))
+        materialization_contract_present = bool(materialization.get("contract_present"))
+        materialization_confirmation_present = bool(materialization.get("confirmation_present"))
+        materialization_confirmation_valid = bool(materialization.get("confirmation_valid"))
+        materialization_recovery_required = bool(materialization.get("recovery_required"))
         governance_freeze = bool(candidate_view.get("governance_freeze_present"))
         proposal_ready = bool(candidate_view.get("proposal_present")) and not governance_freeze
 
@@ -1994,6 +2181,18 @@ class ObjectiveReconciliationServiceV1:
                     READY_FOR_STRUCTURAL_PREFLIGHT,
                     RUN_STRUCTURAL_PREFLIGHT,
                 )
+        elif materialization_recovery_required and materialization_confirmation_valid and not materialization_contract_present:
+            stage, state, action = (
+                "EXECUTABLE_CANDIDATE_MATERIALIZATION",
+                EXECUTABLE_MATERIALIZATION_RECOVERY_REQUIRED,
+                RECOVER_EXECUTABLE_MATERIALIZATION,
+            )
+        elif materialization_contract_present and not materialization_confirmation_present:
+            stage, state, action = (
+                "EXECUTABLE_CANDIDATE_MATERIALIZATION",
+                EXECUTABLE_MATERIALIZATION_CONFIRMATION_MISSING,
+                HUMAN_CONFIRM_EXECUTABLE_MATERIALIZATION,
+            )
         elif materialization_preview_ready:
             stage, state, action = (
                 "EXECUTABLE_CANDIDATE_MATERIALIZATION",
@@ -2056,6 +2255,8 @@ class ObjectiveReconciliationServiceV1:
             AI_DESIGN_REJECTED,
             CANDIDATE_FROZEN_PENDING_EXECUTABLE_MATERIALIZATION,
             EXECUTABLE_MATERIALIZATION_PREVIEW_READY,
+            EXECUTABLE_MATERIALIZATION_RECOVERY_REQUIRED,
+            EXECUTABLE_MATERIALIZATION_CONFIRMATION_MISSING,
             EXECUTABLE_CONTRACT_INVALID,
             BUDGET_EXHAUSTED,
             TRIAL_TERMINAL,
@@ -2343,10 +2544,13 @@ __all__ = [
     "OBJECTIVE_DIALECT_GOVERNANCE_EXECUTION_READY",
     "OBJECTIVE_DIALECT_LEGACY_UNKNOWN",
     "PROJECTION_DRIFT",
+    "EXECUTABLE_MATERIALIZATION_CONFIRMATION_MISSING",
+    "EXECUTABLE_MATERIALIZATION_RECOVERY_REQUIRED",
     "READY_FOR_STRUCTURAL_PREFLIGHT",
     "RECONCILIATION_SCHEMA_VERSION",
     "REPAIRABLE_INDEX_DRIFT",
     "RUN_STRUCTURAL_PREFLIGHT",
+    "RECOVER_EXECUTABLE_MATERIALIZATION",
     "RECONCILE_STRUCTURAL",
     "ENGINEERING_REVIEW_REQUIRED",
     "STRUCTURAL_RUNNING",

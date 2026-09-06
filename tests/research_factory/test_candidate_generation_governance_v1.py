@@ -149,6 +149,12 @@ def _fixture_root(tmp_path: Path) -> Path:
 
 def _prepare(tmp_path: Path) -> Path:
     root = _fixture_root(tmp_path)
+    _write_json(root, f"data/research/research_factory/batches/{OBJECTIVE_ID}_B01/search_budget_registry.json", {
+        "objective_id": OBJECTIVE_ID,
+        "used": 0,
+        "reserved": 0,
+        "total": 4,
+    })
     ResearchEvolutionAIDesignServiceV1(root).generate_design(OBJECTIVE_ID)
     AIDesignApprovalServiceV1(root).approve(OBJECTIVE_ID, "stage-b-test-reviewer", idempotency_key="AI_DESIGN_APPROVAL_TEST")
     return root
@@ -239,6 +245,64 @@ def test_candidate_input_never_reads_performance_artifacts(tmp_path: Path, monke
     assert proposal["outcome_blind"] is True
     assert proposal["performance_data_loaded"] is False
     assert proposal["outcome_fields_available"] is False
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    ["data_manifest", "factor_capability", "event_capability", "budget", "structural", "effective_state"],
+)
+def test_approved_ai_design_rejects_all_live_context_changes_before_candidate_persistence(tmp_path: Path, mutation: str) -> None:
+    root = _prepare(tmp_path / mutation)
+    budget_path = root / f"data/research/research_factory/batches/{OBJECTIVE_ID}_B01/search_budget_registry.json"
+
+    if mutation == "data_manifest":
+        path = root / "data/research/data_capability.json"
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload["datasets"][0]["data_version"] = "fixture-stale-data"
+        _write_json(root, "data/research/data_capability.json", payload)
+    elif mutation == "factor_capability":
+        _write_json(root, "data/research/factor_registry/registry.json", {
+            "factors": [{
+                "factor_id": "NEW_FACTOR_AFTER_APPROVAL",
+                "implementation_status": "READY",
+                "PIT_safe": True,
+                "inputs": ["daily_ohlcva_raw"],
+            }],
+        })
+    elif mutation == "event_capability":
+        _write_json(root, "data/research/event_registry/registry.json", {
+            "events": [{
+                "event_id": "NEW_EVENT_AFTER_APPROVAL",
+                "inputs": ["daily_ohlcva_raw"],
+                "PIT_safe": True,
+                "available_at_semantics": "T_CLOSE",
+                "historical_evidence_immutable": True,
+            }],
+        })
+    elif mutation == "budget":
+        payload = json.loads(budget_path.read_text(encoding="utf-8"))
+        payload["used"] = 1
+        _write_json(root, budget_path.relative_to(root).as_posix(), payload)
+    elif mutation == "structural":
+        _write_json(root, f"reports/research_daemon/{OBJECTIVE_ID}/structural_preflight_reconciliation_canonical_v1.json", {
+            "objective_id": OBJECTIVE_ID,
+            "status": "BLOCKED",
+        })
+    elif mutation == "effective_state":
+        path = root / f"data/research/research_factory/objectives/{OBJECTIVE_ID}.json"
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload["lifecycle_state"] = "UNKNOWN_AFTER_APPROVAL"
+        _write_json(root, path.relative_to(root).as_posix(), payload)
+
+    budget_after_mutation = budget_path.read_bytes()
+    with pytest.raises(CandidateGenerationError) as error:
+        CandidateGenerationManagerV1(root).generate_proposal(OBJECTIVE_ID)
+
+    assert error.value.code == "STALE_RUNTIME_CONTEXT"
+    assert not list((root / "reports/research_candidates").rglob(CANDIDATE_PROPOSAL_FILENAME))
+    assert not list((root / "data/research/research_factory/candidates").rglob("CANDIDATE_REGISTRY.json"))
+    assert not list((root / "data/research/research_factory/batches").rglob("factory_trial_ledger.json"))
+    assert budget_path.read_bytes() == budget_after_mutation
 
 
 def test_candidate_input_rejects_chinese_outcome_field(tmp_path: Path) -> None:

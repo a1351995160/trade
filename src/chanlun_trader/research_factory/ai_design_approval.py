@@ -400,7 +400,7 @@ class AIDesignApprovalServiceV1:
                 return result
             current_context_id = str(design.get("source_context_id") or "")
             receipt_context_id = str(receipt.get("source_context_id") or "")
-            if current_context_id and receipt_context_id and receipt_context_id != current_context_id:
+            if current_context_id and receipt_context_id != current_context_id:
                 result.update({
                     "approval_status": STALE,
                     "reason_code": "STALE_AI_DESIGN_APPROVAL",

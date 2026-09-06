@@ -82,6 +82,8 @@ AI_DENIED_TRIGGERS = frozenset({
 AI_BATCH_VALIDATION_TIMEOUT_SECONDS = 30.0
 AI_BATCH_VALIDATION_STALE_AFTER_SECONDS = 120.0
 PREDICTIVE_AUTHORIZATION_REQUIRED = "PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED"
+MANUAL_HANDOFF_CONTEXT_COMPATIBILITY = "SAFE_RUNTIME_CONTEXT_V1"
+MANUAL_HANDOFF_LEGACY_CONTEXT_COMPATIBILITY = "LEGACY_SYNTHETIC_NO_OBJECTIVE_V1"
 STRUCTURAL_PROJECTION_STATES = frozenset({
     "READY_FOR_STRUCTURAL_PREFLIGHT",
     "STRUCTURAL_RUNNING",
@@ -1641,6 +1643,11 @@ class AutonomousResearchOrchestratorV2:
         task_purpose = "新机制研究设计" if current_round == "NEW_MECHANISM" else "PROMISING_FOLLOWUP 机制确认设计" if current_round == "PROMISING_FOLLOWUP" else "研究候选设计"
         base = {
             "schema_version": "research-orchestrator-ai-handoff-v2",
+            "context_compatibility": (
+                MANUAL_HANDOFF_CONTEXT_COMPATIBILITY
+                if safe_runtime_context is not None
+                else MANUAL_HANDOFF_LEGACY_CONTEXT_COMPATIBILITY
+            ),
             "handoff_generation": int(self.checkpoint.get("handoff_generation", 0) or 0),
             "objective_id": snapshot.objective_id,
             "reason": "NEED_AI_RESEARCH_DESIGN",
@@ -1926,6 +1933,44 @@ class AutonomousResearchOrchestratorV2:
             self._set_state(OrchestratorState.ENGINEERING_BLOCKED, "AI_MANUAL_RESULT_VALIDATION_ENGINEERING_FAILED", error_code=code)
         return self.status().to_dict()
 
+    def _validate_manual_handoff_live_context(self, handoff: Mapping[str, Any]) -> None:
+        """Require a fresh MANUAL_HANDOFF context for governed Objectives.
+
+        Synthetic runtimes without an Objective document retain an explicit
+        legacy compatibility path.  A governed Objective never uses that
+        bypass: missing or stale context binding rejects the result before
+        validation or ingestion starts.
+        """
+
+        objective_path = self.root / "data" / "research" / "research_factory" / "objectives" / f"{self.objective_id}.json"
+        if not objective_path.exists():
+            if (
+                str(handoff.get("schema_version") or "") == "research-orchestrator-ai-handoff-v2"
+                and str(handoff.get("context_compatibility") or "") == MANUAL_HANDOFF_LEGACY_CONTEXT_COMPATIBILITY
+            ):
+                return
+            raise AIBatchValidationError("STALE_AI_HANDOFF_CONTEXT")
+        source_context_id = str(handoff.get("source_context_id") or "")
+        source_context_hash = str(handoff.get("source_context_hash") or "")
+        if str(handoff.get("context_compatibility") or "") != MANUAL_HANDOFF_CONTEXT_COMPATIBILITY:
+            raise AIBatchValidationError("STALE_AI_HANDOFF_CONTEXT")
+        identity = handoff.get("safe_runtime_context_identity") if isinstance(handoff.get("safe_runtime_context_identity"), Mapping) else {}
+        source_hashes = handoff.get("source_hashes") if isinstance(handoff.get("source_hashes"), Mapping) else {}
+        if not source_context_id or not source_context_hash:
+            raise AIBatchValidationError("STALE_AI_HANDOFF_CONTEXT")
+        if str(identity.get("context_id") or "") != source_context_id or str(identity.get("context_hash") or "") != source_context_hash:
+            raise AIBatchValidationError("STALE_AI_HANDOFF_CONTEXT")
+        if source_hashes.get("safe_runtime_context") != source_context_hash:
+            raise AIBatchValidationError("STALE_AI_HANDOFF_CONTEXT")
+        from .safe_runtime_context import SafeRuntimeContextBuilderV1, SafeRuntimeContextError
+
+        try:
+            current = SafeRuntimeContextBuilderV1(self.root).build(self.objective_id, purpose="MANUAL_HANDOFF")
+        except SafeRuntimeContextError as exc:
+            raise AIBatchValidationError("STALE_AI_HANDOFF_CONTEXT") from exc
+        if current.context_id != source_context_id or current.context_hash != source_context_hash:
+            raise AIBatchValidationError("STALE_AI_HANDOFF_CONTEXT")
+
     def _run_manual_ai(self, snapshot: CanonicalResearchSnapshotV2, handoff: Mapping[str, Any], record: dict[str, Any] | None) -> dict[str, Any]:
         metadata, result_path, invocation_id = self._manual_task(handoff)
         if record is None or str(record.get("ai_invocation_id")) != invocation_id:
@@ -1971,6 +2016,16 @@ class AutonomousResearchOrchestratorV2:
         result_created = self._manual_result_timestamp(manifest)
         if task_created is not None and result_created is not None and (task_created - result_created).total_seconds() > 1:
             return self._manual_result_rejected(handoff, record, code="AI_MANUAL_RESULT_STALE", message_zh="结果文件早于当前手动任务，已判定为过期结果，未接入研究。", fingerprint=fingerprint)
+        try:
+            self._validate_manual_handoff_live_context(handoff)
+        except AIBatchValidationError as exc:
+            return self._manual_result_rejected(
+                handoff,
+                record,
+                code=str(exc),
+                message_zh="手动 AI 结果绑定的 SafeRuntimeContext 已过期，结果未接入研究。",
+                fingerprint=fingerprint,
+            )
         record.update({"status": "COMPLETED", "validation_status": "PENDING", "manual_result_detected_at": now_timestamp(), "result_fingerprint": fingerprint, "output_manifest_path": metadata["result_path"], "manual_task": metadata, "background_ai_token_consumption": 0})
         self.store.atomic_write(self.store.invocation_path, record)
         if OrchestratorState(str(self.checkpoint["state"])) != OrchestratorState.AI_MANUAL_HANDOFF_REQUIRED:
@@ -3138,5 +3193,5 @@ class GovernanceDecisionServiceV1:
 
 
 __all__ = [
-    "AI_ALLOWED_TRIGGERS", "AI_DENIED_TRIGGERS", "AIBatchValidationError", "AIBatchValidatorV2", "AIInvocationError", "AutonomousResearchOrchestratorV2", "CanonicalOrchestratorRuntimeV2", "CanonicalResearchSnapshotV2", "CanonicalResearchStateReaderV2", "CodexExecBatchInvokerV2", "GovernanceDecisionServiceV1", "OrchestratorConfigV2", "OrchestratorControlServiceV1", "OrchestratorOperationError", "OrchestratorState", "ResearchOrchestratorStatusView", "SyntheticAutonomousResearchRuntimeV2", "SyntheticCodexBatchInvokerV2", "TerminalCloseoutServiceV2", "build_codex_prompt_v2",
+    "AI_ALLOWED_TRIGGERS", "AI_DENIED_TRIGGERS", "AIBatchValidationError", "AIBatchValidatorV2", "AIInvocationError", "AutonomousResearchOrchestratorV2", "CanonicalOrchestratorRuntimeV2", "CanonicalResearchSnapshotV2", "CanonicalResearchStateReaderV2", "CodexExecBatchInvokerV2", "GovernanceDecisionServiceV1", "MANUAL_HANDOFF_CONTEXT_COMPATIBILITY", "MANUAL_HANDOFF_LEGACY_CONTEXT_COMPATIBILITY", "OrchestratorConfigV2", "OrchestratorControlServiceV1", "OrchestratorOperationError", "OrchestratorState", "ResearchOrchestratorStatusView", "SyntheticAutonomousResearchRuntimeV2", "SyntheticCodexBatchInvokerV2", "TerminalCloseoutServiceV2", "build_codex_prompt_v2",
 ]

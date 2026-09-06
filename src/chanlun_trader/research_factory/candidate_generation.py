@@ -58,6 +58,7 @@ NEED_CANDIDATE_PROPOSAL = "NEED_CANDIDATE_PROPOSAL"
 HUMAN_CONFIRM_CANDIDATE_FREEZE = "HUMAN_CONFIRM_CANDIDATE_FREEZE"
 CREATE_EXECUTABLE_MATERIALIZATION_PREVIEW = "CREATE_EXECUTABLE_MATERIALIZATION_PREVIEW"
 HUMAN_CONFIRM_EXECUTABLE_MATERIALIZATION = "HUMAN_CONFIRM_EXECUTABLE_MATERIALIZATION"
+RUN_STRUCTURAL_PREFLIGHT = "RUN_STRUCTURAL_PREFLIGHT"
 
 CANDIDATE_PROPOSAL_FILENAME = "CANDIDATE_PROPOSAL.json"
 CANDIDATE_PROPOSAL_INPUT_FILENAME = "CANDIDATE_PROPOSAL_INPUT.json"
@@ -654,6 +655,56 @@ class CandidateGenerationManagerV1:
         except AIDesignApprovalError as exc:
             raise CandidateGenerationError(exc.code, exc.message_zh, status_code=exc.status_code, details=exc.details) from exc
 
+    def _validate_ai_design_live_context(
+        self,
+        objective_id: str,
+        objective: Mapping[str, Any],
+        design: Mapping[str, Any],
+        approval_receipt: Mapping[str, Any],
+    ) -> None:
+        """Rebuild the AI_DESIGN context at the consumer boundary.
+
+        Approval evaluation intentionally stays a read-only, acyclic check.
+        Candidate generation is the consumer gate that compares the current
+        context with both the design and its approval evidence.
+        """
+
+        from .safe_runtime_context import SafeRuntimeContextError
+
+        context_id = str(design.get("source_context_id") or "")
+        context_hash = str(design.get("source_context_hash") or design.get("input_context_hash") or "")
+        governed = bool(objective.get("objective_id") or objective.get("lifecycle_state") or objective.get("parent_proposal_id"))
+        if not governed:
+            return
+        approval_id = str(approval_receipt.get("source_context_id") or "")
+        approval_hash = str(approval_receipt.get("source_context_hash") or "")
+        if not context_id or not context_hash or not approval_id or not approval_hash:
+            raise CandidateGenerationError(
+                "STALE_RUNTIME_CONTEXT",
+                "AI Design 或批准回执缺少当前 SafeRuntimeContext 绑定，候选建议生成已 fail closed",
+                status_code=409,
+            )
+        try:
+            current = self.safe_runtime_context_builder.build(objective_id, purpose="AI_DESIGN")
+        except SafeRuntimeContextError as exc:
+            raise CandidateGenerationError(exc.code, "当前 AI_DESIGN SafeRuntimeContext 不可用，候选建议生成已阻断", status_code=exc.status_code, details=exc.details) from exc
+        mismatches: list[str] = []
+        if current.context_id != context_id:
+            mismatches.append("design.source_context_id")
+        if current.context_hash != context_hash:
+            mismatches.append("design.source_context_hash")
+        if approval_id != context_id:
+            mismatches.append("approval.source_context_id")
+        if approval_hash != context_hash:
+            mismatches.append("approval.source_context_hash")
+        if mismatches:
+            raise CandidateGenerationError(
+                "STALE_RUNTIME_CONTEXT",
+                "AI Design 绑定的 SafeRuntimeContext 已过期，候选建议生成已阻断",
+                status_code=409,
+                details={"changed_bindings": mismatches, "current_context_id": current.context_id, "current_context_hash": current.context_hash},
+            )
+
     def _load_sources(self, objective_id: str) -> tuple[CandidateGenerationInputV1, dict[str, Path]]:
         safe_context = self.safe_runtime_context_builder.build(objective_id, purpose="CANDIDATE_PROPOSAL")
         safe_context_input = safe_context.to_ai_design_input()
@@ -691,6 +742,7 @@ class CandidateGenerationManagerV1:
         approval_path = (self.root / str(approval_path_value)).resolve()
         if not approval_path.is_relative_to(self.root) or approval_path.name != AI_DESIGN_APPROVAL_RECEIPT_FILENAME:
             raise CandidateGenerationError("AI_DESIGN_APPROVAL_INTEGRITY_FAILURE", "AI 设计批准回执路径不受信任，候选建议生成已阻断", status_code=503)
+        self._validate_ai_design_live_context(objective_id, objective_raw, design_raw, approval_receipt)
 
         proposal_id = str(objective_raw.get("parent_proposal_id") or design_raw.get("parent_proposal_id") or "")
         if not proposal_id:
@@ -1150,8 +1202,8 @@ class CandidateGenerationManagerV1:
             _LEGACY_CANDIDATE_FREEZE_READY: HUMAN_CONFIRM_CANDIDATE_FREEZE,
             FROZEN: CREATE_EXECUTABLE_MATERIALIZATION_PREVIEW,
             CANDIDATE_GOVERNANCE_FROZEN: CREATE_EXECUTABLE_MATERIALIZATION_PREVIEW,
-            EXECUTABLE_CANDIDATE_FROZEN: READY_FOR_STRUCTURAL_PREFLIGHT,
-            READY_FOR_STRUCTURAL_PREFLIGHT: READY_FOR_STRUCTURAL_PREFLIGHT,
+            EXECUTABLE_CANDIDATE_FROZEN: RUN_STRUCTURAL_PREFLIGHT,
+            READY_FOR_STRUCTURAL_PREFLIGHT: RUN_STRUCTURAL_PREFLIGHT,
             REJECTED: CLOSED,
             CLOSED: "STOPPED",
         }.get(state, HUMAN_REVIEW_REQUIRED)
@@ -2174,5 +2226,6 @@ __all__ = [
     "NEW_CANDIDATE",
     "EXECUTABLE_CANDIDATE_FROZEN",
     "READY_FOR_STRUCTURAL_PREFLIGHT",
+    "RUN_STRUCTURAL_PREFLIGHT",
     "REJECTED",
 ]

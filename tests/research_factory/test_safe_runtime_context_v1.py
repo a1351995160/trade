@@ -134,7 +134,7 @@ def test_t07_candidate_proposal_binds_safe_context_and_rejects_stale_context(tmp
 
     assert proposal["source_context_id"].startswith("SAFE_RUNTIME_CONTEXT_")
     assert proposal["source_context_hash"] == proposal["input_context_hash"]
-    assert proposal["source_budget_authority_status"] == "MISSING"
+    assert proposal["source_budget_authority_status"] == "UNIQUE_CANONICAL"
     PerformanceBlindGuard.assert_blind(proposal)
     data_path = root / "data/research/data_capability.json"
     payload = json.loads(data_path.read_text(encoding="utf-8"))
@@ -183,7 +183,7 @@ def test_t10_materialization_gate_reuses_candidate_safe_context(tmp_path: Path) 
 
     assert input_payload["source_context_id"] == proposal["source_context_id"]
     assert input_payload["source_context_hash"] == proposal["source_context_hash"]
-    assert input_payload["runtime_budget"]["authority_status"] == "MISSING"
+    assert input_payload["runtime_budget"]["authority_status"] == "UNIQUE_CANONICAL"
 
 
 def test_t11_canonical_conflict_blocks_context_before_projection_or_capability_reads(tmp_path: Path) -> None:

@@ -15,6 +15,13 @@ from typing import Any, Mapping
 from ..research_daemon import CandidateWork, CanonicalResearchRuntime, ResearchDaemon, StructuralResult
 from ..research_daemon_state import DaemonCheckpointStoreV1, DaemonInstanceLockV1, ResearchDaemonState
 from .common import now_timestamp, stable_hash
+from .candidate_executable_materialization import (
+    EXECUTABLE_MATERIALIZATION_CONFIRMATION_MISSING,
+    EXECUTABLE_MATERIALIZATION_PREVIEW_READY,
+    INTEGRITY_FAILURE,
+    inspect_materialization_confirmation,
+    inspect_materialization_preview,
+)
 from .durability import DurableFrozenCandidateContractV1
 from .objective_reconciliation import (
     CANONICAL_CONFLICT,
@@ -189,8 +196,43 @@ class StructuralEntryGateV1:
         if resolved_candidate_hash and candidate.candidate_hash != resolved_candidate_hash:
             raise StructuralEntryError("CANDIDATE_IDENTITY_CONFLICT", "Candidate hash 与 Durable Contract 不一致。")
         materialization = candidate_view.get("materialization") if isinstance(candidate_view.get("materialization"), Mapping) else {}
-        if materialization.get("preview_present") and materialization.get("preview_valid") is not True:
-            raise StructuralEntryError("STALE_EXECUTABLE_MATERIALIZATION", "Executable materialization 已过期或完整性失败，Structural 不得启动。")
+        source_paths = [str(item) for item in materialization.get("source_paths", ()) if item]
+        preview_path_text = str(materialization.get("preview_path") or next((item for item in source_paths if item.endswith("EXECUTABLE_MATERIALIZATION_PREVIEW.json")), ""))
+        confirmation_path_text = str(materialization.get("confirmation_path") or next((item for item in source_paths if item.endswith("EXECUTABLE_MATERIALIZATION_CONFIRMATION.json")), ""))
+        preview = _read_json(self.root / preview_path_text) if preview_path_text else None
+        preview_check = inspect_materialization_preview(preview)
+        if not preview_check["valid"] or not preview_check["ready"] or str((preview or {}).get("status") or "") != EXECUTABLE_MATERIALIZATION_PREVIEW_READY:
+            raise StructuralEntryError(
+                str(preview_check.get("reason_code") or "STALE_EXECUTABLE_MATERIALIZATION"),
+                "Executable Materialization Preview 缺失、过期或完整性失败，Structural 不得启动。",
+                details={"preview_path": preview_path_text, "safe_to_advance": False},
+            )
+        if str(preview.get("objective_id") or "") != self.objective_id or str(preview.get("candidate_id") or "") != contract.candidate_id or str(preview.get("candidate_hash") or "") != contract.candidate_hash or str(preview.get("durable_contract_hash") or "") != contract.content_hash:
+            raise StructuralEntryError(
+                "CANONICAL_CONFLICT",
+                "Executable Materialization Preview 与当前 Durable Contract 身份不一致，Structural 不得启动。",
+                details={"preview_path": preview_path_text, "safe_to_advance": False},
+            )
+        confirmation = _read_json(self.root / confirmation_path_text) if confirmation_path_text else None
+        if confirmation is None:
+            raise StructuralEntryError(
+                EXECUTABLE_MATERIALIZATION_CONFIRMATION_MISSING,
+                "缺少人工 Executable Materialization Confirmation Receipt，Structural 不得启动。",
+                details={"confirmation_path": confirmation_path_text, "safe_to_advance": False},
+            )
+        confirmation_check = inspect_materialization_confirmation(
+            confirmation,
+            preview=preview,
+            contract=contract,
+            objective_id=self.objective_id,
+            proposal_id=str(preview.get("proposal_id") or "") or None,
+        )
+        if not confirmation_check["valid"] or not confirmation_check["identity_match"]:
+            raise StructuralEntryError(
+                str(confirmation_check.get("reason_code") or INTEGRITY_FAILURE),
+                "人工 Executable Materialization Confirmation Receipt 缺失、篡改或身份不匹配，Structural 不得启动。",
+                details={"confirmation_path": confirmation_path_text, "mismatched_fields": confirmation_check.get("mismatched_fields", []), "safe_to_advance": False},
+            )
         return {
             "report": report,
             "effective_state": READY_FOR_STRUCTURAL_PREFLIGHT,
@@ -201,6 +243,7 @@ class StructuralEntryGateV1:
             "contract": contract,
             "provider_payload": provider_payload,
             "durable_contract_hash": contract.content_hash,
+            "materialization_confirmation_hash": confirmation.get("receipt_hash"),
             "valid_contract_source": valid_entries[0].get("source_path"),
         }
 

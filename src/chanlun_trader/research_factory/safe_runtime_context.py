@@ -1008,13 +1008,26 @@ class SafeRuntimeContextBuilderV1:
             report["evidence_inventory"] = {
                 key: list(value) if isinstance(value, list) else value
                 for key, value in evidence.items()
-                if key not in {"ai_design", "ai_design_approval"}
+                if key not in {"ai_design", "ai_design_approval", "candidate_governance", "durable_frozen_contract", "executable_materialization"}
             }
             report["ai_design_reconciliation"] = {
                 "approval_status": "NOT_AVAILABLE",
                 "approval_evidence_present": False,
                 "approval_evidence_missing": False,
             }
+            report["candidate_reconciliation"] = {
+                "current_candidate_id": None,
+                "current_candidate_hash": None,
+                "candidates": [],
+                "durable_contracts": [],
+                "executable_frozen_candidate": False,
+                "structural_preflight_ready": False,
+                "governance_freeze_present": False,
+                "proposal_present": False,
+                "materialization": {},
+            }
+            report["current_candidate_id"] = None
+            report["current_candidate_hash"] = None
             effective = report.get("effective_objective_state") if isinstance(report.get("effective_objective_state"), Mapping) else {}
             candidate = report.get("candidate_reconciliation") if isinstance(report.get("candidate_reconciliation"), Mapping) else {}
             trial = report.get("trial_reconciliation") if isinstance(report.get("trial_reconciliation"), Mapping) else {}
