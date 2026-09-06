@@ -556,6 +556,39 @@ def test_existing_contract_same_candidate_identity_but_different_content_hash_fa
     assert runtime.structural_calls == 0
 
 
+def test_existing_contract_exact_match_reuses_immutable_contract_and_receipt(tmp_path: Path) -> None:
+    root, proposal, contract = _bridge_fixture(tmp_path / "existing-contract-exact-match")
+    manager = CandidateExecutableMaterializationManagerV1(root)
+    preview = manager.create_preview(OBJECTIVE_ID, proposal["proposal_id"])
+    target = root / "data/research/research_factory/batches" / BATCH_ID / "durable_frozen_candidate_contracts.json"
+    registry = DurableFrozenCandidateContractRegistryV1(target)
+    registry.append(contract)
+    registry.write()
+    contract_before = target.read_bytes()
+    request = {
+        "confirmed": True,
+        "reviewer": "bridge-reviewer",
+        "preview_hash": preview["preview_hash"],
+        "idempotency_key": "EXISTING_CONTRACT_EXACT_MATCH_V1",
+    }
+
+    first = manager.confirm(OBJECTIVE_ID, proposal["proposal_id"], request)
+    confirmation_path = root / "reports/research_candidates/proposals" / OBJECTIVE_ID / "EXECUTABLE_MATERIALIZATION_CONFIRMATION.json"
+    receipt_before = confirmation_path.read_bytes()
+    assert first["idempotent"] is False
+    assert first["effective_state"] == READY_FOR_STRUCTURAL_PREFLIGHT
+    assert target.read_bytes() == contract_before
+    assert len(json.loads(target.read_text(encoding="utf-8"))["contracts"]) == 1
+
+    second = manager.confirm(OBJECTIVE_ID, proposal["proposal_id"], request)
+    assert second["idempotent"] is True
+    assert second["effective_state"] == READY_FOR_STRUCTURAL_PREFLIGHT
+    assert target.read_bytes() == contract_before
+    assert confirmation_path.read_bytes() == receipt_before
+    assert len(json.loads(target.read_text(encoding="utf-8"))["contracts"]) == 1
+    assert confirmation_path.exists()
+
+
 def test_crash_after_contract_append_restarts_to_ready_and_retries_exactly_once(tmp_path: Path) -> None:
     root, proposal, _ = _bridge_fixture(tmp_path / "contract-first-restart")
     manager = CandidateExecutableMaterializationManagerV1(root, crash_at="after_durable_contract_append")

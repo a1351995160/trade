@@ -254,6 +254,24 @@
 - `progress.md`：追加本轮实施与验证记录。
 - 回滚方式：本轮提交后在该分支执行 `git revert --no-edit <本轮 commit SHA>`；不使用 force push，不回写 `main`，不触碰真实 Research Workspace。
 
+## 2026-09-06 - Task: PHASE1_CERTIFICATION_EXACT_MATCH_TEST
+
+### What was done
+
+补充 AC14–AC16 的显式合法场景测试：已有 Durable Contract 的 `candidate_id`、`candidate_hash`、`content_hash` 与 Preview 完全一致时，首次 confirm 复用该合同，重复 confirm exact-once，不新增 Contract/Receipt，且两份 immutable 文件字节保持不变。
+
+### Testing
+
+- `tests/research_factory/test_candidate_executable_materialization_v1.py`：`18 passed, 3 warnings`。
+- 与工作流一致的本地 Phase 1 deterministic suite：`235 passed, 12 deselected, 3 warnings`。
+- 本轮仅增加测试与进度记录，需由最终 head 的 GitHub Actions 再次确认。
+
+### Notes
+
+- `tests/research_factory/test_candidate_executable_materialization_v1.py`：新增 existing Contract exact-match/idempotent immutability 覆盖。
+- `progress.md`：追加 AC14–AC16 验证记录。
+- 回滚方式：本轮提交后在该分支执行 `git revert --no-edit <本轮 commit SHA>`；不使用 force push，不回写 `main`，不触碰真实 Research Workspace。
+
 ## 2026-09-06 - Task: PHASE1_CERTIFICATION_REMOTE_FINAL_PASS
 
 ### What was done
