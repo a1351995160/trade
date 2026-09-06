@@ -112,4 +112,3 @@ Daemon restart/recover 首先读取 Objective Reconciliation Snapshot：
 - Web：`GET .../structural/readiness`、`GET .../structural/reconciliation`、`POST .../structural/start`、`POST .../structural/projection-repair`；
 - Structural 写接口均要求 loopback/local-only 和明确确认；
 - 没有自动 Predictive action，且旧的 Daemon/Orchestrator 状态不能绕过统一 gate。
-
