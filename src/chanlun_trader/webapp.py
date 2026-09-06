@@ -40,6 +40,7 @@ from .research_factory.research_proposal_governance import ResearchProposalGover
 from .research_factory.structural_entry import StructuralEntryError, StructuralEntryServiceV1
 from .research_factory.projection_reconciliation import ProjectionReconciliationError, ProjectionReconciliationServiceV1
 from .research_factory.trial_reconciliation import CanonicalTrialReconciliationServiceV1, TrialReconciliationError
+from .research_factory.autonomous_control_plane import AutonomousControlPlaneError, AutonomousResearchControlPlaneV1
 from .screener import scan_all
 from .tdx_data import TdxData
 
@@ -65,6 +66,7 @@ candidate_generation_service = CandidateGenerationManagerV1(PROJECT_ROOT)
 candidate_materialization_service = CandidateExecutableMaterializationManagerV1(PROJECT_ROOT)
 structural_entry_service = StructuralEntryServiceV1(PROJECT_ROOT)
 projection_reconciliation_service = ProjectionReconciliationServiceV1(PROJECT_ROOT)
+autonomous_control_plane_service = AutonomousResearchControlPlaneV1(PROJECT_ROOT)
 
 
 @app.on_event("startup")
@@ -132,6 +134,11 @@ async def projection_reconciliation_error_handler(_, exc: ProjectionReconciliati
     return JSONResponse(status_code=exc.status_code, content=exc.envelope())
 
 
+@app.exception_handler(AutonomousControlPlaneError)
+async def autonomous_control_plane_error_handler(_, exc: AutonomousControlPlaneError) -> JSONResponse:
+    return JSONResponse(status_code=exc.status_code, content=exc.envelope())
+
+
 def _require_local_console_request(request: Request) -> None:
     host = request.client.host if request.client else None
     if host not in {"127.0.0.1", "::1", "localhost", "testclient"}:
@@ -169,6 +176,17 @@ def _console_candidate_materialization_service() -> CandidateExecutableMateriali
         except (AttributeError, TypeError, OSError):
             pass
     return candidate_materialization_service
+
+
+def _console_autonomous_control_plane() -> AutonomousResearchControlPlaneV1:
+    scoped_service = getattr(_console_service(), "autonomous_control_plane", None)
+    if scoped_service is not None:
+        try:
+            if Path(scoped_service.root).resolve() != PROJECT_ROOT.resolve():
+                return scoped_service
+        except (AttributeError, TypeError, OSError):
+            pass
+    return autonomous_control_plane_service
 
 
 if (FRONTEND_DIST / "assets").exists():
@@ -427,6 +445,18 @@ def research_console_manual_ai_handoff(objective_id: str) -> dict:
 @app.api_route("/api/research-console/{objective_id}/safe-runtime-context", methods=["GET", "HEAD"])
 def research_console_safe_runtime_context(objective_id: str) -> dict:
     return _console_service().get_safe_runtime_context(objective_id)
+
+
+@app.get("/api/research-console/{objective_id}/autonomous-control-plane")
+def research_console_autonomous_control_plane(objective_id: str) -> dict:
+    return _console_service().get_autonomous_control_plane(objective_id)
+
+
+@app.post("/api/research-console/{objective_id}/autonomous-control-plane/tick")
+def research_console_autonomous_control_plane_tick(objective_id: str, request: Request, payload: dict[str, Any] | None = Body(default=None)) -> dict:
+    _require_local_console_request(request)
+    body = payload or {}
+    return _console_autonomous_control_plane().tick(objective_id, dry_run=bool(body.get("dry_run", False)))
 
 
 @app.get("/api/research-console/{objective_id}/ai-tasks")
