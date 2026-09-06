@@ -20,6 +20,11 @@ from typing import Any
 
 from .common import jsonable, now_timestamp, stable_hash
 from .context import PerformanceBlindGuard, PerformanceLeakError
+from .ai_design_approval import (
+    AIDesignApprovalError,
+    AIDesignApprovalServiceV1,
+    AI_DESIGN_APPROVAL_RECEIPT_FILENAME,
+)
 from .research_evolution_ai_design import (
     AI_DESIGN_READY,
     AI_RESEARCH_DESIGN_FILENAME,
@@ -42,6 +47,8 @@ FREEZE_PREVIEW_READY = "FREEZE_PREVIEW_READY"
 CANDIDATE_FREEZE_READY = FREEZE_PREVIEW_READY
 _LEGACY_CANDIDATE_FREEZE_READY = "CANDIDATE_FREEZE_READY"
 FROZEN = "FROZEN"
+CANDIDATE_GOVERNANCE_FROZEN = "CANDIDATE_GOVERNANCE_FROZEN"
+EXECUTABLE_CANDIDATE_FROZEN = "EXECUTABLE_CANDIDATE_FROZEN"
 READY_FOR_STRUCTURAL_PREFLIGHT = "READY_FOR_STRUCTURAL_PREFLIGHT"
 NEW_CANDIDATE = "NEW_CANDIDATE"
 REJECTED = "REJECTED"
@@ -49,6 +56,9 @@ CLOSED = "CLOSED"
 DUPLICATE_MECHANISM_REJECTED = "DUPLICATE_MECHANISM_REJECTED"
 NEED_CANDIDATE_PROPOSAL = "NEED_CANDIDATE_PROPOSAL"
 HUMAN_CONFIRM_CANDIDATE_FREEZE = "HUMAN_CONFIRM_CANDIDATE_FREEZE"
+CREATE_EXECUTABLE_MATERIALIZATION_PREVIEW = "CREATE_EXECUTABLE_MATERIALIZATION_PREVIEW"
+HUMAN_CONFIRM_EXECUTABLE_MATERIALIZATION = "HUMAN_CONFIRM_EXECUTABLE_MATERIALIZATION"
+RUN_STRUCTURAL_PREFLIGHT = "RUN_STRUCTURAL_PREFLIGHT"
 
 CANDIDATE_PROPOSAL_FILENAME = "CANDIDATE_PROPOSAL.json"
 CANDIDATE_PROPOSAL_INPUT_FILENAME = "CANDIDATE_PROPOSAL_INPUT.json"
@@ -399,7 +409,12 @@ class CandidateGenerationInputV1:
     available_data_capabilities: Mapping[str, Any] = field(default_factory=dict)
     source_refs: Mapping[str, str] = field(default_factory=dict)
     source_hashes: Mapping[str, str] = field(default_factory=dict)
+    source_context_id: str = ""
+    source_context_hash: str = ""
+    source_budget_authority_status: str = "MISSING"
+    runtime_budget: Mapping[str, Any] = field(default_factory=dict)
     input_context_hash: str = ""
+    ai_design_approval_id: str = ""
 
     def __post_init__(self) -> None:
         for name in (
@@ -411,6 +426,7 @@ class CandidateGenerationInputV1:
             "available_data_capabilities",
             "source_refs",
             "source_hashes",
+            "runtime_budget",
         ):
             object.__setattr__(self, name, jsonable(getattr(self, name)))
         base = self._payload(include_hash=False)
@@ -433,6 +449,11 @@ class CandidateGenerationInputV1:
             "available_data_capabilities": self.available_data_capabilities,
             "source_refs": self.source_refs,
             "source_hashes": self.source_hashes,
+            "source_context_id": self.source_context_id,
+            "source_context_hash": self.source_context_hash,
+            "source_budget_authority_status": self.source_budget_authority_status,
+            "runtime_budget": self.runtime_budget,
+            "ai_design_approval_id": self.ai_design_approval_id,
             "outcome_blind": True,
             "performance_data_loaded": False,
             "outcome_fields_available": False,
@@ -541,6 +562,12 @@ class CandidateGenerationManagerV1:
         self.proposal_root = self.root / "reports" / "research_candidates" / "proposals"
         self.clock = clock
         self.crash_at = crash_at
+        self.ai_design_approval = AIDesignApprovalServiceV1(self.root)
+        self.ai_design_approval_service = self.ai_design_approval
+        from .safe_runtime_context import SafeRuntimeContextBuilderV1
+
+        self.safe_runtime_context_builder = SafeRuntimeContextBuilderV1(self.root, clock=clock)
+        self.safe_context_builder = self.safe_runtime_context_builder
 
     def _objective_path(self, objective_id: str) -> Path:
         return self.root / "data" / "research" / "research_factory" / "objectives" / f"{_safe_id(objective_id, kind='objective_id')}.json"
@@ -622,7 +649,65 @@ class CandidateGenerationManagerV1:
                 return resolved
         raise CandidateGenerationError("MECHANISM_COVERAGE_NOT_FOUND", "未找到 Mechanism Coverage Registry", status_code=404)
 
+    def _require_ai_design_approval(self, objective_id: str) -> dict[str, Any]:
+        try:
+            return self.ai_design_approval.assert_candidate_generation_allowed(objective_id)
+        except AIDesignApprovalError as exc:
+            raise CandidateGenerationError(exc.code, exc.message_zh, status_code=exc.status_code, details=exc.details) from exc
+
+    def _validate_ai_design_live_context(
+        self,
+        objective_id: str,
+        objective: Mapping[str, Any],
+        design: Mapping[str, Any],
+        approval_receipt: Mapping[str, Any],
+    ) -> None:
+        """Rebuild the AI_DESIGN context at the consumer boundary.
+
+        Approval evaluation intentionally stays a read-only, acyclic check.
+        Candidate generation is the consumer gate that compares the current
+        context with both the design and its approval evidence.
+        """
+
+        from .safe_runtime_context import SafeRuntimeContextError
+
+        context_id = str(design.get("source_context_id") or "")
+        context_hash = str(design.get("source_context_hash") or design.get("input_context_hash") or "")
+        governed = bool(objective.get("objective_id") or objective.get("lifecycle_state") or objective.get("parent_proposal_id"))
+        if not governed:
+            return
+        approval_id = str(approval_receipt.get("source_context_id") or "")
+        approval_hash = str(approval_receipt.get("source_context_hash") or "")
+        if not context_id or not context_hash or not approval_id or not approval_hash:
+            raise CandidateGenerationError(
+                "STALE_RUNTIME_CONTEXT",
+                "AI Design 或批准回执缺少当前 SafeRuntimeContext 绑定，候选建议生成已 fail closed",
+                status_code=409,
+            )
+        try:
+            current = self.safe_runtime_context_builder.build(objective_id, purpose="AI_DESIGN")
+        except SafeRuntimeContextError as exc:
+            raise CandidateGenerationError(exc.code, "当前 AI_DESIGN SafeRuntimeContext 不可用，候选建议生成已阻断", status_code=exc.status_code, details=exc.details) from exc
+        mismatches: list[str] = []
+        if current.context_id != context_id:
+            mismatches.append("design.source_context_id")
+        if current.context_hash != context_hash:
+            mismatches.append("design.source_context_hash")
+        if approval_id != context_id:
+            mismatches.append("approval.source_context_id")
+        if approval_hash != context_hash:
+            mismatches.append("approval.source_context_hash")
+        if mismatches:
+            raise CandidateGenerationError(
+                "STALE_RUNTIME_CONTEXT",
+                "AI Design 绑定的 SafeRuntimeContext 已过期，候选建议生成已阻断",
+                status_code=409,
+                details={"changed_bindings": mismatches, "current_context_id": current.context_id, "current_context_hash": current.context_hash},
+            )
+
     def _load_sources(self, objective_id: str) -> tuple[CandidateGenerationInputV1, dict[str, Path]]:
+        safe_context = self.safe_runtime_context_builder.build(objective_id, purpose="CANDIDATE_PROPOSAL")
+        safe_context_input = safe_context.to_ai_design_input()
         objective_path = self._objective_path(objective_id)
         objective_raw = _read_json(objective_path, code="OBJECTIVE_NOT_FOUND")
         if objective_raw is None or str(objective_raw.get("objective_id") or "") != objective_id:
@@ -648,6 +733,16 @@ class CandidateGenerationManagerV1:
             _assert_outcome_blind(design_input_raw)
         except PerformanceLeakError as exc:
             raise CandidateGenerationError("OUTCOME_FIELD_BLOCKED", "AI 研究设计输入包含被禁止的结果字段", status_code=503) from exc
+
+        approval = self._require_ai_design_approval(objective_id)
+        approval_receipt = approval.get("receipt") if isinstance(approval.get("receipt"), Mapping) else None
+        approval_path_value = approval.get("receipt_path")
+        if approval_receipt is None or not approval_path_value:
+            raise CandidateGenerationError("AI_DESIGN_APPROVAL_INTEGRITY_FAILURE", "AI 设计批准回执不完整，候选建议生成已阻断", status_code=503)
+        approval_path = (self.root / str(approval_path_value)).resolve()
+        if not approval_path.is_relative_to(self.root) or approval_path.name != AI_DESIGN_APPROVAL_RECEIPT_FILENAME:
+            raise CandidateGenerationError("AI_DESIGN_APPROVAL_INTEGRITY_FAILURE", "AI 设计批准回执路径不受信任，候选建议生成已阻断", status_code=503)
+        self._validate_ai_design_live_context(objective_id, objective_raw, design_raw, approval_receipt)
 
         proposal_id = str(objective_raw.get("parent_proposal_id") or design_raw.get("parent_proposal_id") or "")
         if not proposal_id:
@@ -691,11 +786,15 @@ class CandidateGenerationManagerV1:
         if capability_raw is None:
             capability_path = self.root / "data" / "research" / "data_capability.json"
             capability_raw = _read_json(capability_path, code="DATA_CAPABILITY_UNREADABLE", required=False) or {}
+        if not capability_raw:
+            capability_raw = safe_context_input.get("available_data_capabilities") or {}
         capabilities = _safe_capabilities(capability_raw)
 
         safe_design = {
             "design_id": str(design_raw.get("design_id") or ""),
             "design_hash": str(design_raw.get("design_hash") or ""),
+            "source_context_id": str(design_raw.get("source_context_id") or ""),
+            "source_context_hash": str(design_raw.get("source_context_hash") or ""),
             "input_context_hash": str(design_raw.get("input_context_hash") or ""),
             "research_hypothesis": str(design_raw.get("research_hypothesis") or "").strip(),
             "mechanism_family": str(design_raw.get("mechanism_family") or "").strip(),
@@ -712,6 +811,7 @@ class CandidateGenerationManagerV1:
         safe_coverage = _safe_coverage(coverage)
         source_refs = {
             "ai_research_design": _relative(self.root, design_path),
+            "ai_design_approval": _relative(self.root, approval_path),
             "research_evolution_proposal": _relative(self.root, proposal_path),
             "objective": _relative(self.root, objective_path),
             "objective_lineage": _relative(self.root, lineage_path),
@@ -721,11 +821,13 @@ class CandidateGenerationManagerV1:
             source_refs["ai_research_design_input"] = _relative(self.root, design_input_path)
         source_hashes = {
             "ai_research_design": str(design_raw.get("design_hash") or stable_hash(safe_design)),
+            "ai_design_approval": str(approval_receipt.get("receipt_hash") or ""),
             "ai_research_design_input": str(design_raw.get("input_context_hash") or stable_hash(design_input_raw)),
             "research_evolution_proposal": str(safe_proposal.get("proposal_hash") or stable_hash(safe_proposal)),
             "objective": stable_hash(safe_objective),
             "objective_lineage": stable_hash(safe_lineage),
             "mechanism_coverage_registry": stable_hash(safe_coverage),
+            "safe_runtime_context": safe_context.context_hash,
         }
         context = CandidateGenerationInputV1(
             objective_id=objective_id,
@@ -737,6 +839,12 @@ class CandidateGenerationManagerV1:
             available_data_capabilities=capabilities,
             source_refs=source_refs,
             source_hashes=source_hashes,
+            source_context_id=safe_context.context_id,
+            source_context_hash=safe_context.context_hash,
+            source_budget_authority_status=str((safe_context.get("budget") or {}).get("authority_status") or "MISSING"),
+            runtime_budget=safe_context.get("budget") or {},
+            input_context_hash=safe_context.context_hash,
+            ai_design_approval_id=str(approval.get("approval_id") or ""),
         )
         return context, {
             "ai_research_design": design_path,
@@ -750,7 +858,12 @@ class CandidateGenerationManagerV1:
     def build_input(self, objective_id: str) -> CandidateGenerationInputV1:
         objective_id = _safe_id(objective_id, kind="objective_id")
         with self._mutex:
-            return self._load_sources(objective_id)[0]
+            from .safe_runtime_context import SafeRuntimeContextError
+
+            try:
+                return self._load_sources(objective_id)[0]
+            except SafeRuntimeContextError as exc:
+                raise CandidateGenerationError(exc.code, exc.message_zh, status_code=503, details=exc.details) from exc
 
     prepare = build_input
 
@@ -852,6 +965,7 @@ class CandidateGenerationManagerV1:
         }
 
     def _build_proposal(self, context: CandidateGenerationInputV1) -> dict[str, Any]:
+        self._require_ai_design_approval(context.objective_id)
         design = context.ai_research_design
         proposal = context.research_evolution_proposal
         mechanism_family = str(design.get("mechanism_family") or "").strip()
@@ -903,6 +1017,8 @@ class CandidateGenerationManagerV1:
             "objective_id": context.objective_id,
             "candidate_name": candidate_name,
             "ai_research_design_id": design.get("design_id"),
+            "ai_design_approval_id": context.ai_design_approval_id,
+            "ai_design_approval_receipt_hash": context.source_hashes.get("ai_design_approval"),
             "mechanism_family": mechanism_family,
             "research_hypothesis": str(design.get("research_hypothesis") or ""),
             "candidate_design_intention": str(design.get("candidate_design_intention") or ""),
@@ -926,6 +1042,10 @@ class CandidateGenerationManagerV1:
             "budget": context.objective.get("budget"),
             "source_refs": context.source_refs,
             "source_hashes": context.source_hashes,
+            "source_context_id": context.source_context_id,
+            "source_context_hash": context.source_context_hash,
+            "source_budget_authority_status": context.source_budget_authority_status,
+            "source_budget_snapshot": context.runtime_budget,
             "input_context_hash": context.input_context_hash,
             "status": CANDIDATE_PROPOSAL_READY,
             "human_review_required": True,
@@ -938,6 +1058,8 @@ class CandidateGenerationManagerV1:
                 "status": CANDIDATE_PROPOSAL_READY,
                 "next_action": HUMAN_REVIEW_REQUIRED,
                 "requires_human_review": True,
+                "ai_design_approval_required": True,
+                "candidate_generation_allowed": True,
                 "candidate_created": False,
                 "candidate_frozen": False,
                 "structural_preflight_started": False,
@@ -955,6 +1077,8 @@ class CandidateGenerationManagerV1:
                 "objective_id",
                 "candidate_name",
                 "ai_research_design_id",
+                "ai_design_approval_id",
+                "ai_design_approval_receipt_hash",
                 "mechanism_family",
                 "research_hypothesis",
                 "candidate_design_intention",
@@ -970,6 +1094,10 @@ class CandidateGenerationManagerV1:
                 "multiple_testing_family_id",
                 "budget",
                 "source_hashes",
+                "source_context_id",
+                "source_context_hash",
+                "source_budget_authority_status",
+                "source_budget_snapshot",
                 "input_context_hash",
             )
         }
@@ -990,6 +1118,8 @@ class CandidateGenerationManagerV1:
                 "objective_id",
                 "candidate_name",
                 "ai_research_design_id",
+                "ai_design_approval_id",
+                "ai_design_approval_receipt_hash",
                 "mechanism_family",
                 "research_hypothesis",
                 "candidate_design_intention",
@@ -1005,6 +1135,10 @@ class CandidateGenerationManagerV1:
                 "multiple_testing_family_id",
                 "budget",
                 "source_hashes",
+                "source_context_id",
+                "source_context_hash",
+                "source_budget_authority_status",
+                "source_budget_snapshot",
                 "input_context_hash",
             )
         }
@@ -1012,8 +1146,27 @@ class CandidateGenerationManagerV1:
     def _validate_persisted(self, proposal: Mapping[str, Any], context: CandidateGenerationInputV1) -> None:
         if str(proposal.get("objective_id") or "") != context.objective_id:
             raise CandidateGenerationError("CANDIDATE_PROPOSAL_CONTEXT_CONFLICT", "已存在的 Candidate Proposal 不属于当前 Objective", status_code=409)
-        if str(proposal.get("input_context_hash") or "") != context.input_context_hash:
-            raise CandidateGenerationError("CANDIDATE_PROPOSAL_CONTEXT_CHANGED", "候选建议输入上下文已变化，请重新生成并人工复核", status_code=409)
+        context_changed = str(proposal.get("input_context_hash") or "") != context.input_context_hash
+        source_context_changed = str(proposal.get("source_context_hash") or "") != context.source_context_hash
+        if context_changed or source_context_changed:
+            stored_budget_status = str(proposal.get("source_budget_authority_status") or "MISSING")
+            current_budget = context.source_budget_authority_status
+            current_budget_view = context.runtime_budget if isinstance(context.runtime_budget, Mapping) else {}
+            # Older fixtures and early Objective setup may create the empty
+            # zero-use registry after the proposal.  Establishing that single
+            # authority does not alter the research decision; any later
+            # mutation of an already-known authority remains stale.
+            empty_budget_established = (
+                stored_budget_status == "MISSING"
+                and current_budget == "UNIQUE_CANONICAL"
+                and not context.runtime_budget.get("active_reservations")
+                and not current_budget_view.get("used")
+                and not current_budget_view.get("reserved")
+            )
+            if not empty_budget_established:
+                code = "STALE_RUNTIME_CONTEXT" if source_context_changed else "CANDIDATE_PROPOSAL_CONTEXT_CHANGED"
+                message = "候选建议绑定的安全运行时上下文已过期，请重新生成" if source_context_changed else "候选建议输入上下文已变化，请重新生成并人工复核"
+                raise CandidateGenerationError(code, message, status_code=409)
         expected_hash = stable_hash(self._identity(proposal))
         if str(proposal.get("proposal_hash") or "") != expected_hash:
             raise CandidateGenerationError("CANDIDATE_PROPOSAL_HASH_INVALID", "Candidate Proposal 哈希校验失败", status_code=503)
@@ -1047,12 +1200,15 @@ class CandidateGenerationManagerV1:
             APPROVED: FREEZE_PREVIEW_READY,
             FREEZE_PREVIEW_READY: HUMAN_CONFIRM_CANDIDATE_FREEZE,
             _LEGACY_CANDIDATE_FREEZE_READY: HUMAN_CONFIRM_CANDIDATE_FREEZE,
-            FROZEN: READY_FOR_STRUCTURAL_PREFLIGHT,
-            READY_FOR_STRUCTURAL_PREFLIGHT: READY_FOR_STRUCTURAL_PREFLIGHT,
+            FROZEN: CREATE_EXECUTABLE_MATERIALIZATION_PREVIEW,
+            CANDIDATE_GOVERNANCE_FROZEN: CREATE_EXECUTABLE_MATERIALIZATION_PREVIEW,
+            EXECUTABLE_CANDIDATE_FROZEN: RUN_STRUCTURAL_PREFLIGHT,
+            READY_FOR_STRUCTURAL_PREFLIGHT: RUN_STRUCTURAL_PREFLIGHT,
             REJECTED: CLOSED,
             CLOSED: "STOPPED",
         }.get(state, HUMAN_REVIEW_REQUIRED)
-        frozen = state in {FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}
+        governance_frozen = state in {FROZEN, CANDIDATE_GOVERNANCE_FROZEN, EXECUTABLE_CANDIDATE_FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}
+        executable_frozen = state in {EXECUTABLE_CANDIDATE_FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}
         return {
             "schema_version": CANDIDATE_PROPOSAL_STATE_SCHEMA_VERSION,
             "transition_id": f"CANDIDATE_PROPOSAL_TRANSITION_{stable_hash({'proposal_id': proposal.get('proposal_id'), 'state': state, 'history': history})[:24].upper()}",
@@ -1066,8 +1222,10 @@ class CandidateGenerationManagerV1:
             "review_ids": review_ids or [],
             "requires_human_review": state in {CANDIDATE_PROPOSAL_READY, HUMAN_REVIEW_REQUIRED, FREEZE_PREVIEW_READY},
             "next_action": next_action,
-            "candidate_created": frozen,
-            "candidate_frozen": frozen,
+            "candidate_created": governance_frozen,
+            "candidate_frozen": governance_frozen,
+            "executable_candidate_frozen": executable_frozen,
+            "structural_preflight_ready": executable_frozen,
             "structural_preflight_started": False,
             "trial_started": False,
             "ai_called": False,
@@ -1256,7 +1414,8 @@ class CandidateGenerationManagerV1:
         registry_entry = None
         if candidate_registry is not None and candidate_id:
             registry_entry = next((dict(item) for item in candidate_registry.get("candidates", ()) if isinstance(item, Mapping) and str(item.get("candidate_id") or "") == candidate_id), None)
-        frozen = current_state in {FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}
+        governance_frozen = current_state in {FROZEN, CANDIDATE_GOVERNANCE_FROZEN, EXECUTABLE_CANDIDATE_FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}
+        executable_frozen = current_state in {EXECUTABLE_CANDIDATE_FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}
         result = dict(proposal)
         result["proposal_status"] = CANDIDATE_PROPOSAL_READY
         result["governance_state"] = current_state
@@ -1275,21 +1434,25 @@ class CandidateGenerationManagerV1:
             "current_state": current_state,
             "next_action": (state or {}).get("next_action") or HUMAN_REVIEW_REQUIRED,
             "requires_human_review": current_state in {CANDIDATE_PROPOSAL_READY, HUMAN_REVIEW_REQUIRED, FREEZE_PREVIEW_READY},
-            "candidate_created": frozen,
-            "candidate_frozen": frozen,
+            "candidate_created": governance_frozen,
+            "candidate_frozen": governance_frozen,
+            "executable_candidate_frozen": executable_frozen,
+            "structural_preflight_ready": executable_frozen,
             "structural_preflight_started": False,
             "trial_started": False,
             "ai_called": False,
             "budget_consumed": False,
-            "freeze_confirmed": frozen,
+            "freeze_confirmed": governance_frozen,
             "freeze_id": freeze_receipt.get("freeze_id") if freeze_receipt else None,
-            "candidate_registry_ref": _relative(self.root, self._candidate_registry_path(objective_id)) if frozen else None,
+            "candidate_registry_ref": _relative(self.root, self._candidate_registry_path(objective_id)) if governance_frozen else None,
             "automatic_structural_preflight": False,
             "automatic_trial_started": False,
         }
         result["human_review_required"] = current_state in {CANDIDATE_PROPOSAL_READY, HUMAN_REVIEW_REQUIRED, FREEZE_PREVIEW_READY}
-        result["candidate_created"] = frozen
-        result["candidate_frozen"] = frozen
+        result["candidate_created"] = governance_frozen
+        result["candidate_frozen"] = governance_frozen
+        result["executable_candidate_frozen"] = executable_frozen
+        result["structural_preflight_ready"] = executable_frozen
         result["structural_preflight_started"] = False
         result["trial_started"] = False
         result["budget_consumed"] = False
@@ -1314,14 +1477,17 @@ class CandidateGenerationManagerV1:
     def _validate_state(self, state: Mapping[str, Any], proposal: Mapping[str, Any]) -> None:
         if str(state.get("proposal_id") or "") != str(proposal.get("proposal_id") or "") or str(state.get("proposal_hash") or "") != str(proposal.get("proposal_hash") or ""):
             raise CandidateGenerationError("CANDIDATE_PROPOSAL_STATE_INVALID", "候选建议状态记录与 Proposal 身份不一致", status_code=503)
-        valid = {CANDIDATE_PROPOSAL_READY, HUMAN_REVIEW_REQUIRED, APPROVED, FREEZE_PREVIEW_READY, _LEGACY_CANDIDATE_FREEZE_READY, FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT, REJECTED, CLOSED}
+        valid = {CANDIDATE_PROPOSAL_READY, HUMAN_REVIEW_REQUIRED, APPROVED, FREEZE_PREVIEW_READY, _LEGACY_CANDIDATE_FREEZE_READY, FROZEN, CANDIDATE_GOVERNANCE_FROZEN, EXECUTABLE_CANDIDATE_FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT, REJECTED, CLOSED}
         if str(state.get("status") or "") not in valid:
             raise CandidateGenerationError("CANDIDATE_PROPOSAL_STATE_INVALID", "候选建议状态不受支持", status_code=503)
-        frozen = str(state.get("status") or "") in {FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}
+        frozen = str(state.get("status") or "") in {FROZEN, CANDIDATE_GOVERNANCE_FROZEN, EXECUTABLE_CANDIDATE_FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}
+        executable = str(state.get("status") or "") in {EXECUTABLE_CANDIDATE_FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}
         for key in ("candidate_created", "candidate_frozen", "structural_preflight_started", "trial_started", "ai_called", "budget_consumed"):
             expected = frozen if key in {"candidate_created", "candidate_frozen"} else False
             if state.get(key) is not expected:
                 raise CandidateGenerationError("CANDIDATE_PROPOSAL_STATE_INVALID", "候选建议状态违反零副作用边界", status_code=503)
+        if ("executable_candidate_frozen" in state and state.get("executable_candidate_frozen") is not executable) or ("structural_preflight_ready" in state and state.get("structural_preflight_ready") is not executable):
+            raise CandidateGenerationError("CANDIDATE_PROPOSAL_STATE_INVALID", "候选建议状态的执行冻结标记不一致", status_code=503)
         try:
             _assert_outcome_blind(state)
         except PerformanceLeakError as exc:
@@ -1350,7 +1516,7 @@ class CandidateGenerationManagerV1:
         preview = _read_json(preview_path, code="CANDIDATE_FREEZE_PREVIEW_UNREADABLE", required=False)
         if preview is not None:
             self._validate_freeze_preview(proposal, preview)
-        if state is not None and str(state.get("status") or "") in {FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}:
+        if state is not None and str(state.get("status") or "") in {FROZEN, CANDIDATE_GOVERNANCE_FROZEN, EXECUTABLE_CANDIDATE_FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}:
             if preview is None:
                 raise CandidateGenerationError("CANDIDATE_FREEZE_PREVIEW_MISSING", "已冻结 Candidate 缺少 Freeze Preview", status_code=503)
             receipt = _read_json(output_path.parent / CANDIDATE_FREEZE_RECEIPT_FILENAME, code="CANDIDATE_FREEZE_RECEIPT_UNREADABLE", required=False)
@@ -1389,9 +1555,9 @@ class CandidateGenerationManagerV1:
         if value in {"PENDING", "待审核"}:
             return state in {CANDIDATE_PROPOSAL_READY, HUMAN_REVIEW_REQUIRED}
         if value in {"APPROVED", "已批准"}:
-            return state in {APPROVED, FREEZE_PREVIEW_READY, _LEGACY_CANDIDATE_FREEZE_READY, FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}
+            return state in {APPROVED, FREEZE_PREVIEW_READY, _LEGACY_CANDIDATE_FREEZE_READY, FROZEN, CANDIDATE_GOVERNANCE_FROZEN, EXECUTABLE_CANDIDATE_FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}
         if value in {"FROZEN", "已冻结"}:
-            return state in {FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}
+            return state in {FROZEN, CANDIDATE_GOVERNANCE_FROZEN, EXECUTABLE_CANDIDATE_FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}
         if value in {"REJECTED", "已拒绝"}:
             return state in {REJECTED, CLOSED}
         return state == value
@@ -1508,7 +1674,7 @@ class CandidateGenerationManagerV1:
         """Read the already materialized freeze preview; never create it."""
         with self._mutex:
             view = self._load_view(proposal_id)
-            if str(view.get("governance_state") or "") not in {APPROVED, FREEZE_PREVIEW_READY, _LEGACY_CANDIDATE_FREEZE_READY, FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}:
+            if str(view.get("governance_state") or "") not in {APPROVED, FREEZE_PREVIEW_READY, _LEGACY_CANDIDATE_FREEZE_READY, FROZEN, CANDIDATE_GOVERNANCE_FROZEN, EXECUTABLE_CANDIDATE_FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}:
                 raise CandidateGenerationError("CANDIDATE_FREEZE_NOT_READY", "Candidate Proposal 尚未通过人工审核，不能查看冻结预览", status_code=409)
             preview = view.get("freeze_preview")
             if not isinstance(preview, Mapping):
@@ -1564,7 +1730,7 @@ class CandidateGenerationManagerV1:
             current = str(state.get("status") if state else CANDIDATE_PROPOSAL_READY)
             reviews = self._read_reviews(reviews_path)
             existing_action = next((item for item in reversed(reviews) if str(item.get("action") or "") == normalized), None)
-            if normalized == "approve" and current in {APPROVED, FREEZE_PREVIEW_READY, _LEGACY_CANDIDATE_FREEZE_READY, FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}:
+            if normalized == "approve" and current in {APPROVED, FREEZE_PREVIEW_READY, _LEGACY_CANDIDATE_FREEZE_READY, FROZEN, CANDIDATE_GOVERNANCE_FROZEN, EXECUTABLE_CANDIDATE_FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}:
                 return {"schema_version": CANDIDATE_REVIEW_SCHEMA_VERSION, "review": existing_action or {}, "proposal": self._load_view(str(proposal.get("proposal_id") or "")), "freeze_preview": self.get_freeze_preview(str(proposal.get("proposal_id") or "")), "idempotent": True}
             if normalized == "reject" and current in {REJECTED, CLOSED}:
                 return {"schema_version": CANDIDATE_REVIEW_SCHEMA_VERSION, "review": existing_action or {}, "proposal": self._load_view(str(proposal.get("proposal_id") or "")), "freeze_preview": None, "idempotent": True}
@@ -1701,6 +1867,9 @@ class CandidateGenerationManagerV1:
             "lineage": proposal.get("lineage"),
             "creation_reason": "HUMAN_CONFIRMED_CANDIDATE_FREEZE",
             "state": FROZEN,
+            "governance_state": CANDIDATE_GOVERNANCE_FROZEN,
+            "executable_candidate_frozen": False,
+            "structural_preflight_ready": False,
             "freeze_id": freeze_id,
             "frozen_at": timestamp,
             "multiple_testing_family_id": proposal.get("multiple_testing_family_id"),
@@ -1723,8 +1892,8 @@ class CandidateGenerationManagerV1:
             **dict(record),
             "action": "FREEZE_CANDIDATE",
             "previous_state": FREEZE_PREVIEW_READY,
-            "resulting_state": FROZEN,
-            "next_state": READY_FOR_STRUCTURAL_PREFLIGHT,
+            "resulting_state": CANDIDATE_GOVERNANCE_FROZEN,
+            "next_state": CREATE_EXECUTABLE_MATERIALIZATION_PREVIEW,
             "candidate_registry_ref": _relative(self.root, self._candidate_registry_path(objective_id)),
             "lineage": proposal.get("lineage"),
             "creation_reason": "HUMAN_CONFIRMED_CANDIDATE_FREEZE",
@@ -1744,7 +1913,12 @@ class CandidateGenerationManagerV1:
         receipt_base = {
             **dict(record),
             "receipt_status": "CONFIRMED",
-            "result_state": READY_FOR_STRUCTURAL_PREFLIGHT,
+            "result_state": CANDIDATE_GOVERNANCE_FROZEN,
+            "governance_state": CANDIDATE_GOVERNANCE_FROZEN,
+            "next_state": CREATE_EXECUTABLE_MATERIALIZATION_PREVIEW,
+            "next_action": CREATE_EXECUTABLE_MATERIALIZATION_PREVIEW,
+            "executable_candidate_frozen": False,
+            "structural_preflight_ready": False,
             "candidate_registry_ref": _relative(self.root, self._candidate_registry_path(objective_id)),
             "lineage_ref": _relative(self.root, self._lineage_path(objective_id)),
             "creation_reason": "HUMAN_CONFIRMED_CANDIDATE_FREEZE",
@@ -1770,14 +1944,14 @@ class CandidateGenerationManagerV1:
         history = list((state or {}).get("state_history") or proposal.get("state_history") or [GENERATED, CANDIDATE_PROPOSAL_READY, HUMAN_REVIEW_REQUIRED, FREEZE_PREVIEW_READY])
         if FROZEN not in history:
             history.append(FROZEN)
-        if current not in {FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}:
-            self._materialize_state(proposal, FROZEN, history, reviews)
+        if CANDIDATE_GOVERNANCE_FROZEN not in history:
+            history.append(CANDIDATE_GOVERNANCE_FROZEN)
+        if current not in {FROZEN, CANDIDATE_GOVERNANCE_FROZEN, EXECUTABLE_CANDIDATE_FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}:
+            self._materialize_state(proposal, CANDIDATE_GOVERNANCE_FROZEN, history, reviews)
             if self.crash_at in {"after_frozen_state", "after_candidate_freeze"}:
                 raise RuntimeError("SYNTHETIC_CANDIDATE_GOVERNANCE_CRASH:after_frozen_state")
-        if READY_FOR_STRUCTURAL_PREFLIGHT not in history:
-            history.append(READY_FOR_STRUCTURAL_PREFLIGHT)
-        if current != READY_FOR_STRUCTURAL_PREFLIGHT:
-            self._materialize_state(proposal, READY_FOR_STRUCTURAL_PREFLIGHT, history, reviews)
+        if current in {FROZEN, CANDIDATE_GOVERNANCE_FROZEN} and current != CANDIDATE_GOVERNANCE_FROZEN:
+            self._materialize_state(proposal, CANDIDATE_GOVERNANCE_FROZEN, history, reviews)
         view = self._load_view(proposal_id)
         registry_entry = next((dict(item) for item in registry.get("candidates", ()) if isinstance(item, Mapping) and str(item.get("candidate_id") or "") == candidate_id), entry)
         return {
@@ -1786,7 +1960,7 @@ class CandidateGenerationManagerV1:
             "candidate": registry_entry,
             "proposal": view,
             "idempotent": bool(idempotent and not created),
-            "message_zh": "Candidate 已按人工确认冻结；系统停在 READY_FOR_STRUCTURAL_PREFLIGHT，未自动执行 Structural Preflight 或 Trial。",
+            "message_zh": "Candidate Governance Freeze 已按人工确认完成；当前等待执行合同预览，未自动执行 Structural Preflight 或 Trial。",
         }
 
     def freeze(
@@ -1842,7 +2016,7 @@ class CandidateGenerationManagerV1:
             state_path = output_path.parent / CANDIDATE_PROPOSAL_STATE_FILENAME
             state = _read_json(state_path, code="CANDIDATE_PROPOSAL_STATE_UNREADABLE", required=False)
             current = str(state.get("status") if state else CANDIDATE_PROPOSAL_READY)
-            if current in {FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}:
+            if current in {FROZEN, CANDIDATE_GOVERNANCE_FROZEN, EXECUTABLE_CANDIDATE_FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}:
                 receipt = _read_json(output_path.parent / CANDIDATE_FREEZE_RECEIPT_FILENAME, code="CANDIDATE_FREEZE_RECEIPT_UNREADABLE")
                 existing_freeze_id = str(receipt.get("freeze_id") or "")
                 if freeze_id not in (None, "") and str(freeze_id) != existing_freeze_id:
@@ -1948,7 +2122,7 @@ class CandidateGenerationManagerV1:
                     _append_jsonl(reviews_path, record)
                     reviews.append(record)
                     recovered = True
-                if state is None or str(state.get("status") or "") not in {READY_FOR_STRUCTURAL_PREFLIGHT}:
+                if state is None or str(state.get("status") or "") not in {CANDIDATE_GOVERNANCE_FROZEN, EXECUTABLE_CANDIDATE_FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT}:
                     self._materialize_freeze(proposal, preview, record, reviews, state=state, idempotent=True)
                     recovered = True
             elif state is None:
@@ -2011,6 +2185,7 @@ if __name__ == "__main__":
 
 __all__ = [
     "APPROVED",
+    "CANDIDATE_GOVERNANCE_FROZEN",
     "CANDIDATE_FREEZE_GOVERNANCE_FILENAME",
     "CANDIDATE_FREEZE_PREVIEW_FILENAME",
     "CANDIDATE_FREEZE_PREVIEW_SCHEMA_VERSION",
@@ -2044,9 +2219,13 @@ __all__ = [
     "DUPLICATE_MECHANISM_REJECTED",
     "GENERATED",
     "HUMAN_CONFIRM_CANDIDATE_FREEZE",
+    "CREATE_EXECUTABLE_MATERIALIZATION_PREVIEW",
+    "HUMAN_CONFIRM_EXECUTABLE_MATERIALIZATION",
     "HUMAN_REVIEW_REQUIRED",
     "NEED_CANDIDATE_PROPOSAL",
     "NEW_CANDIDATE",
+    "EXECUTABLE_CANDIDATE_FROZEN",
     "READY_FOR_STRUCTURAL_PREFLIGHT",
+    "RUN_STRUCTURAL_PREFLIGHT",
     "REJECTED",
 ]

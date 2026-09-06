@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { ConsoleApiError, consoleApi } from '../api'
-import type { CandidateProposalFreezeResult, CandidateProposalReviewResult, CandidateProposalView, JsonRecord } from '../types'
+import type { CandidateExecutableMaterializationResult, CandidateProposalFreezeResult, CandidateProposalReviewResult, CandidateProposalView, JsonRecord } from '../types'
 
 const props = defineProps<{
   model: CandidateProposalView | null
@@ -10,6 +10,7 @@ const props = defineProps<{
 
 const localProposal = ref<JsonRecord | null>(null)
 const localFreezePreview = ref<JsonRecord | null>(null)
+const localMaterialization = ref<JsonRecord>({})
 const reviewer = ref('')
 const reviewReason = ref('')
 const busy = ref(false)
@@ -19,6 +20,7 @@ const successMessage = ref('')
 watch(() => props.model, (model) => {
   localProposal.value = model?.proposal || null
   localFreezePreview.value = model?.freeze_preview || null
+  localMaterialization.value = model?.materialization || {}
   errorMessage.value = ''
 }, { immediate: true })
 
@@ -27,7 +29,12 @@ const preview = computed<JsonRecord | null>(() => localFreezePreview.value || pr
 const status = computed(() => String(proposal.value?.governance_state || proposal.value?.status || props.model?.status || 'NEED_CANDIDATE_PROPOSAL'))
 const canReview = computed(() => ['CANDIDATE_PROPOSAL_READY', 'HUMAN_REVIEW_REQUIRED'].includes(status.value))
 const canFreeze = computed(() => ['FREEZE_PREVIEW_READY', 'CANDIDATE_FREEZE_READY'].includes(status.value))
-const frozen = computed(() => ['FROZEN', 'READY_FOR_STRUCTURAL_PREFLIGHT'].includes(status.value) || proposal.value?.governance?.candidate_frozen === true)
+const frozen = computed(() => ['FROZEN', 'CANDIDATE_GOVERNANCE_FROZEN', 'EXECUTABLE_CANDIDATE_FROZEN', 'READY_FOR_STRUCTURAL_PREFLIGHT'].includes(status.value) || proposal.value?.governance?.candidate_frozen === true)
+const materialization = computed<JsonRecord>(() => localMaterialization.value || props.model?.materialization || {})
+const materializationState = computed(() => String(materialization.value.materialization_state || materialization.value.effective_state || materialization.value.status || ''))
+const executableFrozen = computed(() => ['EXECUTABLE_CANDIDATE_FROZEN', 'READY_FOR_STRUCTURAL_PREFLIGHT'].includes(materializationState.value) || materialization.value.structural_preflight_ready === true)
+const canCreateMaterializationPreview = computed(() => frozen.value && !['EXECUTABLE_MATERIALIZATION_PREVIEW_READY', 'EXECUTABLE_CANDIDATE_FROZEN', 'READY_FOR_STRUCTURAL_PREFLIGHT'].includes(materializationState.value))
+const canConfirmMaterialization = computed(() => materializationState.value === 'EXECUTABLE_MATERIALIZATION_PREVIEW_READY' && Boolean(materialization.value.preview?.preview_hash || materialization.value.preview_hash))
 const factors = computed(() => list(proposal.value?.factor_contract))
 const excluded = computed(() => list(proposal.value?.excluded_family))
 const history = computed<JsonRecord[]>(() => Array.isArray(proposal.value?.governance_history) ? proposal.value?.governance_history as JsonRecord[] : [])
@@ -50,6 +57,8 @@ function statusLabel(value: string): string {
     FREEZE_PREVIEW_READY: '冻结预览已准备，等待第二次确认',
     CANDIDATE_FREEZE_READY: '冻结预览已准备，等待第二次确认',
     FROZEN: 'Candidate 已冻结',
+    CANDIDATE_GOVERNANCE_FROZEN: '治理冻结已完成，等待执行合同预览',
+    EXECUTABLE_CANDIDATE_FROZEN: '执行合同已冻结，具备结构预检资格',
     READY_FOR_STRUCTURAL_PREFLIGHT: 'Candidate 已冻结，等待 Structural Preflight 人工入口',
     REJECTED: '已拒绝',
     CLOSED: '已关闭',
@@ -58,7 +67,7 @@ function statusLabel(value: string): string {
 
 function statusTone(value: string): string {
   if (value === 'REJECTED' || value === 'CLOSED') return 'tone-muted'
-  if (['FREEZE_PREVIEW_READY', 'CANDIDATE_FREEZE_READY', 'APPROVED', 'FROZEN', 'READY_FOR_STRUCTURAL_PREFLIGHT'].includes(value)) return 'tone-success'
+  if (['FREEZE_PREVIEW_READY', 'CANDIDATE_FREEZE_READY', 'APPROVED', 'FROZEN', 'CANDIDATE_GOVERNANCE_FROZEN', 'EXECUTABLE_CANDIDATE_FROZEN', 'READY_FOR_STRUCTURAL_PREFLIGHT'].includes(value)) return 'tone-success'
   return 'tone-governance'
 }
 
@@ -103,9 +112,51 @@ async function confirmFreeze() {
     }) as CandidateProposalFreezeResult
     localProposal.value = result.proposal
     localFreezePreview.value = result.proposal?.freeze_preview || preview.value
-    successMessage.value = 'Candidate 已冻结；系统停在 READY_FOR_STRUCTURAL_PREFLIGHT，未启动 Structural Preflight 或 Trial。'
+    localMaterialization.value = { materialization_state: 'CANDIDATE_FROZEN_PENDING_EXECUTABLE_MATERIALIZATION', required_action: 'CREATE_EXECUTABLE_MATERIALIZATION_PREVIEW', structural_preflight_ready: false }
+    successMessage.value = 'Candidate Governance Freeze 已完成；当前等待执行合同预览，未启动 Structural Preflight 或 Trial。'
   } catch (error) {
     errorMessage.value = error instanceof ConsoleApiError ? error.message : 'Candidate 冻结未完成。'
+  } finally {
+    busy.value = false
+  }
+}
+
+async function createMaterializationPreview() {
+  if (busy.value || !proposal.value) return
+  busy.value = true
+  errorMessage.value = ''
+  successMessage.value = ''
+  try {
+    const result = await consoleApi.createExecutableMaterializationPreview(props.objectiveId, { proposal_id: proposal.value.proposal_id }) as CandidateExecutableMaterializationResult
+    localMaterialization.value = { ...result, materialization_state: result.status || 'EXECUTABLE_MATERIALIZATION_PREVIEW_READY', preview: result }
+    successMessage.value = '执行合同预览已生成；Durable Contract 尚未写入，仍需第二次人工确认。'
+  } catch (error) {
+    errorMessage.value = error instanceof ConsoleApiError ? error.message : '执行合同预览未生成。'
+  } finally {
+    busy.value = false
+  }
+}
+
+async function confirmMaterialization() {
+  if (busy.value || !proposal.value || !reviewer.value.trim()) return
+  const previewRecord = (materialization.value.preview || materialization.value) as JsonRecord
+  const previewHash = String(previewRecord.preview_hash || '')
+  if (!previewHash) return
+  busy.value = true
+  errorMessage.value = ''
+  successMessage.value = ''
+  try {
+    const result = await consoleApi.confirmExecutableMaterialization(props.objectiveId, {
+      proposal_id: proposal.value.proposal_id,
+      confirmed: true,
+      reviewer: reviewer.value.trim(),
+      preview_hash: previewHash,
+      idempotency_key: `CONSOLE_${previewHash.slice(0, 24)}`,
+    }) as CandidateExecutableMaterializationResult
+    localMaterialization.value = { ...result, materialization_state: result.effective_state || 'READY_FOR_STRUCTURAL_PREFLIGHT' }
+    successMessage.value = '执行合同已确认；Candidate 已具备结构预检资格，系统不会自动进入 Structural。'
+  } catch (error) {
+    errorMessage.value = error instanceof ConsoleApiError ? error.message : '执行合同确认未完成。'
   } finally {
     busy.value = false
   }
@@ -212,11 +263,28 @@ const emit = defineEmits<{ navigate: [path: string] }>()
       </section>
 
       <section v-if="preview" class="surface padded candidate-freeze-preview">
-        <div class="section-heading"><div><span class="eyebrow">Candidate Freeze Preview</span><h2>{{ frozen ? 'Candidate Frozen' : '冻结方案已准备' }}</h2><p>{{ frozen ? '冻结回执与 Candidate Registry 已保存；后续 Structural Preflight 仍需独立人工入口。' : '这是 immutable 只读预览，不是 Candidate 登记；确认冻结后才会写入 Candidate Registry。' }}</p></div><span class="status-chip tone-success">{{ statusLabel(status) }}</span></div>
+         <div class="section-heading"><div><span class="eyebrow">Candidate Freeze Preview</span><h2>{{ frozen ? 'Candidate Governance Frozen' : '冻结方案已准备' }}</h2><p>{{ frozen ? '冻结回执与 Candidate Registry 已保存；执行合同物化和 Structural Preflight 仍需独立人工入口。' : '这是 immutable 只读预览，不是 Candidate 登记；确认冻结后才会写入 Candidate Registry。' }}</p></div><span class="status-chip tone-success">{{ statusLabel(status) }}</span></div>
         <dl class="preview-grid"><div><dt>Candidate ID</dt><dd><code>{{ display(preview.candidate_id) }}</code></dd></div><div><dt>Candidate Hash</dt><dd><code>{{ display(preview.candidate_hash) }}</code></dd></div><div><dt>Objective ID</dt><dd><code>{{ display(preview.objective_id) }}</code></dd></div><div><dt>研究 lineage</dt><dd><code>{{ display(preview.lineage?.lineage_id) }}</code></dd></div><div><dt>机制族</dt><dd><code>{{ display(preview.mechanism_family) }}</code></dd></div><div><dt>检验家族</dt><dd><code>{{ display(preview.multiple_testing_family_id) }}</code></dd></div><div><dt>因子合同</dt><dd><code>{{ list(preview.factor_contract).join(' · ') || '未提供' }}</code></dd></div><div><dt>执行合同</dt><dd><code>{{ display(preview.execution_contract?.entry) }} / {{ display(preview.execution_contract?.signal_time) }}</code></dd></div><div><dt>数据合同</dt><dd><code>{{ list(preview.data_contract?.required_dataset_ids).join(' · ') || '未提供' }}</code></dd></div><div><dt>预算</dt><dd>未预留 · 未消耗</dd></div><div><dt>下一步</dt><dd>{{ frozen ? '等待 Structural Preflight 独立确认' : '第二次人工确认冻结' }}</dd></div></dl>
         <div v-if="canFreeze" class="review-actions"><button class="button-primary" type="button" data-testid="confirm-candidate-freeze" :disabled="busy || !reviewer.trim()" @click="confirmFreeze">确认冻结 Candidate</button></div>
-        <div class="candidate-safety"><strong>安全边界</strong><p>Candidate：{{ frozen ? '已登记并冻结' : '未登记' }}　·　Structural Preflight：未启动　·　Trial：未启动　·　AI：未调用　·　Budget：未消耗</p></div>
-      </section>
+         <div class="candidate-safety"><strong>安全边界</strong><p>Candidate Governance：{{ frozen ? '已登记并冻结' : '未登记' }}　·　Structural Preflight：未启动　·　Trial：未启动　·　AI：未调用　·　Budget：未消耗</p></div>
+       </section>
+
+       <section v-if="frozen" class="surface padded candidate-materialization">
+         <div class="section-heading"><div><span class="eyebrow">Executable Materialization Bridge</span><h2>第二层：执行合同冻结</h2><p>治理冻结只证明人工批准了 Candidate Proposal；只有完整 DurableFrozenCandidateContractV1 通过两个校验后，才具备结构预检资格。</p></div><span class="status-chip" :class="executableFrozen ? 'tone-success' : 'tone-governance'">{{ statusLabel(materializationState || 'CANDIDATE_GOVERNANCE_FROZEN') }}</span></div>
+         <dl class="preview-grid materialization-grid">
+           <div><dt>Candidate ID</dt><dd><code>{{ display(materialization.value.candidate_id || proposal.candidate_id || proposal.freeze_record?.candidate_id) }}</code></dd></div>
+           <div><dt>Candidate Hash</dt><dd><code>{{ display(materialization.value.candidate_hash || proposal.candidate_hash || proposal.freeze_record?.candidate_hash) }}</code></dd></div>
+           <div><dt>Contract Hash</dt><dd><code>{{ display(materialization.value.durable_contract_hash || materialization.value.preview?.durable_contract_hash) }}</code></dd></div>
+           <div><dt>Semantic Fingerprint</dt><dd><code>{{ display(materialization.value.semantic_fingerprint || materialization.value.preview?.semantic_fingerprint) }}</code></dd></div>
+           <div><dt>Provider readiness</dt><dd>{{ display(materialization.value.preview?.provider_readiness?.status || materialization.value.provider_readiness?.status) }}</dd></div>
+           <div><dt>研究周期</dt><dd><code>{{ display(materialization.value.preview?.research_period_identity?.id || materialization.value.research_period_identity?.id) }}</code></dd></div>
+           <div><dt>缺失字段</dt><dd>{{ list(materialization.value.preview?.missing_fields || materialization.value.missing_fields).join(' · ') || '无' }}</dd></div>
+           <div><dt>下一步</dt><dd>{{ display(materialization.value.required_action || materialization.value.preview?.next_action || 'CREATE_EXECUTABLE_MATERIALIZATION_PREVIEW') }}</dd></div>
+         </dl>
+         <div v-if="canCreateMaterializationPreview" class="review-actions"><button class="button-primary" type="button" data-testid="create-executable-materialization-preview" :disabled="busy" @click="createMaterializationPreview">生成执行合同预览</button></div>
+         <div v-if="canConfirmMaterialization" class="review-actions"><button class="button-primary" type="button" data-testid="confirm-executable-materialization" :disabled="busy || !reviewer.trim()" @click="confirmMaterialization">确认冻结执行合同</button></div>
+         <div v-if="executableFrozen" class="candidate-safety"><strong>结构预检资格</strong><p>已具备 READY_FOR_STRUCTURAL_PREFLIGHT 资格；请通过独立入口人工进入 Structural Preflight，本页面不会自动触发。</p></div>
+       </section>
     </template>
 
     <section v-else class="surface padded candidate-empty">
@@ -248,7 +316,7 @@ const emit = defineEmits<{ navigate: [path: string] }>()
 .history-list { display: grid; gap: 8px; }
 .history-row { display: grid; grid-template-columns: 100px 120px minmax(160px, 1fr) minmax(150px, 0.9fr); gap: 10px; align-items: center; padding: 10px 12px; border-radius: 8px; background: var(--qc-surface-subtle); color: var(--qc-muted); font-size: 12px; }
 .history-row strong { color: var(--qc-text); }
-.candidate-review, .candidate-freeze-preview { display: grid; gap: 16px; }
+.candidate-review, .candidate-freeze-preview, .candidate-materialization { display: grid; gap: 16px; }
 .review-fields { display: grid; grid-template-columns: minmax(180px, 0.5fr) minmax(280px, 1fr); gap: 14px; }
 .review-fields label { display: grid; gap: 7px; color: var(--qc-muted); font-size: 12px; }
 .review-fields input, .review-fields textarea { width: 100%; box-sizing: border-box; padding: 10px 11px; color: var(--qc-text); background: #fff; border: 1px solid var(--qc-border); border-radius: 8px; font: inherit; resize: vertical; }

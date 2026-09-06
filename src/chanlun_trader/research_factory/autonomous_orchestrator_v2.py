@@ -82,6 +82,16 @@ AI_DENIED_TRIGGERS = frozenset({
 AI_BATCH_VALIDATION_TIMEOUT_SECONDS = 30.0
 AI_BATCH_VALIDATION_STALE_AFTER_SECONDS = 120.0
 PREDICTIVE_AUTHORIZATION_REQUIRED = "PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED"
+MANUAL_HANDOFF_CONTEXT_COMPATIBILITY = "SAFE_RUNTIME_CONTEXT_V1"
+MANUAL_HANDOFF_LEGACY_CONTEXT_COMPATIBILITY = "LEGACY_SYNTHETIC_NO_OBJECTIVE_V1"
+STRUCTURAL_PROJECTION_STATES = frozenset({
+    "READY_FOR_STRUCTURAL_PREFLIGHT",
+    "STRUCTURAL_RUNNING",
+    "STRUCTURAL_BLOCKED",
+    "ENGINEERING_BLOCKED",
+    "CANONICAL_STATE_CONFLICT",
+    PREDICTIVE_AUTHORIZATION_REQUIRED,
+})
 
 
 def _safe_design_payload(value: Any) -> Any:
@@ -1591,18 +1601,41 @@ class AutonomousResearchOrchestratorV2:
 
     def _handoff(self, snapshot: CanonicalResearchSnapshotV2) -> dict[str, Any]:
         self._set_state(OrchestratorState.AI_HANDOFF_PREPARING, "AI_HANDOFF_CREATED")
+        safe_runtime_context = None
+        objective_path = self.root / "data" / "research" / "research_factory" / "objectives" / f"{snapshot.objective_id}.json"
+        if objective_path.is_file():
+            from .safe_runtime_context import SafeRuntimeContextBuilderV1
+
+            # The safe context is built before assembling any handoff view.
+            # Canonical reconciliation remains the only authority; the
+            # existing snapshot is retained only for legacy runtime metadata.
+            safe_runtime_context = SafeRuntimeContextBuilderV1(self.root).build(snapshot.objective_id, purpose="MANUAL_HANDOFF")
         adapter = FailureKnowledgeAdapterV1()
         failure_snapshot = adapter.snapshot_from_trials(snapshot.trials, snapshot_id=f"{snapshot.objective_id}_ORCHESTRATOR_FAILURE_SNAPSHOT")
         failure_view = failure_snapshot.sanitized_view(source_batch_ids=(), source_history_hash=stable_hash(snapshot.trials))
         objective = self._objective_payload(snapshot.objective_id)
         safe_objective = _safe_design_payload({key: objective.get(key) for key in ("objective_id", "research_universe", "holding_horizon", "preferred_horizon", "mechanism_scope", "allowed_factor_scope", "risk_constraints")})
+        if safe_runtime_context is not None:
+            safe_objective = dict(safe_runtime_context.get("objective") or safe_objective)
+        safe_budget = dict((safe_runtime_context.get("budget") if safe_runtime_context is not None else snapshot.budget) or {})
+        safe_factor_capabilities = list(safe_runtime_context.get("factor_capabilities") or ()) if safe_runtime_context is not None else []
         no_outcome_context = NoOutcomeResearchContextV1(
-            factor_capability_summary=tuple({"factor_id": factor_id, "available": True} for factor_id in sorted({factor_id for item in snapshot.candidates for factor_id in item.get("factor_ids", ())})),
-            mechanism_history=tuple({"mechanism": item.get("mechanism"), "candidate_id": item.get("candidate_id")} for item in snapshot.candidates),
+            factor_capability_summary=tuple(
+                {"factor_id": item.get("factor_id"), "available": item.get("availability") == "AVAILABLE"}
+                for item in safe_factor_capabilities
+                if isinstance(item, Mapping) and item.get("factor_id")
+            ) or tuple({"factor_id": factor_id, "available": True} for factor_id in sorted({factor_id for item in snapshot.candidates for factor_id in item.get("factor_ids", ())})),
+            mechanism_history=tuple(
+                {"mechanism": item.get("mechanism"), "candidate_id": item.get("candidate_id")}
+                for item in ((safe_runtime_context.get("candidate") or {}).get("candidates", ()) if safe_runtime_context is not None else snapshot.candidates)
+                if isinstance(item, Mapping)
+            ),
             failure_class_summaries=tuple(dict(item) for item in failure_view.entries),
             constraints={"objective_id": snapshot.objective_id, "mechanism_scope": list(objective.get("mechanism_scope", ())), "pit_required": True, "execution_semantics": "EXISTING_CANONICAL_EXECUTION_CONTRACT"},
         )
-        source_hashes = {"objective": snapshot.objective_hash, "budget": str(snapshot.budget.get("registry_head_hash")), "failure_knowledge": failure_view.view_hash, "candidate_identities": stable_hash([(item.get("candidate_id"), item.get("candidate_hash")) for item in snapshot.candidates])}
+        source_hashes = {"objective": snapshot.objective_hash, "budget": str(safe_budget.get("budget_identity", {}).get("registry_head_hash") or snapshot.budget.get("registry_head_hash")), "failure_knowledge": failure_view.view_hash, "candidate_identities": stable_hash([(item.get("candidate_id"), item.get("candidate_hash")) for item in snapshot.candidates])}
+        if safe_runtime_context is not None:
+            source_hashes["safe_runtime_context"] = safe_runtime_context.context_hash
         scope = load_scope_manifest(self.root, snapshot.objective_id)
         design_policy = load_design_policy(self.root)
         governance_action = str(objective.get("governance_action") or "")
@@ -1610,6 +1643,11 @@ class AutonomousResearchOrchestratorV2:
         task_purpose = "新机制研究设计" if current_round == "NEW_MECHANISM" else "PROMISING_FOLLOWUP 机制确认设计" if current_round == "PROMISING_FOLLOWUP" else "研究候选设计"
         base = {
             "schema_version": "research-orchestrator-ai-handoff-v2",
+            "context_compatibility": (
+                MANUAL_HANDOFF_CONTEXT_COMPATIBILITY
+                if safe_runtime_context is not None
+                else MANUAL_HANDOFF_LEGACY_CONTEXT_COMPATIBILITY
+            ),
             "handoff_generation": int(self.checkpoint.get("handoff_generation", 0) or 0),
             "objective_id": snapshot.objective_id,
             "reason": "NEED_AI_RESEARCH_DESIGN",
@@ -1617,8 +1655,12 @@ class AutonomousResearchOrchestratorV2:
             "current_round": current_round,
             "allowed_action": ["DESIGN_LEGAL_HYPOTHESES", "GENERATE_FROZEN_CANDIDATE_BATCH"],
             "forbidden_actions": ["RUN_PROVIDER", "RUN_PREDICTIVE_TRIAL", "ACCESS_PERFORMANCE", "MUTATE_TRIAL_LEDGER", "MUTATE_SEARCH_BUDGET", "CREATE_OBJECTIVE", "OPEN_FINAL_TEST", "START_PROSPECTIVE", "ENABLE_REAL_ORDER"],
-            "remaining_budget": dict(snapshot.budget),
-            "search_space_context": {"objective": safe_objective, "mechanism_scope": list(objective.get("mechanism_scope", ())), "data_capability_metadata": self._data_capability_payload(), "global_search_exhausted": snapshot.global_search_exhausted, "remaining_frozen_candidates": snapshot.remaining_frozen_candidates, "pit_required": True, "execution_semantics": "EXISTING_CANONICAL_EXECUTION_CONTRACT"},
+            "remaining_budget": safe_budget,
+            "search_space_context": {"objective": safe_objective, "mechanism_scope": list(objective.get("mechanism_scope", ())), "data_capability_metadata": safe_runtime_context.get("data_capabilities") if safe_runtime_context is not None else self._data_capability_payload(), "global_search_exhausted": snapshot.global_search_exhausted, "remaining_frozen_candidates": snapshot.remaining_frozen_candidates, "pit_required": True, "execution_semantics": "EXISTING_CANONICAL_EXECUTION_CONTRACT"},
+            "source_context_id": safe_runtime_context.context_id if safe_runtime_context is not None else None,
+            "source_context_hash": safe_runtime_context.context_hash if safe_runtime_context is not None else None,
+            "source_context_version": safe_runtime_context.get("context_version") if safe_runtime_context is not None else None,
+            "safe_runtime_context_identity": dict(safe_runtime_context.identity) if safe_runtime_context is not None else None,
             "no_outcome_research_context": no_outcome_context.to_dict(),
             "sanitized_failure_knowledge": failure_view.to_dict(),
             "ai_design_policy": {"policy": design_policy.get("objective_overrides", {}).get(snapshot.objective_id) if isinstance(design_policy.get("objective_overrides"), Mapping) else None, "current_round_mode": "ONE_SHOT" if is_one_shot_followup(self.root, snapshot.objective_id) else "ITERATIVE"},
@@ -1891,6 +1933,44 @@ class AutonomousResearchOrchestratorV2:
             self._set_state(OrchestratorState.ENGINEERING_BLOCKED, "AI_MANUAL_RESULT_VALIDATION_ENGINEERING_FAILED", error_code=code)
         return self.status().to_dict()
 
+    def _validate_manual_handoff_live_context(self, handoff: Mapping[str, Any]) -> None:
+        """Require a fresh MANUAL_HANDOFF context for governed Objectives.
+
+        Synthetic runtimes without an Objective document retain an explicit
+        legacy compatibility path.  A governed Objective never uses that
+        bypass: missing or stale context binding rejects the result before
+        validation or ingestion starts.
+        """
+
+        objective_path = self.root / "data" / "research" / "research_factory" / "objectives" / f"{self.objective_id}.json"
+        if not objective_path.exists():
+            if (
+                str(handoff.get("schema_version") or "") == "research-orchestrator-ai-handoff-v2"
+                and str(handoff.get("context_compatibility") or "") == MANUAL_HANDOFF_LEGACY_CONTEXT_COMPATIBILITY
+            ):
+                return
+            raise AIBatchValidationError("STALE_AI_HANDOFF_CONTEXT")
+        source_context_id = str(handoff.get("source_context_id") or "")
+        source_context_hash = str(handoff.get("source_context_hash") or "")
+        if str(handoff.get("context_compatibility") or "") != MANUAL_HANDOFF_CONTEXT_COMPATIBILITY:
+            raise AIBatchValidationError("STALE_AI_HANDOFF_CONTEXT")
+        identity = handoff.get("safe_runtime_context_identity") if isinstance(handoff.get("safe_runtime_context_identity"), Mapping) else {}
+        source_hashes = handoff.get("source_hashes") if isinstance(handoff.get("source_hashes"), Mapping) else {}
+        if not source_context_id or not source_context_hash:
+            raise AIBatchValidationError("STALE_AI_HANDOFF_CONTEXT")
+        if str(identity.get("context_id") or "") != source_context_id or str(identity.get("context_hash") or "") != source_context_hash:
+            raise AIBatchValidationError("STALE_AI_HANDOFF_CONTEXT")
+        if source_hashes.get("safe_runtime_context") != source_context_hash:
+            raise AIBatchValidationError("STALE_AI_HANDOFF_CONTEXT")
+        from .safe_runtime_context import SafeRuntimeContextBuilderV1, SafeRuntimeContextError
+
+        try:
+            current = SafeRuntimeContextBuilderV1(self.root).build(self.objective_id, purpose="MANUAL_HANDOFF")
+        except SafeRuntimeContextError as exc:
+            raise AIBatchValidationError("STALE_AI_HANDOFF_CONTEXT") from exc
+        if current.context_id != source_context_id or current.context_hash != source_context_hash:
+            raise AIBatchValidationError("STALE_AI_HANDOFF_CONTEXT")
+
     def _run_manual_ai(self, snapshot: CanonicalResearchSnapshotV2, handoff: Mapping[str, Any], record: dict[str, Any] | None) -> dict[str, Any]:
         metadata, result_path, invocation_id = self._manual_task(handoff)
         if record is None or str(record.get("ai_invocation_id")) != invocation_id:
@@ -1936,6 +2016,16 @@ class AutonomousResearchOrchestratorV2:
         result_created = self._manual_result_timestamp(manifest)
         if task_created is not None and result_created is not None and (task_created - result_created).total_seconds() > 1:
             return self._manual_result_rejected(handoff, record, code="AI_MANUAL_RESULT_STALE", message_zh="结果文件早于当前手动任务，已判定为过期结果，未接入研究。", fingerprint=fingerprint)
+        try:
+            self._validate_manual_handoff_live_context(handoff)
+        except AIBatchValidationError as exc:
+            return self._manual_result_rejected(
+                handoff,
+                record,
+                code=str(exc),
+                message_zh="手动 AI 结果绑定的 SafeRuntimeContext 已过期，结果未接入研究。",
+                fingerprint=fingerprint,
+            )
         record.update({"status": "COMPLETED", "validation_status": "PENDING", "manual_result_detected_at": now_timestamp(), "result_fingerprint": fingerprint, "output_manifest_path": metadata["result_path"], "manual_task": metadata, "background_ai_token_consumption": 0})
         self.store.atomic_write(self.store.invocation_path, record)
         if OrchestratorState(str(self.checkpoint["state"])) != OrchestratorState.AI_MANUAL_HANDOFF_REQUIRED:
@@ -2273,12 +2363,35 @@ class AutonomousResearchOrchestratorV2:
             return True
         return False
 
+    def _structural_reconciliation(self) -> Mapping[str, Any] | None:
+        """Read the canonical structural snapshot without advancing research.
+
+        The orchestrator owns a runtime checkpoint, not the Structural fact.
+        This narrow adapter lets the control plane expose the reconciled
+        Structural boundary while leaving AI, Trial, and Budget actions to
+        their existing explicit services.
+        """
+
+        objective_path = self.root / "data" / "research" / "research_factory" / "objectives" / f"{self.objective_id}.json"
+        if not objective_path.is_file():
+            return None
+        try:
+            from .objective_reconciliation import ObjectiveReconciliationServiceV1
+
+            report = ObjectiveReconciliationServiceV1(self.root, self.objective_id).reconcile()
+        except (OSError, UnicodeError, ValueError, KeyError, TypeError, json.JSONDecodeError):
+            return None
+        effective_state = str(report.get("effective_state") or "")
+        conflict_level = str(report.get("conflict_level") or "")
+        return report if effective_state in STRUCTURAL_PROJECTION_STATES or conflict_level == "CANONICAL_CONFLICT" else None
+
     def step(self) -> dict[str, Any]:
         if self._handle_control():
             return self.status().to_dict()
         self._recover()
         state = OrchestratorState(str(self.checkpoint["state"]))
         snapshot = self.runtime.snapshot()
+        structural_reconciliation = self._structural_reconciliation()
         self.checkpoint["daemon_linkage"] = {"daemon_run_id": snapshot.daemon_run_id, "daemon_state": snapshot.daemon_state}
         self.checkpoint["terminal_reason"] = snapshot.terminal_reason
         if state == OrchestratorState.AI_RESEARCH_DISABLED and self.config.ai_invocation_mode != "AI_DISABLED":
@@ -2292,6 +2405,20 @@ class AutonomousResearchOrchestratorV2:
             return self._run_ai(snapshot)
         if state in {OrchestratorState.GOVERNANCE_DECISION_REQUIRED, OrchestratorState.PAUSED, OrchestratorState.SHUTDOWN, OrchestratorState.AI_HANDOFF_BLOCKED, OrchestratorState.AI_INVOCATION_UNAVAILABLE, OrchestratorState.AI_MANUAL_HANDOFF_REQUIRED, OrchestratorState.AI_RESEARCH_DISABLED, OrchestratorState.NO_PROGRESS_RESEARCH_LOOP, OrchestratorState.ENGINEERING_BLOCKED}:
             self._save()
+            return self.status().to_dict()
+        if structural_reconciliation is not None:
+            # Structural Entry is an explicit domain operation.  Seeing a
+            # READY executable candidate or a Structural result must never
+            # invoke local research, AI, Trial, or Budget code here.
+            if state == OrchestratorState.LOCAL_RESEARCH_RUNNING:
+                self._set_state(
+                    OrchestratorState.ACTIVE,
+                    "STRUCTURAL_PROJECTION_RECONCILED",
+                    effective_state=structural_reconciliation.get("effective_state"),
+                    required_action=structural_reconciliation.get("required_action"),
+                )
+            else:
+                self._save()
             return self.status().to_dict()
         if snapshot.daemon_state in TERMINAL_DAEMON_STATES or int(snapshot.budget.get("remaining", 0)) <= 0:
             return self._terminal_closeout(snapshot)
@@ -2447,10 +2574,16 @@ class AutonomousResearchOrchestratorV2:
         invocation = self.store.load_invocation()
         handoff = self._read_handoff()
         state = str(self.checkpoint["state"])
-        predictive_authorization_pending = snapshot.required_action == PREDICTIVE_AUTHORIZATION_REQUIRED
+        structural_reconciliation = self._structural_reconciliation()
+        reconciled_effective_state = str(structural_reconciliation.get("effective_state") or "") if structural_reconciliation else ""
+        predictive_authorization_pending = (
+            reconciled_effective_state == PREDICTIVE_AUTHORIZATION_REQUIRED
+            or snapshot.required_action == PREDICTIVE_AUTHORIZATION_REQUIRED
+        )
         projected_state = (
             OrchestratorState.ACTIVE.value
-            if predictive_authorization_pending and state == OrchestratorState.LOCAL_RESEARCH_RUNNING.value
+            if structural_reconciliation is not None
+            or predictive_authorization_pending and state == OrchestratorState.LOCAL_RESEARCH_RUNNING.value
             else state
         )
         ai_running = projected_state == OrchestratorState.AI_INVOCATION_RUNNING.value
@@ -2470,8 +2603,28 @@ class AutonomousResearchOrchestratorV2:
         ai_status = projected_state if projected_state in ai_states else "IDLE"
         current_candidate = self.checkpoint.get("current_candidate")
         current_trial = self.checkpoint.get("current_trial")
+        projected_daemon_state = snapshot.daemon_state
+        if structural_reconciliation is not None:
+            effective_candidate_id = (structural_reconciliation.get("effective_objective_state") or {}).get("current_candidate_id") if isinstance(structural_reconciliation.get("effective_objective_state"), Mapping) else None
+            effective_candidate_hash = (structural_reconciliation.get("effective_objective_state") or {}).get("current_candidate_hash") if isinstance(structural_reconciliation.get("effective_objective_state"), Mapping) else None
+            current_candidate = (
+                {"candidate_id": str(effective_candidate_id), "candidate_hash": str(effective_candidate_hash or "")}
+                if effective_candidate_id
+                else None
+            )
+            current_trial = None
+            projected_daemon_state = {
+                "READY_FOR_STRUCTURAL_PREFLIGHT": "READY",
+                "STRUCTURAL_RUNNING": "STRUCTURAL_RUNNING",
+                PREDICTIVE_AUTHORIZATION_REQUIRED: "STRUCTURAL_PASS",
+                "STRUCTURAL_BLOCKED": "STRUCTURAL_BLOCKED",
+                "ENGINEERING_BLOCKED": "ENGINEERING_BLOCKED",
+                "CANONICAL_STATE_CONFLICT": snapshot.daemon_state,
+            }.get(reconciled_effective_state, snapshot.daemon_state)
         next_action = (
-            PREDICTIVE_AUTHORIZATION_REQUIRED
+            str(structural_reconciliation.get("required_action") or PREDICTIVE_AUTHORIZATION_REQUIRED)
+            if structural_reconciliation is not None
+            else PREDICTIVE_AUTHORIZATION_REQUIRED
             if predictive_authorization_pending
             else "GOVERNANCE_DECISION_REQUIRED"
             if projected_state == OrchestratorState.GOVERNANCE_DECISION_REQUIRED.value
@@ -2563,8 +2716,8 @@ class AutonomousResearchOrchestratorV2:
         return ResearchOrchestratorStatusView(
             objective_id=self.objective_id,
             orchestrator_state=projected_state,
-            daemon_state=snapshot.daemon_state,
-            daemon_status_zh=ZhCNPresentation.state_name(snapshot.daemon_state),
+            daemon_state=projected_daemon_state,
+            daemon_status_zh=ZhCNPresentation.state_name(projected_daemon_state),
             ai_status=ai_status,
             current_round=None,
             current_candidate=current_candidate,
@@ -3040,5 +3193,5 @@ class GovernanceDecisionServiceV1:
 
 
 __all__ = [
-    "AI_ALLOWED_TRIGGERS", "AI_DENIED_TRIGGERS", "AIBatchValidationError", "AIBatchValidatorV2", "AIInvocationError", "AutonomousResearchOrchestratorV2", "CanonicalOrchestratorRuntimeV2", "CanonicalResearchSnapshotV2", "CanonicalResearchStateReaderV2", "CodexExecBatchInvokerV2", "GovernanceDecisionServiceV1", "OrchestratorConfigV2", "OrchestratorControlServiceV1", "OrchestratorOperationError", "OrchestratorState", "ResearchOrchestratorStatusView", "SyntheticAutonomousResearchRuntimeV2", "SyntheticCodexBatchInvokerV2", "TerminalCloseoutServiceV2", "build_codex_prompt_v2",
+    "AI_ALLOWED_TRIGGERS", "AI_DENIED_TRIGGERS", "AIBatchValidationError", "AIBatchValidatorV2", "AIInvocationError", "AutonomousResearchOrchestratorV2", "CanonicalOrchestratorRuntimeV2", "CanonicalResearchSnapshotV2", "CanonicalResearchStateReaderV2", "CodexExecBatchInvokerV2", "GovernanceDecisionServiceV1", "MANUAL_HANDOFF_CONTEXT_COMPATIBILITY", "MANUAL_HANDOFF_LEGACY_CONTEXT_COMPATIBILITY", "OrchestratorConfigV2", "OrchestratorControlServiceV1", "OrchestratorOperationError", "OrchestratorState", "ResearchOrchestratorStatusView", "SyntheticAutonomousResearchRuntimeV2", "SyntheticCodexBatchInvokerV2", "TerminalCloseoutServiceV2", "build_codex_prompt_v2",
 ]

@@ -8,6 +8,7 @@ import pytest
 from chanlun_trader.research_console import ResearchConsoleReadService
 from chanlun_trader.research_factory.common import stable_hash
 from chanlun_trader.research_factory.context import PerformanceBlindGuard
+from chanlun_trader.research_factory.objective_reconciliation import AI_DESIGN_AWAITING_CONFIRMATION
 from chanlun_trader.research_factory.research_evolution_ai_design import (
     AI_DESIGN_READY,
     AI_RESEARCH_DESIGN_FILENAME,
@@ -263,7 +264,8 @@ def test_lineage_and_console_view_are_objective_scoped_and_read_only(tmp_path: P
     assert view_before["available"] is False
     design = service.generate_design(OBJECTIVE_ID)
     view_after = ResearchConsoleReadService(root).get_evolution_ai_design(OBJECTIVE_ID).to_dict()
-    assert view_after["status"] == AI_DESIGN_READY
+    assert view_after["status"] == AI_DESIGN_AWAITING_CONFIRMATION
+    assert view_after["approval"]["approval_status"] == "PENDING"
     assert view_after["design"]["lineage"]["objective_id"] == OBJECTIVE_ID
     assert view_after["design"]["lineage"]["parent_proposal_id"] == PROPOSAL_ID
     assert view_after["design"]["parent_proposal_hash"] == view_after["input"]["research_evolution_proposal"]["proposal_hash"]

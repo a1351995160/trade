@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import { consoleApi, ConsoleApiError } from '../api'
 import type { JsonRecord, ResearchEvolutionAIDesignView } from '../types'
 import TechnicalDetails from './TechnicalDetails.vue'
 
@@ -7,7 +8,7 @@ const props = defineProps<{
   model: ResearchEvolutionAIDesignView | null
   objectiveId: string
 }>()
-const emit = defineEmits<{ navigate: [path: string] }>()
+const emit = defineEmits<{ navigate: [path: string]; refresh: [] }>()
 
 const input = computed<JsonRecord>(() => props.model?.input || {})
 const proposal = computed<JsonRecord>(() => (input.value.research_evolution_proposal as JsonRecord) || {})
@@ -15,6 +16,13 @@ const landscapeEntries = computed<JsonRecord[]>(() => Array.isArray(input.value.
 const excluded = computed<unknown[]>(() => Array.isArray(input.value.excluded_mechanisms) ? input.value.excluded_mechanisms as unknown[] : [])
 const directions = computed<unknown[]>(() => Array.isArray(input.value.suggested_research_directions) ? input.value.suggested_research_directions as unknown[] : [])
 const design = computed<JsonRecord | null>(() => props.model?.design || null)
+const approval = computed<JsonRecord>(() => props.model?.approval || props.model?.governance?.approval || {})
+const reviewBusy = ref(false)
+const candidateBusy = ref(false)
+const reviewer = ref('')
+const reason = ref('')
+const actionError = ref('')
+const actionMessage = ref('')
 
 function display(value: unknown): string {
   if (value === null || value === undefined || value === '') return '未提供'
@@ -29,11 +37,76 @@ function statusLabel(value: unknown): string {
   return ({
     NEED_AI_RESEARCH_DESIGN: '等待 AI 研究设计',
     AI_DESIGN_READY: 'AI 设计已生成，等待人工确认',
+    AI_DESIGN_AWAITING_CONFIRMATION: '等待人工确认 AI 设计',
+    AI_DESIGN_APPROVED: 'AI 设计已批准',
+    AI_DESIGN_REJECTED: 'AI 设计已拒绝',
   } as Record<string, string>)[String(value || '')] || display(value)
+}
+
+const approvalStatus = computed(() => String(approval.value.approval_status || 'NOT_AVAILABLE'))
+const isPending = computed(() => approvalStatus.value === 'PENDING')
+const isApproved = computed(() => approvalStatus.value === 'APPROVED' && approval.value.candidate_generation_allowed === true)
+const isRejected = computed(() => approvalStatus.value === 'REJECTED')
+
+function stableReviewKey(decision: string): string {
+  const raw = `AI_DESIGN_CONSOLE_${decision}_${props.objectiveId}_${String(design.value?.design_hash || approval.value.ai_design_hash || '')}`
+  return raw.slice(0, 255)
+}
+
+function errorMessage(error: unknown): string {
+  if (error instanceof ConsoleApiError) return `${error.message}（${error.code}）`
+  return '操作未完成，请重新读取当前 AI 设计状态。'
+}
+
+async function review(decision: 'APPROVED' | 'REJECTED') {
+  if (reviewBusy.value || !props.model?.available || !isPending.value) return
+  if (!reviewer.value.trim()) {
+    actionError.value = '请先填写审核人。'
+    return
+  }
+  reviewBusy.value = true
+  actionError.value = ''
+  actionMessage.value = ''
+  try {
+    await consoleApi.confirmEvolutionAIDesign(props.objectiveId, {
+      confirmed: true,
+      decision,
+      reviewer: reviewer.value.trim(),
+      reason: reason.value.trim(),
+      idempotency_key: stableReviewKey(decision),
+      ai_design_hash: design.value?.design_hash || approval.value.ai_design_hash,
+    })
+    actionMessage.value = decision === 'APPROVED' ? 'AI 研究设计已批准；Candidate Proposal 仍需显式生成。' : 'AI 研究设计已拒绝；Candidate Proposal 生成已关闭。'
+    emit('refresh')
+  } catch (error) {
+    actionError.value = errorMessage(error)
+  } finally {
+    reviewBusy.value = false
+  }
+}
+
+async function generateCandidateProposal() {
+  if (candidateBusy.value || !isApproved.value) return
+  candidateBusy.value = true
+  actionError.value = ''
+  actionMessage.value = ''
+  try {
+    await consoleApi.generateCandidateProposal(props.objectiveId)
+    actionMessage.value = 'Candidate Proposal 已显式生成；尚未创建 Candidate 或启动后续验证。'
+    emit('refresh')
+  } catch (error) {
+    actionError.value = errorMessage(error)
+  } finally {
+    candidateBusy.value = false
+  }
 }
 
 function goToProposals() {
   emit('navigate', `/research/evolution/proposals?objective_id=${encodeURIComponent(props.objectiveId)}`)
+}
+
+function goToCandidateProposals() {
+  emit('navigate', `/research/candidates/proposals?objective_id=${encodeURIComponent(props.objectiveId)}`)
 }
 </script>
 
@@ -45,7 +118,7 @@ function goToProposals() {
         <h1>Evolution Objective AI Research Design</h1>
         <p>AI 只读取结果盲化的失败经验、机制覆盖、父 Proposal 和数据能力；设计结果停在人工确认边界。</p>
       </div>
-      <span class="status-chip" :class="model?.available ? 'tone-success' : 'tone-governance'">{{ statusLabel(model?.status) }}</span>
+      <span class="status-chip" :class="isApproved ? 'tone-success' : isRejected ? 'tone-danger' : model?.available ? 'tone-governance' : 'tone-muted'">{{ statusLabel(model?.status) }}</span>
     </div>
 
     <section class="surface ai-design-boundary">
@@ -54,7 +127,31 @@ function goToProposals() {
         <h2>{{ display(objectiveId) }}</h2>
         <p>{{ model?.display?.message_zh || '只读读取当前 Objective 的 AI 研究设计上下文。' }}</p>
       </div>
-      <div class="ai-design-state"><strong>{{ model?.available ? 'AI_DESIGN_READY' : 'NEED_AI_RESEARCH_DESIGN' }}</strong><small>{{ model?.available ? '下一步：人工确认 AI 设计结果' : '下一步：显式生成一次 AI 研究设计' }}</small></div>
+      <div class="ai-design-state"><strong>{{ model?.status || 'NEED_AI_RESEARCH_DESIGN' }}</strong><small>{{ model?.governance?.next_action || (model?.available ? 'HUMAN_CONFIRM_AI_RESEARCH_DESIGN' : 'GENERATE_AI_RESEARCH_DESIGN') }}</small></div>
+    </section>
+
+    <section v-if="model?.available" class="surface padded ai-design-approval" data-testid="ai-design-approval">
+      <div class="section-heading">
+        <div><span class="eyebrow">人工审批边界</span><h2>{{ isApproved ? 'AI 设计已批准' : isRejected ? 'AI 设计已拒绝' : '等待人工确认' }}</h2><p>{{ isApproved ? '批准只开放 Candidate Proposal 生成权限，不会自动生成。' : isRejected ? '原 AI Design 保留不变；必须生成新的设计身份后才能再次审核。' : '必须先由人工对当前设计作出明确批准或拒绝。' }}</p></div>
+        <span class="status-chip" :class="isApproved ? 'tone-success' : isRejected ? 'tone-danger' : 'tone-governance'">{{ statusLabel(model.status) }}</span>
+      </div>
+      <dl class="detail-list approval-details">
+        <div><dt>AI Design hash</dt><dd><code>{{ display(design?.design_hash || approval.ai_design_hash) }}</code></dd></div>
+        <div><dt>审批状态</dt><dd>{{ display(approvalStatus) }}</dd></div>
+        <div><dt>审核人</dt><dd>{{ display(approval.receipt?.reviewer || approval.reviewer) }}</dd></div>
+        <div><dt>审核时间</dt><dd>{{ display(approval.receipt?.reviewed_at || approval.reviewed_at) }}</dd></div>
+        <div><dt>审批决定</dt><dd>{{ display(approval.receipt?.decision || approval.decision) }}</dd></div>
+        <div><dt>Receipt hash</dt><dd><code>{{ display(approval.receipt?.receipt_hash) }}</code></dd></div>
+      </dl>
+      <div v-if="isPending" class="approval-form">
+        <label><span>审核人</span><input v-model="reviewer" aria-label="AI 设计审核人" placeholder="填写本次人工审核人" /></label>
+        <label><span>审核说明（可选）</span><input v-model="reason" aria-label="AI 设计审核说明" placeholder="填写批准或拒绝理由" /></label>
+        <div class="modal-actions"><button class="button-secondary" type="button" :disabled="reviewBusy" @click="review('REJECTED')">{{ reviewBusy ? '提交中…' : '拒绝 AI 设计' }}</button><button class="button-primary" type="button" :disabled="reviewBusy" @click="review('APPROVED')">{{ reviewBusy ? '提交中…' : '批准 AI 设计' }}</button></div>
+      </div>
+      <div v-if="isApproved" class="page-actions"><button class="button-primary" type="button" :disabled="candidateBusy" @click="generateCandidateProposal">{{ candidateBusy ? '正在生成…' : '显式生成 Candidate Proposal' }}</button><button class="button-secondary" type="button" @click="goToCandidateProposals">查看 Candidate Proposal</button></div>
+      <p v-if="isRejected" class="plain-note approval-rejected-note">Candidate Proposal 生成按钮已关闭。</p>
+      <p v-if="actionError" class="action-error" role="alert">{{ actionError }}</p>
+      <p v-if="actionMessage" class="action-message" role="status">{{ actionMessage }}</p>
     </section>
 
     <section class="ai-design-grid">
@@ -139,10 +236,18 @@ function goToProposals() {
 .ai-design-two-column > div { display: grid; gap: 9px; align-content: start; padding: 14px; border: 1px solid var(--qc-border); border-radius: 10px; background: var(--qc-surface-subtle); }
 .ai-design-two-column .design-pill { width: fit-content; }
 .ai-design-safety { display: grid; gap: 16px; }
+.ai-design-approval { display: grid; gap: 16px; border: 1px solid #d9d0f1; background: #fcfbff; }
+.approval-details { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.approval-form { display: grid; gap: 12px; padding-top: 4px; }
+.approval-form label { display: grid; gap: 6px; color: var(--qc-muted); font-size: 13px; }
+.approval-form input { width: 100%; box-sizing: border-box; padding: 9px 11px; border: 1px solid var(--qc-border); border-radius: 8px; color: var(--qc-text); background: var(--qc-surface); }
+.action-error { margin: 0; color: #a13948; }
+.action-message { margin: 0; color: #2c9169; }
+.approval-rejected-note { margin: 0; color: #a13948; }
 @media (max-width: 760px) {
   .ai-design-boundary { align-items: flex-start; flex-direction: column; }
   .ai-design-state { width: 100%; box-sizing: border-box; }
-  .ai-design-grid, .ai-design-two-column { grid-template-columns: 1fr; }
+  .ai-design-grid, .ai-design-two-column, .approval-details { grid-template-columns: 1fr; }
   .ai-design-wide { grid-column: auto; }
 }
 </style>

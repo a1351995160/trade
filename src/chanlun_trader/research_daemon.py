@@ -705,7 +705,13 @@ class ResearchDaemon:
         elif not formal_predictive_trial_pending and self.checkpoint.current_state in {ResearchDaemonState.STRUCTURAL_PENDING.value, ResearchDaemonState.STRUCTURAL_RUNNING.value, ResearchDaemonState.PREDICTIVE_PENDING.value, ResearchDaemonState.PREDICTIVE_RUNNING.value}:
             interrupted_state = self.checkpoint.current_state
             self.checkpoint = self.checkpoint.update(canonical_refs={**dict(self.checkpoint.canonical_refs), "interrupted_state": interrupted_state})
-            self._transition(ResearchDaemonState.RECOVER, "RESTART_RECOVERY")
+            if interrupted_state in {ResearchDaemonState.STRUCTURAL_PENDING.value, ResearchDaemonState.STRUCTURAL_RUNNING.value}:
+                # Structural recovery is a canonical reconciliation/projection
+                # decision.  It must never turn a stale checkpoint into an
+                # implicit second Provider execution.
+                self._reconcile_structural_projection()
+            else:
+                self._transition(ResearchDaemonState.RECOVER, "RESTART_RECOVERY")
         self._recover_if_needed()
 
     def _formal_predictive_trial_pending(self) -> bool:
@@ -800,9 +806,48 @@ class ResearchDaemon:
                     return
             if state == ResearchDaemonState.RECOVER:
                 self._transition(ResearchDaemonState.READY, "RECOVERY_COMPLETE")
-        elif state == ResearchDaemonState.STRUCTURAL_RUNNING:
-            self.checkpoint = self.checkpoint.update(required_action="STRUCTURAL_RETRY_AFTER_RESTART", retry_safe=True)
-            self._transition(ResearchDaemonState.STRUCTURAL_PENDING, "STRUCTURAL_INTERRUPTION_RECOVERED")
+        elif state in {ResearchDaemonState.STRUCTURAL_PENDING, ResearchDaemonState.STRUCTURAL_RUNNING}:
+            # The checkpoint is only a runtime projection.  An interrupted
+            # Structural execution is not retried by daemon recovery; the
+            # Objective Reconciliation snapshot decides whether the canonical
+            # result is terminal, still running, or needs human repair.
+            self._reconcile_structural_projection()
+
+    def _reconcile_structural_projection(self) -> dict[str, Any] | None:
+        """Project canonical Structural state without invoking the Provider."""
+
+        if self.checkpoint is None:
+            return None
+        try:
+            from .research_factory.projection_reconciliation import ProjectionReconciliationServiceV1
+
+            previous_state = self.checkpoint.current_state
+            projection = ProjectionReconciliationServiceV1(self.root).reconcile(
+                self.objective_id,
+                apply=True,
+                reason="DAEMON_STRUCTURAL_PROJECTION_RECONCILIATION",
+            )
+        except Exception:
+            return None
+        refreshed = self.store.load()
+        if refreshed is not None:
+            self.checkpoint = refreshed
+        new_state = self.checkpoint.current_state if self.checkpoint else previous_state
+        if previous_state != new_state or projection.get("receipts"):
+            self.store.append_event(
+                "STRUCTURAL_PROJECTION_RECONCILED",
+                {
+                    "objective_id": self.objective_id,
+                    "previous_state": previous_state,
+                    "new_state": new_state,
+                    "effective_state": projection.get("effective_state"),
+                    "canonical_effective_state_hash": projection.get("canonical_effective_state_hash"),
+                    "projection_only": True,
+                },
+                event_id=stable_hash({"objective_id": self.objective_id, "new_state": new_state, "canonical_effective_state_hash": projection.get("canonical_effective_state_hash")}),
+            )
+            self._save()
+        return projection
 
     def _control(self) -> str | None:
         control = self.store.read_control()
@@ -875,6 +920,29 @@ class ResearchDaemon:
             self._transition(ResearchDaemonState.NEED_AI_RESEARCH_DESIGN, "NO_FROZEN_CANDIDATE_LEGAL_SEARCH_REMAINS")
             self._write_handoff("NEED_AI_RESEARCH_DESIGN", "NO_FROZEN_CANDIDATE_LEGAL_SEARCH_REMAINS")
 
+    def start_structural_preflight(
+        self,
+        *,
+        candidate_id: str | None = None,
+        confirmed: bool = True,
+        action: str = "RUN_STRUCTURAL_PREFLIGHT",
+    ) -> dict[str, Any]:
+        """Explicitly enter the canonical Structural service.
+
+        This is intentionally separate from :meth:`run_once`; daemon polling
+        and recovery never call the Structural Provider implicitly.
+        """
+
+        from .research_factory.structural_entry import StructuralEntryServiceV1
+
+        return StructuralEntryServiceV1(self.root, runtime=self.runtime).start(
+            self.objective_id,
+            candidate_id=candidate_id,
+            confirmed=confirmed,
+            action=action,
+            runtime=self.runtime,
+        )
+
     def run_once(self) -> dict[str, Any]:
         self.lock.acquire(run_id=self.checkpoint.daemon_run_id if self.checkpoint else "PENDING")
         lock_released_for_formal_recovery = False
@@ -882,6 +950,24 @@ class ResearchDaemon:
             self._ensure_bootstrap()
             if self.checkpoint.current_state in {item.value for item in (ResearchDaemonState.PAUSED, ResearchDaemonState.NEED_AI_RESEARCH_DESIGN, ResearchDaemonState.ENGINEERING_BLOCKED, ResearchDaemonState.GOVERNANCE_REQUIRED, ResearchDaemonState.BUDGET_EXHAUSTED, ResearchDaemonState.GLOBAL_SEARCH_EXHAUSTED, ResearchDaemonState.RESEARCH_PASSED, ResearchDaemonState.SHUTDOWN)}:
                 return self.status_payload()
+            if self._pause_boundary():
+                return self.status_payload()
+            # READY is an eligibility boundary, not a command.  Reconcile
+            # only canonical Structural evidence here; the Provider can be
+            # entered exclusively through StructuralEntryServiceV1.start().
+            reconciled = self._reconcile_structural_projection()
+            if reconciled is not None:
+                effective = reconciled.get("effective_objective_state") if isinstance(reconciled.get("effective_objective_state"), Mapping) else {}
+                effective_state = str(effective.get("effective_state") or reconciled.get("effective_state") or "")
+                if effective_state in {
+                    "READY_FOR_STRUCTURAL_PREFLIGHT",
+                    "STRUCTURAL_RUNNING",
+                    "PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED",
+                    "STRUCTURAL_BLOCKED",
+                    "ENGINEERING_BLOCKED",
+                    "CANONICAL_STATE_CONFLICT",
+                }:
+                    return self.status_payload()
             if self.checkpoint.required_action in {
                 "PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED",
                 "PREDICTIVE_GOVERNANCE_DEFERRED",
@@ -899,147 +985,17 @@ class ResearchDaemon:
                     self.checkpoint = self.store.load() or self.checkpoint
                     return {**self.status_payload(), "predictive_trial_recovery": dict(recovery)}
                 return self.status_payload()
-            if (
-                self.checkpoint.current_state in {
-                    ResearchDaemonState.READY.value,
-                    ResearchDaemonState.STRUCTURAL_PASS.value,
-                    ResearchDaemonState.NEXT_CANDIDATE.value,
-                }
-                and int(dict(self.checkpoint.budget_view).get("remaining", 1) or 0) <= 0
-            ):
-                self._transition(ResearchDaemonState.BUDGET_EXHAUSTED, "PREDICTIVE_BUDGET_EXHAUSTED_BEFORE_CANDIDATE_SELECTION")
+            # A custom/synthetic runtime may not have repository-level
+            # Objective files.  It still receives the same no-auto-run
+            # boundary: a daemon tick may observe candidate eligibility, but
+            # it never persists a selection or invokes Structural/Predictive.
+            if self.runtime.next_candidate() is not None:
+                if self.checkpoint.current_state == ResearchDaemonState.RECOVER.value:
+                    self._transition(ResearchDaemonState.READY, "RECOVERY_COMPLETE")
+                self.checkpoint = self.checkpoint.update(required_action="RUN_STRUCTURAL_PREFLIGHT", retry_safe=True)
+                self._save()
                 return self.status_payload()
-            if self._pause_boundary():
-                return self.status_payload()
-            candidate = self.runtime.next_candidate()
-            if candidate is None:
-                self._finish_no_candidate()
-                return self.status_payload()
-            self.checkpoint = self.checkpoint.update(current_candidate=candidate.to_dict(), current_trial=None, required_action=None, last_error=None, retry_safe=True)
-            self._transition(ResearchDaemonState.STRUCTURAL_PENDING, "FROZEN_CANDIDATE_SELECTED")
-            if self._pause_boundary():
-                return self.status_payload()
-            resource = self.monitor.snapshot(stage=ResearchDaemonState.STRUCTURAL_PENDING.value, candidate_id=candidate.candidate_id, force=True)
-            if resource["memory_pressure"]:
-                self.checkpoint = self.checkpoint.update(required_action="RESOURCE_WAIT", retry_safe=True)
-                self._transition(ResearchDaemonState.RESOURCE_WAIT, "MEMORY_PRESSURE_BEFORE_STRUCTURAL_RUN")
-                return self.status_payload()
-            self._transition(ResearchDaemonState.STRUCTURAL_RUNNING, "OFFICIAL_FULL_WINDOW_STRUCTURAL_PREFLIGHT_STARTED")
-            structural = self.runtime.structural_preflight(candidate)
-            self.checkpoint = self.checkpoint.update(canonical_refs={**dict(self.checkpoint.canonical_refs), "last_structural_result": {"status": structural.status, "reason_code": structural.reason_code, "artifact_refs": list(structural.artifact_refs), "provider_checkpoint": structural.provider_checkpoint, "partition_index": structural.partition_index, "details": dict(structural.details)}}, retry_safe=True)
-            if structural.status == "PASS":
-                self._transition(ResearchDaemonState.STRUCTURAL_PASS, structural.reason_code or "STRUCTURAL_PASS")
-                budget = dict(self.runtime.summary().get("budget", {}))
-                if int(budget.get("remaining", 1) or 0) <= 0:
-                    self._transition(ResearchDaemonState.BUDGET_EXHAUSTED, "PREDICTIVE_BUDGET_EXHAUSTED_BEFORE_GATE")
-                    return self.status_payload()
-                governance_path = self.root / "reports/research_orchestrator_v2" / self.objective_id / "structural_governance_decision_required.json"
-                governed_objective = self._governed_predictive_authorization_required()
-                if governed_objective and not governance_path.is_file():
-                    try:
-                        from .research_factory.structural_reconciliation import persist_governed_structural_pass_boundary
-
-                        boundary = persist_governed_structural_pass_boundary(
-                            self.root,
-                            objective_id=self.objective_id,
-                            candidate=candidate,
-                            result=structural,
-                            budget_snapshot=budget,
-                        )
-                        refs = {
-                            **dict(self.checkpoint.canonical_refs),
-                            "structural_reconciliation": {
-                                "status": "PASS",
-                                "reconciliation_id": boundary["reconciliation_id"],
-                                "report_ref": boundary["report_ref"],
-                                "history_ref": boundary.get("history_ref"),
-                                "previous_reconciliation_id": None,
-                                "lineage_status": "FIRST_CANONICAL_GOVERNED_STRUCTURAL_PASS",
-                                "governance_ref": boundary["governance_ref"],
-                                "predictive_run_started": False,
-                            },
-                        }
-                        self.checkpoint = self.checkpoint.update(canonical_refs=refs, retry_safe=True)
-                        self._save()
-                    except Exception as exc:
-                        self.checkpoint = self.checkpoint.update(
-                            last_error=str(exc),
-                            error_reason_code="STRUCTURAL_GOVERNANCE_PUBLICATION_FAILED",
-                            required_action="ENGINEERING_REPAIR_OR_RECONCILIATION",
-                            retry_safe=True,
-                        )
-                        self._transition(
-                            ResearchDaemonState.ENGINEERING_BLOCKED,
-                            "STRUCTURAL_GOVERNANCE_PUBLICATION_FAILED",
-                            error_type=type(exc).__name__,
-                        )
-                        self._write_handoff("ENGINEERING_BLOCKED", "STRUCTURAL_GOVERNANCE_PUBLICATION_FAILED")
-                        return self.status_payload()
-                governance_entry_required = False
-                if governance_path.is_file():
-                    try:
-                        governance_artifact = json.loads(governance_path.read_text(encoding="utf-8"))
-                    except (OSError, UnicodeError, json.JSONDecodeError):
-                        governance_artifact = {}
-                    governance_entry_required = isinstance(governance_artifact, Mapping) and str(governance_artifact.get("decision_mode") or "") == "STRUCTURAL_PASS_PREDICTIVE_AUTHORIZATION_REQUIRED"
-                if governed_objective and not governance_entry_required:
-                    self.checkpoint = self.checkpoint.update(
-                        last_error="governed objective did not produce a valid predictive-authorization boundary",
-                        error_reason_code="STRUCTURAL_GOVERNANCE_BOUNDARY_MISSING",
-                        required_action="ENGINEERING_REPAIR_OR_RECONCILIATION",
-                        retry_safe=True,
-                    )
-                    self._transition(ResearchDaemonState.ENGINEERING_BLOCKED, "STRUCTURAL_GOVERNANCE_BOUNDARY_MISSING")
-                    self._write_handoff("ENGINEERING_BLOCKED", "STRUCTURAL_GOVERNANCE_BOUNDARY_MISSING")
-                    return self.status_payload()
-                if governance_entry_required:
-                    self.checkpoint = self.checkpoint.update(
-                        last_completed_candidate=candidate.to_dict(),
-                        current_candidate=None,
-                        current_trial=None,
-                        required_action="PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED",
-                        retry_safe=True,
-                    )
-                    self.store.append_event(
-                        "STRUCTURAL_PASS_AWAITING_PREDICTIVE_AUTHORIZATION",
-                        {
-                            "objective_id": self.objective_id,
-                            "candidate": {"candidate_id": candidate.candidate_id, "candidate_hash": candidate.candidate_hash},
-                            "required_action": "PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED",
-                            "predictive_run_started": False,
-                        },
-                        event_id=stable_hash({"event_type": "STRUCTURAL_PASS_AWAITING_PREDICTIVE_AUTHORIZATION", "candidate_id": candidate.candidate_id, "candidate_hash": candidate.candidate_hash}),
-                    )
-                    return self.status_payload()
-                self._transition(ResearchDaemonState.PREDICTIVE_PENDING, "STRUCTURAL_PASS_OPENS_PREDICTIVE_BOUNDARY")
-                if self._pause_boundary():
-                    return self.status_payload()
-                self._transition(ResearchDaemonState.PREDICTIVE_RUNNING, "CANONICAL_PREDICTIVE_RUN_STARTED")
-                try:
-                    predictive = self.runtime.predictive_validate(candidate)
-                except Exception as exc:
-                    self.checkpoint = self.checkpoint.update(last_error=str(exc), error_reason_code="PREDICTIVE_RUNTIME_ERROR", required_action="CANONICAL_RUNTIME_REPAIR", retry_safe=False)
-                    self._transition(ResearchDaemonState.ENGINEERING_BLOCKED, "PREDICTIVE_RUNTIME_ERROR", error_type=type(exc).__name__)
-                    self._write_handoff("ENGINEERING_BLOCKED", "PREDICTIVE_RUNTIME_ERROR")
-                    return self.status_payload()
-                self.checkpoint = self.checkpoint.update(current_trial={"trial_id": predictive.trial_id, "performance_accessed": predictive.performance_accessed, "status": predictive.status, "classification": predictive.classification, "reason_codes": list(predictive.reason_codes), "artifact_refs": list(predictive.artifact_refs)}, retry_safe=not predictive.performance_accessed)
-                self._transition(ResearchDaemonState.PREDICTIVE_COMPLETE, predictive.status or "PREDICTIVE_COMPLETE")
-                self.runtime.mark_candidate_complete(candidate, result=predictive)
-            elif structural.status == "UNKNOWN":
-                self._transition(ResearchDaemonState.STRUCTURAL_UNKNOWN, structural.reason_code or "STRUCTURAL_UNKNOWN")
-                self.runtime.mark_candidate_complete(candidate, result=structural)
-            elif structural.status == "BLOCKED":
-                self._transition(ResearchDaemonState.STRUCTURAL_BLOCKED, structural.reason_code or "STRUCTURAL_BLOCKED")
-                self.runtime.mark_candidate_complete(candidate, result=structural)
-            else:
-                self.checkpoint = self.checkpoint.update(required_action="ENGINEERING_REPAIR_OR_RECONCILIATION", retry_safe=True)
-                self._transition(ResearchDaemonState.ENGINEERING_BLOCKED, structural.reason_code or "ENGINEERING_BLOCKED", artifact_refs=list(structural.artifact_refs))
-                self._write_handoff("ENGINEERING_BLOCKED", structural.reason_code or "ENGINEERING_BLOCKED")
-                return self.status_payload()
-            self.checkpoint = self.checkpoint.update(last_completed_candidate=candidate.to_dict(), current_candidate=None, current_trial=None, required_action=None)
-            self._transition(ResearchDaemonState.CANDIDATE_COMPLETE, "CANDIDATE_RESULT_PERSISTED")
-            self._transition(ResearchDaemonState.NEXT_CANDIDATE, "ADVANCE_AFTER_CANONICAL_RESULT")
-            self._transition(ResearchDaemonState.READY, "READY_FOR_NEXT_CANDIDATE")
+            self._finish_no_candidate()
             return self.status_payload()
         finally:
             if not lock_released_for_formal_recovery:
@@ -1052,7 +1008,7 @@ class ResearchDaemon:
         while not self._shutdown:
             status = self.run_once()
             state = ResearchDaemonState(status["daemon_state"])
-            if state in {ResearchDaemonState.PAUSED, ResearchDaemonState.NEED_AI_RESEARCH_DESIGN, ResearchDaemonState.ENGINEERING_BLOCKED, ResearchDaemonState.GOVERNANCE_REQUIRED, ResearchDaemonState.BUDGET_EXHAUSTED, ResearchDaemonState.GLOBAL_SEARCH_EXHAUSTED, ResearchDaemonState.RESEARCH_PASSED, ResearchDaemonState.SHUTDOWN}:
+            if state in {ResearchDaemonState.READY, ResearchDaemonState.STRUCTURAL_RUNNING, ResearchDaemonState.STRUCTURAL_PASS, ResearchDaemonState.STRUCTURAL_BLOCKED, ResearchDaemonState.PAUSED, ResearchDaemonState.NEED_AI_RESEARCH_DESIGN, ResearchDaemonState.ENGINEERING_BLOCKED, ResearchDaemonState.GOVERNANCE_REQUIRED, ResearchDaemonState.BUDGET_EXHAUSTED, ResearchDaemonState.GLOBAL_SEARCH_EXHAUSTED, ResearchDaemonState.RESEARCH_PASSED, ResearchDaemonState.SHUTDOWN}:
                 return status
             if self.sleep_seconds:
                 time.sleep(self.sleep_seconds)
@@ -1131,7 +1087,7 @@ def _configure_utf8_output() -> None:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m chanlun_trader.research_daemon", description="本地确定性量化研究守护进程")
-    parser.add_argument("command", choices=("start", "status", "pause", "resume", "stop", "run-once", "recover", "accept-ai-batch", "predictive-trial-preview", "start-predictive-trial"))
+    parser.add_argument("command", choices=("start", "status", "pause", "resume", "stop", "run-once", "recover", "accept-ai-batch", "structural-readiness", "start-structural-preflight", "predictive-trial-preview", "start-predictive-trial"))
     parser.add_argument("artifact", nargs="?", help="accept-ai-batch 使用的 AI 批次制品路径")
     parser.add_argument("--root", default=".")
     parser.add_argument("--objective-id", default=DEFAULT_OBJECTIVE_ID)
@@ -1172,6 +1128,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         from .research_factory.predictive_trial_start import PredictiveTrialStartServiceV1
 
         status = PredictiveTrialStartServiceV1(args.root).preview(args.objective_id)
+    elif args.command == "structural-readiness":
+        from .research_factory.structural_entry import StructuralEntryServiceV1
+
+        status = StructuralEntryServiceV1(args.root).readiness(args.objective_id)
+    elif args.command == "start-structural-preflight":
+        if not args.confirmed:
+            raise SystemExit("start-structural-preflight requires --confirmed")
+        daemon = _daemon_for_cli(args)
+        status = daemon.start_structural_preflight(
+            candidate_id=args.candidate_id,
+            confirmed=args.confirmed,
+            action="RUN_STRUCTURAL_PREFLIGHT",
+        )
     elif args.command == "start-predictive-trial":
         from .research_factory.predictive_trial_start import PredictiveTrialStartServiceV1
 

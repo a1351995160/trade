@@ -2,7 +2,9 @@
 
 ## 业务目标
 
-Candidate Generation Governance V1 把已经到达 `AI_DESIGN_READY` 的 AI 研究设计转换为一个可供人工审核的 `Candidate Proposal`。本版本只生成研究方案，不登记 Candidate，不冻结 Candidate，也不进入 Structural Preflight 或 Trial。
+Candidate Generation Governance V1 把取得有效人工批准的 AI 研究设计转换为一个可供人工审核的 `Candidate Proposal`。本版本只生成研究方案，不登记 Candidate，不冻结 Candidate，也不进入 Structural Preflight 或 Trial。
+
+本版本新增 AI Design Approval 门禁：所有生成入口都必须先读取同一 Objective 目录中的 `AI_DESIGN_APPROVAL_RECEIPT.json`，并校验批准决策、设计哈希、输入上下文哈希和回执完整性。`AI_DESIGN_READY` 本身不足以生成方案；回执缺失、拒绝、过期、Objective 不匹配或完整性失败时 fail closed。
 
 当前流程是：
 

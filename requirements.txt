@@ -6,3 +6,6 @@ baostock>=0.8.9
 pyarrow>=14.0
 fastapi>=0.110
 uvicorn>=0.30
+pytz>=2024.1
+httpx2
+jsonschema>=4.20

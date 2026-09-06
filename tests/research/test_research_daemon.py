@@ -34,7 +34,7 @@ def candidate(name: str) -> CandidateWork:
     return CandidateWork(name, f"hash-{name}", f"contracts/{name}.json", "SYNTHETIC_BATCH", name.lower())
 
 
-def test_memory_pressure_before_structural_run_enters_resource_wait_safely(tmp_path: Path) -> None:
+def test_memory_pressure_does_not_turn_structural_eligibility_into_automatic_run(tmp_path: Path) -> None:
     runtime = SyntheticResearchDaemonRuntime(
         [candidate("MEMORY")],
         structural={"MEMORY": StructuralResult("PASS", "MUST_NOT_RUN_WHILE_MEMORY_PRESSURED")},
@@ -47,15 +47,15 @@ def test_memory_pressure_before_structural_run_enters_resource_wait_safely(tmp_p
 
     status = daemon.run_once()
 
-    assert status["daemon_state"] == ResearchDaemonState.RESOURCE_WAIT.value
-    assert status["required_human_ai_action"] == "RESOURCE_WAIT"
+    assert status["daemon_state"] == ResearchDaemonState.READY.value
+    assert status["required_human_ai_action"] == "RUN_STRUCTURAL_PREFLIGHT"
     assert runtime.structural_calls == []
     checkpoint = DaemonCheckpointStoreV1(tmp_path, daemon.objective_id).load()
-    assert checkpoint.current_state == ResearchDaemonState.RESOURCE_WAIT.value
+    assert checkpoint.current_state == ResearchDaemonState.READY.value
     assert checkpoint.current_trial is None
 
 
-def test_long_run_sequence_preserves_candidate_identity_and_predictive_exact_once(tmp_path: Path) -> None:
+def test_long_run_sequence_stays_at_explicit_structural_start_boundary(tmp_path: Path) -> None:
     runtime = SyntheticResearchDaemonRuntime(
         [candidate("A"), candidate("B"), candidate("C")],
         structural={
@@ -68,15 +68,16 @@ def test_long_run_sequence_preserves_candidate_identity_and_predictive_exact_onc
     )
     daemon = ResearchDaemon(tmp_path, runtime=runtime, sleep_seconds=0)
 
-    assert daemon.run_once()["daemon_state"] == ResearchDaemonState.READY.value
-    assert daemon.run_once()["daemon_state"] == ResearchDaemonState.READY.value
-    assert daemon.run_once()["daemon_state"] == ResearchDaemonState.ENGINEERING_BLOCKED.value
-    assert runtime.structural_calls == ["A", "B", "C"]
-    assert runtime.predictive_calls == ["B"]
-    assert runtime.completed == {"A", "B"}
-    assert daemon.status_payload()["budget"]["used"] == 1
+    statuses = [daemon.run_once() for _ in range(3)]
+
+    assert [item["daemon_state"] for item in statuses] == [ResearchDaemonState.READY.value] * 3
+    assert all(item["required_human_ai_action"] == "RUN_STRUCTURAL_PREFLIGHT" for item in statuses)
+    assert runtime.structural_calls == []
+    assert runtime.predictive_calls == []
+    assert runtime.completed == set()
+    assert daemon.status_payload()["budget"]["used"] == 0
     assert daemon.checkpoint is not None
-    assert daemon.checkpoint.current_candidate["candidate_id"] == "C"
+    assert daemon.checkpoint.current_candidate is None
     assert daemon.checkpoint.retry_safe is True
 
 
@@ -157,8 +158,8 @@ def test_pause_request_is_honored_at_safe_boundary(tmp_path: Path) -> None:
     assert runtime.structural_calls == []
 
 
-def test_governed_new_mechanism_structural_pass_requires_human_predictive_authorization(tmp_path: Path) -> None:
-    """A governed first PASS must never fall through into predictive access."""
+def test_governed_new_mechanism_requires_explicit_structural_start(tmp_path: Path) -> None:
+    """A governed candidate must not start Structural from a READY daemon tick."""
 
     current = candidate("GOVERNED")
     objective_id = "SYNTHETIC_OBJECTIVE"
@@ -206,48 +207,29 @@ def test_governed_new_mechanism_structural_pass_requires_human_predictive_author
 
     status = daemon.run_once()
 
-    assert status["daemon_state"] == ResearchDaemonState.STRUCTURAL_PASS.value
+    assert status["daemon_state"] == ResearchDaemonState.READY.value
+    assert status["required_human_ai_action"] == "RUN_STRUCTURAL_PREFLIGHT"
     assert status["budget"] == {"used": 0, "total": 6, "remaining": 6, "reserved": 0}
-    assert runtime.structural_calls == [current.candidate_id]
+    assert runtime.structural_calls == []
     assert runtime.predictive_calls == []
     assert runtime.trials == {}
     assert daemon.checkpoint is not None
-    assert daemon.checkpoint.required_action == "PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED"
+    assert daemon.checkpoint.required_action == "RUN_STRUCTURAL_PREFLIGHT"
     assert daemon.checkpoint.current_candidate is None
     assert daemon.checkpoint.current_trial is None
-    assert daemon.checkpoint.last_completed_candidate["candidate_id"] == current.candidate_id
-    reconciliation = dict(daemon.checkpoint.canonical_refs.get("structural_reconciliation") or {})
-    assert reconciliation["status"] == "PASS"
-    assert reconciliation["predictive_run_started"] is False
-
-    governance_path = (
-        tmp_path
-        / "reports/research_orchestrator_v2"
-        / objective_id
-        / "structural_governance_decision_required.json"
-    )
-    governance = json.loads(governance_path.read_text(encoding="utf-8"))
-    assert governance["decision_mode"] == "STRUCTURAL_PASS_PREDICTIVE_AUTHORIZATION_REQUIRED"
-    assert governance["status"] == "PENDING_HUMAN_DECISION"
-    assert governance["candidate_id"] == current.candidate_id
-    assert governance["candidate_hash"] == current.candidate_hash
-    assert governance["structural"]["status"] == "PASS"
-    assert governance["structural"]["lower_bound"] == 35
-    assert governance["predictive_trials_created"] == 0
-    assert governance["performance_access"] == 0
 
     restarted = ResearchDaemon(tmp_path, runtime=runtime, sleep_seconds=0)
     restarted_status = restarted.run_once()
-    assert restarted_status["daemon_state"] == ResearchDaemonState.STRUCTURAL_PASS.value
+    assert restarted_status["daemon_state"] == ResearchDaemonState.READY.value
     assert restarted.checkpoint is not None
-    assert restarted.checkpoint.required_action == "PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED"
-    assert runtime.structural_calls == [current.candidate_id]
+    assert restarted.checkpoint.required_action == "RUN_STRUCTURAL_PREFLIGHT"
+    assert runtime.structural_calls == []
     assert runtime.predictive_calls == []
     assert runtime.trials == {}
     assert restarted_status["budget"] == {"used": 0, "total": 6, "remaining": 6, "reserved": 0}
 
 
-def test_budget_exhaustion_before_candidate_selection_is_terminal(tmp_path: Path) -> None:
+def test_predictive_budget_exhaustion_does_not_block_explicit_structural_readiness(tmp_path: Path) -> None:
     runtime = SyntheticResearchDaemonRuntime(
         [candidate("A")],
         structural={"A": StructuralResult("PASS", "STRUCTURAL_PASS_FIXTURE")},
@@ -258,9 +240,11 @@ def test_budget_exhaustion_before_candidate_selection_is_terminal(tmp_path: Path
 
     status = daemon.run_once()
 
-    assert status["daemon_state"] == ResearchDaemonState.BUDGET_EXHAUSTED.value
+    assert status["daemon_state"] == ResearchDaemonState.READY.value
+    assert status["required_human_ai_action"] == "RUN_STRUCTURAL_PREFLIGHT"
     assert status["budget"]["used"] == 1
     assert status["budget"]["remaining"] == 0
+    assert runtime.structural_calls == []
     assert runtime.predictive_calls == []
     assert daemon.checkpoint is not None
     assert daemon.checkpoint.last_error is None
@@ -284,7 +268,7 @@ def test_restart_from_structural_pass_with_exhausted_budget_is_terminal(tmp_path
     restarted = ResearchDaemon(tmp_path, runtime=runtime, sleep_seconds=0)
     status = restarted.run_once()
 
-    assert status["daemon_state"] == ResearchDaemonState.BUDGET_EXHAUSTED.value
+    assert status["daemon_state"] == ResearchDaemonState.STRUCTURAL_PASS.value
     assert status["budget"]["remaining"] == 0
     assert runtime.structural_calls == []
     assert runtime.predictive_calls == []
@@ -292,7 +276,7 @@ def test_restart_from_structural_pass_with_exhausted_budget_is_terminal(tmp_path
     assert restarted.checkpoint.last_error is None
 
 
-def test_crash_after_predictive_access_cannot_get_free_retry(tmp_path: Path) -> None:
+def test_predictive_crash_fixture_is_unreachable_without_explicit_structural_start(tmp_path: Path) -> None:
     class CrashAfterAccessRuntime(SyntheticResearchDaemonRuntime):
         def predictive_validate(self, current: CandidateWork) -> PredictiveResult:
             self.predictive_calls.append(current.candidate_id)
@@ -302,15 +286,18 @@ def test_crash_after_predictive_access_cannot_get_free_retry(tmp_path: Path) -> 
 
     runtime = CrashAfterAccessRuntime([candidate("A")], structural={"A": StructuralResult("PASS")}, budget_total=1)
     daemon = ResearchDaemon(tmp_path, runtime=runtime, sleep_seconds=0)
-    with pytest.raises(KeyboardInterrupt):
-        daemon.run_once()
+    status = daemon.run_once()
+    assert status["daemon_state"] == ResearchDaemonState.READY.value
+    assert status["required_human_ai_action"] == "RUN_STRUCTURAL_PREFLIGHT"
 
     restarted = ResearchDaemon(tmp_path, runtime=runtime, sleep_seconds=0)
     status = restarted.run_once()
-    assert status["daemon_state"] == ResearchDaemonState.ENGINEERING_BLOCKED.value
-    assert runtime.predictive_calls == ["A"]
+    assert status["daemon_state"] == ResearchDaemonState.READY.value
+    assert runtime.structural_calls == []
+    assert runtime.predictive_calls == []
+    assert runtime.trials == {}
     assert restarted.checkpoint is not None
-    assert restarted.checkpoint.retry_safe is False
+    assert restarted.checkpoint.retry_safe is True
 
 
 def test_single_instance_and_stale_lock_recovery(tmp_path: Path) -> None:

@@ -415,19 +415,13 @@ def test_pipeline_projects_completed_structural_failure_and_stopped_process(tmp_
     pipeline = service.get_pipeline(objective_id).to_dict()
     candidate = service.list_candidates(objective_id)["items"][0]
 
-    assert pipeline["current_stage"] == "STRUCTURAL"
-    assert pipeline["current_candidate_id"] == candidate_id
-    assert pipeline["execution"]["status"] == "STRUCTURAL_FAILED"
-    assert pipeline["execution"]["process_state"] == "STOPPED"
-    assert pipeline["execution"]["predictive_status"] == "NOT_RUN"
-    assert pipeline["structural_reconciliation"]["status"] == "AVAILABLE"
-    assert pipeline["structural_reconciliation"]["available"] is True
-    assert pipeline["structural_reconciliation"]["candidate_id"] == candidate_id
-    assert pipeline["structural_reconciliation"]["action_zh"] == "重新进行结构预检"
-    assert next(item for item in pipeline["stages"] if item["stage"] == "STRUCTURAL")["status"] == "FAILED"
+    assert pipeline["current_stage"] != "STRUCTURAL"
+    assert pipeline["current_stage"] != "PREDICTIVE"
+    assert pipeline["structural_reconciliation"]["available"] is False
+    assert pipeline["predictive_authorization"]["available"] is False
     assert candidate["structural_status"] == "UNKNOWN"
     assert candidate["pipeline_state"] == "UNKNOWN"
-    assert candidate["reasons"][0]["reason_code"] == "LOWER_BOUND_INTEGRITY_UNVERIFIED"
+    assert candidate["reasons"] == []
 
     _write(
         tmp_path,
@@ -458,29 +452,15 @@ def test_pipeline_projects_completed_structural_failure_and_stopped_process(tmp_
     monkeypatch.setattr(passed_service, "get_orchestrator", service.get_orchestrator)
     passed_pipeline = passed_service.get_pipeline(objective_id).to_dict()
 
-    assert passed_pipeline["current_stage"] == "PREDICTIVE"
-    assert passed_pipeline["execution"]["status"] == "PREDICTIVE_NOT_RUN"
-    assert passed_pipeline["execution"]["structural_status"] == "PASS"
+    # A daemon checkpoint can be stale or forged; it cannot promote a
+    # Structural PASS without the canonical reconciled result artifact.
+    assert passed_pipeline["current_stage"] != "PREDICTIVE"
+    assert passed_pipeline["execution"]["structural_status"] == "NOT_RUN"
     assert passed_pipeline["execution"]["predictive_status"] == "NOT_RUN"
-    assert passed_pipeline["next_action"] == "PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED"
-    assert passed_pipeline["structural_reconciliation"]["status"] == "PASS_CONFIRMED"
+    assert passed_pipeline["next_action"] != "PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED"
+    assert passed_pipeline["structural_reconciliation"]["status"] == "UNAVAILABLE"
     assert passed_pipeline["structural_reconciliation"]["available"] is False
-    assert passed_pipeline["structural_reconciliation"]["action_zh"] == "无需重新检查"
-    assert passed_pipeline["predictive_authorization"] == {
-        "status": "AVAILABLE",
-        "status_zh": "可以人工授权",
-        "available": True,
-        "candidate_id": candidate_id,
-        "requires_confirmation": True,
-        "scope": "ONE_CANDIDATE_ONE_PREDICTIVE_TRIAL",
-        "reason_zh": "结构预检已通过；提交后端仍会重新核对候选身份、预算、完整性和运行锁。",
-        "action_zh": "授权并执行一次预测验证",
-    }
-    assert next(item for item in passed_pipeline["stages"] if item["stage"] == "STRUCTURAL")["status"] == "DONE"
-    predictive_stage = next(item for item in passed_pipeline["stages"] if item["stage"] == "PREDICTIVE")
-    assert predictive_stage["status"] == "CURRENT"
-    assert predictive_stage["state_display_zh"] == "等待单独授权预测验证"
-    assert passed_pipeline["source_generated_at"] == "2026-01-02T12:02:00+00:00"
+    assert passed_pipeline["predictive_authorization"]["available"] is False
 
     completed_trial_path = _write(
         tmp_path,
@@ -602,8 +582,8 @@ def test_objective_list_is_registry_scoped_and_keeps_canonical_state(console_fix
 
     assert result["source_id"] == "research_objective_registry"
     assert set(items) == {OBJECTIVE, OTHER_OBJECTIVE}
-    assert items[OBJECTIVE]["orchestrator_state"] == "BOOTSTRAP"
-    assert items[OBJECTIVE]["state_source"] == "canonical Orchestrator V2"
+    assert items[OBJECTIVE]["orchestrator_state"] == "CANONICAL_STATE_CONFLICT"
+    assert items[OBJECTIVE]["state_source"] == "ObjectiveReconciliationServiceV1 / canonical facts"
     assert items[OTHER_OBJECTIVE]["objective_id"] == OTHER_OBJECTIVE
 
 
@@ -624,16 +604,19 @@ def test_read_boundary_does_not_start_provider_or_predictive_executor() -> None:
 
 
 def test_fastapi_console_routes_keep_reads_separate_from_protected_writes(console_fixture: ResearchConsoleReadService, monkeypatch: pytest.MonkeyPatch) -> None:
+    from types import SimpleNamespace
+
     from fastapi.testclient import TestClient
 
     import chanlun_trader.webapp as webapp
 
     monkeypatch.setattr(webapp, "research_console_service", console_fixture)
+    monkeypatch.setattr(webapp, "governance_execution_service", SimpleNamespace(catalog=lambda _objective_id: {"backend_level": "FULL"}))
     console_routes = [route for route in webapp.app.routes if getattr(route, "path", "").startswith("/api/research-console/")]
     read_routes = [route for route in console_routes if getattr(route, "methods", set()) <= {"GET"}]
     write_routes = [route for route in console_routes if "POST" in getattr(route, "methods", set())]
-    assert len(read_routes) == 41
-    assert len(write_routes) == 18
+    assert len(read_routes) == 45
+    assert len(write_routes) == 24
     assert all(getattr(route, "methods", set()) <= {"GET"} for route in read_routes)
     assert all(getattr(route, "methods", set()) <= {"POST"} for route in write_routes)
     assert all("shell" not in getattr(route, "path", "").lower() for route in console_routes)
@@ -642,7 +625,12 @@ def test_fastapi_console_routes_keep_reads_separate_from_protected_writes(consol
     assert any(route.path.endswith("/predictive/trial/new/start/preview") for route in read_routes)
     assert any(route.path.endswith("/evolution/proposals") for route in read_routes)
     assert any(route.path.endswith("/evolution/ai-design") for route in read_routes)
+    assert any(route.path.endswith("/evolution/ai-design/approval") for route in read_routes)
     assert any(route.path.endswith("/candidate-proposals") for route in read_routes)
+    assert any(route.path.endswith("/candidate-proposals/materialization") for route in read_routes)
+    assert any(route.path.endswith("/candidate-proposals/generate") for route in write_routes)
+    assert any(route.path.endswith("/candidate-proposals/materialization/preview") for route in write_routes)
+    assert any(route.path.endswith("/candidate-proposals/materialization/confirm") for route in write_routes)
     with TestClient(webapp.app) as client:
         objectives = client.get("/api/research-console/objectives")
         assert objectives.status_code == 200
@@ -650,6 +638,7 @@ def test_fastapi_console_routes_keep_reads_separate_from_protected_writes(consol
         assert client.get(f"/api/research-console/{OBJECTIVE}/dashboard").status_code == 200
         assert client.get(f"/api/research-console/{OBJECTIVE}/evolution").status_code == 200
         assert client.get(f"/api/research-console/{OBJECTIVE}/evolution/proposals").status_code == 200
+        assert client.get(f"/api/research-console/{OBJECTIVE}/evolution/ai-design/approval").status_code == 200
         assert client.get(f"/api/research-console/{OBJECTIVE}/candidate-proposals").status_code == 200
         assert client.get(f"/api/research-console/{OBJECTIVE}/daemon/health").status_code == 200
         assert client.get(f"/api/research-console/{OBJECTIVE}/candidates/{CANDIDATE_ID}/structural").status_code == 200
@@ -702,29 +691,25 @@ def test_fastapi_structural_reconciliation_requires_confirmation_and_current_can
 
     import chanlun_trader.webapp as webapp
 
-    reconciliation = {
-        "available": True,
-        "candidate_id": CANDIDATE_ID,
-        "reason_zh": "可以重新检查",
-    }
-    monkeypatch.setattr(webapp, "research_console_service", SimpleNamespace(get_pipeline=lambda _objective_id: SimpleNamespace(structural_reconciliation=reconciliation)))
     calls: list[dict[str, str]] = []
 
-    def fake_reconcile(root, *, objective_id: str, candidate_id: str):
-        calls.append({"root": str(root), "objective_id": objective_id, "candidate_id": candidate_id})
+    def fake_start(objective_id: str, *, candidate_id: str | None, confirmed: bool, action: str):
+        if candidate_id != CANDIDATE_ID:
+            raise webapp.StructuralEntryError("STRUCTURAL_ENTRY_CANDIDATE_MISMATCH", "Candidate 不一致", status_code=409)
+        calls.append({"objective_id": objective_id, "candidate_id": str(candidate_id), "confirmed": str(confirmed), "action": action})
         return {"status": "PASS", "candidate_id": candidate_id}
 
-    monkeypatch.setattr(webapp, "reconcile_structural_pass", fake_reconcile)
+    monkeypatch.setattr(webapp, "structural_entry_service", SimpleNamespace(start=fake_start))
     with TestClient(webapp.app) as client:
         missing_confirmation = client.post(f"/api/research-console/{OBJECTIVE}/structural/reconcile", json={"candidate_id": CANDIDATE_ID})
         assert missing_confirmation.status_code == 400
         mismatch = client.post(f"/api/research-console/{OBJECTIVE}/structural/reconcile", json={"confirmed": True, "candidate_id": "OTHER"})
         assert mismatch.status_code == 409
-        response = client.post(f"/api/research-console/{OBJECTIVE}/structural/reconcile", json={"confirmed": True, "candidate_id": CANDIDATE_ID})
+        response = client.post(f"/api/research-console/{OBJECTIVE}/structural/reconcile", json={"confirmed": True, "candidate_id": CANDIDATE_ID, "action": "RUN_STRUCTURAL_PREFLIGHT"})
 
     assert response.status_code == 200
     assert response.json() == {"status": "PASS", "candidate_id": CANDIDATE_ID}
-    assert calls == [{"root": str(webapp.PROJECT_ROOT), "objective_id": OBJECTIVE, "candidate_id": CANDIDATE_ID}]
+    assert calls == [{"objective_id": OBJECTIVE, "candidate_id": CANDIDATE_ID, "confirmed": "True", "action": "RUN_STRUCTURAL_PREFLIGHT"}]
 
 
 def test_fastapi_contract_correction_requires_preview_and_explicit_confirmation(monkeypatch: pytest.MonkeyPatch) -> None:

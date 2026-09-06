@@ -15,6 +15,7 @@ from chanlun_trader.research_factory.autonomous_orchestrator_v2 import (
     AutonomousResearchOrchestratorV2,
     CanonicalOrchestratorRuntimeV2,
     CanonicalResearchSnapshotV2,
+    MANUAL_HANDOFF_LEGACY_CONTEXT_COMPATIBILITY,
     OrchestratorConfigV2,
     OrchestratorControlServiceV1,
     OrchestratorState,
@@ -863,6 +864,57 @@ def test_stale_manual_result_is_rejected_without_budget_use(tmp_path):
     assert rejected["orchestrator_state"] == OrchestratorState.AI_MANUAL_HANDOFF_REQUIRED.value
     assert runtime.ai_batches == 0
     assert rejected["budget"]["used"] == waiting["budget"]["used"]
+
+
+def test_governed_manual_result_rejects_stale_live_context_without_ingest_or_side_effects(tmp_path):
+    from test_candidate_generation_governance_v1 import OBJECTIVE_ID, _prepare
+
+    root = _prepare(tmp_path)
+    objective_path = root / f"data/research/research_factory/objectives/{OBJECTIVE_ID}.json"
+    objective_payload = json.loads(objective_path.read_text(encoding="utf-8"))
+    objective_payload["lifecycle_state"] = "ACTIVE"
+    objective_path.write_text(json.dumps(objective_payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    runtime = SyntheticAutonomousResearchRuntimeV2(OBJECTIVE_ID, budget_total=2)
+    invoker = SyntheticCodexBatchInvokerV2()
+    orchestrator = AutonomousResearchOrchestratorV2(root, objective_id=OBJECTIVE_ID, runtime=runtime, ai_invoker=invoker)
+
+    waiting = orchestrator.run()
+    result_path = root / waiting["manual_handoff"]["result_path"]
+    result_path.write_text(
+        json.dumps(_manual_result(waiting["current_handoff"], OBJECTIVE_ID, waiting["current_ai_invocation_id"]), ensure_ascii=False),
+        encoding="utf-8",
+    )
+    data_path = root / "data/research/data_capability.json"
+    data_payload = json.loads(data_path.read_text(encoding="utf-8"))
+    data_payload["datasets"][0]["data_version"] = "stale-after-handoff"
+    data_path.write_text(json.dumps(data_payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+    rejected = orchestrator.scan_manual_handoff()
+
+    assert rejected["orchestrator_state"] == OrchestratorState.AI_MANUAL_HANDOFF_REQUIRED.value
+    assert rejected["last_ai_invocation"]["status"] == "INVALID"
+    assert rejected["last_ai_invocation"]["error_code"] == "STALE_AI_HANDOFF_CONTEXT"
+    assert runtime.ai_batches == 0
+    assert runtime.local_calls == 0
+    assert runtime.candidates == {}
+    assert runtime.trials == []
+    assert runtime.snapshot().budget["used"] == 0
+    assert not list(root.rglob("durable_frozen_candidate_contracts.json"))
+    assert not list(root.rglob("factory_trial_ledger.json"))
+    assert invoker.calls == 0
+
+
+def test_legacy_manual_handoff_compatibility_is_explicitly_version_gated(tmp_path):
+    runtime = SyntheticAutonomousResearchRuntimeV2("SYNTHETIC_LEGACY_HANDOFF_OBJECTIVE", budget_total=1)
+    orchestrator = AutonomousResearchOrchestratorV2(tmp_path, objective_id=runtime.objective_id, runtime=runtime)
+    legacy = {
+        "schema_version": "research-orchestrator-ai-handoff-v2",
+        "context_compatibility": MANUAL_HANDOFF_LEGACY_CONTEXT_COMPATIBILITY,
+    }
+    orchestrator._validate_manual_handoff_live_context(legacy)
+
+    with pytest.raises(AIBatchValidationError, match="STALE_AI_HANDOFF_CONTEXT"):
+        orchestrator._validate_manual_handoff_live_context({"schema_version": "research-orchestrator-ai-handoff-v2"})
 
 
 def test_malformed_manual_result_exits_validation_with_contract_error(tmp_path):

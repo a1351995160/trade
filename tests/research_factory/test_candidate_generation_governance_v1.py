@@ -15,12 +15,14 @@ from chanlun_trader.research_factory.candidate_generation import (
     HUMAN_REVIEW_REQUIRED,
     FROZEN,
     NEW_CANDIDATE,
+    CANDIDATE_GOVERNANCE_FROZEN,
     READY_FOR_STRUCTURAL_PREFLIGHT,
     CandidateGenerationError,
     CandidateGenerationManagerV1,
 )
 from chanlun_trader.research_factory.common import stable_hash
 from chanlun_trader.research_factory.context import PerformanceBlindGuard
+from chanlun_trader.research_factory.ai_design_approval import AIDesignApprovalServiceV1
 from chanlun_trader.research_factory.research_evolution_ai_design import ResearchEvolutionAIDesignServiceV1
 
 
@@ -147,7 +149,14 @@ def _fixture_root(tmp_path: Path) -> Path:
 
 def _prepare(tmp_path: Path) -> Path:
     root = _fixture_root(tmp_path)
+    _write_json(root, f"data/research/research_factory/batches/{OBJECTIVE_ID}_B01/search_budget_registry.json", {
+        "objective_id": OBJECTIVE_ID,
+        "used": 0,
+        "reserved": 0,
+        "total": 4,
+    })
     ResearchEvolutionAIDesignServiceV1(root).generate_design(OBJECTIVE_ID)
+    AIDesignApprovalServiceV1(root).approve(OBJECTIVE_ID, "stage-b-test-reviewer", idempotency_key="AI_DESIGN_APPROVAL_TEST")
     return root
 
 
@@ -238,6 +247,64 @@ def test_candidate_input_never_reads_performance_artifacts(tmp_path: Path, monke
     assert proposal["outcome_fields_available"] is False
 
 
+@pytest.mark.parametrize(
+    "mutation",
+    ["data_manifest", "factor_capability", "event_capability", "budget", "structural", "effective_state"],
+)
+def test_approved_ai_design_rejects_all_live_context_changes_before_candidate_persistence(tmp_path: Path, mutation: str) -> None:
+    root = _prepare(tmp_path / mutation)
+    budget_path = root / f"data/research/research_factory/batches/{OBJECTIVE_ID}_B01/search_budget_registry.json"
+
+    if mutation == "data_manifest":
+        path = root / "data/research/data_capability.json"
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload["datasets"][0]["data_version"] = "fixture-stale-data"
+        _write_json(root, "data/research/data_capability.json", payload)
+    elif mutation == "factor_capability":
+        _write_json(root, "data/research/factor_registry/registry.json", {
+            "factors": [{
+                "factor_id": "NEW_FACTOR_AFTER_APPROVAL",
+                "implementation_status": "READY",
+                "PIT_safe": True,
+                "inputs": ["daily_ohlcva_raw"],
+            }],
+        })
+    elif mutation == "event_capability":
+        _write_json(root, "data/research/event_registry/registry.json", {
+            "events": [{
+                "event_id": "NEW_EVENT_AFTER_APPROVAL",
+                "inputs": ["daily_ohlcva_raw"],
+                "PIT_safe": True,
+                "available_at_semantics": "T_CLOSE",
+                "historical_evidence_immutable": True,
+            }],
+        })
+    elif mutation == "budget":
+        payload = json.loads(budget_path.read_text(encoding="utf-8"))
+        payload["used"] = 1
+        _write_json(root, budget_path.relative_to(root).as_posix(), payload)
+    elif mutation == "structural":
+        _write_json(root, f"reports/research_daemon/{OBJECTIVE_ID}/structural_preflight_reconciliation_canonical_v1.json", {
+            "objective_id": OBJECTIVE_ID,
+            "status": "BLOCKED",
+        })
+    elif mutation == "effective_state":
+        path = root / f"data/research/research_factory/objectives/{OBJECTIVE_ID}.json"
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload["lifecycle_state"] = "UNKNOWN_AFTER_APPROVAL"
+        _write_json(root, path.relative_to(root).as_posix(), payload)
+
+    budget_after_mutation = budget_path.read_bytes()
+    with pytest.raises(CandidateGenerationError) as error:
+        CandidateGenerationManagerV1(root).generate_proposal(OBJECTIVE_ID)
+
+    assert error.value.code == "STALE_RUNTIME_CONTEXT"
+    assert not list((root / "reports/research_candidates").rglob(CANDIDATE_PROPOSAL_FILENAME))
+    assert not list((root / "data/research/research_factory/candidates").rglob("CANDIDATE_REGISTRY.json"))
+    assert not list((root / "data/research/research_factory/batches").rglob("factory_trial_ledger.json"))
+    assert budget_path.read_bytes() == budget_after_mutation
+
+
 def test_candidate_input_rejects_chinese_outcome_field(tmp_path: Path) -> None:
     root = _prepare(tmp_path)
     design_path = root / "reports" / "research_evolution" / "ai_design" / OBJECTIVE_ID / "AI_RESEARCH_DESIGN_PROPOSAL.json"
@@ -263,7 +330,7 @@ def test_duplicate_mechanism_alias_is_rejected_before_persisting_proposal(tmp_pa
     with pytest.raises(CandidateGenerationError) as error:
         CandidateGenerationManagerV1(root).generate_proposal(OBJECTIVE_ID)
 
-    assert error.value.code == DUPLICATE_MECHANISM_REJECTED
+    assert error.value.code == "AI_DESIGN_APPROVAL_INTEGRITY_FAILURE"
     assert not (root / "reports" / "research_candidates").exists()
 
 
@@ -368,9 +435,11 @@ def test_confirmed_freeze_creates_registry_and_stops_before_structural_or_trial(
     })
 
     view = result["proposal"]
-    assert view["governance_state"] == READY_FOR_STRUCTURAL_PREFLIGHT
-    assert view["state_history"][-2:] == [FROZEN, READY_FOR_STRUCTURAL_PREFLIGHT]
+    assert view["governance_state"] == CANDIDATE_GOVERNANCE_FROZEN
+    assert view["state_history"][-2:] == [FROZEN, CANDIDATE_GOVERNANCE_FROZEN]
     assert view["candidate_frozen"] is True
+    assert view["executable_candidate_frozen"] is False
+    assert view["structural_preflight_ready"] is False
     assert view["governance"]["structural_preflight_started"] is False
     assert view["governance"]["trial_started"] is False
     assert view["governance"]["budget_consumed"] is False
@@ -407,7 +476,8 @@ def test_freeze_hash_consistency_and_exact_once_restart_recovery(tmp_path: Path)
     assert registry_path.exists()
     recovered = CandidateGenerationManagerV1(root).recover(OBJECTIVE_ID)
     assert recovered["recovered"] is True
-    assert recovered["governance_state"] == READY_FOR_STRUCTURAL_PREFLIGHT
+    assert recovered["governance_state"] == CANDIDATE_GOVERNANCE_FROZEN
+    assert recovered["structural_preflight_ready"] is False
     first_registry = registry_path.read_bytes()
     first_reviews = (_proposal_path(root).parent / "reviews.jsonl").read_bytes()
     repeated = CandidateGenerationManagerV1(root).freeze(proposal["proposal_id"], {
@@ -476,6 +546,7 @@ def test_freeze_http_endpoint_requires_local_confirmation_and_is_exactly_once(tm
             "candidate_hash": preview["candidate_hash"],
         })
     assert first.status_code == 200
-    assert first.json()["proposal"]["governance_state"] == READY_FOR_STRUCTURAL_PREFLIGHT
+    assert first.json()["proposal"]["governance_state"] == CANDIDATE_GOVERNANCE_FROZEN
+    assert first.json()["proposal"]["structural_preflight_ready"] is False
     assert second.status_code == 200
     assert second.json()["idempotent"] is True

@@ -100,11 +100,18 @@ class ManualAIHandoffWriterV1:
             except (OSError, UnicodeError, json.JSONDecodeError):
                 pass
         output_contract = handoff.get("required_output_contract") if isinstance(handoff.get("required_output_contract"), Mapping) else {}
+        source_context_id = str(handoff.get("source_context_id") or "") or None
+        source_context_hash = str(handoff.get("source_context_hash") or "") or None
+        source_context_version = str(handoff.get("source_context_version") or "") or None
         compact_context = {
             "schema_version": "manual-ai-no-outcome-context-v1",
             "handoff_id": handoff_id,
             "objective_id": str(handoff.get("objective_id") or ""),
             "performance_values_exposed": False,
+            "source_context_id": source_context_id,
+            "source_context_hash": source_context_hash,
+            "source_context_version": source_context_version,
+            "safe_runtime_context_identity": dict(handoff.get("safe_runtime_context_identity") or {}) if isinstance(handoff.get("safe_runtime_context_identity"), Mapping) else None,
             "source_hashes": dict(handoff.get("source_hashes") or {}),
             "context_refs": {
                 "full_safe_handoff": f"{relative_dir}/RESEARCH_ORCHESTRATOR_AI_HANDOFF.json",
@@ -183,6 +190,9 @@ class ManualAIHandoffWriterV1:
             },
             "validation_owner": "LOCAL_ORCHESTRATOR",
             "performance_values_allowed": False,
+            "source_context_id": source_context_id,
+            "source_context_hash": source_context_hash,
+            "source_context_version": source_context_version,
         })
         _atomic_json(task_dir / "RESEARCH_ORCHESTRATOR_AI_HANDOFF.json", dict(handoff))
         _atomic_json(task_dir / "HANDOFF_READY.json", {
@@ -201,6 +211,10 @@ class ManualAIHandoffWriterV1:
             "task_purpose": str(handoff.get("task_purpose") or "PROMISING_FOLLOWUP 机制确认设计"),
             "current_round": str(handoff.get("current_round") or "PROMISING_FOLLOWUP"),
             "ai_design_policy": dict(handoff.get("ai_design_policy") or {}),
+            "source_context_id": source_context_id,
+            "source_context_hash": source_context_hash,
+            "source_context_version": source_context_version,
+            "safe_runtime_context_identity": dict(handoff.get("safe_runtime_context_identity") or {}) if isinstance(handoff.get("safe_runtime_context_identity"), Mapping) else None,
             "planned_confirmation_candidate_limit": int(handoff.get("planned_confirmation_candidate_limit", 0) or 0),
             "bundle_files": [
                 "RESEARCH_ORCHESTRATOR_AI_HANDOFF.json",
@@ -225,6 +239,9 @@ class ManualAIHandoffWriterV1:
             "current_round": str(handoff.get("current_round") or "PROMISING_FOLLOWUP"),
             "ai_design_policy": dict(handoff.get("ai_design_policy") or {}),
             "planned_confirmation_candidate_limit": int(handoff.get("planned_confirmation_candidate_limit", 0) or 0),
+            "source_context_id": source_context_id,
+            "source_context_hash": source_context_hash,
+            "source_context_version": source_context_version,
         }
 
 
