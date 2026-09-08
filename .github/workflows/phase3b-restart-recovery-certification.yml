@@ -17,8 +17,10 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
+            python: "3.11"
             pythonpath: tests/isolation:src
           - os: windows-latest
+            python: "3.13"
             pythonpath: tests/isolation;src
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
@@ -40,7 +42,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python }}
 
       - name: Install deterministic test dependencies
         env:

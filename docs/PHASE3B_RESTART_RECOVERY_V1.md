@@ -58,7 +58,7 @@ inspect、tick(dry_run=True)、execute_action(dry_run=True)、recover(dry_run=Tr
 
 P3-B 包括真实子进程 os._exit/kill、三阶段副作用后重启、前调用退出后同 key 重试与 stale 拒绝、CP/领域竞争、两恢复进程竞争、owner 死亡、线程重入、独立 Objective、规范化 root、共享 graph 旧快照竞争、旧完成回放、Action 重哈希伪造、撤销确认、证据损坏以及 CLI/Web 入口。硬退出 worker 通过已 fsync 的调用证据记录检查，不把未运行的 atexit 探针当作零次。
 
-本地平台：Windows、Python 3.13.5、Node 24.15.0；源码 worktree 在 E: exFAT，实际并发与恢复 fixture 在 C: NTFS 临时目录。不能把源码盘文件系统当成运行认证文件系统。CI 工作流在 Ubuntu/Windows、Python 3.11 上记录平台和临时目录文件系统后运行同样矩阵。
+本地平台：Windows、Python 3.13.5、Node 24.15.0；源码 worktree 在 E: exFAT，实际并发与恢复 fixture 在 C: NTFS 临时目录。不能把源码盘文件系统当成运行认证文件系统。CI 工作流在 Ubuntu Python 3.11 / Windows Python 3.13 上记录平台和临时目录文件系统后运行同样矩阵。
 
 最终全新 venv 验证中 predictive/structural/AI 禁用执行器调用、网络、非测试进程调用与受保护目录访问探针均为 0。早期系统 Python 的四次启动各有两次 distribution discovery 访问被隔离钩子阻止（共 8 次），未读到内容；改用全新 venv 后消失。不能把早期阻止事件抹成零。受保护目录写入未观察到。
 
@@ -67,6 +67,8 @@ P3-B 包括真实子进程 os._exit/kill、三阶段副作用后重启、前调�
 首次分支工作流 `34211579523` 在配置解析时拒绝 job-level env 中的 `runner.temp`，没有运行测试。已改为在 Python 启动前通过 `RUNNER_TEMP` 写入 `GITHUB_ENV`；未改变隔离范围，后续 CI 以修复后的 SHA 为准。
 
 第二次 `34211780588` 在 Windows pip 缓存探测和 Linux 平台记录步骤失败，测试尚未执行。Linux `platform.platform()` 的子进程查询被隔离探针拦截 1 次；移除非必要 pip cache，Python 平台信息改读 sys，操作系统信息由显式 shell 命令记录。隔离规则没有放宽。
+
+第三次 `34211978686` Linux 全矩阵通过；Windows Python 3.11.9 在 pandas 导入所需 platform.machine → win32_ver 中启动系统版本查询，被探针拦截 1 次，测试未开始。Windows 改用本地已验证的 Python 3.13 系列，不放行子进程、不修改 pandas、不跳过测试。Windows Python 3.11 保持未认证，不能从 Linux 3.11 推断可用。
 
 - Linux 与 Windows CI 结果及最终 HEAD 必须在推送后独立核对；PR-context 检查未因分支 push 自动等同通过。
 - 未运行真实研究目录、Final Test、真实执行器和原有真实工作区历史对账：`REAL_WORKSPACE_RUNTIME_INDEPENDENTLY_VERIFIED=NO`。
