@@ -523,3 +523,21 @@
 - tests/research_factory/test_research_action_permission_v1.py：写测试显式注入 synthetic 策略，保留人工门禁。
 - tests/research_factory/test_restart_recovery_v1.py：增加 33 项恢复、只读、身份、并发和入口认证。
 - 回滚点：7e277dbe1d20061fd672cf53d1358d07f16a0b1b；提交后在独立分支执行 `git revert --no-edit <本轮P3-B提交SHA>`。不 reset main、不 force push、不修改原研究目录；保留新 v2 journal 证据，旧版本不得继续写新 schema。
+
+## 2026-09-08 - Task: P3-B 分支工作流上下文修复
+
+### What was done
+
+修复首次 push CI 解析失败：job-level env 不支持 runner.temp，改为在 Python 启动前通过 RUNNER_TEMP 配置同一受保护参考路径。
+
+### Testing
+
+- GitHub run 34211579523 明确报告 Line 28 Unrecognized named-value runner，jobs 为空；不计为测试失败或通过。
+- git diff --check 通过；工作流仍在所有 Python 步骤前配置隔离路径；远端重新解析和矩阵测试等待新提交 CI。
+
+### Notes
+
+- .github/workflows/phase3b-restart-recovery-certification.yml：仅调整受保护路径的设置位置。
+- docs/PHASE3B_RESTART_RECOVERY_V1.md：记录首次 CI 配置失败与修复。
+- progress.md：追加失败证据和修复记录。
+- 回滚方式：提交后执行 `git revert --no-edit <本轮CI修复提交SHA>`，回到 438ffe37ce79f91935e878e5e6c5555bbf82e73a；该回滚会恢复已知无效工作流，不建议用于认证。

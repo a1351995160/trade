@@ -25,10 +25,13 @@ jobs:
     env:
       PYTHONPATH: ${{ matrix.pythonpath }}
       CHANLUN_TEST_ISOLATION: "1"
-      CHANLUN_PROTECTED_ROOT: ${{ runner.temp }}/p3b-protected-reference
       PYTHONDONTWRITEBYTECODE: "1"
 
     steps:
+      - name: Configure protected reference before Python starts
+        shell: bash
+        run: echo "CHANLUN_PROTECTED_ROOT=$RUNNER_TEMP/p3b-protected-reference" >> "$GITHUB_ENV"
+
       - name: Check out source
         uses: actions/checkout@v4
         with:
