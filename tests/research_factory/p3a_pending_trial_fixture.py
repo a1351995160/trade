@@ -20,40 +20,49 @@ def _write_json(path: Path, payload: object) -> None:
 
 def pending_trial_fixture(root: Path) -> dict[str, Path]:
     from test_candidate_executable_materialization_v1 import _bridge_fixture
+
     _, _, generated_contract = _bridge_fixture(root / "seed")
-    source_contract = generated_contract.to_dict()
-    CANDIDATE_ID = generated_contract.candidate_id
-    CANDIDATE_HASH = generated_contract.candidate_hash
-    source_contract["policy_identity"] = {"objective_id": OBJECTIVE_ID}
-    source_contract["source_provenance"] = {**source_contract["source_provenance"], "batch_id": BATCH_ID}
-    source_contract["content_hash"] = stable_hash({key: value for key, value in source_contract.items() if key != "content_hash"})
-    contract = DurableFrozenCandidateContractV1.from_dict(source_contract)
+    contract_payload = generated_contract.to_dict()
+    candidate_id = generated_contract.candidate_id
+    candidate_hash = generated_contract.candidate_hash
+    contract_payload.update(
+        policy_identity={"objective_id": OBJECTIVE_ID},
+        source_provenance={
+            **contract_payload["source_provenance"],
+            "batch_id": BATCH_ID,
+        },
+    )
+    contract_payload["content_hash"] = stable_hash(
+        {key: value for key, value in contract_payload.items() if key != "content_hash"}
+    )
+    contract = DurableFrozenCandidateContractV1.from_dict(contract_payload)
     contract_path = root / CONTRACT_REF
     registry = DurableFrozenCandidateContractRegistryV1(contract_path)
     registry.append(contract)
     registry.write()
 
-    objective_path = root / "data/research/research_factory/objectives" / f"{OBJECTIVE_ID}.json"
+    research_factory_root = root / "data/research/research_factory"
+    objective_path = research_factory_root / "objectives" / f"{OBJECTIVE_ID}.json"
     _write_json(
         objective_path,
-        {
-            "objective_id": OBJECTIVE_ID,
-            "objective_identity_hash": stable_hash({"objective_id": OBJECTIVE_ID}),
-            "multiple_testing_family_id": FAMILY_ID,
-            "risk_constraints": {"prospective_access": "DISABLED", "real_order_execution": "DISABLED"},
-        },
+        dict(
+            objective_id=OBJECTIVE_ID,
+            objective_identity_hash=stable_hash({"objective_id": OBJECTIVE_ID}),
+            multiple_testing_family_id=FAMILY_ID,
+            risk_constraints=dict(prospective_access="DISABLED", real_order_execution="DISABLED"),
+        ),
     )
-    family_path = root / "data/research/research_factory/multiple_testing" / OBJECTIVE_ID / f"{FAMILY_ID}.json"
+    family_path = research_factory_root / "multiple_testing" / OBJECTIVE_ID / f"{FAMILY_ID}.json"
     _write_json(
         family_path,
-        {
-            "schema_version": "research-multiple-testing-family-v1",
-            "family_id": FAMILY_ID,
-            "objective_id": OBJECTIVE_ID,
-            "hypothesis_slots": 1,
-            "immutable_after_confirmation": True,
-            "pre_registered_before_predictive_results": True,
-        },
+        dict(
+            schema_version="research-multiple-testing-family-v1",
+            family_id=FAMILY_ID,
+            objective_id=OBJECTIVE_ID,
+            hypothesis_slots=1,
+            immutable_after_confirmation=True,
+            pre_registered_before_predictive_results=True,
+        ),
     )
 
     policy_path = root / "data/research/strategy_validation/validation_decision_policy_v2.json"
@@ -64,88 +73,107 @@ def pending_trial_fixture(root: Path) -> dict[str, Path]:
     _write_json(policy_path.with_suffix(".lock.json"), lock_payload(policy, policy_path))
     policy, policy_hash = load_validation_decision_policy_v2(policy_path)
     reconciliation_path = root / RECONCILIATION_REF
-    _write_json(
-        reconciliation_path,
-        {
-            "status": "PASS",
-            "candidate_id": CANDIDATE_ID,
-            "candidate_hash": CANDIDATE_HASH,
-            "reconciliation_id": RECONCILIATION_ID,
-            "repaired_structural_result": {
-                "status": "PASS",
-                "details": {
-                    "v1_result": {
-                        "policy_id": "VALIDATION_DECISION_POLICY_V2",
-                        "policy_hash": policy_hash,
-                        "policy_version": policy.policy_version,
-                    }
-                },
-            },
-        },
+    reconciliation = dict(
+        reconciliation_id=RECONCILIATION_ID,
+        status="PASS",
+        candidate_id=candidate_id,
+        candidate_hash=candidate_hash,
     )
+    reconciliation["repaired_structural_result"] = dict(
+        status="PASS",
+        details=dict(
+            v1_result=dict(
+                policy_id="VALIDATION_DECISION_POLICY_V2",
+                policy_hash=policy_hash,
+                policy_version=policy.policy_version,
+            )
+        ),
+    )
+    _write_json(reconciliation_path, reconciliation)
 
-    budget_path = root / "data/research/research_factory/batches" / BATCH_ID / "search_budget_registry.json"
+    budget_path = research_factory_root / "batches" / BATCH_ID / "search_budget_registry.json"
     budget = SearchBudgetRegistryV1(OBJECTIVE_ID, budget_path)
     budget.register_objective(4)
     budget.register_batch(BATCH_ID, 4)
     budget.register_family(FAMILY_ID, 4)
 
     checkpoint_store = DaemonCheckpointStoreV1(root, OBJECTIVE_ID)
+    completed_candidate = dict(
+        candidate_id=candidate_id,
+        candidate_hash=candidate_hash,
+        batch_id=BATCH_ID,
+        contract_ref=CONTRACT_REF,
+        mechanism="sentiment_event_continuation",
+    )
     checkpoint = {
-        "schema_version": "research-daemon-checkpoint-v1",
-        "daemon_run_id": "SYNTHETIC_DAEMON_RUN_V1",
-        "objective_id": OBJECTIVE_ID,
-        "current_state": ResearchDaemonState.READY.value,
-        "current_candidate": None,
-        "current_trial": None,
-        "last_completed_candidate": {
-            "batch_id": BATCH_ID,
-            "candidate_id": CANDIDATE_ID,
-            "candidate_hash": CANDIDATE_HASH,
-            "contract_ref": CONTRACT_REF,
-            "mechanism": "sentiment_event_continuation",
-        },
-        "required_action": "START_PREDICTIVE_TRIAL_1",
+        "last_completed_candidate": completed_candidate,
         "canonical_refs": {
-            "structural_reconciliation": {"report_ref": RECONCILIATION_REF, "reconciliation_id": RECONCILIATION_ID},
-            "last_structural_result": {"status": "PASS", "details": {"candidate_id": CANDIDATE_ID, "candidate_hash": CANDIDATE_HASH}},
+            "last_structural_result": {
+                "status": "PASS",
+                "details": dict(candidate_id=candidate_id, candidate_hash=candidate_hash),
+            },
+            "structural_reconciliation": dict(
+                reconciliation_id=RECONCILIATION_ID,
+                report_ref=RECONCILIATION_REF,
+            ),
         },
-        "budget_view": {
-            "objective_id": OBJECTIVE_ID,
-            "registry_path": str(budget_path.relative_to(root)).replace("\\", "/"),
-            "total": 4,
-            "used": 0,
-            "reserved": 0,
-            "remaining": 4,
-        },
-        "ai_auto_invocation": "DISABLED",
-        "no_new_predictive_trials_during_build": True,
-        "retry_safe": True,
+        "budget_view": dict(
+            remaining=4,
+            reserved=0,
+            used=0,
+            total=4,
+            objective_id=OBJECTIVE_ID,
+            registry_path=str(budget_path.relative_to(root)).replace("\\", "/"),
+        ),
     }
+    checkpoint.update(
+        schema_version="research-daemon-checkpoint-v1",
+        daemon_run_id="SYNTHETIC_DAEMON_RUN_V1",
+        objective_id=OBJECTIVE_ID,
+        current_state=ResearchDaemonState.READY.value,
+        current_candidate=None,
+        current_trial=None,
+        required_action="START_PREDICTIVE_TRIAL_1",
+        ai_auto_invocation="DISABLED",
+        no_new_predictive_trials_during_build=True,
+        retry_safe=True,
+    )
     _write_json(checkpoint_store.checkpoint_path, checkpoint)
 
     authorization_path = root / "reports/research_orchestrator_v2" / OBJECTIVE_ID / "predictive_governance_decisions.jsonl"
     authorization_path.parent.mkdir(parents=True, exist_ok=True)
-    authorization = {
-                "decision_status": "AUTHORIZED",
-                "decision_type": "AUTHORIZE_FIRST_PREDICTIVE_TRIAL",
-                "next_action": "START_PREDICTIVE_TRIAL_1",
-                "decision_id": "SYNTHETIC_AUTHORIZATION_DECISION_V1",
-                "decision_hash": "SYNTHETIC_AUTHORIZATION_HASH_V1",
-                "authorization_id": "SYNTHETIC_AUTHORIZATION_V1",
-                "governance_decision_id": "SYNTHETIC_GOVERNANCE_DECISION_V1",
-                "candidate_id": CANDIDATE_ID,
-                "candidate_hash": CANDIDATE_HASH,
-                "structural_reconciliation_id": RECONCILIATION_ID,
-                "structural_status": "PASS",
-                "structural": {"status": "PASS", "lower_bound": 59, "upper_bound": 59, "minimum_required": 30, "lower_bound_integrity": "PASS"},
-                "final_test_access": {"physical": 0, "analytical": 0, "decision": 0},
-                "prospective": "DISABLED",
-                "real_order": "DISABLED",
-    }
+    authorization = dict(
+        authorization_id="SYNTHETIC_AUTHORIZATION_V1",
+        candidate_hash=candidate_hash,
+        candidate_id=candidate_id,
+        decision_id="SYNTHETIC_AUTHORIZATION_DECISION_V1",
+        decision_hash="SYNTHETIC_AUTHORIZATION_HASH_V1",
+        decision_status="AUTHORIZED",
+        decision_type="AUTHORIZE_FIRST_PREDICTIVE_TRIAL",
+        final_test_access=dict(decision=0, analytical=0, physical=0),
+        governance_decision_id="SYNTHETIC_GOVERNANCE_DECISION_V1",
+        next_action="START_PREDICTIVE_TRIAL_1",
+        prospective="DISABLED",
+        real_order="DISABLED",
+        structural=dict(
+            lower_bound=59,
+            lower_bound_integrity="PASS",
+            minimum_required=30,
+            status="PASS",
+            upper_bound=59,
+        ),
+        structural_reconciliation_id=RECONCILIATION_ID,
+        structural_status="PASS",
+    )
     authorization["decision_hash"] = stable_hash({key: value for key, value in authorization.items() if key != "decision_hash"})
     authorization_path.write_text(json.dumps(authorization, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8")
-    return {"contract": contract_path, "family": family_path, "budget": budget_path, "checkpoint": checkpoint_store.checkpoint_path, "authorization": authorization_path}
+    return {
+        "contract": contract_path,
+        "family": family_path,
+        "budget": budget_path,
+        "checkpoint": checkpoint_store.checkpoint_path,
+        "authorization": authorization_path,
+    }
 
 def _confirm_body(preview: dict[str, object], intent_id: str = "SYNTHETIC_START_INTENT_1") -> dict[str, object]:
     return {

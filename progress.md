@@ -457,3 +457,23 @@
 - tests/test_webapp.py：验证默认 K 线入口拒绝，不再依赖本机行情。
 - progress.md：追加本轮状态与证据链接，不改写历史记录。
 - 回滚点：7f22237958731fbc5e7803ee41ff40a55a277ff1；本分支本轮提交完成后可执行 git revert --no-edit HEAD。不 reset、不修改 main、不触碰原始研究目录。
+
+## 2026-09-08 - Task: P3-A PR 认证 SonarCloud 阻断最小修复
+
+### What was done
+
+针对 PR-context SonarCloud 暴露的新增工作流依赖未锁定、npm 安装脚本未禁用，以及合成待恢复 fixture 与既有测试重复度过高，完成仅限认证链路的最小修复；未改变 P3-A 运行策略、领域门禁、研究数据或真实执行入口。
+
+### Testing
+
+- `python -m py_compile tests/research_factory/p3a_pending_trial_fixture.py`：通过。
+- `python -m pytest -q tests/research_factory/test_execution_isolation_v1.py`：`66 passed`。
+- `git diff --check`：通过；远端 PR-context 三条 workflow 与 SonarCloud 结果将在新 HEAD 上重新认证。
+
+### Notes
+
+- `.github/workflows/phase3-execution-isolation-certification.yml`：改用 hash-locked Python 依赖并以 `npm ci --ignore-scripts` 构建。
+- `.github/workflows/requirements-p3a.txt`：新增面向 Ubuntu Python 3.11 认证环境的完整 hash 锁定依赖。
+- `tests/research_factory/p3a_pending_trial_fixture.py`：保持现场生成合成工件，调整构造表达以消除与历史测试的重复代码。
+- `progress.md`：追加本轮 SonarCloud 阻断修复与验证记录。
+- 回滚方式：在该分支执行 `git revert --no-edit HEAD` 回到 `6ba8139e640a941409a374108baa7efc7f8c088f`；不 reset、不修改 `main`、不 force push、不 merge。
