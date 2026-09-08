@@ -603,16 +603,17 @@ def test_read_boundary_does_not_start_provider_or_predictive_executor() -> None:
     assert "execute_predictive" not in source
 
 
-def test_fastapi_console_routes_keep_reads_separate_from_protected_writes(console_fixture: ResearchConsoleReadService, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_fastapi_console_routes_keep_reads_separate_from_protected_writes(tmp_path, console_fixture: ResearchConsoleReadService, monkeypatch: pytest.MonkeyPatch) -> None:
     from types import SimpleNamespace
 
     from fastapi.testclient import TestClient
 
     import chanlun_trader.webapp as webapp
+    application = webapp.create_app(console_fixture.root, webapp.ExecutionPolicy("GOVERNED", "SYNTHETIC"))
 
-    monkeypatch.setattr(webapp, "research_console_service", console_fixture)
-    monkeypatch.setattr(webapp, "governance_execution_service", SimpleNamespace(catalog=lambda _objective_id: {"backend_level": "FULL"}))
-    console_routes = [route for route in webapp.app.routes if getattr(route, "path", "").startswith("/api/research-console/")]
+    monkeypatch.setattr(application.state.services, "research_console_service", console_fixture)
+    monkeypatch.setattr(application.state.services, "governance_execution_service", SimpleNamespace(catalog=lambda _objective_id: {"backend_level": "FULL"}))
+    console_routes = [route for route in application.routes if getattr(route, "path", "").startswith("/api/research-console/")]
     read_routes = [route for route in console_routes if getattr(route, "methods", set()) <= {"GET"}]
     write_routes = [route for route in console_routes if "POST" in getattr(route, "methods", set())]
     assert len(read_routes) == 46
@@ -633,7 +634,7 @@ def test_fastapi_console_routes_keep_reads_separate_from_protected_writes(consol
     assert any(route.path.endswith("/candidate-proposals/materialization/preview") for route in write_routes)
     assert any(route.path.endswith("/candidate-proposals/materialization/confirm") for route in write_routes)
     assert any(route.path.endswith("/autonomous-control-plane/tick") for route in write_routes)
-    with TestClient(webapp.app) as client:
+    with TestClient(application) as client:
         objectives = client.get("/api/research-console/objectives")
         assert objectives.status_code == 200
         assert {item["objective_id"] for item in objectives.json()["objectives"]} == {OBJECTIVE, OTHER_OBJECTIVE}
@@ -656,12 +657,13 @@ def test_fastapi_console_routes_keep_reads_separate_from_protected_writes(consol
         assert unknown.json()["code"] == "UNKNOWN_OBJECTIVE"
 
 
-def test_fastapi_predictive_authorization_requires_confirmation_and_current_candidate(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_fastapi_predictive_authorization_requires_confirmation_and_current_candidate(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
     from types import SimpleNamespace
 
     from fastapi.testclient import TestClient
 
     import chanlun_trader.webapp as webapp
+    application = webapp.create_app(tmp_path, webapp.ExecutionPolicy("GOVERNED", "SYNTHETIC"))
 
     calls: list[dict[str, object]] = []
 
@@ -673,8 +675,8 @@ def test_fastapi_predictive_authorization_requires_confirmation_and_current_cand
         calls.append({"objective_id": objective_id, **body})
         return {"status": "RECORDED", "idempotent": False, "next_action": "START_PREDICTIVE_TRIAL_1"}
 
-    monkeypatch.setattr(webapp, "predictive_governance_service", SimpleNamespace(confirm=fake_confirm))
-    with TestClient(webapp.app) as client:
+    monkeypatch.setattr(application.state.services, "predictive_governance_service", SimpleNamespace(confirm=fake_confirm))
+    with TestClient(application) as client:
         missing_confirmation = client.post(f"/api/research-console/{OBJECTIVE}/predictive/authorize", json={"candidate_id": CANDIDATE_ID, "authorization_id": "AUTH_1"})
         assert missing_confirmation.status_code == 400
         mismatch = client.post(f"/api/research-console/{OBJECTIVE}/predictive/authorize", json={"confirmed": True, "candidate_id": "OTHER", "authorization_id": "AUTH_1"})
@@ -686,12 +688,13 @@ def test_fastapi_predictive_authorization_requires_confirmation_and_current_cand
     assert calls == [{"objective_id": OBJECTIVE, "confirmed": True, "candidate_id": CANDIDATE_ID, "authorization_id": "AUTH_1", "decision_type": "AUTHORIZE_FIRST_PREDICTIVE_TRIAL"}]
 
 
-def test_fastapi_structural_reconciliation_requires_confirmation_and_current_candidate(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_fastapi_structural_reconciliation_requires_confirmation_and_current_candidate(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
     from types import SimpleNamespace
 
     from fastapi.testclient import TestClient
 
     import chanlun_trader.webapp as webapp
+    application = webapp.create_app(tmp_path, webapp.ExecutionPolicy("GOVERNED", "SYNTHETIC", allow_structural=True))
 
     calls: list[dict[str, str]] = []
 
@@ -701,8 +704,8 @@ def test_fastapi_structural_reconciliation_requires_confirmation_and_current_can
         calls.append({"objective_id": objective_id, "candidate_id": str(candidate_id), "confirmed": str(confirmed), "action": action})
         return {"status": "PASS", "candidate_id": candidate_id}
 
-    monkeypatch.setattr(webapp, "structural_entry_service", SimpleNamespace(start=fake_start))
-    with TestClient(webapp.app) as client:
+    monkeypatch.setattr(application.state.services, "structural_entry_service", SimpleNamespace(start=fake_start))
+    with TestClient(application) as client:
         missing_confirmation = client.post(f"/api/research-console/{OBJECTIVE}/structural/reconcile", json={"candidate_id": CANDIDATE_ID})
         assert missing_confirmation.status_code == 400
         mismatch = client.post(f"/api/research-console/{OBJECTIVE}/structural/reconcile", json={"confirmed": True, "candidate_id": "OTHER"})
@@ -714,12 +717,13 @@ def test_fastapi_structural_reconciliation_requires_confirmation_and_current_can
     assert calls == [{"objective_id": OBJECTIVE, "candidate_id": CANDIDATE_ID, "confirmed": "True", "action": "RUN_STRUCTURAL_PREFLIGHT"}]
 
 
-def test_fastapi_contract_correction_requires_preview_and_explicit_confirmation(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_fastapi_contract_correction_requires_preview_and_explicit_confirmation(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
     from types import SimpleNamespace
 
     from fastapi.testclient import TestClient
 
     import chanlun_trader.webapp as webapp
+    application = webapp.create_app(tmp_path, webapp.ExecutionPolicy("GOVERNED", "SYNTHETIC"))
 
     candidate_hash = "candidate-hash"
     contract_ref = "data/research/contracts.json"
@@ -727,7 +731,7 @@ def test_fastapi_contract_correction_requires_preview_and_explicit_confirmation(
         "identity": {"candidate_hash": candidate_hash},
         "artifact_lineage": {"contract_ref": contract_ref},
     })
-    monkeypatch.setattr(webapp, "research_console_service", SimpleNamespace(get_candidate=lambda _objective_id, _candidate_id: detail))
+    monkeypatch.setattr(application.state.services, "research_console_service", SimpleNamespace(get_candidate=lambda _objective_id, _candidate_id: detail))
     calls: list[dict[str, str]] = []
 
     class FakeCorrectionService:
@@ -753,9 +757,9 @@ def test_fastapi_contract_correction_requires_preview_and_explicit_confirmation(
             calls.append({"method": "confirm", **kwargs})
             return {"action": "INVALIDATE_EXECUTION", "candidate_id": CANDIDATE_ID}
 
-    monkeypatch.setattr(webapp, "frozen_contract_correction_service", FakeCorrectionService())
+    monkeypatch.setattr(application.state.services, "frozen_contract_correction_service", FakeCorrectionService())
     route = f"/api/research-console/{OBJECTIVE}/candidates/{CANDIDATE_ID}/contract-correction"
-    with TestClient(webapp.app) as client:
+    with TestClient(application) as client:
         preview = client.get(f"{route}/preview")
         missing_confirmation = client.post(f"{route}/confirm", json={"preview_hash": "preview-hash", "confirmation_token": "confirmation-token"})
         response = client.post(f"{route}/confirm", json={"confirmed": True, "preview_hash": "preview-hash", "confirmation_token": "confirmation-token"})
@@ -771,10 +775,11 @@ def test_fastapi_contract_correction_requires_preview_and_explicit_confirmation(
     ]
 
 
-def test_fastapi_trial_reconciliation_requires_preview_and_explicit_confirmation(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_fastapi_trial_reconciliation_requires_preview_and_explicit_confirmation(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
     from fastapi.testclient import TestClient
 
     import chanlun_trader.webapp as webapp
+    application = webapp.create_app(tmp_path, webapp.ExecutionPolicy("GOVERNED", "SYNTHETIC"))
 
     calls: list[dict[str, str]] = []
 
@@ -798,9 +803,9 @@ def test_fastapi_trial_reconciliation_requires_preview_and_explicit_confirmation
             calls.append({"method": "confirm", **kwargs})
             return {"status": "COMPLETE", "terminal_status": "INVALIDATED", "trial_id": TRIAL_ID}
 
-    monkeypatch.setattr(webapp, "canonical_trial_reconciliation_service", FakeTrialReconciliationService())
+    monkeypatch.setattr(application.state.services, "canonical_trial_reconciliation_service", FakeTrialReconciliationService())
     route = f"/api/research-console/{OBJECTIVE}/trials/{TRIAL_ID}/reconciliation"
-    with TestClient(webapp.app) as client:
+    with TestClient(application) as client:
         preview = client.get(f"{route}/preview")
         missing_confirmation = client.post(f"{route}/confirm", json={"preview_hash": "preview-hash", "confirmation_token": "confirmation-token"})
         response = client.post(f"{route}/confirm", json={"confirmed": True, "preview_hash": "preview-hash", "confirmation_token": "confirmation-token"})

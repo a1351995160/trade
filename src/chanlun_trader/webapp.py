@@ -13,6 +13,9 @@ import traceback
 import uuid
 from pathlib import Path
 from typing import Any
+from types import SimpleNamespace
+
+from .execution_policy import ExecutionPolicy, validate_research_root
 
 import pandas as pd
 from fastapi import Body, FastAPI, HTTPException, Query, Request
@@ -47,37 +50,6 @@ from .tdx_data import TdxData
 FRONTEND_DIST = PROJECT_ROOT / "frontend" / "dist"
 
 app = FastAPI(title="缠论选股交易系统")
-
-research_console_service = ResearchConsoleReadService(PROJECT_ROOT)
-ai_invocation_mode_service = AIInvocationModeServiceV1(PROJECT_ROOT)
-orchestrator_control_service = OrchestratorControlServiceV1(PROJECT_ROOT)
-governance_decision_service = GovernanceDecisionServiceV1(PROJECT_ROOT)
-governance_execution_service = ResearchGovernanceExecutionServiceV1(PROJECT_ROOT)
-orchestrator_process_launcher = OrchestratorProcessLauncherV1(PROJECT_ROOT)
-frozen_contract_correction_service = FrozenContractCorrectionServiceV1(PROJECT_ROOT)
-canonical_trial_reconciliation_service = CanonicalTrialReconciliationServiceV1(PROJECT_ROOT)
-predictive_governance_service = PredictiveGovernanceServiceV1(PROJECT_ROOT)
-predictive_trial_start_service = PredictiveTrialStartServiceV1(PROJECT_ROOT)
-predictive_trial_reauthorization_service = PredictiveTrialReauthorizationServiceV1(PROJECT_ROOT)
-research_proposal_governance_service = ResearchProposalGovernanceServiceV1(PROJECT_ROOT)
-research_evolution_ai_design_service = ResearchEvolutionAIDesignServiceV1(PROJECT_ROOT)
-research_evolution_ai_design_approval_service = AIDesignApprovalServiceV1(PROJECT_ROOT)
-candidate_generation_service = CandidateGenerationManagerV1(PROJECT_ROOT)
-candidate_materialization_service = CandidateExecutableMaterializationManagerV1(PROJECT_ROOT)
-structural_entry_service = StructuralEntryServiceV1(PROJECT_ROOT)
-projection_reconciliation_service = ProjectionReconciliationServiceV1(PROJECT_ROOT)
-autonomous_control_plane_service = AutonomousResearchControlPlaneV1(PROJECT_ROOT)
-
-
-@app.on_event("startup")
-async def recover_formal_predictive_trials_on_backend_startup() -> None:
-    """Backend restart only resumes already-confirmed durable Trial intents."""
-    predictive_trial_start_service.recover_all()
-    predictive_trial_reauthorization_service.recover_new_all()
-    research_proposal_governance_service.recover_all()
-    research_evolution_ai_design_service.recover_all()
-    candidate_generation_service.recover_all()
-
 
 @app.exception_handler(ResearchConsoleReadError)
 async def research_console_error_handler(_, exc: ResearchConsoleReadError) -> JSONResponse:
@@ -145,55 +117,25 @@ def _require_local_console_request(request: Request) -> None:
         raise HTTPException(status_code=403, detail="研究控制台写操作仅允许本机访问")
 
 
-def _console_ai_design_approval_service() -> AIDesignApprovalServiceV1:
-    scoped_service = getattr(_console_service(), "ai_design_approval", None)
-    if scoped_service is not None:
-        try:
-            if Path(scoped_service.root).resolve() != PROJECT_ROOT.resolve():
-                return scoped_service
-        except (AttributeError, TypeError, OSError):
-            pass
-    return research_evolution_ai_design_approval_service
+def _console_ai_design_approval_service(request: Request) -> AIDesignApprovalServiceV1:
+    return request.app.state.services.research_evolution_ai_design_approval_service
 
 
-def _console_candidate_generation_service() -> CandidateGenerationManagerV1:
-    scoped_service = getattr(_console_service(), "candidate_generation", None)
-    if scoped_service is not None:
-        try:
-            if Path(scoped_service.root).resolve() != PROJECT_ROOT.resolve():
-                return scoped_service
-        except (AttributeError, TypeError, OSError):
-            pass
-    return candidate_generation_service
+def _console_candidate_generation_service(request: Request) -> CandidateGenerationManagerV1:
+    return request.app.state.services.candidate_generation_service
 
 
-def _console_candidate_materialization_service() -> CandidateExecutableMaterializationManagerV1:
-    scoped_service = getattr(_console_service(), "candidate_materialization", None)
-    if scoped_service is not None:
-        try:
-            if Path(scoped_service.root).resolve() != PROJECT_ROOT.resolve():
-                return scoped_service
-        except (AttributeError, TypeError, OSError):
-            pass
-    return candidate_materialization_service
+def _console_candidate_materialization_service(request: Request) -> CandidateExecutableMaterializationManagerV1:
+    return request.app.state.services.candidate_materialization_service
 
 
-def _console_autonomous_control_plane() -> AutonomousResearchControlPlaneV1:
-    scoped_service = getattr(_console_service(), "autonomous_control_plane", None)
-    if scoped_service is not None:
-        try:
-            if Path(scoped_service.root).resolve() != PROJECT_ROOT.resolve():
-                return scoped_service
-        except (AttributeError, TypeError, OSError):
-            pass
-    return autonomous_control_plane_service
+def _console_autonomous_control_plane(request: Request) -> AutonomousResearchControlPlaneV1:
+    return request.app.state.services.autonomous_control_plane_service
 
 
 if (FRONTEND_DIST / "assets").exists():
     app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST / "assets")), name="assets")
 
-# 任务状态：task_id -> {status, progress, message, result}
-TASKS: dict[str, dict] = {}
 
 
 def _make_tdx(cfg: dict) -> TdxData:
@@ -237,7 +179,7 @@ def run_screener(body: dict | None = None) -> dict:
 
 
 @app.post("/api/backtest")
-def start_backtest(body: dict | None = None) -> dict:
+def start_backtest(request: Request, body: dict | None = None) -> dict:
     body = body or {}
     limit = body.get("limit") or None
     cfg = load_config()
@@ -256,10 +198,10 @@ def start_backtest(body: dict | None = None) -> dict:
     cfg.setdefault("trailing_stop", {})["enabled"] = bool(body.get("trailing_enabled", False))
 
     task_id = str(uuid.uuid4())[:8]
-    TASKS[task_id] = {"status": "running", "progress": 0.0, "message": "准备数据", "result": None}
+    request.app.state.tasks[task_id] = {"status": "running", "progress": 0.0, "message": "准备数据", "result": None}
 
     def _run() -> None:
-        task = TASKS[task_id]
+        task = request.app.state.tasks[task_id]
         try:
             tdx = _make_tdx(cfg)
 
@@ -295,8 +237,8 @@ def start_backtest(body: dict | None = None) -> dict:
 
 
 @app.get("/api/backtest/status/{task_id}")
-def backtest_status(task_id: str) -> dict:
-    task = TASKS.get(task_id)
+def backtest_status(request: Request, task_id: str) -> dict:
+    task = request.app.state.tasks.get(task_id)
     if task is None:
         raise HTTPException(status_code=404, detail="任务不存在")
     return task
@@ -391,82 +333,82 @@ def get_kline(code: str, market: int = Query(1), bars: int = 300) -> dict:
     }
 
 
-def _console_service() -> ResearchConsoleReadService:
-    return research_console_service
+def _console_service(request: Request) -> ResearchConsoleReadService:
+    return request.app.state.services.research_console_service
 
 
 @app.get("/api/research-console/objectives")
-def research_console_objectives() -> dict:
-    return _console_service().list_objectives().to_dict()
+def research_console_objectives(request: Request) -> dict:
+    return _console_service(request).list_objectives().to_dict()
 
 
 @app.get("/api/research-console/ai-invocation-mode")
-def research_console_ai_invocation_mode() -> dict:
-    return ai_invocation_mode_service.get()
+def research_console_ai_invocation_mode(request: Request) -> dict:
+    return request.app.state.services.ai_invocation_mode_service.get()
 
 
 @app.post("/api/research-console/ai-invocation-mode")
 def research_console_set_ai_invocation_mode(request: Request, payload: dict[str, Any] | None = Body(default=None)) -> dict:
     _require_local_console_request(request)
     body = payload or {}
-    return ai_invocation_mode_service.set(str(body.get("ai_invocation_mode") or body.get("mode") or ""))
+    return request.app.state.services.ai_invocation_mode_service.set(str(body.get("ai_invocation_mode") or body.get("mode") or ""))
 
 
 @app.get("/api/research-console/{objective_id}/dashboard")
-def research_console_dashboard(objective_id: str) -> dict:
-    return _console_service().get_dashboard(objective_id).to_dict()
+def research_console_dashboard(request: Request, objective_id: str) -> dict:
+    return _console_service(request).get_dashboard(objective_id).to_dict()
 
 
 @app.get("/api/research-console/{objective_id}/daemon")
-def research_console_daemon(objective_id: str) -> dict:
-    return _console_service().get_daemon(objective_id).to_dict()
+def research_console_daemon(request: Request, objective_id: str) -> dict:
+    return _console_service(request).get_daemon(objective_id).to_dict()
 
 
 @app.get("/api/research-console/{objective_id}/orchestrator")
-def research_console_orchestrator(objective_id: str) -> dict:
-    return dict(_console_service().get_orchestrator(objective_id))
+def research_console_orchestrator(request: Request, objective_id: str) -> dict:
+    return dict(_console_service(request).get_orchestrator(objective_id))
 
 
 @app.get("/api/research-console/{objective_id}/orchestrator/events")
-def research_console_orchestrator_events(objective_id: str, limit: int = 50) -> dict:
-    return _console_service().get_orchestrator_events(objective_id, limit=limit)
+def research_console_orchestrator_events(request: Request, objective_id: str, limit: int = 50) -> dict:
+    return _console_service(request).get_orchestrator_events(objective_id, limit=limit)
 
 
 @app.get("/api/research-console/{objective_id}/ai-status")
-def research_console_ai_status(objective_id: str) -> dict:
-    return _console_service().get_ai_status(objective_id)
+def research_console_ai_status(request: Request, objective_id: str) -> dict:
+    return _console_service(request).get_ai_status(objective_id)
 
 
 @app.get("/api/research-console/{objective_id}/manual-ai-handoff")
-def research_console_manual_ai_handoff(objective_id: str) -> dict:
-    return _console_service().get_manual_ai_handoff(objective_id)
+def research_console_manual_ai_handoff(request: Request, objective_id: str) -> dict:
+    return _console_service(request).get_manual_ai_handoff(objective_id)
 
 
 @app.api_route("/api/research-console/{objective_id}/safe-runtime-context", methods=["GET", "HEAD"])
-def research_console_safe_runtime_context(objective_id: str) -> dict:
-    return _console_service().get_safe_runtime_context(objective_id)
+def research_console_safe_runtime_context(request: Request, objective_id: str) -> dict:
+    return _console_service(request).get_safe_runtime_context(objective_id)
 
 
 @app.get("/api/research-console/{objective_id}/autonomous-control-plane")
-def research_console_autonomous_control_plane(objective_id: str) -> dict:
-    return _console_service().get_autonomous_control_plane(objective_id)
+def research_console_autonomous_control_plane(request: Request, objective_id: str) -> dict:
+    return _console_service(request).get_autonomous_control_plane(objective_id)
 
 
 @app.post("/api/research-console/{objective_id}/autonomous-control-plane/tick")
 def research_console_autonomous_control_plane_tick(objective_id: str, request: Request, payload: dict[str, Any] | None = Body(default=None)) -> dict:
     _require_local_console_request(request)
     body = payload or {}
-    return _console_autonomous_control_plane().tick(objective_id, dry_run=bool(body.get("dry_run", False)))
+    return _console_autonomous_control_plane(request).tick(objective_id, dry_run=bool(body.get("dry_run", False)))
 
 
 @app.get("/api/research-console/{objective_id}/ai-tasks")
-def research_console_ai_tasks(objective_id: str, page: int = 1, page_size: int = 20, search: str = "", status: str = "ALL", mode: str = "ALL", sort: str = "created_at", direction: str = "desc") -> dict:
-    return _console_service().list_ai_tasks(objective_id, page=page, page_size=page_size, search=search, status=status, mode=mode, sort=sort, direction=direction)
+def research_console_ai_tasks(request: Request, objective_id: str, page: int = 1, page_size: int = 20, search: str = "", status: str = "ALL", mode: str = "ALL", sort: str = "created_at", direction: str = "desc") -> dict:
+    return _console_service(request).list_ai_tasks(objective_id, page=page, page_size=page_size, search=search, status=status, mode=mode, sort=sort, direction=direction)
 
 
 @app.get("/api/research-console/{objective_id}/ai-results")
-def research_console_ai_results(objective_id: str, page: int = 1, page_size: int = 20, search: str = "", sort: str = "created_at", direction: str = "desc") -> dict:
-    return _console_service().list_ai_results(objective_id, page=page, page_size=page_size, search=search, sort=sort, direction=direction)
+def research_console_ai_results(request: Request, objective_id: str, page: int = 1, page_size: int = 20, search: str = "", sort: str = "created_at", direction: str = "desc") -> dict:
+    return _console_service(request).list_ai_results(objective_id, page=page, page_size=page_size, search=search, sort=sort, direction=direction)
 
 
 @app.post("/api/research-console/{objective_id}/manual-ai-handoff/rescan")
@@ -474,66 +416,66 @@ def research_console_manual_ai_rescan(objective_id: str, request: Request) -> di
     _require_local_console_request(request)
     from .research_factory.autonomous_orchestrator_v2 import AutonomousResearchOrchestratorV2
 
-    return AutonomousResearchOrchestratorV2(PROJECT_ROOT, objective_id=objective_id).scan_manual_handoff()
+    return AutonomousResearchOrchestratorV2(request.app.state.research_root, objective_id=objective_id).scan_manual_handoff()
 
 
 @app.get("/api/research-console/{objective_id}/closeout")
-def research_console_closeout(objective_id: str) -> dict:
-    return _console_service().get_closeout(objective_id)
+def research_console_closeout(request: Request, objective_id: str) -> dict:
+    return _console_service(request).get_closeout(objective_id)
 
 
 @app.get("/api/research-console/{objective_id}/governance-decision")
-def research_console_governance_decision(objective_id: str) -> dict:
-    return _console_service().get_governance_decision(objective_id)
+def research_console_governance_decision(request: Request, objective_id: str) -> dict:
+    return _console_service(request).get_governance_decision(objective_id)
 
 
 @app.get("/api/research-console/{objective_id}/governance/preview")
-def research_console_governance_preview(objective_id: str, action: str | None = Query(default=None), execution_mode: str = Query(default="CREATE_AND_ACTIVATE"), selected_parent_candidate_id: str | None = Query(default=None), selected_parent_candidate_hash: str | None = Query(default=None)) -> dict:
+def research_console_governance_preview(request: Request, objective_id: str, action: str | None = Query(default=None), execution_mode: str = Query(default="CREATE_AND_ACTIVATE"), selected_parent_candidate_id: str | None = Query(default=None), selected_parent_candidate_hash: str | None = Query(default=None)) -> dict:
     if not action:
-        return governance_execution_service.catalog(objective_id)
-    return governance_execution_service.preview(objective_id, action, execution_mode=execution_mode, selected_parent_candidate_id=selected_parent_candidate_id, selected_parent_candidate_hash=selected_parent_candidate_hash)
+        return request.app.state.services.governance_execution_service.catalog(objective_id)
+    return request.app.state.services.governance_execution_service.preview(objective_id, action, execution_mode=execution_mode, selected_parent_candidate_id=selected_parent_candidate_id, selected_parent_candidate_hash=selected_parent_candidate_hash)
 
 
 @app.post("/api/research-console/{objective_id}/governance/preview")
 def research_console_governance_preview_post(objective_id: str, request: Request, payload: dict[str, Any] | None = Body(default=None)) -> dict:
     _require_local_console_request(request)
     body = payload or {}
-    return governance_execution_service.preview(objective_id, str(body.get("action") or body.get("governance_action") or ""), execution_mode=str(body.get("execution_mode") or "CREATE_AND_ACTIVATE"), selected_parent_candidate_id=body.get("selected_parent_candidate_id"), selected_parent_candidate_hash=body.get("selected_parent_candidate_hash"))
+    return request.app.state.services.governance_execution_service.preview(objective_id, str(body.get("action") or body.get("governance_action") or ""), execution_mode=str(body.get("execution_mode") or "CREATE_AND_ACTIVATE"), selected_parent_candidate_id=body.get("selected_parent_candidate_id"), selected_parent_candidate_hash=body.get("selected_parent_candidate_hash"))
 
 
 @app.post("/api/research-console/{objective_id}/governance/confirm")
 def research_console_governance_confirm(objective_id: str, request: Request, payload: dict[str, Any] | None = Body(default=None)) -> dict:
     _require_local_console_request(request)
-    receipt = governance_execution_service.confirm(objective_id, payload or {})
+    receipt = request.app.state.services.governance_execution_service.confirm(objective_id, payload or {})
     if receipt.get("execution_mode") != "CREATE_AND_ACTIVATE" or not receipt.get("new_objective_id"):
         return receipt
     try:
-        activation = orchestrator_process_launcher.start(str(receipt["new_objective_id"]), execution_id=str(receipt["execution_id"]))
+        activation = request.app.state.services.orchestrator_process_launcher.start(str(receipt["new_objective_id"]), execution_id=str(receipt["execution_id"]))
     except OrchestratorLaunchError as exc:
         raise GovernanceExecutionError("ORCHESTRATOR_ACTIVATION_BLOCKED", exc.message_zh, status_code=503, details={"launch_code": exc.code, "governance_receipt": receipt, **exc.details}) from exc
     return {**receipt, "orchestrator_activation": activation}
 
 
 @app.get("/api/research-console/{objective_id}/governance/execution/{execution_id}")
-def research_console_governance_execution(objective_id: str, execution_id: str) -> dict:
-    return governance_execution_service.get_execution(objective_id, execution_id)
+def research_console_governance_execution(request: Request, objective_id: str, execution_id: str) -> dict:
+    return request.app.state.services.governance_execution_service.get_execution(objective_id, execution_id)
 
 
 @app.get("/api/research-console/{objective_id}/governance/execution/{execution_id}/receipt.json")
-def research_console_governance_execution_receipt_file(objective_id: str, execution_id: str) -> dict:
+def research_console_governance_execution_receipt_file(request: Request, objective_id: str, execution_id: str) -> dict:
     """Compatibility URL for the human-facing receipt link."""
-    return governance_execution_service.get_execution(objective_id, execution_id)
+    return request.app.state.services.governance_execution_service.get_execution(objective_id, execution_id)
 
 
 @app.get("/api/research-console/{objective_id}/operations")
-def research_console_operations(objective_id: str) -> dict:
-    return _console_service().get_operations(objective_id)
+def research_console_operations(request: Request, objective_id: str) -> dict:
+    return _console_service(request).get_operations(objective_id)
 
 
 def _console_operation(objective_id: str, action: str, request: Request, payload: dict[str, Any] | None) -> dict:
     _require_local_console_request(request)
     body = payload or {}
-    return orchestrator_control_service.execute(objective_id, action, idempotency_key=str(body.get("idempotency_key") or ""), confirmed=bool(body.get("confirmed", False)))
+    return request.app.state.services.orchestrator_control_service.execute(objective_id, action, idempotency_key=str(body.get("idempotency_key") or ""), confirmed=bool(body.get("confirmed", False)))
 
 
 @app.post("/api/research-console/{objective_id}/orchestrator/pause")
@@ -567,73 +509,73 @@ def research_console_submit_governance(objective_id: str, request: Request, payl
     body = payload or {}
     if body.get("confirmed") is not True:
         raise OrchestratorOperationError("CONFIRMATION_REQUIRED", "提交治理决定需要明确确认", status_code=400)
-    return governance_decision_service.submit(objective_id, str(body.get("choice") or ""), idempotency_key=str(body.get("idempotency_key") or ""))
+    return request.app.state.services.governance_decision_service.submit(objective_id, str(body.get("choice") or ""), idempotency_key=str(body.get("idempotency_key") or ""))
 
 
 @app.get("/api/research-console/{objective_id}/daemon/health")
-def research_console_daemon_health(objective_id: str) -> dict:
-    return _console_service().get_daemon_health(objective_id).to_dict()
+def research_console_daemon_health(request: Request, objective_id: str) -> dict:
+    return _console_service(request).get_daemon_health(objective_id).to_dict()
 
 
 @app.get("/api/research-console/{objective_id}/pipeline")
-def research_console_pipeline(objective_id: str) -> dict:
-    return _console_service().get_pipeline(objective_id).to_dict()
+def research_console_pipeline(request: Request, objective_id: str) -> dict:
+    return _console_service(request).get_pipeline(objective_id).to_dict()
 
 
 @app.get("/api/research-console/{objective_id}/predictive/authorization/preview")
-def research_console_predictive_governance_preview(objective_id: str, decision_type: str = Query(default="AUTHORIZE_FIRST_PREDICTIVE_TRIAL")) -> dict:
-    return predictive_governance_service.preview(objective_id, decision_type)
+def research_console_predictive_governance_preview(request: Request, objective_id: str, decision_type: str = Query(default="AUTHORIZE_FIRST_PREDICTIVE_TRIAL")) -> dict:
+    return request.app.state.services.predictive_governance_service.preview(objective_id, decision_type)
 
 
 @app.post("/api/research-console/{objective_id}/predictive/authorize")
 def research_console_authorize_predictive(objective_id: str, request: Request, payload: dict[str, Any] | None = Body(default=None)) -> dict:
     _require_local_console_request(request)
     body = payload or {}
-    return predictive_governance_service.confirm(objective_id, body)
+    return request.app.state.services.predictive_governance_service.confirm(objective_id, body)
 
 
 @app.get("/api/research-console/{objective_id}/predictive/trial/start/preview")
-def research_console_predictive_trial_start_preview(objective_id: str) -> dict:
-    return predictive_trial_start_service.preview(objective_id)
+def research_console_predictive_trial_start_preview(request: Request, objective_id: str) -> dict:
+    return request.app.state.services.predictive_trial_start_service.preview(objective_id)
 
 
 @app.post("/api/research-console/{objective_id}/predictive/trial/start")
 def research_console_predictive_trial_start(objective_id: str, request: Request, payload: dict[str, Any] | None = Body(default=None)) -> dict:
     _require_local_console_request(request)
-    return predictive_trial_start_service.confirm(objective_id, payload or {})
+    return request.app.state.services.predictive_trial_start_service.confirm(objective_id, payload or {})
 
 
 @app.get("/api/research-console/{objective_id}/predictive/trial/resume/preview")
-def research_console_predictive_trial_resume_preview(objective_id: str) -> dict:
-    return predictive_trial_start_service.resume_preview(objective_id)
+def research_console_predictive_trial_resume_preview(request: Request, objective_id: str) -> dict:
+    return request.app.state.services.predictive_trial_start_service.resume_preview(objective_id)
 
 
 @app.post("/api/research-console/{objective_id}/predictive/trial/resume")
 def research_console_predictive_trial_resume(objective_id: str, request: Request, payload: dict[str, Any] | None = Body(default=None)) -> dict:
     _require_local_console_request(request)
-    return predictive_trial_start_service.confirm_resume(objective_id, payload or {})
+    return request.app.state.services.predictive_trial_start_service.confirm_resume(objective_id, payload or {})
 
 
 @app.get("/api/research-console/{objective_id}/predictive/trial/new/authorization/preview")
-def research_console_predictive_new_trial_authorization_preview(objective_id: str) -> dict:
-    return predictive_trial_reauthorization_service.preview_authorization(objective_id)
+def research_console_predictive_new_trial_authorization_preview(request: Request, objective_id: str) -> dict:
+    return request.app.state.services.predictive_trial_reauthorization_service.preview_authorization(objective_id)
 
 
 @app.post("/api/research-console/{objective_id}/predictive/trial/new/authorize")
 def research_console_predictive_new_trial_authorize(objective_id: str, request: Request, payload: dict[str, Any] | None = Body(default=None)) -> dict:
     _require_local_console_request(request)
-    return predictive_trial_reauthorization_service.confirm_authorization(objective_id, payload or {})
+    return request.app.state.services.predictive_trial_reauthorization_service.confirm_authorization(objective_id, payload or {})
 
 
 @app.get("/api/research-console/{objective_id}/predictive/trial/new/start/preview")
-def research_console_predictive_new_trial_start_preview(objective_id: str) -> dict:
-    return predictive_trial_reauthorization_service.preview_start_new_trial(objective_id)
+def research_console_predictive_new_trial_start_preview(request: Request, objective_id: str) -> dict:
+    return request.app.state.services.predictive_trial_reauthorization_service.preview_start_new_trial(objective_id)
 
 
 @app.post("/api/research-console/{objective_id}/predictive/trial/new/start")
 def research_console_predictive_new_trial_start(objective_id: str, request: Request, payload: dict[str, Any] | None = Body(default=None)) -> dict:
     _require_local_console_request(request)
-    return predictive_trial_reauthorization_service.confirm_start_new_trial(objective_id, payload or {})
+    return request.app.state.services.predictive_trial_reauthorization_service.confirm_start_new_trial(objective_id, payload or {})
 
 
 @app.post("/api/research-console/{objective_id}/structural/reconcile")
@@ -642,7 +584,7 @@ def research_console_reconcile_structural(objective_id: str, request: Request, p
     body = payload or {}
     if body.get("confirmed") is not True or str(body.get("action") or "").upper() != "RUN_STRUCTURAL_PREFLIGHT":
         raise OrchestratorOperationError("CONFIRMATION_REQUIRED", "重新进行结构预检需要在页面中明确确认 RUN_STRUCTURAL_PREFLIGHT", status_code=400)
-    return structural_entry_service.start(
+    return request.app.state.services.structural_entry_service.start(
         objective_id,
         candidate_id=str(body.get("candidate_id") or "") or None,
         confirmed=True,
@@ -651,13 +593,13 @@ def research_console_reconcile_structural(objective_id: str, request: Request, p
 
 
 @app.get("/api/research-console/{objective_id}/structural/readiness")
-def research_console_structural_readiness(objective_id: str) -> dict:
-    return structural_entry_service.readiness(objective_id)
+def research_console_structural_readiness(request: Request, objective_id: str) -> dict:
+    return request.app.state.services.structural_entry_service.readiness(objective_id)
 
 
 @app.get("/api/research-console/{objective_id}/structural/reconciliation")
-def research_console_structural_reconciliation(objective_id: str) -> dict:
-    return projection_reconciliation_service.read(objective_id)
+def research_console_structural_reconciliation(request: Request, objective_id: str) -> dict:
+    return request.app.state.services.projection_reconciliation_service.read(objective_id)
 
 
 @app.post("/api/research-console/{objective_id}/structural/start")
@@ -666,7 +608,7 @@ def research_console_start_structural(objective_id: str, request: Request, paylo
     body = payload or {}
     if body.get("confirmed") is not True or str(body.get("action") or "RUN_STRUCTURAL_PREFLIGHT").upper() != "RUN_STRUCTURAL_PREFLIGHT":
         raise OrchestratorOperationError("CONFIRMATION_REQUIRED", "启动结构预检需要明确确认 RUN_STRUCTURAL_PREFLIGHT", status_code=400)
-    return structural_entry_service.start(
+    return request.app.state.services.structural_entry_service.start(
         objective_id,
         candidate_id=str(body.get("candidate_id") or "") or None,
         confirmed=True,
@@ -680,11 +622,11 @@ def research_console_repair_structural_projection(objective_id: str, request: Re
     body = payload or {}
     if body.get("confirmed") is not True:
         raise OrchestratorOperationError("CONFIRMATION_REQUIRED", "修复运行态 projection 需要明确确认", status_code=400)
-    return projection_reconciliation_service.reconcile(objective_id, apply=True)
+    return request.app.state.services.projection_reconciliation_service.reconcile(objective_id, apply=True)
 
 
-def _contract_correction_identity(objective_id: str, candidate_id: str) -> tuple[str, str]:
-    detail = _console_service().get_candidate(objective_id, candidate_id).to_dict()
+def _contract_correction_identity(request: Request, objective_id: str, candidate_id: str) -> tuple[str, str]:
+    detail = _console_service(request).get_candidate(objective_id, candidate_id).to_dict()
     candidate_hash = str((detail.get("identity") or {}).get("candidate_hash") or "")
     contract_ref = str((detail.get("artifact_lineage") or {}).get("contract_ref") or "")
     return candidate_hash, contract_ref
@@ -702,9 +644,9 @@ _CONTRACT_CORRECTION_REASON_ZH = {
 @app.get("/api/research-console/{objective_id}/candidates/{candidate_id}/contract-correction/preview")
 def research_console_contract_correction_preview(objective_id: str, candidate_id: str, request: Request) -> dict:
     _require_local_console_request(request)
-    candidate_hash, contract_ref = _contract_correction_identity(objective_id, candidate_id)
+    candidate_hash, contract_ref = _contract_correction_identity(request, objective_id, candidate_id)
     try:
-        preview = frozen_contract_correction_service.preview_incompatible_contract(
+        preview = request.app.state.services.frozen_contract_correction_service.preview_incompatible_contract(
             objective_id=objective_id,
             candidate_id=candidate_id,
             expected_candidate_hash=candidate_hash,
@@ -733,9 +675,9 @@ def research_console_contract_correction_confirm(objective_id: str, candidate_id
     body = payload or {}
     if body.get("confirmed") is not True:
         raise OrchestratorOperationError("CONFIRMATION_REQUIRED", "冻结合同隔离需要在页面中明确确认", status_code=400)
-    candidate_hash, contract_ref = _contract_correction_identity(objective_id, candidate_id)
+    candidate_hash, contract_ref = _contract_correction_identity(request, objective_id, candidate_id)
     try:
-        return frozen_contract_correction_service.confirm_incompatible_contract(
+        return request.app.state.services.frozen_contract_correction_service.confirm_incompatible_contract(
             objective_id=objective_id,
             candidate_id=candidate_id,
             expected_candidate_hash=candidate_hash,
@@ -753,28 +695,28 @@ def research_console_contract_correction_confirm(objective_id: str, candidate_id
 
 
 @app.get("/api/research-console/{objective_id}/candidates")
-def research_console_candidates(objective_id: str, page: int = 1, page_size: int = 50, search: str = "", status: str = "ALL", mechanism: str = "ALL", sort: str = "candidate_id", direction: str = "asc") -> dict:
-    return _console_service().list_candidates(objective_id, page=page, page_size=page_size, search=search, status=status, mechanism=mechanism, sort=sort, direction=direction)
+def research_console_candidates(request: Request, objective_id: str, page: int = 1, page_size: int = 50, search: str = "", status: str = "ALL", mechanism: str = "ALL", sort: str = "candidate_id", direction: str = "asc") -> dict:
+    return _console_service(request).list_candidates(objective_id, page=page, page_size=page_size, search=search, status=status, mechanism=mechanism, sort=sort, direction=direction)
 
 
 @app.get("/api/research-console/{objective_id}/candidates/{candidate_id}")
-def research_console_candidate(objective_id: str, candidate_id: str) -> dict:
-    return _console_service().get_candidate(objective_id, candidate_id).to_dict()
+def research_console_candidate(request: Request, objective_id: str, candidate_id: str) -> dict:
+    return _console_service(request).get_candidate(objective_id, candidate_id).to_dict()
 
 
 @app.get("/api/research-console/{objective_id}/candidates/{candidate_id}/structural")
-def research_console_candidate_structural(objective_id: str, candidate_id: str) -> dict:
-    return _console_service().get_structural(objective_id, candidate_id).to_dict()
+def research_console_candidate_structural(request: Request, objective_id: str, candidate_id: str) -> dict:
+    return _console_service(request).get_structural(objective_id, candidate_id).to_dict()
 
 
 @app.get("/api/research-console/{objective_id}/trials")
-def research_console_trials(objective_id: str, page: int = 1, page_size: int = 50, search: str = "", status: str = "ALL", classification: str = "ALL", sort: str = "trial_id", direction: str = "asc") -> dict:
-    return _console_service().list_trials(objective_id, page=page, page_size=page_size, search=search, status=status, classification=classification, sort=sort, direction=direction)
+def research_console_trials(request: Request, objective_id: str, page: int = 1, page_size: int = 50, search: str = "", status: str = "ALL", classification: str = "ALL", sort: str = "trial_id", direction: str = "asc") -> dict:
+    return _console_service(request).list_trials(objective_id, page=page, page_size=page_size, search=search, status=status, classification=classification, sort=sort, direction=direction)
 
 
 @app.get("/api/research-console/{objective_id}/trials/{trial_id}")
-def research_console_trial(objective_id: str, trial_id: str) -> dict:
-    return _console_service().get_trial(objective_id, trial_id).to_dict()
+def research_console_trial(request: Request, objective_id: str, trial_id: str) -> dict:
+    return _console_service(request).get_trial(objective_id, trial_id).to_dict()
 
 
 _TRIAL_RECONCILIATION_REASON_ZH = {
@@ -793,7 +735,7 @@ _TRIAL_RECONCILIATION_REASON_ZH = {
 def research_console_trial_reconciliation_preview(objective_id: str, trial_id: str, request: Request) -> dict:
     _require_local_console_request(request)
     try:
-        preview = canonical_trial_reconciliation_service.preview(objective_id=objective_id, trial_id=trial_id)
+        preview = request.app.state.services.canonical_trial_reconciliation_service.preview(objective_id=objective_id, trial_id=trial_id)
         return {**preview, "reason_zh": "绩效已访问但 Trial 尚未完成；可在不重跑绩效、不创建新 Trial 的前提下追加工程中断终态并结算既有预算。"}
     except TrialReconciliationError as exc:
         reason_code = str(exc)
@@ -816,7 +758,7 @@ def research_console_trial_reconciliation_confirm(objective_id: str, trial_id: s
     if body.get("confirmed") is not True:
         raise OrchestratorOperationError("CONFIRMATION_REQUIRED", "canonical Trial 对账需要在页面中明确确认", status_code=400)
     try:
-        return canonical_trial_reconciliation_service.confirm(
+        return request.app.state.services.canonical_trial_reconciliation_service.confirm(
             objective_id=objective_id,
             trial_id=trial_id,
             preview_hash=str(body.get("preview_hash") or ""),
@@ -832,65 +774,65 @@ def research_console_trial_reconciliation_confirm(objective_id: str, trial_id: s
 
 
 @app.get("/api/research-console/{objective_id}/budget")
-def research_console_budget(objective_id: str) -> dict:
-    return _console_service().get_budget(objective_id).to_dict()
+def research_console_budget(request: Request, objective_id: str) -> dict:
+    return _console_service(request).get_budget(objective_id).to_dict()
 
 
 @app.get("/api/research-console/{objective_id}/handoff")
-def research_console_handoff(objective_id: str) -> dict:
-    return _console_service().get_handoff(objective_id).to_dict()
+def research_console_handoff(request: Request, objective_id: str) -> dict:
+    return _console_service(request).get_handoff(objective_id).to_dict()
 
 
 @app.get("/api/research-console/{objective_id}/shadow/latest")
-def research_console_shadow_latest(objective_id: str) -> dict:
-    return _console_service().get_shadow_latest(objective_id).to_dict()
+def research_console_shadow_latest(request: Request, objective_id: str) -> dict:
+    return _console_service(request).get_shadow_latest(objective_id).to_dict()
 
 
 @app.get("/api/research-console/{objective_id}/data-health")
-def research_console_data_health(objective_id: str) -> dict:
-    return _console_service().get_data_health(objective_id).to_dict()
+def research_console_data_health(request: Request, objective_id: str) -> dict:
+    return _console_service(request).get_data_health(objective_id).to_dict()
 
 
 @app.get("/api/research-console/{objective_id}/evolution")
-def research_console_evolution(objective_id: str) -> dict:
-    return _console_service().get_evolution(objective_id).to_dict()
+def research_console_evolution(request: Request, objective_id: str) -> dict:
+    return _console_service(request).get_evolution(objective_id).to_dict()
 
 
 @app.get("/api/research-console/{objective_id}/evolution/proposals")
-def research_console_evolution_proposals(objective_id: str) -> dict:
-    return _console_service().get_evolution_proposals(objective_id).to_dict()
+def research_console_evolution_proposals(request: Request, objective_id: str) -> dict:
+    return _console_service(request).get_evolution_proposals(objective_id).to_dict()
 
 
 @app.get("/api/research-console/{objective_id}/evolution/ai-design")
-def research_console_evolution_ai_design(objective_id: str) -> dict:
-    return _console_service().get_evolution_ai_design(objective_id).to_dict()
+def research_console_evolution_ai_design(request: Request, objective_id: str) -> dict:
+    return _console_service(request).get_evolution_ai_design(objective_id).to_dict()
 
 
 @app.get("/api/research-console/{objective_id}/evolution/ai-design/approval")
-def research_console_evolution_ai_design_approval(objective_id: str) -> dict:
-    return _console_ai_design_approval_service().evaluate(objective_id)
+def research_console_evolution_ai_design_approval(request: Request, objective_id: str) -> dict:
+    return _console_ai_design_approval_service(request).evaluate(objective_id)
 
 
 @app.post("/api/research-console/{objective_id}/evolution/ai-design/approval")
 def research_console_confirm_evolution_ai_design(objective_id: str, request: Request, payload: dict[str, Any] | None = Body(default=None)) -> dict:
     _require_local_console_request(request)
-    return _console_ai_design_approval_service().confirm(objective_id, payload or {})
+    return _console_ai_design_approval_service(request).confirm(objective_id, payload or {})
 
 
 @app.get("/api/research-console/{objective_id}/candidate-proposals")
-def research_console_candidate_proposals(objective_id: str) -> dict:
-    return _console_service().get_candidate_proposals(objective_id).to_dict()
+def research_console_candidate_proposals(request: Request, objective_id: str) -> dict:
+    return _console_service(request).get_candidate_proposals(objective_id).to_dict()
 
 
 @app.post("/api/research-console/{objective_id}/candidate-proposals/generate")
 def research_console_generate_candidate_proposal(objective_id: str, request: Request) -> dict:
     _require_local_console_request(request)
-    return _console_candidate_generation_service().generate_proposal(objective_id)
+    return _console_candidate_generation_service(request).generate_proposal(objective_id)
 
 
 @app.get("/api/research-console/{objective_id}/candidate-proposals/materialization")
-def research_console_candidate_materialization(objective_id: str, proposal_id: str | None = Query(default=None)) -> dict:
-    return _console_candidate_materialization_service().read_for_objective(objective_id, proposal_id)
+def research_console_candidate_materialization(request: Request, objective_id: str, proposal_id: str | None = Query(default=None)) -> dict:
+    return _console_candidate_materialization_service(request).read_for_objective(objective_id, proposal_id)
 
 
 @app.post("/api/research-console/{objective_id}/candidate-proposals/materialization/preview")
@@ -898,7 +840,7 @@ def research_console_create_candidate_materialization_preview(objective_id: str,
     _require_local_console_request(request)
     body = payload or {}
     proposal_id = str(body.get("proposal_id") or "") or None
-    return _console_candidate_materialization_service().create_preview(objective_id, proposal_id)
+    return _console_candidate_materialization_service(request).create_preview(objective_id, proposal_id)
 
 
 @app.post("/api/research-console/{objective_id}/candidate-proposals/materialization/confirm")
@@ -908,25 +850,25 @@ def research_console_confirm_candidate_materialization(objective_id: str, reques
     proposal_id = str(body.get("proposal_id") or "")
     if not proposal_id:
         raise CandidateExecutableMaterializationError("CANDIDATE_PROPOSAL_REQUIRED", "确认执行合同必须明确 Candidate Proposal", status_code=400)
-    return _console_candidate_materialization_service().confirm(objective_id, proposal_id, body)
+    return _console_candidate_materialization_service(request).confirm(objective_id, proposal_id, body)
 
 
 @app.get("/api/research/evolution/proposals")
-def research_evolution_proposals(objective_id: str | None = Query(default=None), status: str | None = Query(default=None)) -> dict:
-    return research_proposal_governance_service.list_proposals(objective_id=objective_id, status=status)
+def research_evolution_proposals(request: Request, objective_id: str | None = Query(default=None), status: str | None = Query(default=None)) -> dict:
+    return request.app.state.services.research_proposal_governance_service.list_proposals(objective_id=objective_id, status=status)
 
 
 @app.get("/api/research/evolution/proposals/{proposal_id}")
 @app.get("/research/evolution/proposals/{proposal_id}")
-def research_evolution_proposal(proposal_id: str) -> dict:
-    return research_proposal_governance_service.get_proposal(proposal_id)
+def research_evolution_proposal(request: Request, proposal_id: str) -> dict:
+    return request.app.state.services.research_proposal_governance_service.get_proposal(proposal_id)
 
 
 @app.post("/api/research/evolution/proposals/{proposal_id}/review")
 @app.post("/research/evolution/proposals/{proposal_id}/review")
 def research_evolution_proposal_review(proposal_id: str, request: Request, payload: dict[str, Any] | None = Body(default=None)) -> dict:
     _require_local_console_request(request)
-    return research_proposal_governance_service.review(proposal_id, payload or {})
+    return request.app.state.services.research_proposal_governance_service.review(proposal_id, payload or {})
 
 
 @app.post("/api/research/evolution/proposals/{proposal_id}/close")
@@ -934,7 +876,7 @@ def research_evolution_proposal_review(proposal_id: str, request: Request, paylo
 def research_evolution_proposal_close(proposal_id: str, request: Request, payload: dict[str, Any] | None = Body(default=None)) -> dict:
     _require_local_console_request(request)
     body = payload or {}
-    return research_proposal_governance_service.close(
+    return request.app.state.services.research_proposal_governance_service.close(
         proposal_id,
         reviewer=str(body.get("reviewer") or body.get("confirmer") or ""),
         reason=str(body.get("reason") or "") or None,
@@ -943,39 +885,39 @@ def research_evolution_proposal_close(proposal_id: str, request: Request, payloa
 
 @app.get("/api/research/evolution/proposals/{proposal_id}/preview")
 @app.get("/research/evolution/proposals/{proposal_id}/preview")
-def research_evolution_proposal_preview(proposal_id: str) -> dict:
-    return research_proposal_governance_service.preview(proposal_id)
+def research_evolution_proposal_preview(request: Request, proposal_id: str) -> dict:
+    return request.app.state.services.research_proposal_governance_service.preview(proposal_id)
 
 
 @app.post("/api/research/evolution/proposals/{proposal_id}/confirm")
 @app.post("/research/evolution/proposals/{proposal_id}/confirm")
 def research_evolution_proposal_confirm(proposal_id: str, request: Request, payload: dict[str, Any] | None = Body(default=None)) -> dict:
     _require_local_console_request(request)
-    return research_proposal_governance_service.confirm(proposal_id, payload or {})
+    return request.app.state.services.research_proposal_governance_service.confirm(proposal_id, payload or {})
 
 
 @app.get("/api/research/candidates/proposals")
-def research_candidate_proposals(objective_id: str | None = Query(default=None), status: str | None = Query(default=None)) -> dict:
-    return candidate_generation_service.list_proposals(objective_id=objective_id, status=status)
+def research_candidate_proposals(request: Request, objective_id: str | None = Query(default=None), status: str | None = Query(default=None)) -> dict:
+    return request.app.state.services.candidate_generation_service.list_proposals(objective_id=objective_id, status=status)
 
 
 @app.get("/api/research/candidates/proposals/{proposal_id}/freeze-preview")
 @app.get("/research/candidates/proposals/{proposal_id}/freeze-preview")
-def research_candidate_proposal_freeze_preview(proposal_id: str) -> dict:
-    return candidate_generation_service.get_freeze_preview(proposal_id)
+def research_candidate_proposal_freeze_preview(request: Request, proposal_id: str) -> dict:
+    return request.app.state.services.candidate_generation_service.get_freeze_preview(proposal_id)
 
 
 @app.get("/api/research/candidates/proposals/{proposal_id}/materialization")
 @app.get("/research/candidates/proposals/{proposal_id}/materialization")
-def research_candidate_materialization(proposal_id: str) -> dict:
-    service = candidate_materialization_service
+def research_candidate_materialization(request: Request, proposal_id: str) -> dict:
+    service = request.app.state.services.candidate_materialization_service
     return service.read_for_objective(service.objective_id_for_proposal(proposal_id), proposal_id)
 
 
 @app.get("/api/research/candidates/proposals/{proposal_id}/materialization/preview")
 @app.get("/research/candidates/proposals/{proposal_id}/materialization/preview")
-def research_candidate_materialization_preview(proposal_id: str) -> dict:
-    service = candidate_materialization_service
+def research_candidate_materialization_preview(request: Request, proposal_id: str) -> dict:
+    service = request.app.state.services.candidate_materialization_service
     state = service.read_for_objective(service.objective_id_for_proposal(proposal_id), proposal_id)
     return state.get("preview") if isinstance(state.get("preview"), dict) else state
 
@@ -984,7 +926,7 @@ def research_candidate_materialization_preview(proposal_id: str) -> dict:
 @app.post("/research/candidates/proposals/{proposal_id}/materialization/preview")
 def research_create_candidate_materialization_preview(proposal_id: str, request: Request, payload: dict[str, Any] | None = Body(default=None)) -> dict:
     _require_local_console_request(request)
-    service = candidate_materialization_service
+    service = request.app.state.services.candidate_materialization_service
     return service.create_preview(service.objective_id_for_proposal(proposal_id), proposal_id)
 
 
@@ -992,34 +934,34 @@ def research_create_candidate_materialization_preview(proposal_id: str, request:
 @app.post("/research/candidates/proposals/{proposal_id}/materialization/confirm")
 def research_confirm_candidate_materialization(proposal_id: str, request: Request, payload: dict[str, Any] | None = Body(default=None)) -> dict:
     _require_local_console_request(request)
-    service = candidate_materialization_service
+    service = request.app.state.services.candidate_materialization_service
     return service.confirm(service.objective_id_for_proposal(proposal_id), proposal_id, payload or {})
 
 
 @app.get("/api/research/candidates/proposals/{proposal_id}")
 @app.get("/research/candidates/proposals/{proposal_id}")
-def research_candidate_proposal(proposal_id: str) -> dict:
-    return candidate_generation_service.get_proposal(proposal_id)
+def research_candidate_proposal(request: Request, proposal_id: str) -> dict:
+    return request.app.state.services.candidate_generation_service.get_proposal(proposal_id)
 
 
 @app.post("/api/research/candidates/proposals/{proposal_id}/review")
 def research_candidate_proposal_review(proposal_id: str, request: Request, payload: dict[str, Any] | None = Body(default=None)) -> dict:
     _require_local_console_request(request)
-    return candidate_generation_service.review(proposal_id, payload or {})
+    return request.app.state.services.candidate_generation_service.review(proposal_id, payload or {})
 
 
 @app.post("/api/research/candidates/proposals/{proposal_id}/freeze")
 @app.post("/research/candidates/proposals/{proposal_id}/freeze")
 def research_candidate_proposal_freeze(proposal_id: str, request: Request, payload: dict[str, Any] | None = Body(default=None)) -> dict:
     _require_local_console_request(request)
-    return candidate_generation_service.freeze(proposal_id, payload or {})
+    return request.app.state.services.candidate_generation_service.freeze(proposal_id, payload or {})
 
 
 @app.post("/api/research/candidates/proposals/{proposal_id}/close")
 def research_candidate_proposal_close(proposal_id: str, request: Request, payload: dict[str, Any] | None = Body(default=None)) -> dict:
     _require_local_console_request(request)
     body = payload or {}
-    return candidate_generation_service.close(
+    return request.app.state.services.candidate_generation_service.close(
         proposal_id,
         reviewer=str(body.get("reviewer") or body.get("confirmer") or ""),
         reason=str(body.get("reason") or "") or None,
@@ -1027,18 +969,18 @@ def research_candidate_proposal_close(proposal_id: str, request: Request, payloa
 
 
 @app.get("/api/research-console/{objective_id}/reports")
-def research_console_reports(objective_id: str) -> dict:
-    return _console_service().get_reports(objective_id).to_dict()
+def research_console_reports(request: Request, objective_id: str) -> dict:
+    return _console_service(request).get_reports(objective_id).to_dict()
 
 
 @app.get("/api/research-console/{objective_id}/reports/{report_id}")
-def research_console_report(objective_id: str, report_id: str) -> dict:
-    return _console_service().read_report(objective_id, report_id)
+def research_console_report(request: Request, objective_id: str, report_id: str) -> dict:
+    return _console_service(request).read_report(objective_id, report_id)
 
 
 @app.get("/api/research-console/{objective_id}/governance")
-def research_console_governance(objective_id: str) -> dict:
-    return _console_service().get_governance(objective_id).to_dict()
+def research_console_governance(request: Request, objective_id: str) -> dict:
+    return _console_service(request).get_governance(objective_id).to_dict()
 
 
 @app.get("/{frontend_path:path}")
@@ -1050,3 +992,86 @@ def frontend_history_fallback(frontend_path: str) -> FileResponse:
     if not index_file.exists():
         raise HTTPException(status_code=404, detail="前端未构建，请先执行 cd frontend && npm run build")
     return FileResponse(index_file)
+
+
+_route_template = app
+
+
+def create_app(research_root: str | Path | None = None, execution_policy: ExecutionPolicy | None = None) -> FastAPI:
+    """显式组合研究工作区；默认应用不绑定业务目录，也不执行恢复。"""
+    policy = execution_policy or ExecutionPolicy()
+    root = validate_research_root(research_root, policy)
+    application = FastAPI(title="缠论选股交易系统")
+    application.router.routes = list(_route_template.router.routes)
+    application.exception_handlers.update(_route_template.exception_handlers)
+    application.state.research_root = root
+    application.state.execution_policy = policy
+    application.state.tasks = {}
+    application.state.services = SimpleNamespace()
+    application.state.recovery_status = "RECOVERY_DISABLED"
+    if root is not None:
+        application.state.services.research_console_service = ResearchConsoleReadService(root)
+        application.state.services.ai_invocation_mode_service = AIInvocationModeServiceV1(root)
+        application.state.services.orchestrator_control_service = OrchestratorControlServiceV1(root)
+        application.state.services.governance_decision_service = GovernanceDecisionServiceV1(root)
+        application.state.services.governance_execution_service = ResearchGovernanceExecutionServiceV1(root)
+        application.state.services.orchestrator_process_launcher = OrchestratorProcessLauncherV1(root)
+        application.state.services.frozen_contract_correction_service = FrozenContractCorrectionServiceV1(root)
+        application.state.services.canonical_trial_reconciliation_service = CanonicalTrialReconciliationServiceV1(root)
+        application.state.services.predictive_governance_service = PredictiveGovernanceServiceV1(root)
+        application.state.services.predictive_trial_start_service = PredictiveTrialStartServiceV1(root, auto_run=False)
+        application.state.services.predictive_trial_reauthorization_service = PredictiveTrialReauthorizationServiceV1(root, auto_run=False)
+        application.state.services.research_proposal_governance_service = ResearchProposalGovernanceServiceV1(root)
+        application.state.services.research_evolution_ai_design_service = ResearchEvolutionAIDesignServiceV1(root)
+        application.state.services.research_evolution_ai_design_approval_service = AIDesignApprovalServiceV1(root)
+        application.state.services.candidate_generation_service = CandidateGenerationManagerV1(root)
+        application.state.services.candidate_materialization_service = CandidateExecutableMaterializationManagerV1(root)
+        application.state.services.structural_entry_service = StructuralEntryServiceV1(root)
+        application.state.services.projection_reconciliation_service = ProjectionReconciliationServiceV1(root)
+        application.state.services.autonomous_control_plane_service = AutonomousResearchControlPlaneV1(root)
+
+    @application.middleware("http")
+    async def enforce_execution_policy(request: Request, call_next):
+        def deny(code):
+            return JSONResponse(status_code=403, content={"code": code, "message_zh": "当前执行策略不允许此操作", "details": {}})
+
+        path = request.url.path
+        business = path.startswith(("/api/research", "/research/evolution/", "/research/candidates/"))
+        if business and root is None:
+            return deny("RESEARCH_WORKSPACE_REQUIRED")
+        if root is not None:
+            try:
+                validate_research_root(root, policy)
+            except ValueError:
+                return deny("UNSAFE_RESEARCH_ROOT")
+        if path.startswith("/api/kline/") or path in {"/api/screener", "/api/backtest"}:
+            return deny("LEGACY_EXECUTION_DISABLED")
+        if request.method not in {"GET", "HEAD", "OPTIONS"}:
+            dry_tick = False
+            if path.endswith("/autonomous-control-plane/tick"):
+                try:
+                    body = await request.json()
+                    dry_tick = isinstance(body, dict) and body.get("dry_run") is True
+                except ValueError:
+                    pass
+            if not policy.governance_allowed and not dry_tick:
+                return deny("EXECUTION_POLICY_READ_ONLY")
+            if "/predictive/trial/" in path and path.endswith(("/start", "/resume")):
+                return deny("PHASE2_PREDICTIVE_EXECUTION_DISABLED")
+            if path.endswith(("/structural/start", "/structural/reconcile")) and policy.allow_structural is not True:
+                return deny("STRUCTURAL_EXECUTION_DISABLED")
+            if path.endswith(("/orchestrator/start-ai", "/orchestrator/resume", "/orchestrator/recover", "/manual-ai-handoff/rescan")) and policy.allow_process_start is not True:
+                return deny("PROCESS_START_DISABLED")
+            if path.endswith("/governance/confirm") and policy.allow_process_start is not True:
+                try:
+                    body = await request.json()
+                except ValueError:
+                    body = {}
+                if isinstance(body, dict) and str(body.get("execution_mode") or "CREATE_AND_ACTIVATE").upper() == "CREATE_AND_ACTIVATE":
+                    return deny("PROCESS_START_DISABLED")
+        return await call_next(request)
+
+    return application
+
+
+app = create_app()

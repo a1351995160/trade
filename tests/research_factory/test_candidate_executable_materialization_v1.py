@@ -832,12 +832,13 @@ def test_web_and_cli_require_preview_then_confirmation(tmp_path: Path, monkeypat
     from fastapi.testclient import TestClient
 
     import chanlun_trader.webapp as webapp
+    application = webapp.create_app(tmp_path, webapp.ExecutionPolicy("GOVERNED", "SYNTHETIC"))
 
     root, proposal, _ = _bridge_fixture(tmp_path / "web")
     manager = CandidateExecutableMaterializationManagerV1(root)
-    monkeypatch.setattr(webapp, "candidate_materialization_service", manager)
+    monkeypatch.setattr(application.state.services, "candidate_materialization_service", manager)
     route = f"/api/research/candidates/proposals/{proposal['proposal_id']}/materialization"
-    with TestClient(webapp.app) as client:
+    with TestClient(application) as client:
         missing_preview = client.post(f"{route}/confirm", json={"confirmed": True, "reviewer": "bridge-reviewer", "preview_hash": "NO_PREVIEW", "idempotency_key": "WEB_CONFIRM_WITHOUT_PREVIEW"})
         assert missing_preview.status_code == 409
         assert missing_preview.json()["code"] == "EXECUTABLE_MATERIALIZATION_PREVIEW_REQUIRED"
@@ -856,7 +857,7 @@ def test_web_and_cli_require_preview_then_confirmation(tmp_path: Path, monkeypat
 
     root2, proposal2, _ = _bridge_fixture(tmp_path / "cli")
     environment = dict(os.environ)
-    environment["PYTHONPATH"] = str(Path("src").resolve())
+    environment["PYTHONPATH"] = os.pathsep.join(filter(None, [os.environ.get("PYTHONPATH"), str(Path("src").resolve())]))
     command = [
         sys.executable,
         "-m",

@@ -525,10 +525,11 @@ def test_freeze_http_endpoint_requires_local_confirmation_and_is_exactly_once(tm
     from fastapi.testclient import TestClient
 
     import chanlun_trader.webapp as webapp
+    application = webapp.create_app(tmp_path, webapp.ExecutionPolicy("GOVERNED", "SYNTHETIC"))
 
-    monkeypatch.setattr(webapp, "candidate_generation_service", manager)
+    monkeypatch.setattr(application.state.services, "candidate_generation_service", manager)
     route = f"/api/research/candidates/proposals/{proposal['proposal_id']}/freeze"
-    with TestClient(webapp.app) as client:
+    with TestClient(application) as client:
         missing = client.post(route, json={"reviewer": "alice"})
         assert missing.status_code == 400
         first = client.post(route, json={

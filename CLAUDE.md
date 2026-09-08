@@ -93,3 +93,9 @@
 - 治理执行服务必须优先读取 objective-scoped `research_orchestrator_v2/<objective_id>/governance_decision_required.json`；Orchestrator 写入的 `allowed_choices` 必须使用执行服务支持的 canonical action，不能写泛化但不可执行的 `START_NEW_GOVERNED_OBJECTIVE`。
 - `START_PROMISING` 治理预览必须在顶层公开 `parent_candidate_identity_refs`，逐项只包含 `candidate_id`、`candidate_hash`、`family_id` 和 `mechanism`；该列表必须直接来自 canonical `PROMISING` 登记、顺序稳定并进入 preview hash。人工选择父候选后，该列表必须恰好一项，预览页与最终确认框必须展示同一项并锁定其哈希。
 - `START_PROMISING` 后续验证必须先由人工从 `eligible_parent_candidates` 中选择恰好一个父候选；preview/confirm 必须携带并重新校验 `selected_parent_candidate_id` 与 `selected_parent_candidate_hash`。单父候选的 `parent_candidate_identity_refs` 必须恰好一项，未选候选保持 `PROMISING`，不得自动合并到本轮或修改状态。
+
+## Web 启动隔离约束
+
+- Web import/startup 和只读 GET 不得通过 Store 构造创建目录；目录创建放在既有显式写入路径，审计内容与恢复算法保持原语义。
+- Web 服务必须通过 create_app 显式绑定 research_root；helper 不得回退 PROJECT_ROOT，静态文件仍属于源码目录。
+- 判断会启动进程的治理模式时，必须与领域服务使用相同的大小写规范化；SYNTHETIC 和 GOVERNED 不替代确认、身份与具体执行策略。

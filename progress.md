@@ -405,3 +405,75 @@
 - `docs/PHASE2_AUTONOMOUS_RESEARCH_CONTROL_PLANE_V1.md`：记录 identity-bound recovery 规则与 fail-closed 行为。
 - `progress.md`：记录本轮实现与本地门禁结果。
 - 回滚方式：在该分支执行 `git revert --no-edit HEAD`（当前提交）；不 merge、不 force push、不修改 `main`，不触碰真实 Research Workspace。
+
+## 2026-09-08 - Task: P3-A 执行策略、工作区隔离与安全启动
+
+### What was done
+
+完成本轮 Web 应用组合与只读执行隔离；保留领域确认、身份与 Phase 2 预测禁止边界。状态：本地认证通过，分支 CI 待核对，等待独立复核。设计、入口矩阵及证据见 docs/PHASE3A_EXECUTION_ISOLATION_V1.md；路线规划见 docs/AUTONOMOUS_RESEARCH_MASTER_ROADMAP_V1.md。其他工作包未开始。
+
+### Testing
+
+- 新鲜子进程 import/startup 先验通过；P3-A 66 passed、0 skipped/failed；覆盖 41 条 POST、61 条研究 GET。
+- Phase 1 原选择 235 passed、12 deselected、0 skipped/failed；Phase 2 24 passed、0 skipped/failed。
+- collect-only 740 collected，另 1 个原有集成模块 skipped；compileall 与 git diff --check 通过。
+- npm ci、npm run build 通过；npm test 8 passed、0 skipped/failed。
+- 三组执行端探针真实 Predictive/Structural/Codex AI 均为 0；合成模板调用 5/72/19，approve 尝试 1/70/17，confirm 尝试 4/74/17（P3-A/Phase 1/Phase 2）。
+- 受保护原始目录访问、业务网络与非 Python 进程探针均为 0；真实运行态未独立核验，不宣称全系统历史计数为 0。
+- CI 状态在提交时为 PENDING，最终 run_id/head_sha 由交付回复关联；不以本地结果替代 CI。
+
+### Notes
+
+- .github/workflows/phase1-certification.yml：在依赖安装之外启用隔离探针，先验验证启动并复用原认证选择。
+- .github/workflows/phase2-control-plane-certification.yml：在依赖安装之外启用隔离探针，先验验证启动并复用原认证选择。
+- .github/workflows/phase3-execution-isolation-certification.yml：在依赖安装之外启用隔离探针，先验验证启动并复用原认证选择。
+- CLAUDE.md：记录本轮发现的构造写入与模式规范化约束。
+- README.md：说明默认只读启动和显式研究目录参数。
+- docs/AUTONOMOUS_RESEARCH_MASTER_ROADMAP_V1.md：原样保存总体规划，明确非运行授权。
+- docs/PHASE3A_EXECUTION_ISOLATION_V1.md：记录设计、全部入口矩阵、实际本地结果与未覆盖范围。
+- scripts/run_ui.py：保留端口参数并支持显式只读 research root。
+- src/chanlun_trader/execution_policy.py：定义不可变策略与工作区路径校验。
+- src/chanlun_trader/research/io_safety.py：把导入时目录创建移至显式审计写入。
+- src/chanlun_trader/research_console.py：缺少编排状态时返回明确不可用响应。
+- src/chanlun_trader/research_daemon_state.py：把构造时目录创建移至显式事件写入。
+- src/chanlun_trader/research_factory/autonomous_orchestrator_v2.py：把构造时目录创建移至显式事件写入。
+- src/chanlun_trader/webapp.py：按应用绑定服务与任务，移除 startup recovery 并在领域调用前执行策略。
+- tests/conftest.py：隔离认证时拦截真实执行端并分别统计合成动作。
+- tests/isolation/sitecustomize.py：在 import 前拦截受保护目录访问与业务网络，输出进程计数。
+- tests/research/test_predictive_authorization.py：显式注入 synthetic 应用并保留原业务断言。
+- tests/research_console/test_research_console_read_boundary_v1.py：显式注入 synthetic 应用并保留原业务断言。
+- tests/research_factory/p3a_pending_trial_fixture.py：现场生成待恢复 Trial 的合成合同、政策及授权前置工件。
+- tests/research_factory/test_ai_design_approval_v1.py：显式注入 synthetic 应用并保留原业务断言。
+- tests/research_factory/test_autonomous_control_plane_web_v1.py：显式注入 synthetic 应用并保留原业务断言。
+- tests/research_factory/test_autonomous_orchestrator_v2.py：fixture 显式创建写入目录，不依赖构造副作用。
+- tests/research_factory/test_candidate_executable_materialization_v1.py：显式注入 synthetic 应用并保留原业务断言。
+- tests/research_factory/test_candidate_generation_governance_v1.py：显式注入 synthetic 应用并保留原业务断言。
+- tests/research_factory/test_execution_isolation_v1.py：新增导入、启动、读写路由、双 root、确认与链接逃逸认证。
+- tests/research_factory/test_governance_execution_v1.py：显式注入 synthetic 应用并保留原业务断言。
+- tests/research_factory/test_research_evolution_ai_design_v1.py：显式注入 synthetic 应用并保留原业务断言。
+- tests/research_factory/test_research_proposal_governance_v1.py：显式注入 synthetic 应用并保留原业务断言。
+- tests/research_factory/test_safe_runtime_context_v1.py：合成 CLI 子进程继承隔离路径。
+- tests/research_factory/test_structural_entry_projection_reconciliation_v1.py：显式注入 synthetic 应用并保留原业务断言。
+- tests/test_webapp.py：验证默认 K 线入口拒绝，不再依赖本机行情。
+- progress.md：追加本轮状态与证据链接，不改写历史记录。
+- 回滚点：7f22237958731fbc5e7803ee41ff40a55a277ff1；本分支本轮提交完成后可执行 git revert --no-edit HEAD。不 reset、不修改 main、不触碰原始研究目录。
+
+## 2026-09-08 - Task: P3-A PR 认证 SonarCloud 阻断最小修复
+
+### What was done
+
+针对 PR-context SonarCloud 暴露的新增工作流依赖未锁定、npm 安装脚本未禁用，以及合成待恢复 fixture 与既有测试重复度过高，完成仅限认证链路的最小修复；未改变 P3-A 运行策略、领域门禁、研究数据或真实执行入口。
+
+### Testing
+
+- `python -m py_compile tests/research_factory/p3a_pending_trial_fixture.py`：通过。
+- `python -m pytest -q tests/research_factory/test_execution_isolation_v1.py`：`66 passed`。
+- `git diff --check`：通过；远端 PR-context 三条 workflow 与 SonarCloud 结果将在新 HEAD 上重新认证。
+
+### Notes
+
+- `.github/workflows/phase3-execution-isolation-certification.yml`：改用 hash-locked Python 依赖并以 `npm ci --ignore-scripts` 构建。
+- `.github/workflows/requirements-p3a.txt`：新增面向 Ubuntu Python 3.11 认证环境的完整 hash 锁定依赖。
+- `tests/research_factory/p3a_pending_trial_fixture.py`：保持现场生成合成工件，调整构造表达以消除与历史测试的重复代码。
+- `progress.md`：追加本轮 SonarCloud 阻断修复与验证记录。
+- 回滚方式：在该分支执行 `git revert --no-edit HEAD` 回到 `6ba8139e640a941409a374108baa7efc7f8c088f`；不 reset、不修改 `main`、不 force push、不 merge。

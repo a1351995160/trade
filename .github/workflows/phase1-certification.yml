@@ -15,7 +15,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      PYTHONPATH: src
+      PYTHONPATH: tests/isolation:src
+      CHANLUN_TEST_ISOLATION: "1"
+      CHANLUN_PROTECTED_ROOT: /tmp/p3a-protected-reference
       PYTHONDONTWRITEBYTECODE: "1"
     steps:
       - name: Check out source
@@ -30,7 +32,12 @@ jobs:
           cache: pip
 
       - name: Install deterministic test dependencies
+        env:
+          CHANLUN_TEST_ISOLATION: "0"
         run: python -m pip install --disable-pip-version-check -r requirements.txt pytest
+
+      - name: Prove fresh import and startup isolation before collection
+        run: python -m pytest -q tests/research_factory/test_execution_isolation_v1.py
 
       - name: Set up frontend build
         uses: actions/setup-node@v4

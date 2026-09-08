@@ -149,7 +149,7 @@ def test_t07_candidate_proposal_binds_safe_context_and_rejects_stale_context(tmp
 def test_t08_cli_returns_machine_json_without_invoking_ai(tmp_path: Path) -> None:
     root = _fixture_root(tmp_path)
     env = dict(os.environ)
-    env["PYTHONPATH"] = str(Path.cwd() / "src")
+    env["PYTHONPATH"] = os.pathsep.join(filter(None, [os.environ.get("PYTHONPATH"), str(Path.cwd() / "src")]))
     completed = subprocess.run(
         [sys.executable, "-m", "chanlun_trader.research_factory.safe_runtime_context", "--root", str(root), "--objective-id", OBJECTIVE_ID, "--json"],
         check=True,

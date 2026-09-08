@@ -2371,7 +2371,10 @@ class ResearchConsoleReadService:
         self._objective(objective_id)
         from .research_factory.autonomous_orchestrator_v2 import OrchestratorControlServiceV1
 
-        return OrchestratorControlServiceV1(self.root).operations(objective_id)
+        try:
+            return OrchestratorControlServiceV1(self.root).operations(objective_id)
+        except (OSError, RuntimeError, ValueError) as exc:
+            raise ResearchConsoleReadError("ORCHESTRATOR_SOURCE_UNAVAILABLE", "编排器 V2 状态暂时不可读", status_code=503) from exc
 
     def get_shadow_latest(self, objective_id: str) -> ShadowDailyView:
         self._objective(objective_id)

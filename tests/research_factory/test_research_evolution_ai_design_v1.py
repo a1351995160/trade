@@ -293,9 +293,10 @@ def test_web_console_exposes_objective_scoped_ai_design_read_route(tmp_path: Pat
 
     root = _fixture_root(tmp_path)
     import chanlun_trader.webapp as webapp
+    application = webapp.create_app(tmp_path, webapp.ExecutionPolicy("GOVERNED", "SYNTHETIC"))
 
-    monkeypatch.setattr(webapp, "research_console_service", ResearchConsoleReadService(root))
-    with TestClient(webapp.app) as client:
+    monkeypatch.setattr(application.state.services, "research_console_service", ResearchConsoleReadService(root))
+    with TestClient(application) as client:
         response = client.get(f"/api/research-console/{OBJECTIVE_ID}/evolution/ai-design")
     assert response.status_code == 200
     assert response.json()["status"] == "NEED_AI_RESEARCH_DESIGN"

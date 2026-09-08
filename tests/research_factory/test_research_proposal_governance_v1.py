@@ -426,12 +426,13 @@ def test_web_console_exposes_read_review_preview_and_confirm_routes(tmp_path: Pa
     from fastapi.testclient import TestClient
 
     import chanlun_trader.webapp as webapp
+    application = webapp.create_app(tmp_path, webapp.ExecutionPolicy("GOVERNED", "SYNTHETIC"))
 
     fixture = _fixture(tmp_path)
     service = fixture["service"]
-    monkeypatch.setattr(webapp, "research_proposal_governance_service", service)
+    monkeypatch.setattr(application.state.services, "research_proposal_governance_service", service)
 
-    with TestClient(webapp.app) as client:
+    with TestClient(application) as client:
         listed = client.get("/api/research/evolution/proposals", params={"objective_id": OBJECTIVE_ID, "status": "PENDING"})
         assert listed.status_code == 200
         assert listed.json()["items"][0]["proposal_id"] == PROPOSAL_ID

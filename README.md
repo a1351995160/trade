@@ -22,6 +22,8 @@ python scripts/run_screener.py 100   # 选股扫描（可选参数：只扫前 N
 python scripts/run_backtest.py 200   # 回测（可选参数：只回测前 N 只股票）
 ```
 
+Web 默认只读，不自动恢复研究任务。读取指定工作区可运行 `python scripts/run_ui.py 8000 --research-root <绝对路径>`。本轮 Web 行情、选股和回测入口受策略限制；执行模式、人工治理与测试边界见 [P3-A 验收说明](docs/PHASE3A_EXECUTION_ISOLATION_V1.md)。
+
 回测报告输出到 `data/output/`，交易明细为 CSV，报告为 Markdown。
 
 ## 目录结构

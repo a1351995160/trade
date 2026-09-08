@@ -340,10 +340,11 @@ def test_fastapi_authorization_api_records_without_running_trial(tmp_path: Path,
 
     service, store, budget_path = _fixture(tmp_path)
     import chanlun_trader.webapp as webapp
+    application = webapp.create_app(tmp_path, webapp.ExecutionPolicy("GOVERNED", "SYNTHETIC"))
 
-    monkeypatch.setattr(webapp, "predictive_governance_service", service)
+    monkeypatch.setattr(application.state.services, "predictive_governance_service", service)
     before_budget = budget_path.read_bytes()
-    with TestClient(webapp.app) as client:
+    with TestClient(application) as client:
         preview_response = client.get(f"/api/research-console/{OBJECTIVE_ID}/predictive/authorization/preview")
         assert preview_response.status_code == 200
         preview = preview_response.json()
@@ -372,11 +373,12 @@ def test_legacy_governance_action_reaches_structural_predictive_entry(tmp_path: 
 
     service, store, budget_path = _fixture(tmp_path)
     import chanlun_trader.webapp as webapp
+    application = webapp.create_app(tmp_path, webapp.ExecutionPolicy("GOVERNED", "SYNTHETIC"))
     from chanlun_trader.research_factory.autonomous_orchestrator_v2 import GovernanceDecisionServiceV1
 
-    monkeypatch.setattr(webapp, "governance_decision_service", GovernanceDecisionServiceV1(tmp_path))
+    monkeypatch.setattr(application.state.services, "governance_decision_service", GovernanceDecisionServiceV1(tmp_path))
     before_budget = budget_path.read_bytes()
-    with TestClient(webapp.app) as client:
+    with TestClient(application) as client:
         response = client.post(
             f"/api/research-console/{OBJECTIVE_ID}/governance-decision",
             json={"confirmed": True, "choice": AUTHORIZE_FIRST_PREDICTIVE_TRIAL, "idempotency_key": "LEGACY_GOVERNANCE_1"},

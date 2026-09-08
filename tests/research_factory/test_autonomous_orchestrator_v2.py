@@ -170,6 +170,7 @@ def test_structural_pass_predictive_authorization_boundary_stops_orchestrator_an
     )
     orchestrator.checkpoint["state"] = OrchestratorState.LOCAL_RESEARCH_RUNNING.value
     structural_governance = orchestrator.store.run_dir / "structural_governance_decision_required.json"
+    structural_governance.parent.mkdir(parents=True, exist_ok=True)
     structural_governance.write_text(
         json.dumps({
             "status": "PENDING_HUMAN_DECISION",
