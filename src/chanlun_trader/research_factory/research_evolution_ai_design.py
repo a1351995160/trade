@@ -8,6 +8,8 @@ predictive executor or changes a budget ledger.
 """
 from __future__ import annotations
 
+from .mutation_boundary import mutation_boundary
+
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 import argparse
@@ -724,6 +726,7 @@ class ResearchEvolutionAIDesignServiceV1:
         except PerformanceLeakError as exc:
             raise ResearchEvolutionAIDesignError("OUTCOME_FIELD_BLOCKED", "AI 研究设计状态包含被禁止的结果字段", status_code=503) from exc
 
+    @mutation_boundary()
     def generate_design(
         self,
         objective_id: str,
@@ -806,6 +809,7 @@ class ResearchEvolutionAIDesignServiceV1:
     generate = generate_design
     run = generate_design
 
+    @mutation_boundary()
     def recover(self, objective_id: str) -> dict[str, Any]:
         """Reconcile a durable output/state pair without invoking AI again."""
         objective_id = _safe_id(objective_id, kind="objective_id")

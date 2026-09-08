@@ -8,6 +8,8 @@ ledger.
 """
 from __future__ import annotations
 
+from .mutation_boundary import mutation_boundary
+
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 import argparse
@@ -1607,6 +1609,7 @@ class CandidateGenerationManagerV1:
             self._validate_state(state, existing)
         return {**dict(existing), "idempotent": True}
 
+    @mutation_boundary()
     def generate_proposal(self, objective_id: str) -> dict[str, Any]:
         """Explicitly derive one Candidate Proposal; never create a Candidate."""
         objective_id = _safe_id(objective_id, kind="objective_id")
@@ -1690,6 +1693,7 @@ class CandidateGenerationManagerV1:
         review_ids = [str(item.get("review_id") or item.get("record_id") or "") for item in reviews if item.get("review_id") or item.get("record_id")]
         _atomic_write_json(state_path, self._state_for(proposal, state=state, history=history, review_ids=review_ids))
 
+    @mutation_boundary(proposal=True)
     def review(
         self,
         proposal_id: str,
@@ -1963,6 +1967,7 @@ class CandidateGenerationManagerV1:
             "message_zh": "Candidate Governance Freeze 已按人工确认完成；当前等待执行合同预览，未自动执行 Structural Preflight 或 Trial。",
         }
 
+    @mutation_boundary(proposal=True)
     def freeze(
         self,
         proposal_id: str,
@@ -2051,6 +2056,7 @@ class CandidateGenerationManagerV1:
     freeze_candidate = freeze
     confirm_candidate_freeze = freeze
 
+    @mutation_boundary(proposal=True)
     def close(self, proposal_id: str, *, reviewer: str, reason: str | None = None) -> dict[str, Any]:
         with self._mutex:
             output_path = self._find_proposal_path(proposal_id)
@@ -2088,6 +2094,7 @@ class CandidateGenerationManagerV1:
             self._materialize_state(proposal, CLOSED, history, reviews)
             return self._load_view(str(proposal.get("proposal_id") or ""))
 
+    @mutation_boundary()
     def recover(self, objective_id: str) -> dict[str, Any]:
         """Recover durable governance artifacts, including an already confirmed Freeze."""
         objective_id = _safe_id(objective_id, kind="objective_id")

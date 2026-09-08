@@ -1,6 +1,8 @@
 """Durable reconstruction views shared by synthetic and production control paths."""
 from __future__ import annotations
 
+from .mutation_boundary import ObjectiveMutationLock
+
 from dataclasses import dataclass, field
 import json
 from pathlib import Path
@@ -673,6 +675,10 @@ class DurableFrozenCandidateContractRegistryV1:
         return {"schema_version": FROZEN_CANDIDATE_CONTRACT_REGISTRY_SCHEMA, "contracts": [item.to_dict() for item in self.items()], "registry_hash": stable_hash([item.to_dict() for item in self.items()])}
 
     def write(self) -> Path:
+        with ObjectiveMutationLock.for_resource(self.path):
+            return self._write_locked()
+
+    def _write_locked(self) -> Path:
         existing = DurableFrozenCandidateContractRegistryV1(self.path) if self.path.exists() else None
         if existing is not None:
             for contract in existing.items():

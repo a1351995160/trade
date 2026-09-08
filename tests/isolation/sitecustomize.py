@@ -16,6 +16,12 @@ if os.environ.get("CHANLUN_TEST_ISOLATION") == "1":
                     path = os.path.normcase(os.path.abspath(os.fsdecode(value)))
                     if path == protected or path.startswith(protected + os.sep):
                         counts["protected_accesses"] += 1
+                        frame = sys._getframe(1)
+                        callers = []
+                        while frame is not None:
+                            callers.append(frame.f_code.co_name)
+                            frame = frame.f_back
+                        print("PROTECTED_ACCESS_CALLERS=" + json.dumps({"event": event, "callers": callers}), file=sys.stderr)
                         raise AssertionError("PROTECTED_RESEARCH_WORKSPACE_ACCESS")
         if event == "socket.connect":
             # Windows asyncio 的 socketpair 是事件循环自身的本机唤醒通道。

@@ -6,6 +6,8 @@ Trial, Structural, Predictive, AI-runtime, or Budget mutation.
 """
 from __future__ import annotations
 
+from .mutation_boundary import mutation_boundary
+
 from collections.abc import Mapping
 from dataclasses import dataclass
 import json
@@ -593,6 +595,7 @@ class AIDesignApprovalServiceV1:
         }
         return result
 
+    @mutation_boundary()
     def confirm(
         self,
         objective_id: str,

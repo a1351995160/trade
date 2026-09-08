@@ -8,6 +8,8 @@ second human confirmation.
 """
 from __future__ import annotations
 
+from .mutation_boundary import mutation_boundary
+
 from collections.abc import Callable, Mapping
 import argparse
 from dataclasses import dataclass
@@ -1123,6 +1125,7 @@ class CandidateExecutableMaterializationManagerV1:
         payload["preview_hash"] = stable_hash(payload)
         return payload
 
+    @mutation_boundary()
     def create_preview(self, objective_id: str, proposal_id: str | None = None) -> dict[str, Any]:
         """Create or return the immutable preview; never write the durable store."""
         with self._mutex:
@@ -1546,6 +1549,7 @@ class CandidateExecutableMaterializationManagerV1:
         if str(existing.get("reviewer") or "") != reviewer:
             raise CandidateExecutableMaterializationError(MATERIALIZATION_IDEMPOTENCY_CONFLICT, "同一 Preview 的人工确认人不能被替换", status_code=409)
 
+    @mutation_boundary(resource="durable-contract-registry")
     def confirm(self, objective_id: str, proposal_id: str | Mapping[str, Any], payload: Mapping[str, Any] | None = None) -> dict[str, Any]:
         """Persist confirmation evidence first, then materialize one contract."""
         with self._mutex:
@@ -1645,6 +1649,7 @@ class CandidateExecutableMaterializationManagerV1:
     confirm_materialization = confirm
     confirm_executable_materialization = confirm
 
+    @mutation_boundary(resource="durable-contract-registry")
     def recover(self, objective_id: str, proposal_id: str) -> dict[str, Any]:
         """Complete only the already-confirmed Preview -> Contract journal."""
         with self._mutex:

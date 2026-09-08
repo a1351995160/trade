@@ -1,0 +1,6 @@
+# P3-B adds Windows-only transitive dependencies; P3-A hashes remain unchanged.
+-r requirements-p3a.txt
+tzdata==2026.3; sys_platform == "win32" \
+    --hash=sha256:dc096730c87af6cab1b171c9d532be840741ff5d459015e7f6947bd7d7e54931
+colorama==0.4.6; sys_platform == "win32" \
+    --hash=sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6
