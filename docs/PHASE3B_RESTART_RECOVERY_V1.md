@@ -66,6 +66,8 @@ P3-B 包括真实子进程 os._exit/kill、三阶段副作用后重启、前调�
 
 首次分支工作流 `34211579523` 在配置解析时拒绝 job-level env 中的 `runner.temp`，没有运行测试。已改为在 Python 启动前通过 `RUNNER_TEMP` 写入 `GITHUB_ENV`；未改变隔离范围，后续 CI 以修复后的 SHA 为准。
 
+第二次 `34211780588` 在 Windows pip 缓存探测和 Linux 平台记录步骤失败，测试尚未执行。Linux `platform.platform()` 的子进程查询被隔离探针拦截 1 次；移除非必要 pip cache，Python 平台信息改读 sys，操作系统信息由显式 shell 命令记录。隔离规则没有放宽。
+
 - Linux 与 Windows CI 结果及最终 HEAD 必须在推送后独立核对；PR-context 检查未因分支 push 自动等同通过。
 - 未运行真实研究目录、Final Test、真实执行器和原有真实工作区历史对账：`REAL_WORKSPACE_RUNTIME_INDEPENDENTLY_VERIFIED=NO`。
 - 未认证网络文件系统、分布式主机锁、断电/磁盘损坏耐久性、POSIX fork 继承分支；已测试的是 subprocess 与进程强制终止。

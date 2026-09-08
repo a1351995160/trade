@@ -41,7 +41,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: pip
 
       - name: Install deterministic test dependencies
         env:
@@ -52,13 +51,15 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          python -c "import platform, tempfile; print(platform.platform()); print(platform.python_version()); print(tempfile.gettempdir())"
+          python -c "import sys, tempfile; print(sys.platform); print(sys.version); print(tempfile.gettempdir())"
+          Get-CimInstance Win32_OperatingSystem | Select-Object Caption, Version
           Get-Volume | Select-Object DriveLetter, FileSystemType
 
       - name: Record Linux platform evidence
         if: runner.os == 'Linux'
         run: |
-          python -c "import platform, tempfile; print(platform.platform()); print(platform.python_version()); print(tempfile.gettempdir())"
+          python -c "import sys, tempfile; print(sys.platform); print(sys.version); print(tempfile.gettempdir())"
+          uname -a
           df -T /tmp
 
       - name: Prove fresh import and startup isolation before collection
