@@ -11,10 +11,11 @@ from test_autonomous_control_plane_v1 import OBJECTIVE_ID, _pending_design_root
 
 
 def test_control_plane_console_read_and_local_tick_routes_are_outcome_blind(tmp_path: Path, monkeypatch) -> None:
+    application = webapp.create_app(tmp_path, webapp.ExecutionPolicy("GOVERNED", "SYNTHETIC"))
     root = _pending_design_root(tmp_path)
-    monkeypatch.setattr(webapp, "research_console_service", ResearchConsoleReadService(root))
+    monkeypatch.setattr(application.state.services, "research_console_service", ResearchConsoleReadService(root))
 
-    with TestClient(webapp.app) as client:
+    with TestClient(application) as client:
         read_response = client.get(f"/api/research-console/{OBJECTIVE_ID}/autonomous-control-plane")
         tick_response = client.post(f"/api/research-console/{OBJECTIVE_ID}/autonomous-control-plane/tick", json={"dry_run": True})
 

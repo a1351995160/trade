@@ -333,13 +333,14 @@ def test_web_governance_writes_are_localhost_only(tmp_path: Path, monkeypatch: p
     from fastapi.testclient import TestClient
 
     import chanlun_trader.webapp as webapp
+    application = webapp.create_app(tmp_path, webapp.ExecutionPolicy("GOVERNED", "SYNTHETIC"))
 
     service, _ = _fixture(tmp_path)
-    monkeypatch.setattr(webapp, "governance_execution_service", service)
-    with TestClient(webapp.app, client=("10.10.10.10", 4321)) as remote_client:
+    monkeypatch.setattr(application.state.services, "governance_execution_service", service)
+    with TestClient(application, client=("10.10.10.10", 4321)) as remote_client:
         response = remote_client.post(f"/api/research-console/{OBJECTIVE_ID}/governance/preview", json={"action": "STOP_RESEARCH", "execution_mode": "CREATE_ONLY"})
         assert response.status_code == 403
-    with TestClient(webapp.app) as local_client:
+    with TestClient(application) as local_client:
         catalog = local_client.get(f"/api/research-console/{OBJECTIVE_ID}/governance/preview")
         assert catalog.status_code == 200
         assert catalog.json()["eligible_parent_candidates"][0] == {"candidate_id": "SYNTHETIC_PROMISING_A", "candidate_hash": "HASH_PROMISING_A", "family_id": "event_continuation", "mechanism": "event_continuation"}
@@ -355,6 +356,7 @@ def test_web_create_and_activate_starts_canonical_orchestrator(tmp_path: Path, m
     from fastapi.testclient import TestClient
 
     import chanlun_trader.webapp as webapp
+    application = webapp.create_app(tmp_path, webapp.ExecutionPolicy("GOVERNED", "SYNTHETIC", allow_process_start=True))
 
     service, _ = _fixture(tmp_path)
     preview = _promising_preview(service)
@@ -365,9 +367,9 @@ def test_web_create_and_activate_starts_canonical_orchestrator(tmp_path: Path, m
             calls.append((objective_id, execution_id))
             return {"status": "STARTED", "objective_id": objective_id, "execution_id": execution_id, "process_identity": {"pid": 1234}}
 
-    monkeypatch.setattr(webapp, "governance_execution_service", service)
-    monkeypatch.setattr(webapp, "orchestrator_process_launcher", FakeLauncher())
-    with TestClient(webapp.app) as client:
+    monkeypatch.setattr(application.state.services, "governance_execution_service", service)
+    monkeypatch.setattr(application.state.services, "orchestrator_process_launcher", FakeLauncher())
+    with TestClient(application) as client:
         response = client.post(f"/api/research-console/{OBJECTIVE_ID}/governance/confirm", json=_confirmation(preview))
 
     assert response.status_code == 200
@@ -380,13 +382,14 @@ def test_governance_receipt_compatibility_url_returns_canonical_receipt(tmp_path
     from fastapi.testclient import TestClient
 
     import chanlun_trader.webapp as webapp
+    application = webapp.create_app(tmp_path, webapp.ExecutionPolicy("GOVERNED", "SYNTHETIC"))
 
     service, _ = _fixture(tmp_path)
     preview = _promising_preview(service)
     receipt = service.confirm(OBJECTIVE_ID, _confirmation(preview))
-    monkeypatch.setattr(webapp, "governance_execution_service", service)
+    monkeypatch.setattr(application.state.services, "governance_execution_service", service)
 
-    with TestClient(webapp.app) as client:
+    with TestClient(application) as client:
         canonical = client.get(f"/api/research-console/{OBJECTIVE_ID}/governance/execution/{receipt['execution_id']}")
         compatibility = client.get(f"/api/research-console/{OBJECTIVE_ID}/governance/execution/{receipt['execution_id']}/receipt.json")
 

@@ -190,14 +190,15 @@ def test_web_approval_is_loopback_protected_and_generation_remains_explicit(tmp_
     from fastapi.testclient import TestClient
 
     import chanlun_trader.webapp as webapp
+    application = webapp.create_app(tmp_path, webapp.ExecutionPolicy("GOVERNED", "SYNTHETIC"))
 
     root, design = _prepared(tmp_path)
     approval_service = AIDesignApprovalServiceV1(root)
-    monkeypatch.setattr(webapp, "research_console_service", ResearchConsoleReadService(root))
-    monkeypatch.setattr(webapp, "research_evolution_ai_design_approval_service", approval_service)
-    monkeypatch.setattr(webapp, "candidate_generation_service", CandidateGenerationManagerV1(root))
+    monkeypatch.setattr(application.state.services, "research_console_service", ResearchConsoleReadService(root))
+    monkeypatch.setattr(application.state.services, "research_evolution_ai_design_approval_service", approval_service)
+    monkeypatch.setattr(application.state.services, "candidate_generation_service", CandidateGenerationManagerV1(root))
     route = f"/api/research-console/{OBJECTIVE_ID}/evolution/ai-design"
-    with TestClient(webapp.app) as client:
+    with TestClient(application) as client:
         before = client.get(route)
         assert before.status_code == 200
         assert before.json()["status"] == AI_DESIGN_AWAITING_CONFIRMATION

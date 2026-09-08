@@ -328,9 +328,10 @@ def test_orchestrator_status_projects_canonical_structural_pass_not_stale_checkp
     assert status["waiting_for_governance"] is True
 
 
-def test_cli_and_web_structural_entries_require_the_same_explicit_action(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_cli_and_web_structural_entries_require_the_same_explicit_action(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
     import chanlun_trader.research_daemon as daemon_module
     import chanlun_trader.webapp as webapp
+    application = webapp.create_app(tmp_path, webapp.ExecutionPolicy("GOVERNED", "SYNTHETIC", allow_structural=True))
     from fastapi.testclient import TestClient
 
     calls: list[dict] = []
@@ -346,8 +347,8 @@ def test_cli_and_web_structural_entries_require_the_same_explicit_action(monkeyp
             return {"status": "PASS", "effective_state": "PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED"}
 
     monkeypatch.setattr(daemon_module, "_daemon_for_cli", lambda _args: FakeDaemon())
-    monkeypatch.setattr(webapp, "structural_entry_service", FakeEntryService())
-    client = TestClient(webapp.app)
+    monkeypatch.setattr(application.state.services, "structural_entry_service", FakeEntryService())
+    client = TestClient(application)
 
     missing_confirmation = client.post("/api/research-console/OBJECTIVE_X/structural/start", json={"action": "RUN_STRUCTURAL_PREFLIGHT"})
     legacy_missing_action = client.post("/api/research-console/OBJECTIVE_X/structural/reconcile", json={"confirmed": True})

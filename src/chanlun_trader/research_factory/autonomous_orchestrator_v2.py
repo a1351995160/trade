@@ -1321,7 +1321,6 @@ class OrchestratorStoreV2:
         self.root = Path(root).resolve()
         self.objective_id = str(objective_id)
         self.run_dir = self.root / "reports" / "research_orchestrator_v2" / self.objective_id
-        self.run_dir.mkdir(parents=True, exist_ok=True)
         self.checkpoint_path = self.run_dir / "orchestrator_checkpoint.json"
         self.events_path = self.run_dir / "orchestrator_events.jsonl"
         self.control_path = self.run_dir / "orchestrator_control.json"
@@ -1368,6 +1367,7 @@ class OrchestratorStoreV2:
         if event_id in existing:
             return event_id
         event["created_at"] = now_timestamp()
+        self.events_path.parent.mkdir(parents=True, exist_ok=True)
         with self.events_path.open("a", encoding="utf-8", newline="\n") as handle:
             handle.write(json.dumps(event, ensure_ascii=False, sort_keys=True, default=str) + "\n")
         return event_id

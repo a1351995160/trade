@@ -194,7 +194,6 @@ class DaemonCheckpointStoreV1:
         self.root = Path(root)
         self.objective_id = str(objective_id)
         self.runtime_dir = self.root / "reports" / "research_daemon" / self.objective_id
-        self.runtime_dir.mkdir(parents=True, exist_ok=True)
         self.checkpoint_path = self.runtime_dir / "daemon_checkpoint.json"
         self.status_path = self.runtime_dir / "daemon_status.json"
         self.events_path = self.runtime_dir / "daemon_events.jsonl"
@@ -241,6 +240,7 @@ class DaemonCheckpointStoreV1:
                 if line.strip() and json.loads(line).get("event_id") == event_id:
                     return event_id
         event["created_at"] = now_timestamp()
+        self.events_path.parent.mkdir(parents=True, exist_ok=True)
         with self.events_path.open("a", encoding="utf-8", newline="\n") as handle:
             handle.write(json.dumps(event, ensure_ascii=False, sort_keys=True, default=str) + "\n")
         return event_id

@@ -1,4 +1,4 @@
-name: Phase 2 Control Plane Certification
+name: Phase 3A Execution Isolation Certification
 
 on:
   pull_request:
@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   control-plane:
-    name: Autonomous control plane certification
+    name: Execution policy and workspace isolation
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -43,13 +43,17 @@ jobs:
       - name: Set up frontend build
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
       - name: Build frontend shell
         working-directory: frontend
         run: npm ci && npm run build
+
+      - name: Test frontend presentation
+        working-directory: frontend
+        run: npm test
 
       - name: Check patch whitespace
         shell: bash

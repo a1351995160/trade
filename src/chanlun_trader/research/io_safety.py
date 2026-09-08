@@ -22,7 +22,6 @@ import pyarrow.dataset as ds
 from .guard import FINAL_TEST_START, RESEARCH_END, ResearchDataAccessGuard
 
 AUDIT_PATH = Path("data/research/audit/physical_read_audit.jsonl")
-AUDIT_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 _DAY_STRUCT = struct.Struct("<IIIIIfI4s")
 _LC5_STRUCT = struct.Struct("<HHfffffII")
@@ -31,6 +30,7 @@ DAY_RECORD_SIZE = 32
 
 
 def _log_physical_read(**rec):
+    AUDIT_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(AUDIT_PATH, "a", encoding="utf-8") as f:
         f.write(json.dumps(rec, ensure_ascii=False) + "\n")
 

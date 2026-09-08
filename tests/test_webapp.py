@@ -8,7 +8,6 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from chanlun_trader.config import load_config
 from chanlun_trader.webapp import app
 
 
@@ -28,14 +27,9 @@ def test_config_api(client):
 
 
 def test_kline_api(client):
-    cfg = load_config()
-    if not Path(cfg["tdx"]["vipdoc"]).exists():
-        pytest.skip("本机没有通达信数据，跳过")
     r = client.get("/api/kline/600000?market=1&bars=80")
-    assert r.status_code == 200
-    data = r.json()
-    assert len(data["kline"]) <= 80
-    assert "bi" in data
+    assert r.status_code == 403
+    assert r.json()["code"] == "LEGACY_EXECUTION_DISABLED"
 
 
 def test_index_page(client):
