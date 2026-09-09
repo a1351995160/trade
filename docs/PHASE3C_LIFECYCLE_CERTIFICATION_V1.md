@@ -1,6 +1,81 @@
-# P3-C 生命周期认证：当前阻断与最小衔接方案
+# P3-C 生命周期认证与完整语义合同
 
-状态：BLOCKED_AT_MATERIALIZATION。这是失败证据与待批准的核心合同方案，不是 P3-C 通过报告。没有生产代码修改，没有真实研究授权。
+## 2026-09-09 用户明确批准的实施范围
+
+用户已批准在既有 Design → 人工审批 → Proposal → Freeze → Materialization 中传递显式完整执行语义，仅解决已复现的语义缺失与候选身份衔接。此批准覆盖 research_evolution_ai_design.py、candidate_generation.py、必要审批/物化衔接及对应测试文档；其他文件仅限本轮复现的必要缺陷。以下历史“待批准”内容保留为当时记录，当前状态为 IMPLEMENTING。
+
+- 语义必须在审批前确定，经既有 schema、SemanticCandidateRecord、hypothesis、能力、政策和 outcome-blind 校验，进入设计哈希和批准绑定。AI/backend 输入不可信；不在下游补猜执行规则，实质变化必须新设计、新审批。
+- 复用既有语义预注册身份；design/proposal/preregistration/approval/content 哈希各司其职，避免循环依赖，不覆盖 candidate_hash、不跳过重建或 provider payload 检查。
+- 用明确版本区分新旧路径，旧轻量格式保持原身份与物化阻断；不自动升级、补全或改写历史设计、批准、Freeze、intent、回执，已有合法完整合同继续严格验证。
+- 保留 durability.py 严格约束、planner、journal、锁、预算协议、P3-A 只读/无 startup recovery、P3-B 公共恢复与 retry attempt 修复。
+- 验收包括完整合法链路、缺失/非法/冲突/审批后篡改、新旧与跨身份、重放/重启/幂等/dry-run、嵌套结果盲化、原回归及 P3-C 双平台认证。保留原失败证据，不把合法正向断言改为拒绝。
+- 仅代码与临时合成验证授权，不替代具体领域人工审批。Predictive Trial、真实研究、Final Test、Prospective/Paper、订单均未授权；保持 PHASE2_PREDICTIVE_EXECUTION_DISABLED。完成分支测试/提交/推送/CI 后待独立复核，不 merge/auto-merge，不开后续包。此范围内不重复申请批准；预算、绩效访问、执行权限等新增核心范围另行申请。
+
+验证计划：先使完整输入通过同一真实治理链并保持缺失输入阻断，再用同一场景前缀覆盖生命周期与 L1—L10，最后运行继承回归与双平台 CI。先前 HEAD 5a14f9a 的 run 34298279411 双平台均已完成，P3-C 阶段失败，其前序回归步骤成功；该失败记录不改写。
+
+## 当前实现与认证（用户批准后）
+
+状态：IMPLEMENTED_BRANCH_CI_PENDING；本地合法主链、L1—L10 和边界已验证，分支双平台 CI 待新 HEAD。以下“历史阻断记录”仅对应 5a14f9a。
+
+### 文件级落点与身份引用
+
+- research_evolution_ai_design.py：显式 `research-evolution-ai-design-v2`，在审批前验证完整 Durable 输入、SemanticCandidateRecord 重建、provider payload、hypothesis、语义指纹、Objective/政策/数据能力与结果盲化；完整语义进入 design_hash。
+- ai_design_approval.py：确认 v2 设计前重新执行持久身份和语义校验。批准绑定 design_hash，未改变人工身份门禁。
+- candidate_generation.py：显式 `candidate-proposal-governance-v2`，传递获批的 durable_contract/hypothesis，执行字段直接取自获批 record；v2 不调用旧轻量执行默认值。语义候选使用既有 preregistration identity，旧格式继续原身份算法。
+- candidate_executable_materialization.py：现有 Proposal 哈希验证识别 v2。durability.py、provider payload/reconstruct 约束未改。
+- autonomous_control_plane.py：本轮 8 个授权篡改用例中有 5 个先失败（auth-identity-red.log：5 failed / 3 passed），追加既有 decision_hash 校验后 8 个通过。只更正“有效授权”读取，不改变全局 Predictive DENY。
+- 测试：p3c_scenario.py 只负责临时初始化与显式操作；p3c_process_worker.py 实例化真实服务；四个 test_phase3c_* 文件覆盖主链、语义负向、L1—L10、入口/损坏/并发/预算。原 Phase 2 中手写简化 AUTHORIZED 行的单个测试改由同一真实授权服务生成，保留 START_PREDICTIVE_TRIAL + DENY 的原断言。
+- CI：继承原四阶段测试选择，追加全部 P3-C 测试与 JUnit artifact，未增加 skip、xfail、continue-on-error 或排除项。
+
+引用方向：SemanticCandidateRecord.preregistration_hash → v2 candidate_hash；完整输入内容 → design_hash → approval receipt；获批设计/批准/上下文与相同完整语义 → proposal_hash → review/Freeze Receipt；Freeze、确认与来源身份 → 物化 content_hash。各层分别哈希，不相互强行取同一值。物化仍按既有规则追加来源绑定，因此最终 content_hash 与设计中声明合同的 content_hash 可能不同，执行语义及 candidate_hash 必须相同。没有反向把 proposal_hash 纳入已批准设计形成循环。
+
+旧轻量 v1 仍可生成、审核、冻结，缺 full_semantic_record/hypothesis 时物化明确拒绝；不得自动升级旧设计、批准或 Freeze。现存合法完整 Durable 合同由原 Phase 1 测试继续验证。
+
+### 生命周期与重启证据矩阵
+
+所有前缀都从同一自包含 Scenario 初始化，经真实服务产生；没有后补成功工件。初始资料包括合成 Objective、合成父来源及类别资料、能力/政策和真实预算 registry 三类桶。显式 backend 返回完整声明；显式 Structural provider 根据三条合成可用性记录返回计数与证据。没有连接任何真实 provider。
+
+| 点 | 重启位置 | 新进程边界 |
+|---|---|---|
+| L1 | Design 人工批准后 | 仅下一显式 tick 生成 Proposal |
+| L2 | Proposal 已写、CP COMPLETED 未写，os._exit | 公共 tick 匹配副作用、补回执，不重复领域调用 |
+| L3 | 人工 Freeze 后 | 仅生成物化预览 |
+| L4 | 预览已写、CP COMPLETED 未写，os._exit | 匹配预览恢复，等待人工确认 |
+| L5 | Confirmation 已写、Durable 未写，os._exit | CP 仅恢复原获批物化 |
+| L6 | Durable 已写，os._exit | canonical 已满足 READY，等待显式 Structural |
+| L7 | READY、未调用 Structural | inspect/dry-run 不调用 provider |
+| L8 | 显式合成 Structural canonical 已写，os._exit | 等待独立预测授权，不重复 Structural |
+| L9 | 等待 Predictive Authorization | 新进程显式人工确认才生成授权 |
+| L10 | 有效人工授权后 | CP 仍 PHASE2_PREDICTIVE_EXECUTION_DISABLED |
+
+矩阵每项重启时核对文件哈希与 mtime，inspect/dry-run 不写；继续后比较已存在 Design、批准、Proposal、Freeze、物化确认和 Durable 原文字节，预算不变，合成设计/Structural 各一次，无 TrialLedger。另在完整设计前缀验证领域调用前硬退出、FAILED 后 retry marker 硬退出、同 intent/key 恢复到 attempt 2。P3-B 的进程 kill、竞争 recoverer、共享 graph reload、独立 Objective/锁别名测试随回归原样执行。
+
+投影删除与 evidence 损坏分开：删除派生 state/checkpoint 后，保留 intent/STARTED 可恢复；receipt 半行/错误哈希/丢失、intent 丢失/损坏均 DENY，不补造回执。Web/CLI/CP 分别从获批前缀执行两类自动动作和最终 Trial 禁令，逐次验证 dry-run 原文/mtime 不变、Web startup recovery 关闭。共享锁测试以实际两进程 handshake 重叠 CP 与直接领域入口，完成后验证唯一 Proposal 可物化。
+
+预算正向链从初始化后无 reserve/consume；负向场景显式用既有 registry 构造 reserve 4、consume 4 或第二份冲突 authority，随后 CP 不生成候选/Trial、不改变原证据。实际非 dry-run 仍可创建锁和控制平面观察日志；不把这一点误称全目录只读。缺省策略、重哈希 Action、过期上下文、身份门禁与 daemon/orchestrator 不旁路执行，继续由原 P3-A/B、Phase 1/2 回归覆盖。
+
+授权实际格式来自 PredictiveGovernanceServiceV1：decision_id/hash、authorization_id、governance_decision_id、Objective/candidate 身份、structural_reconciliation_id、preview_hash、confirmation_token_hash、budget_snapshot 等；没有虚构 expiry 或 trial_id 字段。主链与三入口验证真正 AUTHORIZED，缺失、身份错配、字段篡改、DEFERRED、ENDED 和非 PASS Structural 均不形成有效授权。
+
+### 证据口径与当前结果
+
+已执行原回归：Windows Python 3.13.5；Phase 1 235 passed / 12 deselected，Phase 2 24 passed，P3-A 66 passed，P3-B 35 passed。collection 的 846 是当时收集数，不是 passed；后续新增边界后以最终日志为准。前端此前 8 tests/build 通过，本次不改前端。
+
+P3-C 首轮组合为 67 passed / 4 failed，另补人工边界首轮为 4 passed / 2 failed；这些是测试适配错误（旧轻量 backend 选择不适配、非 dry-run 允许观察日志、无治理入口返回明确 404），修正 API 使用后六个针对性用例通过。此前 L6 首轮 11 passed / 1 failed，按已存在 Durable 的实际 canonical READY 修正预期，没有把合法链改为拒绝。完整正向验收始终保留并完成到真实授权。
+
+计数按运行分开：pytest 主进程现有三类禁止执行器探针与 import 前 network/non-Python process/protected-root 探针；P3-C worker 另在普通返回和 os._exit 前输出实际方法调用探针。P3-B 硬退出沿用其 fsync 事件，缺失 atexit 统计不当作零。Scenario 记录 synthetic_design_call、synthetic_structural_provider 和各次人工操作尝试；approve 内部 confirm 不计作两次独立人工批准。没有独立全覆盖 PerformanceAccess/Final Test/订单探针，不伪造这些指标为零。
+
+本地 fixture：C:\Users\84219\AppData\Local\Temp 下的 pytest 临时目录，实际 C: NTFS；Windows Python 3.13.5。Linux 精确版本/文件系统等待新 CI。未认证真实研究运行态、多主机、网络文件系统、断电。
+REAL_WORKSPACE_RUNTIME_INDEPENDENTLY_VERIFIED=NO。
+
+授权预算快照补验：auth-budget-red.log 先复现 1 failed；直接比较安全投影的同名哈希会误拒绝合法授权（auth-final.log），改为读取当前唯一 authority 的 SearchBudgetRegistryV1.head_hash，与授权服务保持同一哈希语义。auth-final2.log 为 12 passed / 40 deselected，包含合法授权、篡改及原快照过期。budget.py 与预算协议未改。
+
+本地整组 p3c-release.log 为 80 passed（230.88 秒）；主进程 template/approve/confirm 为 1/57/57，三种禁止执行器和 process 探针均为其各自观测范围内 0。随后重哈希授权身份三项先 3 failed，增加既有 schema/decision_id/token 身份关系校验后授权组合 15 passed；暂缓后更换预算快照再明确授权的正向先 1 failed，修正历史快照仅对该条决定失效后，组合 5 passed。最终 CI 套件为 84 项；不把尚未整组运行的 84 写为本地 passed。原回归再次运行：P3-A 66、Phase 1 235/12 deselected、Phase 2 24 已通过；P3-B 本次重跑尚在运行，前次为 35 passed。collection 实际为 859，另 1 个继承 module skip。
+
+重哈希/再授权失败证据为 auth-protocol-red.log、auth-renewal-red.log；修正后为 auth-protocol-final.log、auth-renewal-final.log。这些校验复用现有授权格式，不引入新权限。新 HEAD 与 run_id 在提交后追加；未完成 CI 必须 PENDING。停止点为独立分支交复核，PHASE3_CLOSED=false、MAIN_MERGED=false、NEXT_PACKAGE_STARTED=false。
+
+## 历史阻断记录（仅 5a14f9a，保留失败证据）
+
+历史状态：BLOCKED_AT_MATERIALIZATION。这是当时的失败证据与待批准方案，已由上文用户批准及实现接续。
 
 ## 基线与工作区
 

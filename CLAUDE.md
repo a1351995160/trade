@@ -111,3 +111,5 @@
 ## P3-C 生命周期认证约束
 
 - 物化单项测试的 `_bridge_fixture` 手工补写下游 Proposal/Freeze/Registry，不能冒充完整合法生命周期。真实 Candidate Freeze 后仍须验证生成内容能直接进入 Materialization；轻量治理 candidate_hash 与语义 preregistration_hash 不可通过覆盖字段混用。
+- 完整执行语义必须在 v2 Design 审批前声明并绑定哈希，后续只传递同一语义；旧轻量格式不得静默升级。新路径不能受旧轻量因子选择或执行默认值补猜影响。
+- 控制平面读取 Predictive AUTHORIZED 必须验证既有 decision_hash；测试用真实治理服务生成授权，不以手写简化 status 行证明授权有效。即便授权有效，也保留 PHASE2_PREDICTIVE_EXECUTION_DISABLED。

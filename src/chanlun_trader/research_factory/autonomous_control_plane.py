@@ -1035,13 +1035,21 @@ class AutonomousResearchControlPlaneV1:
             return base
         return {}
 
-    def _predictive_authorization(self, objective_id: str, candidate_id: str, candidate_hash: str) -> dict[str, Any]:
+    def _predictive_authorization(self, objective_id: str, candidate_id: str, candidate_hash: str, budget_identity: Mapping[str, Any]) -> dict[str, Any]:
         """Read only allowlisted authorization metadata after Structural PASS."""
+        from .budget import BudgetLedgerMismatchError, SearchBudgetRegistryV1
+        from .predictive_authorization import AUTHORIZATION_SCHEMA_VERSION
+
         path = self.root / "reports" / "research_orchestrator_v2" / objective_id / "predictive_governance_decisions.jsonl"
         if not path.is_file():
             return {"authorized": False, "source_path": None, "authorization_id": None}
         latest: dict[str, Any] | None = None
         try:
+            registry_path = (self.root / str(budget_identity.get("registry_path") or "")).resolve()
+            if not registry_path.is_relative_to(self.root) or not registry_path.is_file():
+                return {"authorized": False, "authorization_id": None, "stale_budget": True}
+            # 使用授权服务的原始 registry 哈希；安全投影中的同名字段有独立哈希语义。
+            registry_hash = SearchBudgetRegistryV1(objective_id, registry_path).head_hash
             for line in path.read_text(encoding="utf-8").splitlines():
                 if not line.strip():
                     continue
@@ -1056,6 +1064,18 @@ class AutonomousResearchControlPlaneV1:
                     continue
                 status = str(row.get("decision_status") or row.get("status") or "")
                 if status in {"AUTHORIZED", "DEFERRED", "ENDED"}:
+                    identity = {key: value for key, value in row.items() if key != "decision_hash"}
+                    if not row.get("decision_hash") or row["decision_hash"] != stable_hash(identity):
+                        return {"authorized": False, "source_path": path.relative_to(self.root).as_posix(), "authorization_id": None, "identity_error": True}
+                    decision_identity = {key: row.get(key) for key in ("objective_id", "candidate_id", "candidate_hash", "decision_type", "authorization_id", "preview_hash")}
+                    decision_identity["reconciliation_id"] = row.get("structural_reconciliation_id")
+                    token = stable_hash({"preview_hash": row.get("preview_hash"), "decision_id": row.get("governance_decision_id"), "decision_type": row.get("decision_type")})
+                    if row.get("schema_version") != AUTHORIZATION_SCHEMA_VERSION or row.get("decision_id") != stable_hash(decision_identity) or row.get("confirmation_token_hash") != stable_hash(token):
+                        return {"authorized": False, "source_path": path.relative_to(self.root).as_posix(), "authorization_id": None, "identity_error": True}
+                    snapshot = _mapping(row.get("budget_snapshot"))
+                    if snapshot.get("registry_head_hash") != registry_hash or snapshot.get("registry_path") != budget_identity.get("registry_path"):
+                        latest = {"authorized": False, "source_path": path.relative_to(self.root).as_posix(), "authorization_id": None, "stale_budget": True}
+                        continue
                     latest = {
                         "authorized": status == "AUTHORIZED",
                         "decision_status": status,
@@ -1063,7 +1083,7 @@ class AutonomousResearchControlPlaneV1:
                         "decision_id": str(row.get("decision_id") or "") or None,
                         "source_path": path.relative_to(self.root).as_posix(),
                     }
-        except (OSError, UnicodeError, json.JSONDecodeError):
+        except (OSError, UnicodeError, ValueError, KeyError, BudgetLedgerMismatchError):
             return {"authorized": False, "source_path": path.relative_to(self.root).as_posix(), "authorization_id": None, "read_error": True}
         return latest or {"authorized": False, "source_path": path.relative_to(self.root).as_posix(), "authorization_id": None}
 
@@ -1167,7 +1187,8 @@ class AutonomousResearchControlPlaneV1:
 
     def _plan(self, objective_id: str, report: Mapping[str, Any], context: SafeRuntimeContextV1 | None) -> tuple[ResearchActionV1, dict[str, Any]]:
         candidate_id, candidate_hash = self._candidate_identity(report, context)
-        auth = self._predictive_authorization(objective_id, candidate_id, candidate_hash) if self._effective_state(report) == PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED else {"authorized": False}
+        budget_identity = _mapping(_mapping(context.get("budget")).get("budget_identity")) if context else {}
+        auth = self._predictive_authorization(objective_id, candidate_id, candidate_hash, budget_identity) if self._effective_state(report) == PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED else {"authorized": False}
         action_type = self._action_type(report, predictive_authorized=bool(auth.get("authorized")))
         action = self._make_action(objective_id, report, context, action_type, predictive_authorized=bool(auth.get("authorized")))
         return action, auth

@@ -31,6 +31,7 @@ from .research_evolution_ai_design import (
     AI_DESIGN_READY,
     AI_RESEARCH_DESIGN_FILENAME,
     AI_RESEARCH_DESIGN_INPUT_FILENAME,
+    EXECUTABLE_AI_DESIGN_SCHEMA_VERSION,
 )
 from .research_evolution_proposal import MechanismCoverageRegistryV1
 from .research_proposal_governance import (
@@ -72,6 +73,7 @@ CANDIDATE_REGISTRY_FILENAME = "CANDIDATE_REGISTRY.json"
 CANDIDATE_REVIEWS_FILENAME = "reviews.jsonl"
 
 CANDIDATE_PROPOSAL_SCHEMA_VERSION = "candidate-proposal-governance-v1"
+EXECUTABLE_CANDIDATE_PROPOSAL_SCHEMA_VERSION = "candidate-proposal-governance-v2"
 CANDIDATE_PROPOSAL_INPUT_SCHEMA_VERSION = "candidate-proposal-input-v1"
 CANDIDATE_PROPOSAL_STATE_SCHEMA_VERSION = "candidate-proposal-state-v1"
 CANDIDATE_FREEZE_PREVIEW_SCHEMA_VERSION = "candidate-freeze-preview-v1"
@@ -805,6 +807,8 @@ class CandidateGenerationManagerV1:
             "excluded_mechanisms": _strings(design_raw.get("excluded_mechanisms")),
             "validation_expectation": _strings(design_raw.get("validation_expectation")),
         }
+        if design_raw.get("schema_version") == EXECUTABLE_AI_DESIGN_SCHEMA_VERSION:
+            safe_design.update({key: design_raw[key] for key in ("schema_version", "durable_contract", "hypothesis")})
         if not safe_design["research_hypothesis"] or not safe_design["mechanism_family"] or not safe_design["allowed_factors"]:
             raise CandidateGenerationError("AI_DESIGN_INCOMPLETE", "AI 研究设计缺少候选建议所需字段", status_code=409)
         safe_proposal = _safe_proposal(proposal_raw)
@@ -979,21 +983,24 @@ class CandidateGenerationManagerV1:
                 status_code=409,
                 details={"mechanism_family": mechanism_family, "matched_mechanism": duplicate[0], "normalized_mechanism": duplicate[1], "source": duplicate[2]},
             )
-        factors = self._select_factors(context, mechanism_family)
+        factors = list(design["durable_contract"]["factor_ids"]) if design.get("schema_version") == EXECUTABLE_AI_DESIGN_SCHEMA_VERSION else self._select_factors(context, mechanism_family)
         directions = _strings(proposal.get("suggested_research_directions"))
         directions.extend(item for item in _strings(context.mechanism_coverage_registry.get("unexplored")) if item not in directions)
         candidate_name = self._candidate_name(mechanism_family, directions)
-        horizon = list(context.objective.get("preferred_horizon") or [5])
-        holding_period = int(horizon[0])
-        risk_constraints = dict(context.objective.get("risk_constraints") or {})
-        execution = {
-            "signal_time": "T_CLOSE",
-            "entry": "NEXT_SESSION_OPEN",
-            "holding_period": holding_period,
-            "holding_period_unit": "TRADING_SESSIONS",
-            "risk_constraints": risk_constraints,
-            "same_session_sell_forbidden": True,
-        }
+        if design.get("schema_version") == EXECUTABLE_AI_DESIGN_SCHEMA_VERSION:
+            execution = design["durable_contract"]["full_semantic_record"]["candidate"]
+        else:
+            horizon = list(context.objective.get("preferred_horizon") or [5])
+            holding_period = int(horizon[0])
+            risk_constraints = dict(context.objective.get("risk_constraints") or {})
+            execution = {
+                "signal_time": "T_CLOSE",
+                "entry": "NEXT_SESSION_OPEN",
+                "holding_period": holding_period,
+                "holding_period_unit": "TRADING_SESSIONS",
+                "risk_constraints": risk_constraints,
+                "same_session_sell_forbidden": True,
+            }
         data_contract = self._data_contract(context, factors, mechanism_family)
         excluded = _strings(proposal.get("avoid_mechanism_family"))
         excluded.extend(item for item in _strings(proposal.get("avoid_mechanisms")) if item not in excluded)
@@ -1103,6 +1110,16 @@ class CandidateGenerationManagerV1:
                 "input_context_hash",
             )
         }
+        if design.get("schema_version") == EXECUTABLE_AI_DESIGN_SCHEMA_VERSION:
+            contract = design["durable_contract"]
+            base.update({
+                "schema_version": EXECUTABLE_CANDIDATE_PROPOSAL_SCHEMA_VERSION,
+                "durable_contract": contract,
+                "hypothesis": design["hypothesis"],
+                "factor_contract": list(contract["factor_ids"]),
+                "execution_contract": contract["full_semantic_record"]["candidate"],
+            })
+            identity = self._identity(base)
         proposal_hash = stable_hash(identity)
         base["proposal_hash"] = proposal_hash
         base["proposal_id"] = f"CANDIDATE_PROPOSAL_{proposal_hash[:24].upper()}"
@@ -1114,7 +1131,7 @@ class CandidateGenerationManagerV1:
 
     @staticmethod
     def _identity(payload: Mapping[str, Any]) -> dict[str, Any]:
-        return {
+        identity = {
             key: payload.get(key)
             for key in (
                 "objective_id",
@@ -1144,8 +1161,15 @@ class CandidateGenerationManagerV1:
                 "input_context_hash",
             )
         }
+        if payload.get("schema_version") == EXECUTABLE_CANDIDATE_PROPOSAL_SCHEMA_VERSION:
+            identity.update({key: payload.get(key) for key in ("schema_version", "durable_contract", "hypothesis")})
+        return identity
 
     def _validate_persisted(self, proposal: Mapping[str, Any], context: CandidateGenerationInputV1) -> None:
+        if proposal.get("schema_version") == EXECUTABLE_CANDIDATE_PROPOSAL_SCHEMA_VERSION:
+            design = context.ai_research_design
+            if design.get("schema_version") != EXECUTABLE_AI_DESIGN_SCHEMA_VERSION or any(proposal.get(key) != design.get(key) for key in ("durable_contract", "hypothesis")):
+                raise CandidateGenerationError("CANDIDATE_APPROVED_SEMANTICS_MISMATCH", "候选执行语义与已批准设计不一致")
         if str(proposal.get("objective_id") or "") != context.objective_id:
             raise CandidateGenerationError("CANDIDATE_PROPOSAL_CONTEXT_CONFLICT", "已存在的 Candidate Proposal 不属于当前 Objective", status_code=409)
         context_changed = str(proposal.get("input_context_hash") or "") != context.input_context_hash
@@ -1282,7 +1306,18 @@ class CandidateGenerationManagerV1:
 
     @classmethod
     def _candidate_hash_for_proposal(cls, proposal: Mapping[str, Any]) -> str:
+        if proposal.get("schema_version") == EXECUTABLE_CANDIDATE_PROPOSAL_SCHEMA_VERSION:
+            from .durability import DurableFrozenCandidateContractV1
+            contract = DurableFrozenCandidateContractV1.from_dict(proposal["durable_contract"])
+            contract.provider_candidate_payload()
+            return contract.candidate_hash
         return stable_hash(cls._candidate_identity(proposal))
+
+    @classmethod
+    def _candidate_id_for_proposal(cls, proposal: Mapping[str, Any]) -> str:
+        if proposal.get("schema_version") == EXECUTABLE_CANDIDATE_PROPOSAL_SCHEMA_VERSION:
+            return str(proposal["durable_contract"]["candidate_id"])
+        return cls._candidate_id_for_hash(cls._candidate_hash_for_proposal(proposal))
 
     @staticmethod
     def _candidate_id_for_hash(candidate_hash: str) -> str:
@@ -1362,7 +1397,7 @@ class CandidateGenerationManagerV1:
         candidate_hash = self._candidate_hash_for_proposal(proposal)
         if str(preview.get("candidate_hash") or "") != candidate_hash:
             raise CandidateGenerationError("CANDIDATE_FREEZE_HASH_INVALID", "Candidate Freeze Preview 的 Candidate hash 校验失败", status_code=503)
-        expected_id = self._candidate_id_for_hash(candidate_hash)
+        expected_id = self._candidate_id_for_proposal(proposal)
         if str(preview.get("candidate_id") or "") not in {expected_id, f"CANDIDATE_PREVIEW_{candidate_hash[:24].upper()}"}:
             raise CandidateGenerationError("CANDIDATE_FREEZE_ID_INVALID", "Candidate Freeze Preview 的 Candidate ID 校验失败", status_code=503)
         expected_preview_hash = stable_hash({key: value for key, value in preview.items() if key != "preview_hash"})
@@ -1387,7 +1422,7 @@ class CandidateGenerationManagerV1:
             "freeze_id": freeze_id,
             "proposal_id": proposal.get("proposal_id"),
             "proposal_hash": proposal.get("proposal_hash"),
-            "candidate_id": self._candidate_id_for_hash(candidate_hash),
+            "candidate_id": self._candidate_id_for_proposal(proposal),
             "candidate_hash": candidate_hash,
             "reviewer": reviewer,
             "timestamp": timestamp,
@@ -1647,7 +1682,7 @@ class CandidateGenerationManagerV1:
             "objective_id": proposal.get("objective_id"),
             "proposal_id": proposal.get("proposal_id"),
             "proposal_hash": proposal.get("proposal_hash"),
-            "candidate_id": self._candidate_id_for_hash(candidate_hash),
+            "candidate_id": self._candidate_id_for_proposal(proposal),
             "candidate_hash": candidate_hash,
             "candidate_identity_status": "PREVIEW_ONLY_NOT_REGISTERED",
             "candidate_name": proposal.get("candidate_name"),
@@ -1812,7 +1847,7 @@ class CandidateGenerationManagerV1:
         if not receipt and registry_entry is None:
             return {"status": "NOT_FROZEN", "modified": False, "candidate_id": None, "candidate_hash": None}
         current_hash = self._candidate_hash_for_proposal(proposal)
-        expected_id = self._candidate_id_for_hash(current_hash)
+        expected_id = self._candidate_id_for_proposal(proposal)
         changed_contracts = [
             key
             for key in ("factor_contract", "execution_contract", "data_contract")
@@ -1850,7 +1885,7 @@ class CandidateGenerationManagerV1:
         if not self._freeze_record_matches(record, {
             "proposal_id": proposal.get("proposal_id"),
             "proposal_hash": proposal.get("proposal_hash"),
-            "candidate_id": self._candidate_id_for_hash(expected_hash),
+            "candidate_id": self._candidate_id_for_proposal(proposal),
             "candidate_hash": expected_hash,
             "preview_hash": preview.get("preview_hash"),
             "freeze_id": record.get("freeze_id"),
@@ -1862,7 +1897,7 @@ class CandidateGenerationManagerV1:
 
     def _candidate_registry_entry(self, proposal: Mapping[str, Any], preview: Mapping[str, Any], *, freeze_id: str, timestamp: str) -> dict[str, Any]:
         base = {
-            "candidate_id": self._candidate_id_for_hash(str(preview.get("candidate_hash") or "")),
+            "candidate_id": self._candidate_id_for_proposal(proposal),
             "candidate_hash": preview.get("candidate_hash"),
             "objective_id": proposal.get("objective_id"),
             "proposal_id": proposal.get("proposal_id"),
@@ -1891,7 +1926,7 @@ class CandidateGenerationManagerV1:
         timestamp = str(record.get("timestamp") or self._now())
         governance_path = output_path.parent / CANDIDATE_FREEZE_GOVERNANCE_FILENAME
         receipt_path = output_path.parent / CANDIDATE_FREEZE_RECEIPT_FILENAME
-        candidate_id = self._candidate_id_for_hash(str(preview.get("candidate_hash") or ""))
+        candidate_id = self._candidate_id_for_proposal(proposal)
         governance_base = {
             **dict(record),
             "action": "FREEZE_CANDIDATE",

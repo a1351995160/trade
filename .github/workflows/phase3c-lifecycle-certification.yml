@@ -147,4 +147,17 @@ jobs:
       - name: Run Phase 3B process recovery and identity certification
         run: python -m pytest -q tests/research_factory/test_restart_recovery_v1.py
       - name: Run P3C real lifecycle certification
-        run: python -m pytest -q --tb=short tests/research_factory/test_phase3c_lifecycle_v1.py
+        run: >-
+          python -m pytest -q -rA --tb=short --junitxml=tmp/p3c-results.xml
+          tests/research_factory/test_phase3c_lifecycle_v1.py
+          tests/research_factory/test_phase3c_lifecycle_boundaries_v1.py
+          tests/research_factory/test_phase3c_restart_v1.py
+          tests/research_factory/test_phase3c_entry_boundaries_v1.py
+
+      - name: Upload lifecycle test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p3c-${{ matrix.os }}-${{ github.sha }}
+          path: tmp/p3c-results.xml
+          if-no-files-found: warn
