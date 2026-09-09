@@ -488,6 +488,13 @@ class AIDesignApprovalServiceV1:
         design_identity_error = self._design_identity_error(design)
         if design_identity_error is not None:
             raise design_identity_error
+        if design.get("schema_version") == "research-evolution-ai-design-v2":
+            from .research_evolution_ai_design import ResearchEvolutionAIDesignServiceV1, ResearchEvolutionAIDesignError
+            service = ResearchEvolutionAIDesignServiceV1(self.root)
+            try:
+                service._validate_persisted(design, service.build_input(objective_id))
+            except ResearchEvolutionAIDesignError as exc:
+                raise AIDesignApprovalError(exc.code, exc.message_zh, status_code=exc.status_code) from exc
         design_hash = str(design.get("design_hash") or "")
         if expected_ai_design_hash not in (None, "") and str(expected_ai_design_hash) != design_hash:
             raise AIDesignApprovalError("STALE_AI_DESIGN_APPROVAL", "当前 AI 设计已变化，请重新读取后确认", details={"expected_ai_design_hash": str(expected_ai_design_hash), "current_ai_design_hash": design_hash})

@@ -483,25 +483,12 @@ def test_structural_pass_stops_at_predictive_authorization_without_trial(tmp_pat
 
 
 def test_authorized_predictive_action_remains_disabled_in_phase2(tmp_path: Path) -> None:
-    root, contract = _ready_fixture(tmp_path)
-    runtime, _ = _runtime(root, "PASS")
-    StructuralEntryServiceV1(root, runtime=runtime).start(
-        OBJECTIVE_ID,
-        candidate_id=contract.candidate_id,
-        confirmed=True,
-        action=RUN_STRUCTURAL_PREFLIGHT,
-    )
-    auth_path = root / "reports/research_orchestrator_v2" / OBJECTIVE_ID / "predictive_governance_decisions.jsonl"
-    auth_path.parent.mkdir(parents=True, exist_ok=True)
-    auth_path.write_text(json.dumps({
-        "objective_id": OBJECTIVE_ID,
-        "candidate_id": contract.candidate_id,
-        "candidate_hash": contract.candidate_hash,
-        "decision_status": "AUTHORIZED",
-        "authorization_id": "AUTH_CONTROL_PLANE_V1",
-        "decision_id": "DECISION_CONTROL_PLANE_V1",
-    }) + "\n", encoding="utf-8")
+    from p3c_scenario import Scenario
 
+    scenario = Scenario(tmp_path).initialize().ready()
+    root = scenario.root
+    scenario.structural()
+    scenario.authorize()
     result = AutonomousResearchControlPlaneV1(root, execution_policy=ExecutionPolicy(mode="GOVERNED", workspace_kind="SYNTHETIC")).inspect(OBJECTIVE_ID)
 
     assert result["decision"]["selected_action"]["action_type"] == "START_PREDICTIVE_TRIAL"

@@ -36,10 +36,38 @@ DECISION_ALIASES = {
     "END_CURRENT_CANDIDATE": END_CANDIDATE_RESEARCH_DIRECTION,
     "END_CURRENT_CANDIDATE_RESEARCH_DIRECTION": END_CANDIDATE_RESEARCH_DIRECTION,
 }
+DECISION_STATUSES = {
+    AUTHORIZE_FIRST_PREDICTIVE_TRIAL: "AUTHORIZED",
+    DEFER_PREDICTIVE_TRIAL: "DEFERRED",
+    END_CANDIDATE_RESEARCH_DIRECTION: "ENDED",
+}
+DECISION_NEXT_ACTIONS = {
+    "AUTHORIZED": "START_PREDICTIVE_TRIAL_1",
+    "DEFERRED": "PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED",
+    "ENDED": "CANDIDATE_RESEARCH_DIRECTION_ENDED",
+}
 AUTHORIZATION_SCHEMA_VERSION = "predictive-governance-decision-v1"
 PREVIEW_SCHEMA_VERSION = "predictive-governance-preview-v1"
 LEDGER_FILENAME = "predictive_governance_decisions.jsonl"
 SAFE_ID = re.compile(r"^[A-Za-z0-9_.-]+$")
+
+
+def predictive_decision_semantics_valid(record: Mapping[str, Any]) -> bool:
+    """Validate recorded semantics without completing or rewriting history."""
+    required = (
+        "objective_id", "candidate_id", "candidate_hash", "decision_type",
+        "authorization_id", "preview_hash", "structural_reconciliation_id",
+        "governance_decision_id", "decision_id", "confirmation_token_hash",
+    )
+    if any(not isinstance(record.get(key), str) or not record[key] for key in required):
+        return False
+    status = DECISION_STATUSES.get(record["decision_type"])
+    return (
+        status is not None
+        and record.get("decision_status") == status
+        and record.get("next_action") == DECISION_NEXT_ACTIONS[status]
+        and record.get("structural_status") == "PASS"
+    )
 
 
 class PredictiveGovernanceError(RuntimeError):
@@ -471,16 +499,8 @@ class PredictiveGovernanceServiceV1:
             handle.write(json.dumps(dict(record), ensure_ascii=False, sort_keys=True, default=str) + "\n")
 
     def _record(self, snapshot: Mapping[str, Any], choice: str, request_id: str, preview_hash: str, confirmation_token: str) -> dict[str, Any]:
-        status = {
-            AUTHORIZE_FIRST_PREDICTIVE_TRIAL: "AUTHORIZED",
-            DEFER_PREDICTIVE_TRIAL: "DEFERRED",
-            END_CANDIDATE_RESEARCH_DIRECTION: "ENDED",
-        }[choice]
-        next_action = {
-            "AUTHORIZED": "START_PREDICTIVE_TRIAL_1",
-            "DEFERRED": "PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED",
-            "ENDED": "CANDIDATE_RESEARCH_DIRECTION_ENDED",
-        }[status]
+        status = DECISION_STATUSES[choice]
+        next_action = DECISION_NEXT_ACTIONS[status]
         timestamp = self._clock()
         identity = {
             "objective_id": (snapshot.get("governance") or {}).get("objective_id"),

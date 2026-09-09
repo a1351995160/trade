@@ -705,7 +705,7 @@ class CandidateExecutableMaterializationManagerV1:
 
     @staticmethod
     def _validate_proposal_identity(proposal: Mapping[str, Any], proposal_id: str) -> None:
-        if str(proposal.get("schema_version") or "") != CANDIDATE_PROPOSAL_SCHEMA_VERSION:
+        if str(proposal.get("schema_version") or "") not in {CANDIDATE_PROPOSAL_SCHEMA_VERSION, "candidate-proposal-governance-v2"}:
             return
         expected_hash = stable_hash(CandidateGenerationManagerV1._identity(proposal))
         if str(proposal.get("proposal_hash") or "") != expected_hash:

@@ -603,3 +603,127 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - CLAUDE.md：记录重复 begin 陷阱及必须验证持久前置状态。
 - progress.md：追加本轮复现、验证和交接事实。
 - 回滚：提交后在当前分支执行 `git revert --no-edit <本轮修正SHA>`，回到被复核 HEAD fbd603be237cb6077a4484acac9a585610676569；不重写历史 journal，不 reset/main/force push。
+
+## 2026-09-09 - Task: P3-C 真实生命周期衔接失败复现与核心合同方案
+
+### What was done
+
+核对 origin/main=e50f5abc26bc9aa3b5927c2d5c436f47b3ee3a08、PR #4 已合并、75ec0be 在 ancestry 中，从 main 创建独立 P3-C worktree/分支。完整读取任务附件、总体规划、P3-A/B 文档与进度记录，检查实际规范。通过真实设计、人工批准、CP 生成、人工审核与 Freeze 复现物化失败；没有手工补写下游成功记录，没有生产修改。提供待批准的核心身份/语义合同方案；P3-C 未完成，L1—L10 等后续组合未认证。未 merge、auto-merge 或启动其他包。
+
+### Testing
+
+- 隔离先验 P3-A：66 passed。新正向测试先 1 failed，再用两种初始化明确复现 2 failed；错误为 EXECUTABLE_MATERIALIZATION_INCOMPLETE。补齐初始元数据后仍缺 full_semantic_record/hypothesis，真实 Freeze 已完成，预算原文不变。
+- Phase 1 首次 228 passed / 7 failed（6 个前端未构建页面、1 个子进程输出解码错误）；构建后 234 passed / 1 failed；设置 Python UTF-8 后原选择 235 passed / 12 deselected。失败日志保留，未改测试或排除项。
+- Phase 2：24 passed；P3-B：35 passed；compileall、diff 检查通过；collect 777 + 1 legacy module skipped（不是 passed）；前端 npm ci --ignore-scripts、8 tests、build 通过。
+- Windows Python 3.13.5，全新 venv；fixture 位于 C: 临时目录，Get-Volume 实测 NTFS。Linux 与最终 SHA 双平台结果由分支 CI 核对，提交时 PENDING。
+- 本轮两项失败用例探针：合成设计 2、approve 2、confirm 2；approve 内部调用 confirm，不计为四次独立批准。真实禁用执行器、网络、非测试进程、受保护参考目录访问探针均 0。其他尚未建立的 P3-C 探针统计为 NOT_REPORTED，不填零；真实运行态未独立核验。
+- 本地日志位于 tmp/p3c-evidence（忽略目录）；共享复现命令及证据范围见 P3-C 文档。未读取真实研究数据或 Final Test，未启动真实 AI/行情/Structural/Predictive/订单。
+
+### Notes
+
+- tests/research_factory/test_phase3c_lifecycle_v1.py：新增真实审批/冻结到物化的两项正向失败验收，不采用 raises/skip/xfail 掩盖断链。
+- .github/workflows/phase3c-lifecycle-certification.yml：继承完整回归和平台矩阵，添加 P3-C 阶段、UTF-8 与 fixture 盘结构化文件系统证据。
+- docs/PHASE3C_LIFECYCLE_CERTIFICATION_V1.md：记录短审计、失败、待批准方案、计数限制和未完成矩阵。
+- docs/AUTONOMOUS_RESEARCH_MASTER_ROADMAP_V1.md：当前状态记录 P3-B 经 PR #4 合并，P3-C 在物化处阻断。
+- CLAUDE.md：追加不能用手工下游 fixture 冒充生命周期、不能混用两种候选身份的陷阱。
+- progress.md：仅追加本轮记录，保留历史 PENDING 和失败事实。
+- 回滚：在独立分支执行 `git revert --no-edit <本轮提交SHA>`，基线 e50f5abc26bc9aa3b5927c2d5c436f47b3ee3a08；不 reset/main/force push，不删除执行历史。
+
+## 2026-09-09 - Task: 记录 P3-C 核心语义合同调整的明确批准
+
+### What was done
+
+记录用户对显式完整语义在审批前确定、校验、哈希绑定并贯通 Candidate/Freeze/Materialization 的批准。复用既有 SemanticCandidateRecord、hypothesis 和语义预注册身份；不覆盖不同层哈希、不升级历史合同、不放宽物化；旧轻量格式保持原校验和阻断。优先修改设计、候选及必要审批/物化衔接，其他生产文件仅限复现必要缺陷。完整范围写入 P3-C 文档。
+
+保留预算、绩效访问、执行权限、planner/journal/锁协议及 P3-A/B 安全边界。授权仅开发与临时合成验证，不授权真实研究、Trial、Final Test、Prospective/Paper、订单，不 merge/auto-merge 或启动后续包；范围内不再重复申请同一批准。
+
+### Testing
+
+- 核对工作区干净，继续同一分支 HEAD 5a14f9a14de2d609186c8532ab671c7fadb99403。
+- 只读核对 run 34298279411：双平台均在新增 P3-C 正向物化用例失败，原回归前序步骤成功；保留原失败证据。
+- 本条仅批准范围记录，不表示代码已实现或认证通过。
+
+### Notes
+
+- docs/PHASE3C_LIFECYCLE_CERTIFICATION_V1.md：追加用户批准、限制、实施与验证顺序。
+- progress.md：追加本次批准记录，保留历史。
+- 回滚：提交后 `git revert --no-edit <本条记录所在提交SHA>`；未提交时仅撤销本次追加段落，不改历史记录或 main。
+
+## 2026-09-09 - Task: P3-C 获批完整语义衔接与生命周期认证实现
+### What was done
+- 在用户本轮明确批准范围内接通 v2 Design → 人工批准 → Candidate → Freeze → Materialization，执行语义审批前固定，各层哈希独立引用，旧轻量路径保持原身份及物化阻断。
+- 用自包含临时 Scenario 和真实领域服务完成显式合成 Structural、有效人工 Predictive Authorization；控制平面继续禁止 Trial。实现 L1—L10 新进程矩阵、前效应/重试 marker 硬退出、三入口、投影删除/执行证据损坏、并发、预算及嵌套结果字段负向。
+- 保留原语义缺失失败。授权字段篡改先复现 5 failed / 3 passed 后增加 decision_hash 校验；预算快照变更先复现 1 failed 后复用真实 registry.head_hash 校验。安全投影同名 registry_head_hash 语义不同，初次直接比较导致合法授权拒绝，已纠正；没有修改 budget.py 或执行权限。
+### Testing
+- 本地已取得 Phase 1 235 passed / 12 既有 deselected，Phase 2 24 passed，P3-A 66 passed，P3-B 35 passed；前端 8 tests 与 build 通过（未改前端）。
+- P3-C 中间整组 77 passed；随后强化投影实际删除与授权预算快照检查，投影针对性 8 passed、授权针对性 12 passed。当前最终组合及原回归正在重新运行，以后续日志为最终证据，不把这些局部数相加。
+- 失败日志保留 tmp/p3c-evidence：auth-identity-red.log、auth-budget-red.log、auth-final.log（初次错误比较两个不同哈希）、p3c-full-first.log、restart-first.log。历史 5a14f9a 的双平台 P3-C run 34298279411 仍为失败证据；原四个 CI 均 success。
+- Windows 实测 Python 3.13.5，fixture C:/Users/84219/AppData/Local/Temp，Get-Volume C=NTFS。新的 Linux CI 版本/文件系统和新 HEAD/run_id 尚待取证，CI=PENDING。
+- pytest 各运行的 executor/process 探针按日志单列；P3-C 新 worker 在正常返回及硬退出前打印检查点，P3-B 硬退出缺 atexit 的场景不伪写为零。预算负向明确有合成 reserve/consume，不宣称所有测试预算零变动。
+### Notes
+- 改动文件：
+  - src/chanlun_trader/research_factory/research_evolution_ai_design.py：审批前 v2 完整语义校验及设计哈希绑定。
+  - src/chanlun_trader/research_factory/ai_design_approval.py：v2 确认时重验设计语义与当前来源。
+  - src/chanlun_trader/research_factory/candidate_generation.py：传递获批语义并使用既有语义候选身份，保留 v1。
+  - src/chanlun_trader/research_factory/candidate_executable_materialization.py：既有 Proposal 哈希校验识别 v2。
+  - src/chanlun_trader/research_factory/autonomous_control_plane.py：验证授权完整性与原始预算快照，修复本轮实际复现的元数据读取缺陷。
+  - tests/research_factory/p3c_scenario.py：临时合成初始化及显式人工/领域动作，无第二套状态机。
+  - tests/research_factory/p3c_process_worker.py：只接收 root/Objective/operation 的真实服务重建及硬退出探针。
+  - tests/research_factory/test_phase3c_lifecycle_v1.py：保留并接通完整合法正向断言，核对语义及各层身份。
+  - tests/research_factory/test_phase3c_lifecycle_boundaries_v1.py：完整语义、旧格式、授权、结果盲化与人工门禁负向。
+  - tests/research_factory/test_phase3c_restart_v1.py：L1—L10 与 retry attempt、子进程证据检查点。
+  - tests/research_factory/test_phase3c_entry_boundaries_v1.py：三入口、实际投影删除、证据损坏、双进程锁与预算边界。
+  - tests/research_factory/test_autonomous_control_plane_v1.py：原授权测试改用真实服务生成有效授权，保留原 DENY 断言。
+  - .github/workflows/phase3c-lifecycle-certification.yml：追加全套 P3-C 与 JUnit artifact。
+  - docs/PHASE3C_LIFECYCLE_CERTIFICATION_V1.md：记录明确批准、身份引用、生命周期矩阵和实测证据。
+  - docs/AUTONOMOUS_RESEARCH_MASTER_ROADMAP_V1.md：P3-C 从等待批准更新为实现后认证中。
+  - CLAUDE.md：追加本轮语义和授权证据的工程约束。
+  - progress.md：仅追加批准及本轮实现/验证记录。
+- 回滚点：5a14f9a14de2d609186c8532ab671c7fadb99403（本轮实现前独立分支 HEAD）；实现提交后使用 git revert 撤销该实现提交，不 reset main、不删除研究记录。
+- 保持默认 READ_ONLY、无 Web startup recovery、dry-run 只读、P3-B 公共恢复/attempt 语义、单机共享锁、结果盲化及 PHASE2_PREDICTIVE_EXECUTION_DISABLED。
+- PHASE3_CLOSED=false；MAIN_MERGED=false；NEXT_PACKAGE_STARTED=false。完成分支认证后交独立复核。
+
+## 2026-09-09 - Task: P3-C 双平台证据归档与独立复核交付
+### What was done
+- 实现提交 c37fd46c9bfa83968dc1d9ba7effd5d89f4047bd 已推送，真实完整语义链路到人工 Predictive Authorization，保留 Trial 禁令。
+- 将用户批准、各层身份、L1—L10、正负向边界、平台和安全计数整理为 P3-C 认证文档；仅同步本次认证状态，不开始其他工作包。
+### Testing
+- P3-C CI run 34301691534 两平台 SUCCESS：Windows Python 3.13.15 / C: NTFS，84 passed；Linux Python 3.11.16 / /tmp 所在 ext4，84 passed。fixture 根与系统版本详见 P3-C 文档及 job 原始日志。
+- 同一 CI 内原回归：P3-A 66、Phase 2 24、P3-B 35 均 passed；Phase 1 Windows 235 passed / 12 deselected，Linux 234 passed / 1 既有 Windows 专用测试 skipped / 12 deselected。collection 859 与 1 继承 module skip 单独记，不算 passed。frontend 8 tests/build、compile、diff 检查通过。
+- 同一实现 HEAD 的独立原 CI：Phase 1 34301691757、Phase 2 34301691768、P3-A 34301691558、P3-B 34301691489 全部 SUCCESS。
+- 本地 c37fd46 的整套 P3-C 为 84 passed（233.48 秒），原回归再次通过。P3-C 主进程 template/approve/confirm 为 1/61/61；安装的三类执行器与 process 探针均观测 0。worker 检查点和 P3-B 硬退出缺失统计明确区分，未捏造其他未安装的探针。
+- 最后三个重哈希授权负向先 3 failed，修正既有身份校验后授权组合 15 passed；暂缓/新预算/重新明确授权正向先 1 failed，修正历史快照覆盖顺序后组合 5 passed。原始日志保留 tmp/p3c-evidence。
+- 本次仅文档改动；其新 HEAD 的分支 CI 在提交时 PENDING，最终交付回复补充实际 run_id 与结果。
+### Notes
+- 改动文件：docs/PHASE3C_LIFECYCLE_CERTIFICATION_V1.md（绑定实现 HEAD、双平台 CI、真实计数与复核停止点）；docs/AUTONOMOUS_RESEARCH_MASTER_ROADMAP_V1.md（P3-C 标记分支认证完成待复核）；progress.md（仅追加本条证据）。
+- 回滚代码：git revert --no-edit c37fd46c9bfa83968dc1d9ba7effd5d89f4047bd。文档回滚点为同一 SHA，后续可 git revert 本文档提交；不 reset main。
+- 无 merge/auto-merge，无 R1/R2，无真实研究。PHASE3_CLOSED=false；MAIN_MERGED=false；NEXT_PACKAGE_STARTED=false。
+
+## 2026-09-09 - Task: P3-C 授权决定语义一致性修正
+### What was done
+- 继续现有 P3-C 独立分支，核对 reviewed HEAD 977c64e4a5e57357dd71d5d0551e90be115143d4、main e50f5abc26bc9aa3b5927c2d5c436f47b3ee3a08 及 P3-B ancestry；未创建新工作包。
+- 按用户明确批准范围，以真实合成治理链复现 DEFER/END 仅改 status/hash 后错误授权；复用现有决定类型、状态和 next_action 映射，读取矛盾或缺失必需语义时 fail closed。发现并复现同候选缺 candidate_hash 回退旧授权后，仅前移完整性检查。
+- 新增公共 inspect/tick、dry-run、重启、最新无效记录不得回退旧授权边界；正常有效授权继续独立受到 PHASE2_PREDICTIVE_EXECUTION_DISABLED。无历史改写、无锁/预算/journal/执行权限变更。
+### Testing
+- 项目级 red：authorization-consistency-red.log，2 failed / 53 deselected；第二处 red：authorization-missing-hash-red.log，1 failed / 73 deselected。均先复现再修正，原合法正向断言未降级。
+- 最终 targeted 21 passed；完整 P3-C 105 passed（298.48 秒），Phase 1 235 passed / 12 deselected，Phase 2 24 passed，P3-A 66 passed，P3-B 35 passed。collect-only 880 collected + 1 个继承 legacy module skip，不能写成 passed。没有新增 skip/xfail/排除项。
+- compileall、git diff --check、前端构建、前端 8 tests 成功。Windows Python 3.13.5 / MSC v.1943；fixture 在 C:/Users/84219/AppData/Local/Temp，C: NTFS。原始日志及 JUnit 位于 tmp/p3c-evidence/authorization-final* 和 *-authorization-final.log。
+- 五阶段 template/approve/confirm 分别为 P3-A 5/1/4、Phase 1 72/70/74、Phase 2 18/17/17、P3-B 33/33/33、P3-C 1/82/82。安装的真实执行器/网络/非 Python 进程/保护目录探针为 0；P3-B 硬退出缺失 atexit 不写为零。没有全局 Performance/Final Test/订单探针，未取得的统计不作零声明。
+- 新提交 push CI、Windows/Linux CI、PR-context CI、required checks 与 SonarCloud 在提交时 PENDING。实际 main ruleset 22374784 要求 strict Deterministic governance suite，无 bypass；创建 PR 后继续验证，最终报告绑定 HEAD/run_id。
+### Notes
+- 改动文件：src/chanlun_trader/research_factory/predictive_authorization.py（复用既有状态/动作映射与纯语义校验）；src/chanlun_trader/research_factory/autonomous_control_plane.py（无效授权安全标记与完整性检查顺序）；tests/research_factory/test_phase3c_lifecycle_boundaries_v1.py（21 个真实链边界）；docs/PHASE3C_LIFECYCLE_CERTIFICATION_V1.md（短审计、批准范围、red/green 与认证证据）；CLAUDE.md（记录哈希不能替代语义校验）；progress.md（仅追加本轮）。
+- 回滚点 977c64e4a5e57357dd71d5d0551e90be115143d4；提交后可在本分支 git revert --no-edit <本次修正提交SHA>，不 reset main、不删除历史记录。
+- 用户批准仅为代码协议修正与合成环境验证，不替代领域人工批准；不授权真实研究、Predictive Trial、Final Test、Prospective/Paper 或订单。不 merge/auto-merge，不开始 R1/R2。REAL_WORKSPACE_RUNTIME_INDEPENDENTLY_VERIFIED=NO；PHASE3_CLOSED=false；MAIN_MERGED=false；NEXT_PACKAGE_STARTED=false。
+
+## 2026-09-09 - Task: P3-C 授权一致性修正双平台证据归档
+### What was done
+- 将修正实现 HEAD d8596efa5331470174877594aed9d70bebb4982c 的双平台原始 CI 结果追加至 P3-C 文档；main 重新 fetch 后仍为 e50f5abc26bc9aa3b5927c2d5c436f47b3ee3a08，工作范围未变。
+### Testing
+- 五个 push 工作流均 SUCCESS：Phase 1 34305279318；Phase 2 34305279229；P3-A 34305279236；P3-B 34305279245；P3-C 34305279358。
+- P3-C Linux job 102320571043：Python 3.11.16 / GCC 13.3.0，/tmp 位于 /dev/root ext4；105 passed（167.24 秒）。Windows job 102320571234：Python 3.13.15 / MSC v.1944，C:/Users/RUNNER~1/AppData/Local/Temp 位于 C: NTFS；105 passed（211.96 秒）。
+- Windows Phase 1 235 passed / 12 deselected；Linux 234 passed / 1 原有平台 skipped / 12 deselected；两平台 Phase 2 / P3-A / P3-B 为 24 / 66 / 35 passed；880 collected + 原 legacy module skip。frontend 8 tests/build、compileall、diff 均成功；探针计数与上一条最终日志一致。
+- 原文保存在 tmp/p3c-evidence/push-d8596ef-linux.log 和 push-d8596ef-windows.log。本文档提交不修改源代码/测试；其最新 HEAD 的 push 与 PR-context CI、实际 required check 和 SonarCloud 在提交时 PENDING，继续等待并在最终交付报告绑定实际 HEAD/run_id。
+### Notes
+- 改动文件：docs/PHASE3C_LIFECYCLE_CERTIFICATION_V1.md（追加修正实现 SHA、五个 run_id 和精确平台证据）；progress.md（仅追加本条）。
+- 代码回滚：git revert --no-edit d8596efa5331470174877594aed9d70bebb4982c；文档回滚可 git revert 本文档提交。不得 reset main 或改写领域历史。
+- 继续创建 P3-C → main PR 供独立复核，不 merge、不启用 auto-merge、不开始 R1/R2。PHASE3_CLOSED=false；MAIN_MERGED=false；NEXT_PACKAGE_STARTED=false；REAL_WORKSPACE_RUNTIME_INDEPENDENTLY_VERIFIED=NO。

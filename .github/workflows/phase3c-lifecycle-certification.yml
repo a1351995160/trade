@@ -1,0 +1,163 @@
+name: Phase 3C Lifecycle Certification
+
+on:
+  pull_request:
+  push:
+    branches:
+      - "codex/**"
+
+permissions:
+  contents: read
+
+jobs:
+  control-plane:
+    name: Lifecycle certification (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python: "3.11"
+            pythonpath: tests/isolation:src
+          - os: windows-latest
+            python: "3.13"
+            pythonpath: tests/isolation;src
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    env:
+      PYTHONPATH: ${{ matrix.pythonpath }}
+      CHANLUN_TEST_ISOLATION: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUTF8: "1"
+
+    steps:
+      - name: Configure protected reference before Python starts
+        shell: bash
+        run: echo "CHANLUN_PROTECTED_ROOT=$RUNNER_TEMP/p3c-protected-reference" >> "$GITHUB_ENV"
+
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install deterministic test dependencies
+        env:
+          CHANLUN_TEST_ISOLATION: "0"
+        run: python -m pip install --disable-pip-version-check --require-hashes -r .github/workflows/requirements-p3b.txt
+
+      - name: Record Windows platform evidence
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python -c "import sys, tempfile; print(sys.platform); print(sys.version); print(tempfile.gettempdir())"
+          Get-CimInstance Win32_OperatingSystem | Select-Object Caption, Version
+          $fixtureDrive = [System.IO.Path]::GetPathRoot([System.IO.Path]::GetTempPath()).TrimEnd('\').TrimEnd(':')
+          Get-Volume -DriveLetter $fixtureDrive | Select-Object DriveLetter, FileSystemType | ConvertTo-Json -Compress
+
+      - name: Record Linux platform evidence
+        if: runner.os == 'Linux'
+        run: |
+          python -c "import sys, tempfile; print(sys.platform); print(sys.version); print(tempfile.gettempdir())"
+          uname -a
+          df -T /tmp
+
+      - name: Prove fresh import and startup isolation before collection
+        run: python -m pytest -q tests/research_factory/test_execution_isolation_v1.py
+
+      - name: Set up frontend build
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend shell
+        working-directory: frontend
+        run: npm ci --ignore-scripts && npm run build
+
+      - name: Test frontend presentation
+        working-directory: frontend
+        run: npm test
+
+      - name: Check patch whitespace
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            git diff --check "$PR_BASE_SHA...$PR_HEAD_SHA"
+          else
+            git diff-tree --check --no-commit-id -r HEAD
+          fi
+
+      - name: Compile source
+        run: python -m compileall -q src
+
+      - name: Collect all tests
+        run: python -m pytest --collect-only -q
+
+      - name: Run Phase 1 deterministic regression suite
+        run: >-
+          python -m pytest -q
+          tests/research_factory/test_ai_design_approval_v1.py
+          tests/research_factory/test_research_evolution_ai_design_v1.py
+          tests/research_factory/test_research_proposal_governance_v1.py
+          tests/research_factory/test_durable_frozen_candidate_contract_v1.py
+          tests/research_factory/test_candidate_generation_governance_v1.py
+          tests/research_factory/test_candidate_executable_materialization_v1.py
+          tests/research_factory/test_objective_reconciliation_v1.py
+          tests/research_factory/test_safe_runtime_context_v1.py
+          tests/research_factory/test_structural_entry_projection_reconciliation_v1.py
+          tests/research_factory/test_governance_execution_v1.py
+          tests/research_factory/test_autonomous_orchestrator_v2.py
+          tests/research/test_research_daemon.py
+          tests/research/test_structural_preflight_reconciliation.py
+          tests/research/test_predictive_authorization.py
+          tests/research_console/test_research_console_read_boundary_v1.py
+          tests/test_webapp.py
+          -k "not test_freeze_persist_restart_reload_reconstructs_exact_candidate
+          and not test_missing_frozen_field_fails_closed
+          and not test_provider_candidate_payload_preserves_frozen_execution_semantics
+          and not test_provider_candidate_payload_rejects_unsupported_family_before_runtime
+          and not test_unknown_interaction_semantics_field_fails_closed
+          and not test_validator_rejects_contract_that_cannot_be_executed_by_structural_provider
+          and not test_canonical_context_reads_authoritative_budget_and_marks_repaired_b10_resumable
+          and not test_canonical_runtime_binds_executor_and_reconciles_existing_trial_without_budget_delta
+          and not test_canonical_structural_provider_uses_proven_partition_size
+          and not test_canonical_structural_preflight_rejects_non_executable_contract_before_provider
+          and not test_fastapi_structural_reconciliation_requires_confirmation_and_current_candidate
+          and not test_v1c_current_objective_read_models_preserve_terminal_safety"
+
+      - name: Run Phase 2 control plane suite
+        run: >-
+          python -m pytest -q
+          tests/research_factory/test_agent_capability_registry_v1.py
+          tests/research_factory/test_research_action_permission_v1.py
+          tests/research_factory/test_autonomous_action_journal_v1.py
+          tests/research_factory/test_autonomous_control_plane_v1.py
+          tests/research_factory/test_autonomous_control_plane_web_v1.py
+
+      - name: Run Phase 3B process recovery and identity certification
+        run: python -m pytest -q tests/research_factory/test_restart_recovery_v1.py
+      - name: Run P3C real lifecycle certification
+        run: >-
+          python -m pytest -q -rA --tb=short --junitxml=tmp/p3c-results.xml
+          tests/research_factory/test_phase3c_lifecycle_v1.py
+          tests/research_factory/test_phase3c_lifecycle_boundaries_v1.py
+          tests/research_factory/test_phase3c_restart_v1.py
+          tests/research_factory/test_phase3c_entry_boundaries_v1.py
+
+      - name: Upload lifecycle test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p3c-${{ matrix.os }}-${{ github.sha }}
+          path: tmp/p3c-results.xml
+          if-no-files-found: warn

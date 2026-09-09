@@ -38,6 +38,7 @@ AI_RESEARCH_DESIGN_FILENAME = "AI_RESEARCH_DESIGN_PROPOSAL.json"
 AI_RESEARCH_DESIGN_INPUT_FILENAME = "AI_RESEARCH_DESIGN_INPUT.json"
 AI_RESEARCH_DESIGN_STATE_FILENAME = "AI_RESEARCH_DESIGN_STATE.json"
 AI_RESEARCH_DESIGN_SCHEMA_VERSION = "research-evolution-ai-design-v1"
+EXECUTABLE_AI_DESIGN_SCHEMA_VERSION = "research-evolution-ai-design-v2"
 AI_RESEARCH_DESIGN_INPUT_SCHEMA_VERSION = "research-evolution-ai-design-input-v1"
 AI_RESEARCH_DESIGN_STATE_SCHEMA_VERSION = "research-evolution-ai-design-state-v1"
 AI_RESEARCH_DESIGN_VIEW_SCHEMA_VERSION = "research-evolution-ai-design-view-v1"
@@ -131,7 +132,7 @@ class ResearchEvolutionAIDesignBackendV1(Protocol):
     backend_version: str
 
     def generate(self, payload: Mapping[str, Any]) -> Mapping[str, Any]:
-        """Return only the six high-level design fields."""
+        """Return descriptive fields, with explicit approved-before-use semantics in v2."""
 
 
 def _safe_id(value: Any, *, kind: str) -> str:
@@ -304,7 +305,10 @@ def _source_hash(payload: Any) -> str:
 def ai_design_identity(payload: Mapping[str, Any]) -> dict[str, Any]:
     """Return the canonical identity payload used by the durable design hash."""
 
-    return {key: payload.get(key) for key in AI_DESIGN_IDENTITY_FIELDS}
+    identity = {key: payload.get(key) for key in AI_DESIGN_IDENTITY_FIELDS}
+    if payload.get("schema_version") == EXECUTABLE_AI_DESIGN_SCHEMA_VERSION or "durable_contract" in payload or "hypothesis" in payload:
+        identity.update({key: payload.get(key) for key in ("schema_version", "durable_contract", "hypothesis")})
+    return identity
 
 
 def ai_design_identity_hash(payload: Mapping[str, Any]) -> str:
@@ -661,7 +665,7 @@ class ResearchEvolutionAIDesignServiceV1:
             raise ResearchEvolutionAIDesignError("AI_DESIGN_MECHANISM_REPEATED", "AI 研究设计重复了已禁止机制", status_code=503)
         if not expectation:
             raise ResearchEvolutionAIDesignError("AI_DESIGN_OUTPUT_INVALID", "AI 研究设计缺少验证预期", status_code=503)
-        return {
+        fields = {
             "research_hypothesis": raw["research_hypothesis"].strip(),
             "mechanism_family": raw["mechanism_family"].strip(),
             "candidate_design_intention": raw["candidate_design_intention"].strip(),
@@ -669,6 +673,64 @@ class ResearchEvolutionAIDesignServiceV1:
             "excluded_mechanisms": excluded,
             "validation_expectation": expectation,
         }
+        if raw.get("schema_version") == EXECUTABLE_AI_DESIGN_SCHEMA_VERSION:
+            self._validate_executable_design(raw, context)
+            fields.update({key: jsonable(raw[key]) for key in ("schema_version", "durable_contract", "hypothesis")})
+        elif "durable_contract" in raw or "hypothesis" in raw:
+            raise ResearchEvolutionAIDesignError("AI_DESIGN_SEMANTIC_VERSION_REQUIRED", "完整执行语义必须显式使用 v2 设计格式")
+        elif raw.get("schema_version") not in (None, AI_RESEARCH_DESIGN_SCHEMA_VERSION):
+            raise ResearchEvolutionAIDesignError("AI_DESIGN_VERSION_UNSUPPORTED", "不支持的设计格式")
+        return fields
+
+    def _validate_executable_design(self, raw: Mapping[str, Any], context: EvolutionAIDesignInputV1) -> None:
+        """审批前校验声明的合同；不生成候选、不补全执行字段。"""
+        from .durability import DurableFrozenCandidateContractV1
+        from chanlun_trader.research.strategy_semantic import _semantic_fingerprint
+
+        try:
+            contract = DurableFrozenCandidateContractV1.from_dict(raw["durable_contract"])
+            contract.provider_candidate_payload()
+            record = contract.reconstruct_candidate()
+            candidate = record.candidate
+            hypothesis = raw["hypothesis"]
+            if not isinstance(hypothesis, Mapping) or not record.phase4_eligible:
+                raise ValueError("incomplete semantic contract")
+            if record.preregistration_hash != candidate.preregistration_hash or record.semantic_fingerprint != _semantic_fingerprint(record.signal_predicate, record.exit_predicate):
+                raise ValueError("semantic identity mismatch")
+            if (hypothesis.get("hypothesis_id") != contract.hypothesis_id
+                    or hypothesis.get("hypothesis_fingerprint") != contract.hypothesis_fingerprint
+                    or hypothesis.get("research_hypothesis") != raw["research_hypothesis"]
+                    or hypothesis.get("mechanism_family") != raw["mechanism_family"]
+                    or contract.mechanism != raw["mechanism_family"]
+                    or set(contract.factor_ids) != set(raw["allowed_factors"])):
+                raise ValueError("descriptive and executable semantics conflict")
+            if (contract.policy_identity.get("objective_id") != context.objective_id
+                    or contract.source_provenance.get("objective_id") != context.objective_id):
+                raise ValueError("objective identity mismatch")
+            objective = _read_json(self._objective_path(context.objective_id), code="OBJECTIVE_NOT_FOUND") or {}
+            for field in ("policy_identity", "research_period_identity", "factor_event_registry_identities"):
+                if getattr(contract, field) != objective.get(field):
+                    raise ValueError("registered identity mismatch")
+            if contract.source_provenance.get("batch_id") != objective.get("batch_id"):
+                raise ValueError("batch identity mismatch")
+            horizon = objective.get("holding_horizon", [])
+            if not horizon or not min(horizon) <= contract.holding_period_trading_sessions <= max(horizon):
+                raise ValueError("holding policy mismatch")
+            ready = {item["dataset_id"] for item in context.available_data_capabilities.get("datasets", []) if item.get("status") == "READY" and item.get("PIT_safe") is True}
+            if not set(candidate.required_data) <= ready or not set(contract.factor_ids) <= set(context.allowed_factors):
+                raise ValueError("data or factor capability mismatch")
+            constraints = context.constraints
+            for policy_key, actual in (
+                ("t_plus_1", candidate.t_plus_1_contract.get("enabled")),
+                ("pit_required", candidate.universe_rule.get("pit_required")),
+                ("price_limit_fail_closed", candidate.limit_up_down_contract.get("fail_closed")),
+                ("suspension_fail_closed", candidate.suspension_contract.get("fail_closed")),
+            ):
+                if constraints.get(policy_key) is True and actual is not True:
+                    raise ValueError("execution policy mismatch")
+        except (KeyError, TypeError, ValueError) as exc:
+            # 不把不可信 payload 或底层错误详情暴露给 planner。
+            raise ResearchEvolutionAIDesignError("AI_DESIGN_EXECUTABLE_SEMANTICS_INVALID", "完整执行语义、身份、能力或政策校验失败") from exc
 
     def _design_identity(self, payload: Mapping[str, Any]) -> dict[str, Any]:
         return ai_design_identity(payload)
