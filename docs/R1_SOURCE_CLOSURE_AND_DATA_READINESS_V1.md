@@ -125,3 +125,21 @@ REAL_WORKSPACE_RUNTIME_INDEPENDENTLY_VERIFIED=NO
 ```
 
 提交/推送独立分支后停止，交独立工程复核；不 merge/auto-merge、不开始 R2。回滚用 `git revert --no-edit <R1实现提交SHA>`；文档提交可单独 revert，不 reset main，不删除历史记录。
+
+## 2026-09-09 价格域修正与部分交付 PR 认证
+
+本次继续 R1，复核起点为 6aa0990cc5841a2203cf7517a364fcc7fd88e259，main 仍为 1f6f29c7ad3e8d9371168dfa3bd5201723b48abd。外部源码检查和内存探针仅为线索；本地先在未修改的生产代码上运行新增公共入口测试，取得项目级 red：2 failed，两个实际返回值均为 SYNTHETIC_SCOPE_READY。
+
+复现复用 r1_fixture.dataset，经既有合法生命周期生成合同，以真实 Parquet 输入 inspect_dataset。每例先验证正常包可通过，再仅修改 daily.parquet 的一条 listed=true、suspended=false 且 volume/amount 均为正的记录：一例 OHLC 全零，另一例只有 low 为零且包络仍成立。快照确认其他文件的内容哈希与 mtime 不变，核验前后也未改变输入。冻结因子仍为 field(volume)，没有替换政策、合同、因子定义或证券状态来制造 red。
+
+生产修正仅增加价格域条件：OHLC 必须严格大于零，非有限值和负数继续由原数值检查拒绝；零价格报告 NON_POSITIVE_DAILY_PRICE。volume/amount 继续允许零并拒绝负数及非有限值。保留 OHLC 包络、单位、日期、PIT、因子和身份校验，不补价、不删行、不推断停牌。
+
+本地 R1 green 为 63 passed（124.92 秒）：保留原 32 例，新增两个零价格公共入口用例、24 个 OHLCVA 负数/NaN/正负无穷用例、两个零成交活动正向、两个正价格但非法包络用例，以及独立进程禁止写入的零价格负向。独立进程同时检查文件内容/mtime 和目录集合不变。原分钟校验器、执行器、隔离和治理实现未改。
+
+证据位于忽略目录 tmp/r1-price-evidence：red.log、green.log、r1-results.xml、versions.log 及本次原五阶段/前端日志。环境为独立 venv Python 3.13.5，NumPy 2.4.6、Pandas 3.0.5、PyArrow 25.0.1、pytest 9.1.1；未升级依赖。R1 green 的网络/进程/保护目录计数均为零，真实 Predictive/Structural/AI 调用均为零；合成合法生命周期实际审批与确认各 59 次，不将其抹零。
+
+原始日志 SHA256：red.log 为 06208fd1a2d1c0196e0f1476839270f8212c27f2f1af89dfd51e0950e495ef51；green.log 为 d8e16cce5ab8a54901422b29f9b2321302e1f80517bc02d5af2606bd02b00e29。red 的生产模块来自上述复核起点，green 对应本次价格修正；最终提交 SHA 在提交后记录，不反写或覆盖原始 red。
+
+提交后的六条 push 工作流通过后，创建或复用面向 main 的“R1 部分工程交付”PR，再核验六条 pull_request 工作流、实际 required checks 和 SonarCloud。提交时这些远端结果为 PENDING；最终交付和 PR 正文记录实际最终 HEAD、base、测试合并 checkout SHA、run/job 链接与结果，不借用旧 HEAD 或 push 结果替代 PR-context。PR 不合并，也不启用 auto-merge。
+
+本次不改变源码缺口与认证边界：FORMAL_SOURCE_DEPENDENCY_CLOSURE=BLOCKED_MISSING_SOURCE，REAL_CANDIDATE_DATA_READINESS=NOT_VERIFIED，READY_FOR_REAL_TRIAL=false，R1_FULLY_CLOSED=false。corrected/legacy 原实现仍缺失；本轮不代表完整源码闭包。PHASE3_CLOSED=true 仅限既定 synthetic 工程认证；未核验真实工作区运行能力，也未开始 R2。

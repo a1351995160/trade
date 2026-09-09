@@ -36,6 +36,70 @@ def test_legal_scoped_positive_is_read_only_and_not_trial_ready(package):
     print("R1_REQUIREMENTS_EVIDENCE=" + json.dumps(result, ensure_ascii=False))
 
 
+@pytest.mark.parametrize("columns", [["open", "high", "low", "close"], ["low"]], ids=["all_zero", "low_zero"])
+def test_zero_daily_prices_rejected_at_public_entry(package, columns):
+    original = snapshot(package)
+    assert inspect(package)["status"] == "SYNTHETIC_SCOPE_READY"
+    assert snapshot(package) == original
+    path = package / "daily.parquet"
+    frame = pd.read_parquet(path)
+    state = pd.read_parquet(package / "state.parquet")
+    row = state[(state.date == frame.loc[0, "date"]) & (state.symbol == frame.loc[0, "symbol"])].iloc[0]
+    assert row.listed and not row.suspended
+    assert frame.loc[0, "volume"] > 0 and frame.loc[0, "amount"] > 0
+    frame.loc[0, columns] = 0
+    frame.to_parquet(path)
+    before = snapshot(package)
+    assert {name for name in original if original[name] != before[name]} == {"daily.parquet"}
+    result = inspect(package)
+    print("R1_PRICE_ENTRY_EVIDENCE=" + json.dumps({"columns": columns, "result": result}, ensure_ascii=False))
+    assert snapshot(package) == before
+    assert result["status"] == "INSUFFICIENT_OR_CONFLICT", result
+    assert "ValueError:NON_POSITIVE_DAILY_PRICE" in result["conflicts"]
+
+
+@pytest.mark.parametrize("column", ["open", "high", "low", "close", "volume", "amount"])
+@pytest.mark.parametrize("value", [-1.0, float("nan"), float("inf"), float("-inf")])
+def test_invalid_daily_numeric_values_are_read_only_conflicts(package, column, value):
+    path = package / "daily.parquet"
+    frame = pd.read_parquet(path)
+    frame[column] = frame[column].astype(float)
+    frame.loc[0, column] = value
+    frame.to_parquet(path)
+    before = snapshot(package)
+    result = inspect(package)
+    assert result["status"] == "INSUFFICIENT_OR_CONFLICT", result
+    assert "ValueError:INVALID_NUMERIC_OR_UNITS" in result["conflicts"]
+    assert snapshot(package) == before
+
+
+@pytest.mark.parametrize("column", ["volume", "amount"])
+def test_zero_activity_is_not_a_nonpositive_price(package, column):
+    path = package / "daily.parquet"
+    frame = pd.read_parquet(path)
+    # 预热行不改变信号日 field(volume) 的值，保留冻结因子定义和因子文件。
+    assert frame.loc[0, "date"] < 20240703
+    frame.loc[0, column] = 0
+    frame.to_parquet(path)
+    before = snapshot(package)
+    result = inspect(package)
+    assert result["status"] == "SYNTHETIC_SCOPE_READY", result
+    assert snapshot(package) == before
+
+
+@pytest.mark.parametrize("column,value", [("high", 8), ("low", 12)])
+def test_positive_prices_still_require_ohlc_envelope(package, column, value):
+    path = package / "daily.parquet"
+    frame = pd.read_parquet(path)
+    frame.loc[0, column] = value
+    frame.to_parquet(path)
+    before = snapshot(package)
+    result = inspect(package)
+    assert result["status"] == "INSUFFICIENT_OR_CONFLICT", result
+    assert "ValueError:IMPOSSIBLE_OHLC" in result["conflicts"]
+    assert snapshot(package) == before
+
+
 @pytest.mark.parametrize("mutation,reason", [
     ("missing_file", "FileNotFoundError"), ("missing_column", "amount"),
     ("missing_symbol", "DAILY_COVERAGE"), ("missing_warmup", "DAILY_COVERAGE"),
@@ -234,10 +298,18 @@ def test_formal_minute_reader_and_validator_positive_and_bad_labels(tmp_path):
         validate_5m(actual, BarTimestampSemantics.BAR_END)
 
 
-def test_inspect_process_forbids_writes(package):
+@pytest.mark.parametrize("zero_price", [False, True], ids=["legal", "zero_price"])
+def test_inspect_process_forbids_writes(package, zero_price):
     import os
     import subprocess
     import sys
+    if zero_price:
+        path = package / "daily.parquet"
+        frame = pd.read_parquet(path)
+        frame.loc[0, ["open", "high", "low", "close"]] = 0
+        frame.to_parquet(path)
+    before = snapshot(package)
+    directories = {str(p.relative_to(package)) for p in package.rglob("*") if p.is_dir()}
     script = r'''
 import json, sys
 from chanlun_trader.research_factory.data_readiness import inspect_dataset
@@ -251,4 +323,9 @@ print(json.dumps(inspect_dataset(sys.argv[1], sys.argv[2], start=20240703, end=2
 '''
     result = subprocess.run([sys.executable, "-c", script, str(SOURCE_ROOT), str(package)], cwd=package, env=dict(os.environ, PYTHONPATH=os.pathsep.join([str(SOURCE_ROOT / "tests/isolation"), str(SOURCE_ROOT / "src")])), capture_output=True, text=True, encoding="utf-8")
     assert result.returncode == 0, result.stdout + result.stderr
-    assert json.loads(result.stdout)["status"] == "SYNTHETIC_SCOPE_READY"
+    report = json.loads(result.stdout)
+    assert report["status"] == ("INSUFFICIENT_OR_CONFLICT" if zero_price else "SYNTHETIC_SCOPE_READY"), report
+    if zero_price:
+        assert "ValueError:NON_POSITIVE_DAILY_PRICE" in report["conflicts"]
+    assert snapshot(package) == before
+    assert {str(p.relative_to(package)) for p in package.rglob("*") if p.is_dir()} == directories

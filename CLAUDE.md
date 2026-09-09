@@ -120,3 +120,4 @@
 - 执行 helper 与默认版本化 prompt 从部署源码取；研究 root 不进入 sys.path。缺少 corrected 原实现时明确 BLOCKED_MISSING_SOURCE，不能用同名测试替身补闭包。
 - 只读 inspect 不使用首次调用会试写文件的 tempfile.gettempdir；GuardedResearchReader 的只读诊断使用显式内存 audit_sink，默认正式审计行为保留。
 - 合成因子定义仅认证需求传递/输入核验，不证明真实公式或历史 PIT 数据已就绪；局部 SYNTHETIC_SCOPE_READY 不能当真实候选 READY 或 Trial 授权。
+- 日线 OHLC 必须为有限正数；volume/amount 为有限非负数，不可用统一大于零条件混淆价格与成交活动。价格缺陷须用既有合法 fixture、真实 Parquet 和公共 inspect_dataset 复现，保持合同、因子定义、政策和证券状态不变。

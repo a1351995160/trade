@@ -807,3 +807,28 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - progress.md：追加本轮修正证据。
 - 回滚：git revert --no-edit <本次修正提交SHA> 回到 08fdd307；不 reset main，不改真实工件。
 - 正式 corrected 源码仍 BLOCKED_MISSING_SOURCE，真实数据 NOT_VERIFIED；不 merge/auto-merge，不开始 R2。
+
+## 2026-09-09 - Task: R1 零价格修正与部分工程 PR 认证
+
+### What was done
+
+继续当前 R1，在干净的 6aa0990cc5841a2203cf7517a364fcc7fd88e259 分支核对 origin/main=1f6f29c7ad3e8d9371168dfa3bd5201723b48abd。先用合法 fixture、真实 Parquet 和公共 inspect_dataset 复现全零 OHLC 与单独 low=0 被错误接受，再增加两行生产价格域校验。只改变测试行情行，未改变合同、政策、因子定义或证券状态。保留 volume/amount 有限非负语义、既有校验、源码缺失阻断与真实数据 NOT_VERIFIED。
+
+### Testing
+
+- 项目级 red：2 failed（5.71 秒），实际错误返回 SYNTHETIC_SCOPE_READY，生产代码仍为 6aa0990；其他输入文件内容/mtime 不变。tmp/r1-price-evidence/red.log。
+- R1 green：63 passed（124.92 秒），覆盖合法正向、零价格、OHLCVA 负数/NaN/正负无穷、零成交活动、非法包络，以及独立进程禁止写入的正负向。核验前后文件内容/mtime 和目录集合不变；green.log、r1-results.xml。日志 SHA256 已记入 R1 文档。
+- 原五阶段完整本地回归：P3-A 66 passed；Phase 1 235 passed / 12 deselected；Phase 2 24 passed；P3-B 35 passed；P3-C 105 passed（299.46 秒）。从原工作流逐条执行 pytest/compileall，未更改选择器。
+- collect 943，保留 1 个 legacy 模块 skip；compileall、diff --check 通过；前端 8 tests 和 build 通过，原 bundle 大小警告保留。没有新增 skip/xfail/排除或升级依赖。
+- 独立 venv Python 3.13.5，Pandas 3.0.5、NumPy 2.4.6、PyArrow 25.0.1、pytest 9.1.1。R1 网络/进程/保护目录访问与真实 Predictive/Structural/AI 调用计数均为零；合成审批/确认各 59 次。所有本次日志在 tmp/r1-price-evidence，未覆盖旧证据。
+- 提交时新 HEAD 的 push CI、PR-context CI、required checks 与 SonarCloud=PENDING。六条 push 工作流通过后创建/复用部分交付 PR；实际 SHA、run/job、PR base/head/checkout 和远端结果在最终报告及 PR 正文记录，不借用旧 HEAD 结果。
+
+### Notes
+
+- src/chanlun_trader/research_factory/data_readiness.py：增加日线价格严格正数校验，原有限性/负数检查保留。
+- tests/research_factory/test_r1_data_readiness.py：公共入口价格 red/green、数值边界、零成交活动、包络及无写入子进程负向。
+- docs/R1_SOURCE_CLOSURE_AND_DATA_READINESS_V1.md：追加价格语义、可复核 red/green 哈希和部分 PR 认证边界，保留旧历史。
+- CLAUDE.md：追加日线价格与成交活动语义区别及公共入口复现要求。
+- progress.md：仅追加本轮实现、测试、远端待验证和回滚说明。
+- 回滚点为 6aa0990cc5841a2203cf7517a364fcc7fd88e259；提交后在本独立分支执行 git revert --no-edit <本次价格修正提交SHA>。不 reset main，不删除历史证据或用户改动。
+- FORMAL_SOURCE_DEPENDENCY_CLOSURE=BLOCKED_MISSING_SOURCE；REAL_CANDIDATE_DATA_READINESS=NOT_VERIFIED；READY_FOR_REAL_TRIAL=false；R1_FULLY_CLOSED=false。没有读取真实研究数据/历史产物，没有真实运行，没有 merge/auto-merge，没有开始 R2；完成后停止并交独立复核。

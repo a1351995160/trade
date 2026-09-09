@@ -209,6 +209,8 @@ def inspect_dataset(source_root, dataset_root, *, start, end, previous_identity=
         numeric = daily[requirements["daily_fields"]].apply(pd.to_numeric, errors="coerce")
         if not np.isfinite(numeric.to_numpy()).all() or (numeric[OHLCVA] < 0).any().any():
             raise ValueError("INVALID_NUMERIC_OR_UNITS")
+        if (numeric[["open", "high", "low", "close"]] <= 0).any().any():
+            raise ValueError("NON_POSITIVE_DAILY_PRICE")
         if (daily["high"] < daily[["open", "low", "close"]].max(axis=1)).any() or (daily["low"] > daily[["open", "high", "close"]].min(axis=1)).any():
             raise ValueError("IMPOSSIBLE_OHLC")
         if not (daily["volume_unit"].eq("SHARE") & daily["amount_unit"].eq("CNY") & daily["price_mode"].eq("RAW")).all():
