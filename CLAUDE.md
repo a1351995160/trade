@@ -127,3 +127,8 @@
 - subprocess.Popen 的审计 argv 在 Windows 可为命令行字符串，不应假设各平台都是参数列表；只记录必要脱敏表示和 file/line/function，不读取源码行、locals 或环境。
 - P3-C 子进程 stdout/stderr 必须在失败断言前写入控制者指定的独立 synthetic 证据目录；原失败不因后续通过而关闭，未取得真实触发栈不得修改生产逻辑。
 - GitHub Actions 的 job.env 不支持 runner context；runner 临时证据目录在步骤内由 RUNNER_TEMP 写入 GITHUB_ENV，不能只用 YAML 解析宣称 workflow 有效。
+
+## R1 快照接入约束
+
+- 动态 helper 的公开导出（例如 StrategyCandidateCompilerV2）可能只由外部模块通过属性访问；清理导入必须核对调用方，不可只按本文件 AST Name 判定未使用。
+- 隔离合成 engine 通过显式 source_identity 传递 UNKNOWN，不启动 git 来猜测 cwd 身份；不能把快照哈希伪装成 code_commit，也不能为通过测试放宽进程白名单。

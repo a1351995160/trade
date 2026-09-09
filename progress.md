@@ -962,3 +962,39 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - .github/workflows/r1-source-data-certification.yml：删除同一残留行。
 - progress.md：追加本次实际修正及失败保留。
 - 回滚 git revert --no-edit <本提交SHA> 会回到已知无效配置，不建议部署该回滚点。旧 L1 根因仍 OPEN；不改变研究权限。
+## 2026-09-09 - Task: R1 已有源码快照独立复核交付
+### What was done
+按固定清单校验并打包 17 份原字节源码，附原清单、原提交报告、逻辑路径映射、固定 HEAD 静态比较、旧 io_safety 精确差异与接入定位。来源 LOCAL_WORKTREE_SNAPSHOT，历史 UNVERIFIED。
+### Testing
+固定 HEAD d433709b01289097f89eb24d19c9f147e38ca985；清单/报告/字节数/SHA256 17/17 通过；主脚本与 legacy 指定指纹通过；ZIP 29 成员无缺项、额外项、重名，逐成员字节及 SHA256SUMS 通过；重解析点检查通过；有限静态敏感规则未命中（不构成认证）。未执行或 import 源码，未运行 CI。ZIP SHA256：af9643db56a3218a40ad6b5f12fa50613f076e8f371f9f3b5641bffafb4aed58。
+### Notes
+- tmp/R1_SOURCE_SNAPSHOT_REVIEW_d433709.zip：新增 Git 忽略的本地纯源码审查包，内含文档与验证材料。
+- progress.md：仅追加本轮交付记录。
+回滚：Remove-Item -LiteralPath 'E:\llmwiki\trade-r1-trusted-source-recovery-v1\tmp\R1_SOURCE_SNAPSHOT_REVIEW_d433709.zip'；进度记录保留，追加撤销说明即可。
+真实数据 NOT_VERIFIED；READY_FOR_REAL_TRIAL=false；R1_FULLY_CLOSED=false；Windows L1 OPEN / ROOT_CAUSE_UNCONFIRMED；未接入、未提交推送、未 merge、未开始 R2。
+
+## 2026-09-09 - Task: R1 已固定快照限定接入与合成回归
+### What was done
+将两个缺失脚本的必要调用子图接入部署树，隔离历史批次入口，分离代码/数据/证据根。对 F01–F04 取得真实项目 red/green，限定支持 DAILY/RAW 合成合同。保留当前 io_safety、原 Windows L1 OPEN、全部冻结治理和研究边界。已有快照交付日志原文保留。
+### Testing
+- 原固定副本 17/17 字节/哈希匹配；主脚本、helper 和 ZIP 均匹配指定指纹。来源清单记录本机原字节与 LF 部署文本的不同哈希。
+- 首轮 F01 red，其余在 git 进程调用前拒绝（process_calls=3）；显式传递 UNKNOWN 源码身份后 F01–F04 全部真实 red，再最小修正为 4 passed。
+- 扩展 fixture/精度口径失败保留；公开 helper 导入清理错误导致一次 26 failed/80 passed，恢复真实导出后定向通过。未用 mock 替代核心组件，未放宽隔离。
+- 独立 .venv Python 3.13.5；完整 R1 109 passed（136.87s）；最终新增索引0/100纯指标和完整来源输出后，受影响定向+冷加载51 passed（18.58s）。其中真实合成引擎调用29次，另有真实 Ledger/Fill 指标用例2个。最终执行器/网络/进程/保护路径探针均0；完整R1现有合成审批/确认各59次。
+- git diff --check；冷加载源树/数据哨兵/缺corrected/helper/prompt通过。CI提交时PENDING，最终SHA的既有双平台分支与PR认证单独记录，不借用旧SHA。
+### Notes
+- scripts/run_engine_corrected_phase4_v3.py：提取限定runner/指标，修复排名、退出延迟和成本压力；历史入口拒绝，输出根显式。
+- scripts/run_automated_strategy_validation_v1_rerun_v2.py：提取必要helper，双来源PIT缺证据拒绝，去除历史基准路径和固定身份。
+- src/chanlun_trader/research_factory/source_dependencies.py：两个部署脚本按明确路径加载，不用同名缓存。
+- src/chanlun_trader/engine/engine.py：构造参数传递来源身份；EngineConfig和交易逻辑不变。
+- src/chanlun_trader/research/run_manifest.py：显式来源身份可免隐式git；默认行为不变。
+- tests/research_factory/test_r1_snapshot_integration.py：新增真实编译器/引擎/账务定向与边界矩阵。
+- tests/research_factory/test_r1_source_closure.py：真实正向与独立缺失部署副本负向。
+- tests/research_factory/r1_cold_worker.py：核验两个脚本及所有加载包的实际来源，保留无副作用探针。
+- .github/workflows/r1-source-data-certification.yml：原CI添加本轮定向文件，原选择器和白名单不变。
+- docs/R1_SNAPSHOT_INTEGRATION_V1.md：记录支持/阻断矩阵、红绿证据、失败和未覆盖范围。
+- docs/R1_SNAPSHOT_INTEGRATION_SOURCE_MANIFEST.json：记录原快照和适配后的内容身份。
+- CLAUDE.md：追加动态helper公开导出及显式来源身份注意事项。
+- progress.md：仅追加本轮施工与验证记录。
+- tmp/r1-snapshot-*.log、tmp/r1-integration-local-final.log、tmp/r1-targeted-final.log、tmp/r1-integration-local.xml、tmp/r1-targeted-final.xml：忽略目录保留实际失败及成功证据，逐项见本轮文档。
+回滚：git revert --no-edit <本轮实现提交SHA>；回滚点d433709b01289097f89eb24d19c9f147e38ca985。日志保留，撤销时另行追加记录；不reset、不修改原研究目录。HISTORICAL_PROVENANCE=UNVERIFIED；真实数据NOT_VERIFIED；READY_FOR_REAL_TRIAL=false；R1_FULLY_CLOSED=false；未merge、未开始R2。
