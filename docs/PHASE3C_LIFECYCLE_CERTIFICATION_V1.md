@@ -35,7 +35,21 @@ green 还验证新进程 inspect/dry_run 返回同一安全标记，文件内容
 
 本次各阶段主进程 template/approve/confirm：P3-A 5/1/4，Phase 1 72/70/74，Phase 2 18/17/17，P3-B 33/33/33，P3-C 1/82/82；均为运行局部探针，不是独立人工行为数。已安装的 forbidden_predictive/structural/ai 与 network/process/protected_accesses 实测均 0；保留 worker 的独立检查点与 P3-B 硬退出 UNAVAILABLE 标记，不把缺失统计、合成调用或未安装的 Performance/Final Test/订单全局探针写为 0。
 
-NEW_HEAD 为包含本节及生产修正的分支提交；push/PR run_id 与最终 HEAD 由交付报告和 PR 检查记录绑定。CI_STATUS_AT_COMMIT=PENDING。项目级证据已经取得，但 READY_FOR_FINAL_INDEPENDENT_REVIEW 在本提交时仍等待新 HEAD 的双平台和 PR-context 检查，不沿用旧 HEAD 的 ready 声明。
+修正实现 HEAD：`d8596efa5331470174877594aed9d70bebb4982c`。该 HEAD 的五个 push 工作流均 SUCCESS：Phase 1 [34305279318](https://github.com/a1351995160/trade/actions/runs/34305279318)，Phase 2 [34305279229](https://github.com/a1351995160/trade/actions/runs/34305279229)，P3-A [34305279236](https://github.com/a1351995160/trade/actions/runs/34305279236)，P3-B [34305279245](https://github.com/a1351995160/trade/actions/runs/34305279245)，P3-C [34305279358](https://github.com/a1351995160/trade/actions/runs/34305279358)。
+
+P3-C 原始 job 日志：Linux job 102320571043，Windows job 102320571234；本地保存为 `tmp/p3c-evidence/push-d8596ef-linux.log` 和 `push-d8596ef-windows.log`。
+
+| 修正 HEAD 的实测证据 | Windows CI | Linux CI |
+|---|---|---|
+| Python | 3.13.15，MSC v.1944 | 3.11.16，GCC 13.3.0 |
+| fixture 临时根及文件系统 | C:/Users/RUNNER~1/AppData/Local/Temp；C: NTFS | /tmp；/dev/root ext4 |
+| Phase 1 | 235 passed / 12 deselected | 234 passed / 1 原有平台 skipped / 12 deselected |
+| Phase 2 / P3-A / P3-B | 24 / 66 / 35 passed | 24 / 66 / 35 passed |
+| P3-C | 105 passed，211.96 秒 | 105 passed，167.24 秒 |
+| collect-only | 880 collected + 原有 legacy module skip | 同左 |
+| frontend / compile / diff | 8 tests、build、compileall、diff 成功 | 同左 |
+
+两平台各阶段探针计数与上列本地最终计数一致；仅证明已安装探针覆盖范围。本文后的文档提交不更改代码或测试；最终 NEW_HEAD、push/PR run_id、PR head/base/checkout SHA 由交付报告及 PR 检查记录绑定。PR-context CI 与 SonarCloud 在本文提交时仍为 PENDING，READY_FOR_FINAL_INDEPENDENT_REVIEW 需等待它们完成；不以 push SUCCESS 代替 PR 验证。
 
 实际 main ruleset 22374784（main-merge-governance）要求 strict `Deterministic governance suite`，无 bypass actor；classic branch protection API 返回 Branch not protected，不能据此称没有 ruleset。SonarCloud 是否出现及结果须读取本次 PR checks，不臆测为 required。
 

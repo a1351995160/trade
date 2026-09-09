@@ -714,3 +714,16 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - 改动文件：src/chanlun_trader/research_factory/predictive_authorization.py（复用既有状态/动作映射与纯语义校验）；src/chanlun_trader/research_factory/autonomous_control_plane.py（无效授权安全标记与完整性检查顺序）；tests/research_factory/test_phase3c_lifecycle_boundaries_v1.py（21 个真实链边界）；docs/PHASE3C_LIFECYCLE_CERTIFICATION_V1.md（短审计、批准范围、red/green 与认证证据）；CLAUDE.md（记录哈希不能替代语义校验）；progress.md（仅追加本轮）。
 - 回滚点 977c64e4a5e57357dd71d5d0551e90be115143d4；提交后可在本分支 git revert --no-edit <本次修正提交SHA>，不 reset main、不删除历史记录。
 - 用户批准仅为代码协议修正与合成环境验证，不替代领域人工批准；不授权真实研究、Predictive Trial、Final Test、Prospective/Paper 或订单。不 merge/auto-merge，不开始 R1/R2。REAL_WORKSPACE_RUNTIME_INDEPENDENTLY_VERIFIED=NO；PHASE3_CLOSED=false；MAIN_MERGED=false；NEXT_PACKAGE_STARTED=false。
+
+## 2026-09-09 - Task: P3-C 授权一致性修正双平台证据归档
+### What was done
+- 将修正实现 HEAD d8596efa5331470174877594aed9d70bebb4982c 的双平台原始 CI 结果追加至 P3-C 文档；main 重新 fetch 后仍为 e50f5abc26bc9aa3b5927c2d5c436f47b3ee3a08，工作范围未变。
+### Testing
+- 五个 push 工作流均 SUCCESS：Phase 1 34305279318；Phase 2 34305279229；P3-A 34305279236；P3-B 34305279245；P3-C 34305279358。
+- P3-C Linux job 102320571043：Python 3.11.16 / GCC 13.3.0，/tmp 位于 /dev/root ext4；105 passed（167.24 秒）。Windows job 102320571234：Python 3.13.15 / MSC v.1944，C:/Users/RUNNER~1/AppData/Local/Temp 位于 C: NTFS；105 passed（211.96 秒）。
+- Windows Phase 1 235 passed / 12 deselected；Linux 234 passed / 1 原有平台 skipped / 12 deselected；两平台 Phase 2 / P3-A / P3-B 为 24 / 66 / 35 passed；880 collected + 原 legacy module skip。frontend 8 tests/build、compileall、diff 均成功；探针计数与上一条最终日志一致。
+- 原文保存在 tmp/p3c-evidence/push-d8596ef-linux.log 和 push-d8596ef-windows.log。本文档提交不修改源代码/测试；其最新 HEAD 的 push 与 PR-context CI、实际 required check 和 SonarCloud 在提交时 PENDING，继续等待并在最终交付报告绑定实际 HEAD/run_id。
+### Notes
+- 改动文件：docs/PHASE3C_LIFECYCLE_CERTIFICATION_V1.md（追加修正实现 SHA、五个 run_id 和精确平台证据）；progress.md（仅追加本条）。
+- 代码回滚：git revert --no-edit d8596efa5331470174877594aed9d70bebb4982c；文档回滚可 git revert 本文档提交。不得 reset main 或改写领域历史。
+- 继续创建 P3-C → main PR 供独立复核，不 merge、不启用 auto-merge、不开始 R1/R2。PHASE3_CLOSED=false；MAIN_MERGED=false；NEXT_PACKAGE_STARTED=false；REAL_WORKSPACE_RUNTIME_INDEPENDENTLY_VERIFIED=NO。
