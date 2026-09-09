@@ -698,3 +698,19 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - 改动文件：docs/PHASE3C_LIFECYCLE_CERTIFICATION_V1.md（绑定实现 HEAD、双平台 CI、真实计数与复核停止点）；docs/AUTONOMOUS_RESEARCH_MASTER_ROADMAP_V1.md（P3-C 标记分支认证完成待复核）；progress.md（仅追加本条证据）。
 - 回滚代码：git revert --no-edit c37fd46c9bfa83968dc1d9ba7effd5d89f4047bd。文档回滚点为同一 SHA，后续可 git revert 本文档提交；不 reset main。
 - 无 merge/auto-merge，无 R1/R2，无真实研究。PHASE3_CLOSED=false；MAIN_MERGED=false；NEXT_PACKAGE_STARTED=false。
+
+## 2026-09-09 - Task: P3-C 授权决定语义一致性修正
+### What was done
+- 继续现有 P3-C 独立分支，核对 reviewed HEAD 977c64e4a5e57357dd71d5d0551e90be115143d4、main e50f5abc26bc9aa3b5927c2d5c436f47b3ee3a08 及 P3-B ancestry；未创建新工作包。
+- 按用户明确批准范围，以真实合成治理链复现 DEFER/END 仅改 status/hash 后错误授权；复用现有决定类型、状态和 next_action 映射，读取矛盾或缺失必需语义时 fail closed。发现并复现同候选缺 candidate_hash 回退旧授权后，仅前移完整性检查。
+- 新增公共 inspect/tick、dry-run、重启、最新无效记录不得回退旧授权边界；正常有效授权继续独立受到 PHASE2_PREDICTIVE_EXECUTION_DISABLED。无历史改写、无锁/预算/journal/执行权限变更。
+### Testing
+- 项目级 red：authorization-consistency-red.log，2 failed / 53 deselected；第二处 red：authorization-missing-hash-red.log，1 failed / 73 deselected。均先复现再修正，原合法正向断言未降级。
+- 最终 targeted 21 passed；完整 P3-C 105 passed（298.48 秒），Phase 1 235 passed / 12 deselected，Phase 2 24 passed，P3-A 66 passed，P3-B 35 passed。collect-only 880 collected + 1 个继承 legacy module skip，不能写成 passed。没有新增 skip/xfail/排除项。
+- compileall、git diff --check、前端构建、前端 8 tests 成功。Windows Python 3.13.5 / MSC v.1943；fixture 在 C:/Users/84219/AppData/Local/Temp，C: NTFS。原始日志及 JUnit 位于 tmp/p3c-evidence/authorization-final* 和 *-authorization-final.log。
+- 五阶段 template/approve/confirm 分别为 P3-A 5/1/4、Phase 1 72/70/74、Phase 2 18/17/17、P3-B 33/33/33、P3-C 1/82/82。安装的真实执行器/网络/非 Python 进程/保护目录探针为 0；P3-B 硬退出缺失 atexit 不写为零。没有全局 Performance/Final Test/订单探针，未取得的统计不作零声明。
+- 新提交 push CI、Windows/Linux CI、PR-context CI、required checks 与 SonarCloud 在提交时 PENDING。实际 main ruleset 22374784 要求 strict Deterministic governance suite，无 bypass；创建 PR 后继续验证，最终报告绑定 HEAD/run_id。
+### Notes
+- 改动文件：src/chanlun_trader/research_factory/predictive_authorization.py（复用既有状态/动作映射与纯语义校验）；src/chanlun_trader/research_factory/autonomous_control_plane.py（无效授权安全标记与完整性检查顺序）；tests/research_factory/test_phase3c_lifecycle_boundaries_v1.py（21 个真实链边界）；docs/PHASE3C_LIFECYCLE_CERTIFICATION_V1.md（短审计、批准范围、red/green 与认证证据）；CLAUDE.md（记录哈希不能替代语义校验）；progress.md（仅追加本轮）。
+- 回滚点 977c64e4a5e57357dd71d5d0551e90be115143d4；提交后可在本分支 git revert --no-edit <本次修正提交SHA>，不 reset main、不删除历史记录。
+- 用户批准仅为代码协议修正与合成环境验证，不替代领域人工批准；不授权真实研究、Predictive Trial、Final Test、Prospective/Paper 或订单。不 merge/auto-merge，不开始 R1/R2。REAL_WORKSPACE_RUNTIME_INDEPENDENTLY_VERIFIED=NO；PHASE3_CLOSED=false；MAIN_MERGED=false；NEXT_PACKAGE_STARTED=false。

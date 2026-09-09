@@ -1,5 +1,46 @@
 # P3-C 生命周期认证与完整语义合同
 
+## 授权语义一致性复核修正（2026-09-09）
+
+本节为当前工作，后续 c37fd46/977c64e 的认证为历史证据。WORK_PACKAGE=P3-C；REVIEWED_HEAD=`977c64e4a5e57357dd71d5d0551e90be115143d4`；继续原独立分支。用户明确授权仅修复授权读取的一致性，不改变人工治理、预测执行权限、预算、journal 或锁；不回写历史，不开始新包。
+
+短审计：现有读取验证 decision_hash、decision_id、confirmation_token_hash 和预算快照，但只按 decision_status 判断授权。治理服务已有三组唯一对应关系；无需新状态机或身份体系。文件级计划及实际落点：
+
+- test_phase3c_lifecycle_boundaries_v1.py：先以真实 Scenario 建立 Design、人工批准、Proposal、Freeze、物化和显式合成 Structural PASS，再由真实 PredictiveGovernanceService 生成 DEFER/END；只篡改 status/hash，覆盖公共读取、dry-run、重启与历史只读。追加最新矛盾记录不得回退到先前授权的矩阵。
+- predictive_authorization.py：提取既有决定类型→状态、状态→next_action 映射供写入和读取共同使用；纯校验要求已有身份字段完整、类型/状态/派生动作一致且 structural_status=PASS。
+- autonomous_control_plane.py：在既有哈希/确认/预算验证之前验证上述语义；矛盾、未知或缺失语义返回 authorized=false、PREDICTIVE_AUTHORIZATION_INVALID，保留原校验。合法授权仍是 authorized=true + PHASE2_PREDICTIVE_EXECUTION_DISABLED，二者不混淆。
+- 本文、progress.md、CLAUDE.md：保留失败证据，追加批准范围、验证和复核停止点；不改原五阶段选择或 skip/xfail。
+
+### 项目级 red / green
+
+外部证据仅为源码检查及抽取函数探针。本次本地 **真实服务链** red：两个参数均在公共 inspect 的 `assert authorized is False` 失败，实际返回 authorized=true。DEFER_PREDICTIVE_TRIAL 与 END_CANDIDATE_RESEARCH_DIRECTION 的原 decision_type、身份、确认 token、next_action 等字段均未改变；测试逐键断言差异集合恰为 decision_status、decision_hash。
+
+保留日志 `tmp/p3c-evidence/authorization-consistency-red.log`（2 failed / 53 deselected，6.33 秒）；生产修正后同两例 `authorization-consistency-green.log`（2 passed / 53 deselected，13.42 秒）。这里 deselected 是定向 red/green 的 `-k` 选择，不是完整认证排除项。初次 red 的关键原文：
+
+```text
+FAILED ...test_non_authorizing_status_rehash_fails_closed_in_real_chain[DEFER_PREDICTIVE_TRIAL]
+FAILED ...test_non_authorizing_status_rehash_fails_closed_in_real_chain[END_CANDIDATE_RESEARCH_DIRECTION]
+E   AssertionError: {'authorized': True, 'decision_status': 'AUTHORIZED', 'authorization_id': 'P3C_AUTH', ...}
+E   assert True is False
+2 failed, 53 deselected in 6.33s
+```
+
+green 还验证新进程 inspect/dry_run 返回同一安全标记，文件内容、mtime、目录快照不变，无 TrialLedger。合法三类决定、合法 DEFER 后新明确批准、预算/身份/确认篡改、新旧语义合同和 L1—L10 沿用并重新运行。没有用全局 DENY 掩盖无效授权，也没有把合法正向验收改成拒绝。
+
+完整回归首轮 104 passed（299.45 秒）后，顺序复查再复现“同候选最新记录缺 candidate_hash 被跳过，回退旧授权”：`authorization-missing-hash-red.log` 为 1 failed / 73 deselected（7.98 秒），同样是公共 inspect 返回 True 导致失败。因此将完整性校验前移至候选 ID 匹配后、候选 hash 过滤前。范围仍是当前必需字段与 fail-closed，不更改跨候选身份协议。追加普通 tick 断言：不规划 START、不执行领域动作、canonical JSON/JSONL 和预算原文不变；控制平面只可写其既有观察投影。
+
+本地实际 Windows Python 3.13.5（MSC v.1943），fixture 临时根 C:/Users/84219/AppData/Local/Temp，C: NTFS。当前新 HEAD 的完整回归、push CI、PR-context CI 和 SonarCloud 在提交前后按实际结果补充；尚未取得的证据为 PENDING，不能沿用历史 HEAD 的绿色结论。
+
+最终本地结果：定向新增 21 passed（64.97 秒）；完整 P3-C **105 passed**（298.48 秒）；Phase 1 **235 passed / 12 deselected**；Phase 2 **24 passed**；P3-A **66 passed**；P3-B **35 passed**。collect-only **880 collected**，另 1 个继承 legacy module skip；compileall、git diff --check、前端构建及 8 tests 成功。最终日志为 `tmp/p3c-evidence/authorization-final.log`、`authorization-final.xml`、`authorization-final-regressions.log`，各阶段原文为 `*-authorization-final.log`。
+
+本次各阶段主进程 template/approve/confirm：P3-A 5/1/4，Phase 1 72/70/74，Phase 2 18/17/17，P3-B 33/33/33，P3-C 1/82/82；均为运行局部探针，不是独立人工行为数。已安装的 forbidden_predictive/structural/ai 与 network/process/protected_accesses 实测均 0；保留 worker 的独立检查点与 P3-B 硬退出 UNAVAILABLE 标记，不把缺失统计、合成调用或未安装的 Performance/Final Test/订单全局探针写为 0。
+
+NEW_HEAD 为包含本节及生产修正的分支提交；push/PR run_id 与最终 HEAD 由交付报告和 PR 检查记录绑定。CI_STATUS_AT_COMMIT=PENDING。项目级证据已经取得，但 READY_FOR_FINAL_INDEPENDENT_REVIEW 在本提交时仍等待新 HEAD 的双平台和 PR-context 检查，不沿用旧 HEAD 的 ready 声明。
+
+实际 main ruleset 22374784（main-merge-governance）要求 strict `Deterministic governance suite`，无 bypass actor；classic branch protection API 返回 Branch not protected，不能据此称没有 ruleset。SonarCloud 是否出现及结果须读取本次 PR checks，不臆测为 required。
+
+REAL_WORKSPACE_RUNTIME_INDEPENDENTLY_VERIFIED=NO；PHASE3_CLOSED=false；MAIN_MERGED=false；NEXT_PACKAGE_STARTED=false。回滚点为 reviewed HEAD；提交后可在本分支 `git revert --no-edit <本次修正提交SHA>`，不 reset main、不删除研究历史。
+
 ## 双平台认证结论（2026-09-09）
 
 实现 HEAD：`c37fd46c9bfa83968dc1d9ba7effd5d89f4047bd`。分支仍为 `codex/phase3c-lifecycle-certification-v1`；origin/main 为 `e50f5abc26bc9aa3b5927c2d5c436f47b3ee3a08`，main 基线与 P3-B 认证 HEAD 的 ancestry 检查均 exit 0。

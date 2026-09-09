@@ -9,6 +9,87 @@ from chanlun_trader.research_factory.candidate_generation import CandidateGenera
 from chanlun_trader.research_factory.common import stable_hash
 
 
+@pytest.mark.parametrize("choice", ["DEFER_PREDICTIVE_TRIAL", "END_CANDIDATE_RESEARCH_DIRECTION"])
+def test_non_authorizing_status_rehash_fails_closed_in_real_chain(tmp_path, choice):
+    from test_phase3c_restart_v1 import finish, launch, selected
+    from test_restart_recovery_v1 import snapshot
+
+    scenario = Scenario(tmp_path).initialize().ready()
+    scenario.structural()
+    scenario.authorize(choice)
+    assert scenario.plane.inspect(scenario.objective_id)["authorization"]["authorized"] is False
+    path = tmp_path / f"reports/research_orchestrator_v2/{scenario.objective_id}/predictive_governance_decisions.jsonl"
+    original = json.loads(path.read_bytes())
+    row = dict(original)
+    row["decision_status"] = "AUTHORIZED"
+    row["decision_hash"] = stable_hash({key: value for key, value in row.items() if key != "decision_hash"})
+    assert {key for key in row if row[key] != original[key]} == {"decision_status", "decision_hash"}
+    path.write_text(json.dumps(row) + "\n", encoding="utf-8")
+    before = snapshot(tmp_path)
+    result = scenario.plane.inspect(scenario.objective_id)
+    assert result["authorization"]["authorized"] is False, result["authorization"]
+    assert result["authorization"]["reason_code"] == "PREDICTIVE_AUTHORIZATION_INVALID"
+    assert selected(result) != "START_PREDICTIVE_TRIAL"
+    assert scenario.plane.tick(scenario.objective_id, dry_run=True)["authorization"] == result["authorization"]
+    assert snapshot(tmp_path) == before
+    for operation in ("inspect", "dry_run"):
+        restarted = finish(launch(scenario, operation))
+        assert restarted["authorization"] == result["authorization"]
+        assert selected(restarted) == selected(result)
+        assert snapshot(tmp_path) == before
+    canonical = {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file() and p.suffix in {".json", ".jsonl"} and "research_control_plane" not in p.parts}
+    ticked = scenario.plane.tick(scenario.objective_id)
+    assert ticked["authorization"] == result["authorization"]
+    assert selected(ticked) != "START_PREDICTIVE_TRIAL"
+    assert ticked["execution"] is None
+    assert all(p.read_bytes() == contents for p, contents in canonical.items())
+    assert not list(tmp_path.rglob("factory_trial_ledger.json"))
+
+
+@pytest.mark.parametrize("field,value", [
+    ("decision_status", "DEFERRED"), ("decision_status", "ENDED"),
+    ("decision_status", "UNKNOWN"), ("decision_status", None),
+    ("decision_type", "DEFER_PREDICTIVE_TRIAL"),
+    ("decision_type", "END_CANDIDATE_RESEARCH_DIRECTION"),
+    ("decision_type", "UNKNOWN"), ("decision_type", None),
+    ("decision_type", []),
+    ("next_action", "PREDICTIVE_VALIDATION_AUTHORIZATION_REQUIRED"),
+    ("next_action", None), ("structural_status", "FAIL"),
+    ("structural_status", None), ("objective_id", None),
+    ("structural_reconciliation_id", None), ("governance_decision_id", None),
+    ("authorization_id", None), ("preview_hash", None), ("candidate_hash", None),
+])
+def test_inconsistent_latest_decision_never_falls_back_to_authorization(tmp_path, field, value):
+    from test_phase3c_restart_v1 import selected
+    from test_restart_recovery_v1 import snapshot
+
+    scenario = Scenario(tmp_path).initialize().ready()
+    scenario.structural()
+    scenario.authorize()
+    valid = scenario.plane.inspect(scenario.objective_id)
+    assert valid["authorization"]["authorized"] is True
+    assert selected(valid) == "START_PREDICTIVE_TRIAL"
+    assert valid["decision"]["permission"]["reason_code"] == "PHASE2_PREDICTIVE_EXECUTION_DISABLED"
+    path = tmp_path / f"reports/research_orchestrator_v2/{scenario.objective_id}/predictive_governance_decisions.jsonl"
+    history = path.read_bytes()
+    row = json.loads(history)
+    if value is None:
+        del row[field]
+    else:
+        row[field] = value
+    row["decision_hash"] = stable_hash({key: value for key, value in row.items() if key != "decision_hash"})
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(row) + "\n")
+    before = snapshot(tmp_path)
+    result = scenario.plane.inspect(scenario.objective_id)
+    assert result["authorization"]["authorized"] is False
+    assert result["authorization"]["reason_code"] == "PREDICTIVE_AUTHORIZATION_INVALID"
+    assert selected(result) != "START_PREDICTIVE_TRIAL"
+    assert snapshot(tmp_path) == before
+    assert path.read_bytes().startswith(history)
+    assert not list(tmp_path.rglob("factory_trial_ledger.json"))
+
+
 @pytest.mark.parametrize("field", ["decision_hash", "authorization_id", "preview_hash", "confirmation_token_hash", "structural_reconciliation_id", "objective_id", "candidate_id", "candidate_hash"])
 def test_authorization_tamper_is_not_valid_even_when_trial_disabled(tmp_path, field):
     scenario = Scenario(tmp_path).initialize().ready()

@@ -1038,7 +1038,7 @@ class AutonomousResearchControlPlaneV1:
     def _predictive_authorization(self, objective_id: str, candidate_id: str, candidate_hash: str, budget_identity: Mapping[str, Any]) -> dict[str, Any]:
         """Read only allowlisted authorization metadata after Structural PASS."""
         from .budget import BudgetLedgerMismatchError, SearchBudgetRegistryV1
-        from .predictive_authorization import AUTHORIZATION_SCHEMA_VERSION
+        from .predictive_authorization import AUTHORIZATION_SCHEMA_VERSION, predictive_decision_semantics_valid
 
         path = self.root / "reports" / "research_orchestrator_v2" / objective_id / "predictive_governance_decisions.jsonl"
         if not path.is_file():
@@ -1060,9 +1060,11 @@ class AutonomousResearchControlPlaneV1:
                     continue
                 if str(row.get("candidate_id") or "") != candidate_id:
                     continue
+                if not predictive_decision_semantics_valid(row):
+                    return {"authorized": False, "source_path": path.relative_to(self.root).as_posix(), "authorization_id": None, "reason_code": "PREDICTIVE_AUTHORIZATION_INVALID"}
                 if candidate_hash and str(row.get("candidate_hash") or "") != candidate_hash:
                     continue
-                status = str(row.get("decision_status") or row.get("status") or "")
+                status = row["decision_status"]
                 if status in {"AUTHORIZED", "DEFERRED", "ENDED"}:
                     identity = {key: value for key, value in row.items() if key != "decision_hash"}
                     if not row.get("decision_hash") or row["decision_hash"] != stable_hash(identity):
