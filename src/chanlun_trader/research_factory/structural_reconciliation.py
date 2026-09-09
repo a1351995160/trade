@@ -1,6 +1,8 @@
 """Reconcile Structural provider evidence into an outcome-blind canonical result."""
 from __future__ import annotations
 
+from .mutation_boundary import mutation_boundary
+
 import hashlib
 import json
 from pathlib import Path
@@ -148,6 +150,7 @@ def _assert_structural_blind(result: StructuralResult) -> None:
         raise RuntimeError("structural result crossed the outcome-blind boundary") from exc
 
 
+@mutation_boundary()
 def persist_canonical_structural_result(
     root: str | Path,
     *,
@@ -683,6 +686,7 @@ def _write_structural_governance(
     return payload
 
 
+@mutation_boundary()
 def persist_governed_structural_pass_boundary(
     root: str | Path,
     *,
@@ -1122,6 +1126,7 @@ def _validated_audited_closure_result(root: Path, *, objective_id: str, candidat
     )
 
 
+@mutation_boundary()
 def reconcile_structural_pass(
     root: str | Path,
     *,

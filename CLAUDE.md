@@ -99,3 +99,11 @@
 - Web import/startup 和只读 GET 不得通过 Store 构造创建目录；目录创建放在既有显式写入路径，审计内容与恢复算法保持原语义。
 - Web 服务必须通过 create_app 显式绑定 research_root；helper 不得回退 PROJECT_ROOT，静态文件仍属于源码目录。
 - 判断会启动进程的治理模式时，必须与领域服务使用相同的大小写规范化；SYNTHETIC 和 GOVERNED 不替代确认、身份与具体执行策略。
+
+## P3-B 恢复与测试约束
+
+- 公共恢复只接收 root 与 Objective；从持久 intent 校验原 Action，先匹配 canonical 副作用，再判断无副作用时是否仍可重试。Action hash 本身不授予权限。
+- Objective 写锁使用常驻文件和内核锁；不得按 TTL/PID 删除锁文件接管。共享 registry/graph 的读取、合并和写入必须处于资源锁内。
+- dry-run 不创建锁文件、不修补 journal、不生成工件。Windows 锁定字节可能拒绝读取；文件快照应对零长度锁文件使用空内容哈希，不尝试读取锁定字节。
+- 隔离认证使用全新 venv 与现场 synthetic workspace；系统 Python 的 editable distribution 发现可能访问原研究目录，不能沿用污染环境并把拦截次数算成零。
+- 安全重试必须先确认已有回执，再登记一次 STARTED；FAILED/retry marker 下先 begin 再 allow_retry/begin 会虚增 attempt。回归必须检查落盘 FAILED 和真实 marker 退出点，不能用返回 FAILED 或普通 STARTED 代替。

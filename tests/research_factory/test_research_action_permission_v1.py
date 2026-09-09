@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from chanlun_trader.execution_policy import ExecutionPolicy
 
 from chanlun_trader.research_factory.autonomous_control_plane import (
     ALLOW_MANUAL_ONLY,
@@ -34,7 +35,7 @@ def test_canonical_conflict_is_denied_before_any_action_plan(tmp_path: Path, mon
 
 def test_governance_wait_is_manual_even_when_candidate_capability_exists(tmp_path: Path) -> None:
     root = _prepare(tmp_path)
-    plane = AutonomousResearchControlPlaneV1(root)
+    plane = AutonomousResearchControlPlaneV1(root, execution_policy=ExecutionPolicy(mode="GOVERNED", workspace_kind="SYNTHETIC"))
     first = plane.tick(OBJECTIVE_ID)
     assert first["execution"]["execution_status"] == "COMPLETED"
 

@@ -8,11 +8,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import json
+import os
+import re
 from pathlib import Path
 import threading
 from typing import Any, Callable, Iterable, Mapping
 
 from .common import now_timestamp, stable_hash
+from .mutation_boundary import mutation_boundary
+from .context import PerformanceBlindGuard, PerformanceLeakError
 
 
 ACTION_JOURNAL_SCHEMA_VERSION = "autonomous-action-execution-receipt-v1"
@@ -25,6 +29,15 @@ EXECUTION_RETRY_ALLOWED = "RECOVERY_RETRY_ALLOWED"
 
 class AutonomousActionJournalError(RuntimeError):
     """Fail-closed journal error."""
+
+
+def _sync_directory(path: Path) -> None:
+    if os.name != "nt":
+        descriptor = os.open(path, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
 
 
 @dataclass(frozen=True)
@@ -46,6 +59,7 @@ class AutonomousActionExecutionReceiptV1:
     error_code: str | None = None
     error_message_zh: str | None = None
     result_summary: Mapping[str, Any] = field(default_factory=dict)
+    execution_intent_hash: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         payload: dict[str, Any] = {
@@ -67,13 +81,18 @@ class AutonomousActionExecutionReceiptV1:
             "error_message_zh": self.error_message_zh,
             "result_summary": dict(self.result_summary or {}),
         }
+        if self.execution_intent_hash is not None:
+            payload["schema_version"] = "autonomous-action-execution-receipt-v2"
+            payload["execution_intent_hash"] = self.execution_intent_hash
         payload["receipt_hash"] = self.receipt_hash or stable_hash(payload)
         return payload
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any]) -> "AutonomousActionExecutionReceiptV1":
-        if str(payload.get("schema_version") or ACTION_JOURNAL_SCHEMA_VERSION) != ACTION_JOURNAL_SCHEMA_VERSION:
+        if payload.get("schema_version") not in {ACTION_JOURNAL_SCHEMA_VERSION, "autonomous-action-execution-receipt-v2"}:
             raise AutonomousActionJournalError("action receipt schema mismatch")
+        if payload.get("schema_version") == "autonomous-action-execution-receipt-v2" and not payload.get("execution_intent_hash"):
+            raise AutonomousActionJournalError("action receipt intent hash missing")
         return cls(
             action_id=str(payload.get("action_id") or ""),
             objective_id=str(payload.get("objective_id") or ""),
@@ -92,6 +111,7 @@ class AutonomousActionExecutionReceiptV1:
             error_code=str(payload.get("error_code")) if payload.get("error_code") else None,
             error_message_zh=str(payload.get("error_message_zh")) if payload.get("error_message_zh") else None,
             result_summary=dict(payload.get("result_summary") or {}) if isinstance(payload.get("result_summary"), Mapping) else {},
+            execution_intent_hash=payload.get("execution_intent_hash"),
         )
 
 
@@ -126,6 +146,8 @@ class AutonomousActionExecutionJournalV1:
     ) -> None:
         self.root = Path(root).resolve()
         self.objective_id = str(objective_id)
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,254}", self.objective_id) or ".." in self.objective_id:
+            raise AutonomousActionJournalError("invalid objective identity")
         self.clock = clock
         self.directory = self.root / "reports" / "research_control_plane" / self.objective_id
         self.path = self.directory / ACTION_JOURNAL_FILENAME
@@ -134,22 +156,37 @@ class AutonomousActionExecutionJournalV1:
 
     def _read_rows(self) -> list[dict[str, Any]]:
         if not self.path.exists():
+            if (self.directory / "execution_evidence_initialized").exists():
+                raise AutonomousActionJournalError("ACTION_JOURNAL_MISSING")
             return []
         rows: list[dict[str, Any]] = []
+        completed = set()
         try:
-            for line in self.path.read_text(encoding="utf-8").splitlines():
+            content = self.path.read_text(encoding="utf-8")
+            if not content or not content.endswith("\n"):
+                raise AutonomousActionJournalError("ACTION_JOURNAL_INCOMPLETE")
+            for line in content.splitlines():
                 if not line.strip():
                     continue
                 payload = json.loads(line)
                 if not isinstance(payload, Mapping):
                     raise ValueError("receipt must be an object")
                 receipt = AutonomousActionExecutionReceiptV1.from_dict(payload)
+                PerformanceBlindGuard.assert_blind(payload)
+                if payload != receipt.to_dict():
+                    raise AutonomousActionJournalError("action receipt contains invalid fields")
                 if receipt.objective_id != self.objective_id:
                     raise AutonomousActionJournalError("action receipt objective mismatch")
+                if receipt.execution_status not in {EXECUTION_STARTED, EXECUTION_COMPLETED, EXECUTION_FAILED, EXECUTION_RETRY_ALLOWED}:
+                    raise AutonomousActionJournalError("unknown action receipt status")
+                if receipt.action_id in completed:
+                    raise AutonomousActionJournalError("receipt appended after COMPLETED")
+                if receipt.execution_status == EXECUTION_COMPLETED:
+                    completed.add(receipt.action_id)
                 if receipt.receipt_hash != stable_hash({key: value for key, value in receipt.to_dict().items() if key != "receipt_hash"}):
                     raise AutonomousActionJournalError("action receipt hash mismatch")
                 rows.append(receipt.to_dict())
-        except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as exc:
+        except (OSError, UnicodeError, json.JSONDecodeError, ValueError, PerformanceLeakError) as exc:
             raise AutonomousActionJournalError("action receipt journal is unreadable") from exc
         return rows
 
@@ -158,6 +195,11 @@ class AutonomousActionExecutionJournalV1:
             return tuple(AutonomousActionExecutionReceiptV1.from_dict(row) for row in self._read_rows())
 
     def _append(self, payload: Mapping[str, Any]) -> AutonomousActionExecutionReceiptV1:
+        payload = dict(payload)
+        intent = self.intent({"action_id": payload.get("action_id")})
+        if intent is not None:
+            payload["execution_intent_hash"] = stable_hash(intent)
+            payload["schema_version"] = "autonomous-action-execution-receipt-v2"
         receipt = AutonomousActionExecutionReceiptV1.from_dict(payload)
         serialized = receipt.to_dict()
         serialized["receipt_hash"] = stable_hash({key: value for key, value in serialized.items() if key != "receipt_hash"})
@@ -165,7 +207,71 @@ class AutonomousActionExecutionJournalV1:
         self.directory.mkdir(parents=True, exist_ok=True)
         with self.path.open("a", encoding="utf-8", newline="\n") as handle:
             handle.write(json.dumps(receipt.to_dict(), ensure_ascii=False, sort_keys=True) + "\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        _sync_directory(self.directory)
         return receipt
+
+    def _intent_path(self, action: Mapping[str, Any]) -> Path:
+        return self.directory / "intents" / (stable_hash(str(action.get("action_id") or "")) + ".json")
+
+    def intent(self, action: Any) -> dict[str, Any] | None:
+        path = self._intent_path(_action_payload(action))
+        if not path.exists():
+            return None
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            if set(payload) != {"schema_version", "action", "intent_hash"} or payload["schema_version"] != "autonomous-execution-intent-v1":
+                raise ValueError("intent schema mismatch")
+            if payload["intent_hash"] != stable_hash(payload["action"]):
+                raise ValueError("intent hash mismatch")
+            PerformanceBlindGuard.assert_blind(payload["action"])
+            if payload["action"]["objective_id"] != self.objective_id or self._intent_path(payload["action"]) != path:
+                raise ValueError("intent identity mismatch")
+            return payload["action"]
+        except (OSError, ValueError, KeyError, TypeError, PerformanceLeakError) as exc:
+            raise AutonomousActionJournalError("ACTION_INTENT_UNVERIFIABLE") from exc
+
+    def pending(self) -> list[dict[str, Any]]:
+        rows = self.read()
+        latest = {row.action_id: row for row in rows}
+        result = []
+        for row in latest.values():
+            action_ref = {"action_id": row.action_id}
+            intent = self.intent(action_ref)
+            if intent is None:
+                if row.execution_status == EXECUTION_COMPLETED and row.execution_intent_hash is None:
+                    continue  # 旧完成回执仍可查询；旧未完成意图禁止猜测重建。
+                raise AutonomousActionJournalError("LEGACY_PENDING_INTENT_UNAVAILABLE")
+            if not self._matches(row, intent):
+                raise AutonomousActionJournalError("ACTION_INTENT_RECEIPT_CONFLICT")
+            if row.execution_intent_hash != stable_hash(intent):
+                raise AutonomousActionJournalError("ACTION_INTENT_RECEIPT_CONFLICT")
+            if row.execution_status != EXECUTION_COMPLETED:
+                result.append(intent)
+        for path in (self.directory / "intents").glob("*.json"):
+            if not any(self._intent_path({"action_id": key}) == path for key in latest):
+                raise AutonomousActionJournalError("ACTION_INTENT_WITHOUT_RECEIPT")
+        if len(result) > 1:
+            raise AutonomousActionJournalError("MULTIPLE_PENDING_ACTIONS")
+        return result
+
+    def _persist_intent(self, action: Mapping[str, Any]) -> None:
+        existing = self.intent(action)
+        if existing is not None:
+            if existing != dict(action):
+                raise AutonomousActionJournalError("ACTION_INTENT_CONFLICT")
+            return
+        path = self._intent_path(action)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        # 独占创建 + fsync；半写文件保留并阻断，不自动修复或覆盖。
+        with path.open("x", encoding="utf-8", newline="\n") as handle:
+            json.dump({"schema_version": "autonomous-execution-intent-v1", "action": dict(action), "intent_hash": stable_hash(action)}, handle, ensure_ascii=False, sort_keys=True)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        _sync_directory(path.parent)
+        _sync_directory(self.directory)
 
     @staticmethod
     def _matches(receipt: AutonomousActionExecutionReceiptV1, action: Mapping[str, Any]) -> bool:
@@ -191,6 +297,7 @@ class AutonomousActionExecutionJournalV1:
             if not self._matches(receipt, action):
                 raise AutonomousActionJournalError("same action_id has conflicting execution identity")
 
+    @mutation_boundary()
     def begin(self, action: Any, *, allow_retry: bool = False) -> tuple[str, AutonomousActionExecutionReceiptV1]:
         payload = _action_payload(action)
         if str(payload.get("objective_id") or "") != self.objective_id:
@@ -205,6 +312,14 @@ class AutonomousActionExecutionJournalV1:
                 if existing.execution_status == EXECUTION_STARTED and not allow_retry:
                     return "STARTED", existing
             attempts = max((receipt.attempt for receipt in rows if self._matches(receipt, payload)), default=0) + 1
+            self.directory.mkdir(parents=True, exist_ok=True)
+            marker = self.directory / "execution_evidence_initialized"
+            if not marker.exists():
+                with marker.open("x", encoding="utf-8") as handle:
+                    handle.write("autonomous-execution-intent-v1\n")
+                    handle.flush()
+                    os.fsync(handle.fileno())
+            self._persist_intent(payload)
             receipt = self._append({
                 "schema_version": ACTION_JOURNAL_SCHEMA_VERSION,
                 "action_id": str(payload.get("action_id") or ""),
@@ -227,6 +342,7 @@ class AutonomousActionExecutionJournalV1:
             })
             return "STARTED", receipt
 
+    @mutation_boundary()
     def allow_retry(self, action: Any, *, reason_code: str = "DOMAIN_SIDE_EFFECT_NOT_FOUND") -> AutonomousActionExecutionReceiptV1:
         payload = _action_payload(action)
         with self._mutex:
@@ -241,6 +357,7 @@ class AutonomousActionExecutionJournalV1:
                 "receipt_hash": "",
             })
 
+    @mutation_boundary()
     def complete(
         self,
         action: Any,
@@ -256,6 +373,8 @@ class AutonomousActionExecutionJournalV1:
             existing = self.latest(payload)
             if existing is not None and existing.execution_status == EXECUTION_COMPLETED:
                 return existing
+            if existing is None:
+                raise AutonomousActionJournalError("cannot complete without STARTED evidence")
             started_at = existing.started_at if existing is not None else str(self.clock())
             return self._append({
                 "schema_version": ACTION_JOURNAL_SCHEMA_VERSION,
@@ -278,10 +397,13 @@ class AutonomousActionExecutionJournalV1:
                 "receipt_hash": "",
             })
 
+    @mutation_boundary()
     def fail(self, action: Any, *, error_code: str, error_message_zh: str) -> AutonomousActionExecutionReceiptV1:
         payload = _action_payload(action)
         with self._mutex:
             existing = self.latest(payload)
+            if existing is not None and existing.execution_status == EXECUTION_COMPLETED:
+                return existing
             return self._append({
                 "schema_version": ACTION_JOURNAL_SCHEMA_VERSION,
                 "action_id": str(payload.get("action_id") or ""),

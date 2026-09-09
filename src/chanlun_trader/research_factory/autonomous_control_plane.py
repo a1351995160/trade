@@ -7,15 +7,18 @@ already-permitted side-effectful action and then stops for reconciliation.
 """
 from __future__ import annotations
 
+from ..execution_policy import ExecutionPolicy, validate_research_root
+from .mutation_boundary import ObjectiveMutationLock, MutationBusyError
+
 from dataclasses import dataclass, field, replace
 import argparse
 import json
 from pathlib import Path
 import re
 import threading
+import tempfile
 from typing import Any, Callable, Iterable, Mapping, Sequence
 
-from ..research_daemon_state import DaemonAlreadyRunningError, DaemonInstanceLockV1
 from .candidate_executable_materialization import (
     CandidateExecutableMaterializationError,
     EXECUTABLE_MATERIALIZATION_CONFIRMATION_MISSING,
@@ -54,6 +57,7 @@ from .safe_runtime_context import (
 )
 from .autonomous_action_journal import (
     EXECUTION_COMPLETED,
+    EXECUTION_RETRY_ALLOWED,
     EXECUTION_STARTED,
     AutonomousActionExecutionJournalV1,
     AutonomousActionExecutionReceiptV1,
@@ -729,8 +733,10 @@ class AutonomousResearchControlPlaneV1:
         capability_registry: AgentCapabilityRegistryV1 | None = None,
         clock: Callable[[], Any] = now_timestamp,
         max_ticks: int = DEFAULT_MAX_TICKS,
+        execution_policy: ExecutionPolicy | None = None,
     ) -> None:
         self.root = Path(root).resolve()
+        self.execution_policy = execution_policy or ExecutionPolicy()
         self.clock = clock
         self.max_ticks = int(max_ticks)
         if self.max_ticks <= 0:
@@ -744,9 +750,62 @@ class AutonomousResearchControlPlaneV1:
     def _journal(self, objective_id: str) -> AutonomousActionExecutionJournalV1:
         return AutonomousActionExecutionJournalV1(self.root, objective_id, clock=lambda: _clock_text(self.clock))
 
-    def _lock(self, objective_id: str) -> DaemonInstanceLockV1:
-        journal = self._journal(objective_id)
-        return DaemonInstanceLockV1(journal.lock_path, objective_id)
+    def _lock(self, objective_id: str) -> ObjectiveMutationLock:
+        return ObjectiveMutationLock(self.root, "objective:" + objective_id)
+
+    def _require_execution_policy(self) -> None:
+        if not self.execution_policy.governance_allowed:
+            raise AutonomousControlPlaneError("EXECUTION_POLICY_READ_ONLY", "恢复和执行需要显式 GOVERNED + SYNTHETIC 策略。")
+        validate_research_root(self.root, self.execution_policy)
+        temporary_root = Path(tempfile.gettempdir()).resolve()
+        if self.root == temporary_root or not self.root.is_relative_to(temporary_root):
+            raise AutonomousControlPlaneError("SYNTHETIC_TEMPORARY_WORKSPACE_REQUIRED", "本轮受管执行仅允许独立临时工作区。")
+
+    def _read_only(self, objective_id: str, operation: Callable[[], dict[str, Any]]) -> dict[str, Any]:
+        def unavailable(code: str) -> dict[str, Any]:
+            return {"objective_id": objective_id, "execution_status": DENY, "reason_code": code, "stop_reason": code, "control_state": CONTROL_BLOCKED, "decision": {}, "context": {}, "budget": {}, "execution": None, "continue_loop": False, "outcome_blind": True, "safe_to_advance": False}
+        try:
+            lock = self._lock(objective_id)
+            lock.probe()
+            before = self.reconciliation.reconcile(objective_id).get("report_hash")
+            journal_before = self._journal(objective_id).snapshot_hash()
+            result = operation()
+            lock.probe()
+            if before != self.reconciliation.reconcile(objective_id).get("report_hash") or journal_before != self._journal(objective_id).snapshot_hash():
+                return unavailable("READ_SNAPSHOT_STALE")
+            return result
+        except (MutationBusyError, AutonomousActionJournalError, AutonomousControlPlaneError) as exc:
+            return unavailable("CONTROL_PLANE_CONCURRENT_RUN" if isinstance(exc, MutationBusyError) else getattr(exc, "code", str(exc)))
+
+    @staticmethod
+    def _action_semantics(action: ResearchActionV1) -> dict[str, Any]:
+        return {key: value for key, value in action.to_dict().items() if key != "created_at"}
+
+    def _validate_action(self, action: ResearchActionV1) -> None:
+        PerformanceBlindGuard.assert_blind(action.to_dict())
+        capabilities, authorities, automatic, manual, performance, confirmation = self._action_requirements(action.action_type)
+        source_state = {
+            GENERATE_CANDIDATE_PROPOSAL: AI_DESIGN_APPROVED,
+            CREATE_EXECUTABLE_MATERIALIZATION_PREVIEW: CANDIDATE_FROZEN_PENDING_EXECUTABLE_MATERIALIZATION,
+            RECOVER_EXECUTABLE_MATERIALIZATION: EXECUTABLE_MATERIALIZATION_RECOVERY_REQUIRED,
+        }.get(action.action_type)
+        expected = ResearchActionV1.create(
+            **{key: value for key, value in action.to_dict().items() if key not in {"schema_version", "action_id", "idempotency_key"}}
+        )
+        if (
+            self._action_semantics(expected) != self._action_semantics(action)
+            or tuple(sorted(capabilities)) != action.required_capabilities
+            or tuple(sorted(authorities)) != action.required_authorities
+            or automatic != action.automatic_execution_allowed
+            or manual != action.human_confirmation_required
+            or performance != action.performance_access_required
+            or confirmation != action.required_confirmation
+            or not action.outcome_blind
+            or (automatic and (action.trial_id or dict(action.budget_effect) != {"mode": "PLAN_ONLY", "reserved": 0, "consumed": 0, "execution_requires_canonical_budget": False}))
+            or (automatic and (action.source_state != source_state or action.required_state != source_state or action.expected_domain_identity.get("objective_id") != action.objective_id))
+            or (automatic and action.action_type != GENERATE_CANDIDATE_PROPOSAL and (action.candidate_id != action.expected_domain_identity.get("candidate_id") or action.candidate_hash != action.expected_domain_identity.get("candidate_hash")))
+        ):
+            raise AutonomousControlPlaneError("ACTION_IDENTITY_INVALID", "Action 身份或权限声明不符合受信规划规则。")
 
     def _build_context(self, objective_id: str) -> tuple[SafeRuntimeContextV1 | None, dict[str, Any]]:
         try:
@@ -1428,7 +1487,12 @@ class AutonomousResearchControlPlaneV1:
         return tuple(sorted(set(values)))
 
     def _execute_unlocked(self, action: ResearchActionV1, *, dry_run: bool = False) -> dict[str, Any]:
+        self._validate_action(action)
         journal = self._journal(action.objective_id)
+        pending = journal.pending()
+        persisted = journal.intent(action)
+        if persisted is not None and self._action_semantics(ResearchActionV1.from_dict(persisted)) != self._action_semantics(action):
+            raise AutonomousControlPlaneError("ACTION_INTENT_CONFLICT", "调用者 Action 与原始执行意图不一致。")
         existing_receipt = journal.latest(action)
         if existing_receipt is not None and existing_receipt.execution_status == EXECUTION_COMPLETED:
             return {
@@ -1437,14 +1501,24 @@ class AutonomousResearchControlPlaneV1:
                 "receipt": existing_receipt.to_dict(),
                 "safe_to_advance": False,
             }
+        if pending and pending[0]["action_id"] != action.action_id:
+            raise AutonomousControlPlaneError("PENDING_ACTION_CONFLICT", "必须先处理原未完成动作。")
         report = self.reconciliation.reconcile(action.objective_id)
+        if prior_identity := action.expected_domain_identity:
+            shape = self._expected_domain_identity(action.objective_id, report, action.action_type)
+            if set(prior_identity) != set(shape) or any(not value for value in prior_identity.values()):
+                raise AutonomousControlPlaneError("ACTION_DOMAIN_IDENTITY_INVALID", "执行意图缺少必需的领域身份。")
+        elif action.automatic_execution_allowed:
+            raise AutonomousControlPlaneError("ACTION_DOMAIN_IDENTITY_INVALID", "执行意图缺少领域身份。")
         current_context, freshness = self._build_context(action.objective_id)
         current_report_hash = str(report.get("report_hash") or "")
 
         prior_receipt = existing_receipt
-        if prior_receipt is not None and prior_receipt.execution_status == EXECUTION_STARTED:
+        if prior_receipt is not None and prior_receipt.execution_status != EXECUTION_COMPLETED:
             recovery_evidence = self._reconcile_started_action_side_effect(action, report)
             if recovery_evidence.matched and current_context is not None:
+                if dry_run:
+                    return {"execution_status": "DRY_RUN", "reason_code": "WOULD_RECOVER_COMPLETED", "recovery_evidence": recovery_evidence.to_dict(), "safe_to_advance": False}
                 recovered = journal.complete(
                     action,
                     resulting_reconciliation_hash=recovery_evidence.reconciliation_hash,
@@ -1500,21 +1574,27 @@ class AutonomousResearchControlPlaneV1:
             live_freshness = self.context_builder.validate_context_freshness(current_context)
         except SafeRuntimeContextError as exc:
             return {"execution_status": DENY, "reason_code": STALE_RUNTIME_CONTEXT, "reason_zh": exc.message_zh, "safe_to_advance": False, "details": dict(exc.details)}
-        permission = self.permission_resolver.resolve(action, report, current_context, predictive_authorized=bool(self._predictive_authorization(action.objective_id, action.candidate_id, action.candidate_hash).get("authorized")))
+        trusted_action, authorization = self._plan(action.objective_id, report, current_context)
+        if self._action_semantics(trusted_action) != self._action_semantics(action):
+            raise AutonomousControlPlaneError("ACTION_PLAN_MISMATCH", "Action 与当前 canonical 事实重新规划的执行语义不一致。")
+        permission = self.permission_resolver.resolve(trusted_action, report, current_context, predictive_authorized=bool(authorization.get("authorized")))
         if permission.permission != ALLOW_AUTOMATIC:
             return {"execution_status": DENY, "reason_code": permission.reason_code, "reason_zh": permission.reason_zh, "permission": permission.to_dict(), "safe_to_advance": False}
         if dry_run:
             return {"execution_status": "DRY_RUN", "reason_code": "DRY_RUN_NO_SIDE_EFFECT", "reason_zh": "Dry-run 未执行动作。", "permission": permission.to_dict(), "safe_to_advance": False}
 
         try:
-            status, receipt = journal.begin(action)
+            retry = prior_receipt is not None and prior_receipt.execution_status != EXECUTION_COMPLETED
+            if retry and prior_receipt.execution_status != EXECUTION_RETRY_ALLOWED:
+                journal.allow_retry(action)
+            status, receipt = journal.begin(action, allow_retry=retry)
             if status == EXECUTION_COMPLETED:
                 return {"execution_status": EXECUTION_COMPLETED, "idempotent": True, "receipt": receipt.to_dict(), "safe_to_advance": False}
-            if prior_receipt is not None and prior_receipt.execution_status == EXECUTION_STARTED:
-                journal.allow_retry(action)
-                _, receipt = journal.begin(action, allow_retry=True)
             result = self._execute_domain_action(action)
             resulting_report = self.reconciliation.reconcile(action.objective_id)
+            committed = self._reconcile_started_action_side_effect(action, resulting_report)
+            if not committed.matched:
+                raise AutonomousControlPlaneError(committed.reason_code, "领域调用返回后未形成匹配的 canonical 副作用，不写完成回执。")
             completed = journal.complete(
                 action,
                 resulting_reconciliation_hash=str(resulting_report.get("report_hash") or ""),
@@ -1569,21 +1649,39 @@ class AutonomousResearchControlPlaneV1:
             return {"execution_status": "FAILED", "reason_code": type(exc).__name__, "reason_zh": str(exc), "safe_to_advance": False}
 
     def execute_action(self, action: ResearchActionV1 | Mapping[str, Any], *, dry_run: bool = False) -> dict[str, Any]:
+        if isinstance(action, Mapping):
+            PerformanceBlindGuard.assert_blind(action)
         parsed = action if isinstance(action, ResearchActionV1) else ResearchActionV1.from_dict(action)
+        if isinstance(action, Mapping) and dict(action) != parsed.to_dict():
+            return {"execution_status": DENY, "reason_code": "ACTION_SCHEMA_INVALID", "safe_to_advance": False}
         objective_id = _safe_identifier(parsed.objective_id, name="objective_id")
+        if dry_run:
+            return self._read_only(objective_id, lambda: self._execute_unlocked(parsed, dry_run=True))
+        self._require_execution_policy()
         lock = self._lock(objective_id)
         try:
             lock.acquire(run_id=f"CONTROL_PLANE_ACTION_{parsed.action_id}")
-        except DaemonAlreadyRunningError as exc:
+        except MutationBusyError as exc:
             return {"execution_status": DENY, "reason_code": "CONTROL_PLANE_CONCURRENT_RUN", "reason_zh": "同一 Objective 已有控制平面 tick 运行，当前动作未执行。", "safe_to_advance": False, "details": {"error": str(exc)}}
         try:
-            return self._execute_unlocked(parsed, dry_run=dry_run)
+            try:
+                self._require_execution_policy()
+                return self._execute_unlocked(parsed, dry_run=dry_run)
+            except (AutonomousActionJournalError, AutonomousControlPlaneError) as exc:
+                return {"execution_status": DENY, "reason_code": getattr(exc, "code", str(exc)), "safe_to_advance": False}
         finally:
             lock.release()
 
     def _tick_unlocked(self, objective_id: str, *, dry_run: bool, persist_decision: bool) -> dict[str, Any]:
         # Hard order: reconciliation is the first domain observation.
         report = self.reconciliation.reconcile(objective_id)
+        try:
+            pending = self._journal(objective_id).pending()
+            if pending:
+                execution = self._execute_unlocked(ResearchActionV1.from_dict(pending[0]), dry_run=dry_run)
+                return {"objective_id": objective_id, "dry_run": dry_run, "execution": execution, "decision": {"current_effective_state": self._effective_state(report)}, "context": {}, "budget": {}, "control_state": RECONCILE_AFTER_EXECUTION if execution.get("execution_status") == EXECUTION_COMPLETED else CONTROL_BLOCKED, "stop_reason": execution.get("reason_code", "ONE_PENDING_ACTION_HANDLED"), "continue_loop": False, "outcome_blind": True}
+        except (AutonomousActionJournalError, AutonomousControlPlaneError) as exc:
+            return {"objective_id": objective_id, "dry_run": dry_run, "execution": None, "decision": {}, "context": {}, "budget": {}, "control_state": CONTROL_BLOCKED, "stop_reason": getattr(exc, "code", str(exc)), "continue_loop": False, "outcome_blind": True}
         context, freshness = self._build_context(objective_id)
         action, authorization = self._plan(objective_id, report, context)
         permission = self.permission_resolver.resolve(action, report, context, predictive_authorized=bool(authorization.get("authorized")))
@@ -1635,28 +1733,55 @@ class AutonomousResearchControlPlaneV1:
     def tick(self, objective_id: str, *, dry_run: bool = False) -> dict[str, Any]:
         objective_id = _safe_identifier(objective_id, name="objective_id")
         if dry_run:
-            return self._tick_unlocked(objective_id, dry_run=True, persist_decision=False)
+            return self._read_only(objective_id, lambda: self._tick_unlocked(objective_id, dry_run=True, persist_decision=False))
+        self._require_execution_policy()
         lock = self._lock(objective_id)
         try:
             lock.acquire(run_id=f"CONTROL_PLANE_TICK_{_clock_text(self.clock)}")
-        except DaemonAlreadyRunningError as exc:
+        except MutationBusyError as exc:
             return {
                 "schema_version": "autonomous-control-plane-tick-v1",
                 "objective_id": objective_id,
                 "dry_run": False,
                 "control_state": CONTROL_BLOCKED,
                 "stop_reason": "CONTROL_PLANE_CONCURRENT_RUN",
+                "decision": {},
+                "context": {},
+                "budget": {},
                 "execution": None,
                 "outcome_blind": True,
                 "error": {"code": "CONTROL_PLANE_CONCURRENT_RUN", "message_zh": "同一 Objective 已有控制平面 tick 运行。", "details": {"error": str(exc)}},
             }
         try:
+            self._require_execution_policy()
             return self._tick_unlocked(objective_id, dry_run=False, persist_decision=True)
         finally:
             lock.release()
 
     def inspect(self, objective_id: str) -> dict[str, Any]:
-        return self._tick_unlocked(_safe_identifier(objective_id, name="objective_id"), dry_run=True, persist_decision=False)
+        return self.tick(objective_id, dry_run=True)
+
+    def recover(self, objective_id: str, *, dry_run: bool = False) -> dict[str, Any]:
+        """显式恢复入口；无 pending 时只报告，不创建新领域动作。"""
+        objective_id = _safe_identifier(objective_id, name="objective_id")
+        if not dry_run:
+            self._require_execution_policy()
+        def recover_pending():
+            try:
+                pending = self._journal(objective_id).pending()
+                if not pending:
+                    return {"execution_status": "NO_PENDING_ACTION", "safe_to_advance": False}
+                return self._execute_unlocked(ResearchActionV1.from_dict(pending[0]), dry_run=dry_run)
+            except (AutonomousActionJournalError, AutonomousControlPlaneError) as exc:
+                return {"execution_status": DENY, "reason_code": getattr(exc, "code", str(exc)), "safe_to_advance": False}
+        if dry_run:
+            return self._read_only(objective_id, recover_pending)
+        try:
+            with self._lock(objective_id):
+                self._require_execution_policy()
+                return recover_pending()
+        except MutationBusyError:
+            return {"execution_status": DENY, "reason_code": "CONTROL_PLANE_CONCURRENT_RUN", "safe_to_advance": False}
 
     def loop(self, objective_id: str, *, max_ticks: int | None = None, dry_run: bool = False) -> dict[str, Any]:
         limit = self.max_ticks if max_ticks is None else int(max_ticks)
@@ -1704,13 +1829,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     mode.add_argument("--inspect", action="store_true", help="只读查看下一动作")
     mode.add_argument("--tick", action="store_true", help="执行最多一个允许的自动动作")
     mode.add_argument("--loop", action="store_true", help="按 max-ticks 执行有限循环")
+    mode.add_argument("--recover", action="store_true", help="显式处理一个未完成执行意图")
+    parser.add_argument("--governed-synthetic", action="store_true", help="显式选择合成治理策略，不替代人工确认")
     parser.add_argument("--max-ticks", type=int, default=DEFAULT_MAX_TICKS)
     parser.add_argument("--dry-run", action="store_true", help="只对账、构建上下文、计划和解析权限")
     parser.add_argument("--json", action="store_true", help="输出稳定机器 JSON")
     args = parser.parse_args(argv)
     try:
-        service = AutonomousResearchControlPlaneV1(args.root, max_ticks=args.max_ticks)
-        if args.loop:
+        policy = ExecutionPolicy(mode="GOVERNED", workspace_kind="SYNTHETIC") if args.governed_synthetic else ExecutionPolicy()
+        service = AutonomousResearchControlPlaneV1(args.root, max_ticks=args.max_ticks, execution_policy=policy)
+        if args.recover:
+            payload = service.recover(args.objective_id, dry_run=args.dry_run)
+        elif args.loop:
             payload = service.loop(args.objective_id, max_ticks=args.max_ticks, dry_run=args.dry_run)
         elif args.tick:
             payload = service.tick(args.objective_id, dry_run=args.dry_run)

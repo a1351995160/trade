@@ -477,3 +477,129 @@
 - `tests/research_factory/p3a_pending_trial_fixture.py`：保持现场生成合成工件，调整构造表达以消除与历史测试的重复代码。
 - `progress.md`：追加本轮 SonarCloud 阻断修复与验证记录。
 - 回滚方式：在该分支执行 `git revert --no-edit HEAD` 回到 `6ba8139e640a941409a374108baa7efc7f8c088f`；不 reset、不修改 `main`、不 force push、不 merge。
+
+## 2026-09-08 - Task: P3-B 公共重启恢复、持久意图与单机互斥
+
+### What was done
+
+从已合并 P3-A 的 origin/main 7e277dbe1d20061fd672cf53d1358d07f16a0b1b 创建独立 worktree/分支 codex/phase3b-restart-recovery-v1。完成显式 root+Objective 恢复、持久原 Action、canonical 副作用优先恢复、同 key 安全重试、所有 CP dry-run 只读与相关领域/共享资源互斥。保持默认只读、人工门禁、Web startup recovery 禁用和 outcome-blind。没有启动 P3-C、真实研究、Final Test 或合并操作。详细入口与限制见 docs/PHASE3B_RESTART_RECOVERY_V1.md。
+
+### Testing
+
+- 全新 venv、系统临时目录 synthetic fixture：P3-A 66 passed；Phase 1 235 passed / 12 deselected；Phase 2 24 passed；P3-B 33 passed。
+- 最后代码修改后的 P3-B + CP + P3-A 定向复跑：116 passed；禁用 predictive/structural/AI 调用探针、网络、非测试进程调用、受保护目录访问全部为 0。硬退出子进程用 fsync 调用证据验证，不把缺失 atexit 数据记作零。
+- compileall 与 git diff --check 通过；全量收集 773 项 / 1 legacy module skipped（不是执行通过数）；前端 8 passed，构建通过。
+- Windows Python 3.13.5；fixture 位于 C: NTFS，源码位于 E: exFAT。Linux/Windows Python 3.11 由新工作流认证，提交时 CI=PENDING，交付时以最终 SHA 的远端记录补充。
+- 早期系统 Python 有 4 次启动、共 8 次 distribution discovery 访问原目录被隔离钩子阻断；未读到内容，未观察到写入。重新创建 venv 后探针全部为 0。默认镜像 TLS 失败后改官方 PyPI，未禁用 TLS 或 hash 校验。
+- 未验证真实工作区运行/历史对账、Final Test、网络文件系统、多主机、断电、POSIX fork 继承分支、PR-context 检查；不声称上述可用。
+
+### Notes
+
+- .github/workflows/phase3b-restart-recovery-certification.yml：增加 Windows/Linux 分支认证矩阵和平台证据。
+- .github/workflows/requirements-p3b.txt：补齐 Windows hash-locked 依赖，保留 P3-A 锁定。
+- CLAUDE.md：补充恢复、互斥和隔离测试约束。
+- docs/AUTONOMOUS_RESEARCH_MASTER_ROADMAP_V1.md：更新 P3-A 合并与 P3-B 待独立复核状态。
+- docs/PHASE3B_RESTART_RECOVERY_V1.md：记录协议、入口矩阵、平台证据和验证边界。
+- progress.md：追加本轮实施和验证证据。
+- src/chanlun_trader/research_daemon.py：相关 canonical 写入口锁定并拒绝 CP 管理目标旁路。
+- src/chanlun_trader/research_factory/ai_design_approval.py：将相关显式写入口纳入共享互斥，保留既有领域检查。
+- src/chanlun_trader/research_factory/artifact_graph.py：共享图在资源锁内重新加载并合并。
+- src/chanlun_trader/research_factory/autonomous_action_journal.py：持久原始 intent、严格证据校验及旧完成兼容。
+- src/chanlun_trader/research_factory/autonomous_control_plane.py：公共恢复、Action 校验、只读路径及显式 synthetic 策略。
+- src/chanlun_trader/research_factory/autonomous_orchestrator_v2.py：相关写入口锁定并拒绝 CP 管理目标旁路。
+- src/chanlun_trader/research_factory/candidate_executable_materialization.py：将相关显式写入口纳入共享互斥，保留既有领域检查。
+- src/chanlun_trader/research_factory/candidate_generation.py：将相关显式写入口纳入共享互斥，保留既有领域检查。
+- src/chanlun_trader/research_factory/contract_correction.py：将相关显式写入口纳入共享互斥，保留既有领域检查。
+- src/chanlun_trader/research_factory/durability.py：共享合同登记在资源锁内读取合并写入。
+- src/chanlun_trader/research_factory/mutation_boundary.py：提供不删除锁文件的 Objective 与资源内核锁。
+- src/chanlun_trader/research_factory/projection_reconciliation.py：将相关显式写入口纳入共享互斥，保留既有领域检查。
+- src/chanlun_trader/research_factory/research_evolution_ai_design.py：将相关显式写入口纳入共享互斥，保留既有领域检查。
+- src/chanlun_trader/research_factory/structural_entry.py：将相关显式写入口纳入共享互斥，保留既有领域检查。
+- src/chanlun_trader/research_factory/structural_reconciliation.py：将相关显式写入口纳入共享互斥，保留既有领域检查。
+- src/chanlun_trader/webapp.py：传递执行策略并将互斥冲突返回 409，保持启动只读。
+- tests/isolation/sitecustomize.py：为受阻访问记录调用来源，未放宽隔离。
+- tests/research_factory/p3b_process_worker.py：提供真实退出、竞争与领域调用证据 worker。
+- tests/research_factory/test_autonomous_control_plane_v1.py：写测试显式注入 synthetic 策略并验证更早身份拒绝。
+- tests/research_factory/test_research_action_permission_v1.py：写测试显式注入 synthetic 策略，保留人工门禁。
+- tests/research_factory/test_restart_recovery_v1.py：增加 33 项恢复、只读、身份、并发和入口认证。
+- 回滚点：7e277dbe1d20061fd672cf53d1358d07f16a0b1b；提交后在独立分支执行 `git revert --no-edit <本轮P3-B提交SHA>`。不 reset main、不 force push、不修改原研究目录；保留新 v2 journal 证据，旧版本不得继续写新 schema。
+
+## 2026-09-08 - Task: P3-B 分支工作流上下文修复
+
+### What was done
+
+修复首次 push CI 解析失败：job-level env 不支持 runner.temp，改为在 Python 启动前通过 RUNNER_TEMP 配置同一受保护参考路径。
+
+### Testing
+
+- GitHub run 34211579523 明确报告 Line 28 Unrecognized named-value runner，jobs 为空；不计为测试失败或通过。
+- git diff --check 通过；工作流仍在所有 Python 步骤前配置隔离路径；远端重新解析和矩阵测试等待新提交 CI。
+
+### Notes
+
+- .github/workflows/phase3b-restart-recovery-certification.yml：仅调整受保护路径的设置位置。
+- docs/PHASE3B_RESTART_RECOVERY_V1.md：记录首次 CI 配置失败与修复。
+- progress.md：追加失败证据和修复记录。
+- 回滚方式：提交后执行 `git revert --no-edit <本轮CI修复提交SHA>`，回到 438ffe37ce79f91935e878e5e6c5555bbf82e73a；该回滚会恢复已知无效工作流，不建议用于认证。
+
+## 2026-09-08 - Task: P3-B 平台认证准备步骤修复
+
+### What was done
+
+移除 Windows 失败的非必要 pip cache 探测；将 Linux 会隐式启动子进程的平台查询改为 sys 信息，操作系统信息使用显式 shell 命令。未放宽测试隔离。
+
+### Testing
+
+- run 34211780588：Windows Set up Python 缓存目录探测失败；Linux platform.platform 子进程被拦截，process_calls=1，测试未执行。保留失败记录，不计入通过矩阵。
+- git diff --check 通过；本地同隔离环境 sys/tempfile 平台命令通过且三个进程探针均为 0；双平台验证等待修复后 SHA 的 CI。
+
+### Notes
+
+- .github/workflows/phase3b-restart-recovery-certification.yml：移除 pip cache，改为显式无隐式 Python 子进程的平台记录。
+- docs/PHASE3B_RESTART_RECOVERY_V1.md：补充第二次 CI 准备阶段失败证据。
+- progress.md：追加本轮修复与验证记录。
+- 回滚方式：提交后执行 `git revert --no-edit <本轮平台修复提交SHA>`，回到 34c98fb5efa7cf00f5eb817454292904bafd6ccc；会恢复已知认证准备失败，仅作为回滚点。
+
+## 2026-09-08 - Task: P3-B Windows 认证运行时限定
+
+### What was done
+
+Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；保持全部测试和隔离探针，不给系统版本探测子进程开白名单。
+
+### Testing
+
+- run 34211978686：Linux 全矩阵 success；Windows Python 3.11.9 导入 pandas 所需 platform.machine → win32_ver 调用子进程被拒绝，process_calls=1，未执行测试。
+- 本地 Python 3.13.5 同套测试已通过，最终代码后定向 116 passed；git diff --check 通过。新 SHA 的双平台结果由远端 CI 再核对。
+
+### Notes
+
+- .github/workflows/phase3b-restart-recovery-certification.yml：矩阵显式区分 Linux 3.11 和 Windows 3.13。
+- docs/PHASE3B_RESTART_RECOVERY_V1.md：记录版本选择依据和 Windows 3.11 未认证限制。
+- progress.md：追加本轮运行时限定与证据。
+- 回滚方式：提交后执行 `git revert --no-edit <本轮运行时限定提交SHA>`，回到 31ac37981624e88111724498e04285a031271b3d；会恢复已知 Windows 隔离导入失败。
+
+## 2026-09-09 - Task: P3-B FAILED 与 retry marker 恢复记账修正
+
+### What was done
+
+在既有 P3-B 独立 worktree 核对 remote、HEAD fbd603be237cb6077a4484acac9a585610676569、origin/main 7e277dbe1d20061fd672cf53d1358d07f16a0b1b 与干净工作区。先用实际持久 FAILED 和真实 retry marker 后 os._exit 的两个独立进程回归复现 P2，再将重试登记收敛为一次 begin；复用已有 marker，保留历史及全部身份。未修改 journal schema、锁、planner 或研究权限。
+
+### Testing
+
+- 旧生产代码回归：`python -m pytest -q -s tests/research_factory/test_restart_recovery_v1.py -k failed_retry_registers_one_attempt`，2 failed / 33 deselected；实际 FAILED 后恢复到 attempt=3，marker 退出后恢复到 attempt=4，各仅一次恢复调用、一个成功 proposal。完整序列见 P3-B 文档；本地日志 tmp/p3b-evidence/retry-red.log。
+- 相同回归修复后 2 passed / 33 deselected；均 STARTED(1) → FAILED(1) → RECOVERY_RETRY_ALLOWED(1) → STARTED(2) → COMPLETED(2)。历史字节前缀、intent 原文与身份不变；四类 dry-run 快照不变。日志 tmp/p3b-evidence/retry-green.log。
+- 直接读取现有 P3-B workflow 的认证命令，以独立 venv 运行：P3-A 66 passed；Phase 1 235 passed / 12 deselected；Phase 2 24 passed；P3-B 35 passed；775 collected / 1 既有 legacy module skipped。没有新增 skip/xfail 或放宽排除。
+- compileall、git diff --check 通过；npm ci --ignore-scripts、npm test（8 passed）、npm run build 通过。日志位于 tmp/p3b-evidence/retry-*.log（本地忽略文件），远端 CI 提供可共享复验记录。
+- Windows Python 3.13.5、本地临时 NTFS synthetic fixture；本轮输出的禁止执行器与进程/网络/受保护目录访问探针均为 0。硬退出子进程采用 fsync marker 事件，不把缺失 atexit 输出记为零。
+- 提交时 push/PR CI PENDING。既有分支 PR 查询为空；后续按授权创建 main PR 并核对当前 HEAD、base、checkout 和 required checks。实际 main-merge-governance ruleset 要求 Deterministic governance suite、严格基线与 review thread resolution；不绕过。
+- 真实研究/Final Test、Windows Python 3.11、网络文件系统、多主机、断电、POSIX fork 仍未验证。原真实工作区未作为输入输出。没有 merge、auto-merge 或 P3-C。
+
+### Notes
+
+- src/chanlun_trader/research_factory/autonomous_control_plane.py：重试先处理 marker，再唯一 begin。
+- tests/research_factory/p3b_process_worker.py：增加可落 FAILED 的受控错误和真实 marker 后退出注入。
+- tests/research_factory/test_restart_recovery_v1.py：增加两项失败与 marker 重启回归，验证真实前置回执及历史/身份/副作用/只读。
+- docs/PHASE3B_RESTART_RECOVERY_V1.md：追加 P2 实际序列、attempt 口径和历史不回写约束。
+- CLAUDE.md：记录重复 begin 陷阱及必须验证持久前置状态。
+- progress.md：追加本轮复现、验证和交接事实。
+- 回滚：提交后在当前分支执行 `git revert --no-edit <本轮修正SHA>`，回到被复核 HEAD fbd603be237cb6077a4484acac9a585610676569；不重写历史 journal，不 reset/main/force push。

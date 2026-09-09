@@ -1,6 +1,9 @@
 """Append-only ResearchArtifactGraphV1."""
 from __future__ import annotations
 
+from contextlib import nullcontext
+from .mutation_boundary import ObjectiveMutationLock
+
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, Mapping
@@ -45,6 +48,11 @@ class ResearchArtifactGraphV1:
         self._load()
 
     def add_node(self, node_id: str, node_type: str, payload: Any) -> ArtifactNodeV1:
+        with ObjectiveMutationLock.for_resource(self.path) if self.path is not None else nullcontext():
+            self._load()
+            return self._add_node_locked(node_id, node_type, payload)
+
+    def _add_node_locked(self, node_id: str, node_type: str, payload: Any) -> ArtifactNodeV1:
         if node_type not in ARTIFACT_NODES:
             raise ValueError(f"unsupported artifact node type: {node_type}")
         node = ArtifactNodeV1(node_id, node_type, stable_hash(payload), now_timestamp())
@@ -58,6 +66,11 @@ class ResearchArtifactGraphV1:
         return node
 
     def add_edge(self, source_id: str, edge_type: str, target_id: str) -> ArtifactEdgeV1:
+        with ObjectiveMutationLock.for_resource(self.path) if self.path is not None else nullcontext():
+            self._load()
+            return self._add_edge_locked(source_id, edge_type, target_id)
+
+    def _add_edge_locked(self, source_id: str, edge_type: str, target_id: str) -> ArtifactEdgeV1:
         if edge_type not in ARTIFACT_EDGES:
             raise ValueError(f"unsupported artifact edge type: {edge_type}")
         if source_id not in self.nodes or target_id not in self.nodes:

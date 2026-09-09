@@ -7,6 +7,8 @@ synthetic runtime exists solely for deterministic acceptance tests.
 """
 from __future__ import annotations
 
+from .mutation_boundary import mutation_boundary
+
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from enum import Enum
@@ -552,6 +554,7 @@ class CanonicalOrchestratorRuntimeV2:
             raise RuntimeError(f"AI_BATCH_UNSAFE_ARTIFACT_REF:{ref}")
         return path
 
+    @mutation_boundary(resource="durable-contract-registry", forbid_control_plane=True)
     def ingest_ai_batch(self, manifest_path: Path, manifest: Mapping[str, Any], *, staging_dir: Path | None = None) -> Mapping[str, Any]:
         from ..research_daemon import CanonicalResearchRuntime
 
@@ -1562,10 +1565,12 @@ class AutonomousResearchOrchestratorV2:
             "updated_at": now_timestamp(),
         }
 
+    @mutation_boundary(forbid_control_plane=True)
     def _save(self) -> None:
         self.checkpoint["updated_at"] = now_timestamp()
         self.store.save_checkpoint(self.checkpoint)
 
+    @mutation_boundary(forbid_control_plane=True)
     def _set_state(self, target: OrchestratorState | str, reason: str, **details: Any) -> None:
         target_state = OrchestratorState(target)
         current = OrchestratorState(str(self.checkpoint["state"]))
@@ -1576,6 +1581,7 @@ class AutonomousResearchOrchestratorV2:
         self.store.append_event(reason, {"objective_id": self.objective_id, "state": target_state.value, **details}, event_id=stable_hash({"run_id": self.checkpoint["orchestrator_run_id"], "state": target_state.value, "reason": reason, "details": details}))
         self._save()
 
+    @mutation_boundary(forbid_control_plane=True)
     def _recover(self) -> None:
         state = OrchestratorState(str(self.checkpoint["state"]))
         if state == OrchestratorState.BOOTSTRAP:
@@ -2133,6 +2139,7 @@ class AutonomousResearchOrchestratorV2:
         if existing != desired:
             self.store.atomic_write(self.store.governance_path, desired)
 
+    @mutation_boundary(forbid_control_plane=True)
     def _run_ai(self, snapshot: CanonicalResearchSnapshotV2) -> dict[str, Any]:
         state = OrchestratorState(str(self.checkpoint["state"]))
         accepted_invocation = self.store.load_invocation()

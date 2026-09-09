@@ -8,6 +8,8 @@ from this boundary.
 """
 from __future__ import annotations
 
+from .mutation_boundary import mutation_boundary
+
 import json
 from pathlib import Path
 from typing import Any, Mapping
@@ -290,6 +292,7 @@ class StructuralEntryServiceV1:
             return None
         return dict(payload)
 
+    @mutation_boundary()
     def start(
         self,
         objective_id: str,

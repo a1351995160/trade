@@ -16,6 +16,7 @@ from typing import Any
 from types import SimpleNamespace
 
 from .execution_policy import ExecutionPolicy, validate_research_root
+from .research_factory.mutation_boundary import MutationBusyError
 
 import pandas as pd
 from fastapi import Body, FastAPI, HTTPException, Query, Request
@@ -1009,6 +1010,11 @@ def create_app(research_root: str | Path | None = None, execution_policy: Execut
     application.state.tasks = {}
     application.state.services = SimpleNamespace()
     application.state.recovery_status = "RECOVERY_DISABLED"
+
+    @application.exception_handler(MutationBusyError)
+    async def mutation_busy_handler(_, exc):
+        return JSONResponse(status_code=409, content={"code": "MUTATION_BUSY", "message_zh": "研究对象正在写入或必须使用显式服务入口。", "details": {"reason": str(exc)}})
+
     if root is not None:
         application.state.services.research_console_service = ResearchConsoleReadService(root)
         application.state.services.ai_invocation_mode_service = AIInvocationModeServiceV1(root)
@@ -1028,7 +1034,7 @@ def create_app(research_root: str | Path | None = None, execution_policy: Execut
         application.state.services.candidate_materialization_service = CandidateExecutableMaterializationManagerV1(root)
         application.state.services.structural_entry_service = StructuralEntryServiceV1(root)
         application.state.services.projection_reconciliation_service = ProjectionReconciliationServiceV1(root)
-        application.state.services.autonomous_control_plane_service = AutonomousResearchControlPlaneV1(root)
+        application.state.services.autonomous_control_plane_service = AutonomousResearchControlPlaneV1(root, execution_policy=policy)
 
     @application.middleware("http")
     async def enforce_execution_policy(request: Request, call_next):

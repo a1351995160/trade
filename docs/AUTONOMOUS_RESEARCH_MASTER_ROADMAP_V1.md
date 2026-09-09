@@ -189,16 +189,18 @@ R1 不得移动 Final Test 日期来取得更多数据，也不得把新下载�
 
 ## 12. 当前下一项
 
-NEXT_WORK_PACKAGE = P3-A
-GOAL = Execution Policy, Workspace Isolation and Safe Web Startup
-IMPLEMENTATION_SCOPE = P3-A only
+NEXT_WORK_PACKAGE = P3-B
+GOAL = Public Restart Recovery, Durable Intent and Shared Mutation Boundary
+IMPLEMENTATION_SCOPE = P3-B only
+P3_A_STATUS = MERGED via PR #3 (7e277dbe1d20061fd672cf53d1358d07f16a0b1b)
+P3_B_STATUS = INDEPENDENT_REVIEW_PENDING (本地验证通过，分支 CI 单独核对)
 OTHER_PACKAGES = PLANNED, NOT AUTHORIZED TO EXECUTE
 REAL_RESEARCH_AUTHORIZED = NO
 PREDICTIVE_EXECUTION_AUTHORIZED = NO
 FINAL_TEST_AUTHORIZED = NO
 REAL_ORDER_AUTHORIZED = NO
 
-完成 P3-A 的分支实现、测试和实际可取得的 CI 证据后停止，交独立复核；不合并 main，不自动进入 P3-B。
+P3-B 的实现与验证范围见 [PHASE3B_RESTART_RECOVERY_V1.md](PHASE3B_RESTART_RECOVERY_V1.md)。完成分支提交、推送和实际可取得的 CI 证据后停止，交独立复核；不合并 main，不自动进入 P3-C，Phase 3 不宣告关闭。
 
 ## 固定基线依据
 

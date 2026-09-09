@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from chanlun_trader.execution_policy import ExecutionPolicy
 
 import pytest
 
@@ -61,7 +62,7 @@ def _pending_design_root(tmp_path: Path) -> Path:
 
 def test_reconciliation_is_first_and_design_confirmation_is_manual(tmp_path: Path, monkeypatch) -> None:
     root = _pending_design_root(tmp_path)
-    plane = AutonomousResearchControlPlaneV1(root)
+    plane = AutonomousResearchControlPlaneV1(root, execution_policy=ExecutionPolicy(mode="GOVERNED", workspace_kind="SYNTHETIC"))
     order: list[str] = []
     original_reconcile = plane.reconciliation.reconcile
     original_build = plane.context_builder.build
@@ -89,7 +90,7 @@ def test_reconciliation_is_first_and_design_confirmation_is_manual(tmp_path: Pat
 
 def test_approved_design_executes_one_candidate_proposal_and_then_stops_at_human_gate(tmp_path: Path) -> None:
     root = _prepare(tmp_path)
-    plane = AutonomousResearchControlPlaneV1(root)
+    plane = AutonomousResearchControlPlaneV1(root, execution_policy=ExecutionPolicy(mode="GOVERNED", workspace_kind="SYNTHETIC"))
 
     first = plane.tick(OBJECTIVE_ID)
     assert first["decision"]["selected_action"]["action_type"] == GENERATE_CANDIDATE_PROPOSAL
@@ -107,7 +108,7 @@ def test_approved_design_executes_one_candidate_proposal_and_then_stops_at_human
 
 def test_duplicate_tick_does_not_execute_same_action_twice(tmp_path: Path, monkeypatch) -> None:
     root = _prepare(tmp_path)
-    plane = AutonomousResearchControlPlaneV1(root)
+    plane = AutonomousResearchControlPlaneV1(root, execution_policy=ExecutionPolicy(mode="GOVERNED", workspace_kind="SYNTHETIC"))
     calls: list[str] = []
     original_generate = CandidateGenerationManagerV1.generate_proposal
 
@@ -130,7 +131,7 @@ def test_duplicate_tick_does_not_execute_same_action_twice(tmp_path: Path, monke
 
 def test_started_candidate_proposal_recovers_without_second_domain_call(tmp_path: Path, monkeypatch) -> None:
     root = _prepare(tmp_path)
-    planner = AutonomousResearchControlPlaneV1(root)
+    planner = AutonomousResearchControlPlaneV1(root, execution_policy=ExecutionPolicy(mode="GOVERNED", workspace_kind="SYNTHETIC"))
     action = ResearchActionV1.from_dict(planner.inspect(OBJECTIVE_ID)["decision"]["selected_action"])
     status, _ = planner._journal(OBJECTIVE_ID).begin(action)
     assert status == EXECUTION_STARTED
@@ -147,7 +148,7 @@ def test_started_candidate_proposal_recovers_without_second_domain_call(tmp_path
         raise AssertionError("recovery must not call CandidateGenerationManagerV1.generate_proposal")
 
     monkeypatch.setattr(CandidateGenerationManagerV1, "generate_proposal", forbidden_generate)
-    recovered = AutonomousResearchControlPlaneV1(root).execute_action(action)
+    recovered = AutonomousResearchControlPlaneV1(root, execution_policy=ExecutionPolicy(mode="GOVERNED", workspace_kind="SYNTHETIC")).execute_action(action)
 
     assert recovered["execution_status"] == EXECUTION_COMPLETED
     assert recovered["recovered"] is True
@@ -159,7 +160,7 @@ def test_started_candidate_proposal_recovers_without_second_domain_call(tmp_path
     assert calls == []
     assert proposal_path.read_bytes() == before
     assert proposal["proposal_hash"] == json.loads(proposal_path.read_text(encoding="utf-8"))["proposal_hash"]
-    rows = AutonomousResearchControlPlaneV1(root)._journal(OBJECTIVE_ID).read()
+    rows = AutonomousResearchControlPlaneV1(root, execution_policy=ExecutionPolicy(mode="GOVERNED", workspace_kind="SYNTHETIC"))._journal(OBJECTIVE_ID).read()
     assert [row.execution_status for row in rows] == [EXECUTION_STARTED, EXECUTION_COMPLETED]
     assert rows[-1].recovered is True
     assert rows[-1].idempotency_key == action.idempotency_key
@@ -167,7 +168,7 @@ def test_started_candidate_proposal_recovers_without_second_domain_call(tmp_path
 
 def test_started_materialization_preview_recovers_without_duplicate_preview(tmp_path: Path, monkeypatch) -> None:
     root, proposal, _ = _bridge_fixture(tmp_path)
-    planner = AutonomousResearchControlPlaneV1(root)
+    planner = AutonomousResearchControlPlaneV1(root, execution_policy=ExecutionPolicy(mode="GOVERNED", workspace_kind="SYNTHETIC"))
     action = ResearchActionV1.from_dict(planner.inspect(OBJECTIVE_ID)["decision"]["selected_action"])
     status, _ = planner._journal(OBJECTIVE_ID).begin(action)
     assert status == EXECUTION_STARTED
@@ -192,7 +193,7 @@ def test_started_materialization_preview_recovers_without_duplicate_preview(tmp_
         raise AssertionError("recovery must not call create_preview")
 
     monkeypatch.setattr(CandidateExecutableMaterializationManagerV1, "create_preview", forbidden_preview)
-    recovered = AutonomousResearchControlPlaneV1(root).execute_action(action)
+    recovered = AutonomousResearchControlPlaneV1(root, execution_policy=ExecutionPolicy(mode="GOVERNED", workspace_kind="SYNTHETIC")).execute_action(action)
 
     assert recovered["execution_status"] == EXECUTION_COMPLETED
     assert recovered["recovered"] is True
@@ -202,7 +203,7 @@ def test_started_materialization_preview_recovers_without_duplicate_preview(tmp_
     assert calls == []
     assert preview_path.read_bytes() == before
     assert len(list(preview_path.parent.glob("EXECUTABLE_MATERIALIZATION_PREVIEW.json"))) == 1
-    rows = AutonomousResearchControlPlaneV1(root)._journal(OBJECTIVE_ID).read()
+    rows = AutonomousResearchControlPlaneV1(root, execution_policy=ExecutionPolicy(mode="GOVERNED", workspace_kind="SYNTHETIC"))._journal(OBJECTIVE_ID).read()
     assert [row.execution_status for row in rows] == [EXECUTION_STARTED, EXECUTION_COMPLETED]
     assert rows[-1].recovered is True
 
@@ -223,7 +224,7 @@ def test_started_materialization_recovery_recovers_without_duplicate_contract(tm
             },
         )
 
-    planner = AutonomousResearchControlPlaneV1(root)
+    planner = AutonomousResearchControlPlaneV1(root, execution_policy=ExecutionPolicy(mode="GOVERNED", workspace_kind="SYNTHETIC"))
     action = ResearchActionV1.from_dict(planner.inspect(OBJECTIVE_ID)["decision"]["selected_action"])
     assert action.action_type == RECOVER_EXECUTABLE_MATERIALIZATION
     status, _ = planner._journal(OBJECTIVE_ID).begin(action)
@@ -238,7 +239,7 @@ def test_started_materialization_recovery_recovers_without_duplicate_contract(tm
         raise AssertionError("recovery must not materialize a second Durable Contract")
 
     monkeypatch.setattr(CandidateExecutableMaterializationManagerV1, "recover", forbidden_recover)
-    recovered = AutonomousResearchControlPlaneV1(root).execute_action(action)
+    recovered = AutonomousResearchControlPlaneV1(root, execution_policy=ExecutionPolicy(mode="GOVERNED", workspace_kind="SYNTHETIC")).execute_action(action)
 
     assert recovered["execution_status"] == EXECUTION_COMPLETED
     assert recovered["recovered"] is True
@@ -253,17 +254,17 @@ def test_started_materialization_recovery_recovers_without_duplicate_contract(tm
     contract_registry = json.loads(contract_paths[0].read_text(encoding="utf-8"))
     assert len(contract_registry["contracts"]) == 1
     assert not list((root / "data/research/research_factory/batches").glob("*/factory_trial_ledger.json"))
-    ready = AutonomousResearchControlPlaneV1(root).inspect(OBJECTIVE_ID)
+    ready = AutonomousResearchControlPlaneV1(root, execution_policy=ExecutionPolicy(mode="GOVERNED", workspace_kind="SYNTHETIC")).inspect(OBJECTIVE_ID)
     assert ready["decision"]["selected_action"]["action_type"] == RUN_STRUCTURAL_PREFLIGHT
     assert ready["decision"]["permission"]["permission"] == ALLOW_MANUAL_ONLY
-    rows = AutonomousResearchControlPlaneV1(root)._journal(OBJECTIVE_ID).read()
+    rows = AutonomousResearchControlPlaneV1(root, execution_policy=ExecutionPolicy(mode="GOVERNED", workspace_kind="SYNTHETIC"))._journal(OBJECTIVE_ID).read()
     assert [row.execution_status for row in rows] == [EXECUTION_STARTED, EXECUTION_COMPLETED]
     assert rows[-1].recovered is True
 
 
 def test_started_action_with_wrong_identity_fails_closed_without_overwrite(tmp_path: Path, monkeypatch) -> None:
     root, proposal, _ = _bridge_fixture(tmp_path)
-    planner = AutonomousResearchControlPlaneV1(root)
+    planner = AutonomousResearchControlPlaneV1(root, execution_policy=ExecutionPolicy(mode="GOVERNED", workspace_kind="SYNTHETIC"))
     action = ResearchActionV1.from_dict(planner.inspect(OBJECTIVE_ID)["decision"]["selected_action"])
     status, _ = planner._journal(OBJECTIVE_ID).begin(action)
     assert status == EXECUTION_STARTED
@@ -281,21 +282,20 @@ def test_started_action_with_wrong_identity_fails_closed_without_overwrite(tmp_p
         raise AssertionError("wrong-identity recovery must not overwrite the existing Preview")
 
     monkeypatch.setattr(CandidateExecutableMaterializationManagerV1, "create_preview", forbidden_preview)
-    result = AutonomousResearchControlPlaneV1(root).execute_action(wrong_action)
+    result = AutonomousResearchControlPlaneV1(root, execution_policy=ExecutionPolicy(mode="GOVERNED", workspace_kind="SYNTHETIC")).execute_action(wrong_action)
 
     assert result["execution_status"] == "DENY"
-    assert result["reason_code"] == RECOVERY_SIDE_EFFECT_IDENTITY_MISMATCH
-    assert result["recovery_evidence"]["matched"] is False
-    assert result["recovery_evidence"]["safe_to_mark_completed"] is False
-    PerformanceBlindGuard.assert_blind(result["recovery_evidence"])
+    assert result["reason_code"] == "ACTION_IDENTITY_INVALID"
+    assert result["safe_to_advance"] is False
+    PerformanceBlindGuard.assert_blind(result)
     assert calls == []
-    rows = AutonomousResearchControlPlaneV1(root)._journal(OBJECTIVE_ID).read()
+    rows = AutonomousResearchControlPlaneV1(root, execution_policy=ExecutionPolicy(mode="GOVERNED", workspace_kind="SYNTHETIC"))._journal(OBJECTIVE_ID).read()
     assert [row.execution_status for row in rows] == [EXECUTION_STARTED]
 
 
 def test_started_action_without_side_effect_retries_same_idempotency_key(tmp_path: Path, monkeypatch) -> None:
     root = _prepare(tmp_path)
-    planner = AutonomousResearchControlPlaneV1(root)
+    planner = AutonomousResearchControlPlaneV1(root, execution_policy=ExecutionPolicy(mode="GOVERNED", workspace_kind="SYNTHETIC"))
     action = ResearchActionV1.from_dict(planner.inspect(OBJECTIVE_ID)["decision"]["selected_action"])
     status, _ = planner._journal(OBJECTIVE_ID).begin(action)
     assert status == EXECUTION_STARTED
@@ -307,12 +307,12 @@ def test_started_action_without_side_effect_retries_same_idempotency_key(tmp_pat
         return original_generate(manager, objective_id)
 
     monkeypatch.setattr(CandidateGenerationManagerV1, "generate_proposal", counted_generate)
-    result = AutonomousResearchControlPlaneV1(root).execute_action(action)
+    result = AutonomousResearchControlPlaneV1(root, execution_policy=ExecutionPolicy(mode="GOVERNED", workspace_kind="SYNTHETIC")).execute_action(action)
 
     assert result["execution_status"] == EXECUTION_COMPLETED
     assert result.get("recovered") is not True
     assert calls == [OBJECTIVE_ID]
-    rows = AutonomousResearchControlPlaneV1(root)._journal(OBJECTIVE_ID).read()
+    rows = AutonomousResearchControlPlaneV1(root, execution_policy=ExecutionPolicy(mode="GOVERNED", workspace_kind="SYNTHETIC"))._journal(OBJECTIVE_ID).read()
     assert [row.execution_status for row in rows] == [EXECUTION_STARTED, EXECUTION_RETRY_ALLOWED, EXECUTION_STARTED, EXECUTION_COMPLETED]
     assert {row.idempotency_key for row in rows} == {action.idempotency_key}
     assert rows[-1].attempt == 2
@@ -320,7 +320,7 @@ def test_started_action_without_side_effect_retries_same_idempotency_key(tmp_pat
 
 def test_started_action_without_side_effect_but_stale_fails_closed(tmp_path: Path, monkeypatch) -> None:
     root = _prepare(tmp_path)
-    planner = AutonomousResearchControlPlaneV1(root)
+    planner = AutonomousResearchControlPlaneV1(root, execution_policy=ExecutionPolicy(mode="GOVERNED", workspace_kind="SYNTHETIC"))
     action = ResearchActionV1.from_dict(planner.inspect(OBJECTIVE_ID)["decision"]["selected_action"])
     status, _ = planner._journal(OBJECTIVE_ID).begin(action)
     assert status == EXECUTION_STARTED
@@ -335,19 +335,19 @@ def test_started_action_without_side_effect_but_stale_fails_closed(tmp_path: Pat
         raise AssertionError("stale STARTED action must not retry the domain action")
 
     monkeypatch.setattr(CandidateGenerationManagerV1, "generate_proposal", forbidden_generate)
-    result = AutonomousResearchControlPlaneV1(root).execute_action(action)
+    result = AutonomousResearchControlPlaneV1(root, execution_policy=ExecutionPolicy(mode="GOVERNED", workspace_kind="SYNTHETIC")).execute_action(action)
 
     assert result["execution_status"] == "DENY"
     assert result["reason_code"] == STALE_RESEARCH_ACTION
     assert calls == []
     assert not (root / "reports/research_candidates/proposals" / OBJECTIVE_ID / "CANDIDATE_PROPOSAL.json").exists()
-    rows = AutonomousResearchControlPlaneV1(root)._journal(OBJECTIVE_ID).read()
+    rows = AutonomousResearchControlPlaneV1(root, execution_policy=ExecutionPolicy(mode="GOVERNED", workspace_kind="SYNTHETIC"))._journal(OBJECTIVE_ID).read()
     assert [row.execution_status for row in rows] == [EXECUTION_STARTED]
 
 
 def test_stale_action_is_denied_after_context_change(tmp_path: Path) -> None:
     root = _prepare(tmp_path)
-    plane = AutonomousResearchControlPlaneV1(root)
+    plane = AutonomousResearchControlPlaneV1(root, execution_policy=ExecutionPolicy(mode="GOVERNED", workspace_kind="SYNTHETIC"))
     planned = plane.inspect(OBJECTIVE_ID)
     action = ResearchActionV1.from_dict(planned["decision"]["selected_action"])
 
@@ -364,7 +364,7 @@ def test_stale_action_is_denied_after_context_change(tmp_path: Path) -> None:
 def test_capability_missing_denies_even_when_canonical_state_allows(tmp_path: Path) -> None:
     root = _prepare(tmp_path)
     capabilities = tuple(item for item in AgentCapabilityRegistryV1.default_capabilities() if item.capability_id != "CAN_GENERATE_CANDIDATE_PROPOSAL")
-    plane = AutonomousResearchControlPlaneV1(root, capability_registry=AgentCapabilityRegistryV1(capabilities))
+    plane = AutonomousResearchControlPlaneV1(root, execution_policy=ExecutionPolicy(mode="GOVERNED", workspace_kind="SYNTHETIC"), capability_registry=AgentCapabilityRegistryV1(capabilities))
 
     result = plane.inspect(OBJECTIVE_ID)
     assert result["decision"]["selected_action"]["action_type"] == GENERATE_CANDIDATE_PROPOSAL
@@ -376,7 +376,7 @@ def test_capability_missing_denies_even_when_canonical_state_allows(tmp_path: Pa
 def test_dry_run_has_zero_control_plane_and_domain_writes(tmp_path: Path) -> None:
     root = _prepare(tmp_path)
     before = sorted(path.relative_to(root).as_posix() for path in root.rglob("*"))
-    result = AutonomousResearchControlPlaneV1(root).tick(OBJECTIVE_ID, dry_run=True)
+    result = AutonomousResearchControlPlaneV1(root, execution_policy=ExecutionPolicy(mode="GOVERNED", workspace_kind="SYNTHETIC")).tick(OBJECTIVE_ID, dry_run=True)
     after = sorted(path.relative_to(root).as_posix() for path in root.rglob("*"))
 
     assert result["dry_run"] is True
@@ -386,7 +386,7 @@ def test_dry_run_has_zero_control_plane_and_domain_writes(tmp_path: Path) -> Non
 
 def test_loop_enforces_max_ticks_and_stops_at_human_gate(tmp_path: Path) -> None:
     root = _prepare(tmp_path)
-    result = AutonomousResearchControlPlaneV1(root).loop(OBJECTIVE_ID, max_ticks=10)
+    result = AutonomousResearchControlPlaneV1(root, execution_policy=ExecutionPolicy(mode="GOVERNED", workspace_kind="SYNTHETIC")).loop(OBJECTIVE_ID, max_ticks=10)
 
     assert result["ticks_executed"] == 2
     assert result["ticks_executed"] <= result["max_ticks"]
@@ -417,14 +417,14 @@ def test_phase2_predictive_action_never_starts_trial_without_authorization(tmp_p
     })
     # Without an executable canonical contract, reconciliation must fail
     # closed before it can infer Predictive authorization.
-    result = AutonomousResearchControlPlaneV1(root).inspect(OBJECTIVE_ID)
+    result = AutonomousResearchControlPlaneV1(root, execution_policy=ExecutionPolicy(mode="GOVERNED", workspace_kind="SYNTHETIC")).inspect(OBJECTIVE_ID)
     assert result["decision"]["permission"]["permission"] in {"DENY", ALLOW_MANUAL_ONLY}
     assert result["decision"]["selected_action"]["action_type"] != "START_PREDICTIVE_TRIAL" or result["decision"]["permission"]["reason_code"] == PREDICTIVE_AUTHORIZATION_REQUIRED
 
 
 def test_materialization_preview_then_confirmation_recovery_keeps_structural_manual(tmp_path: Path) -> None:
     root, proposal, _ = _bridge_fixture(tmp_path)
-    plane = AutonomousResearchControlPlaneV1(root)
+    plane = AutonomousResearchControlPlaneV1(root, execution_policy=ExecutionPolicy(mode="GOVERNED", workspace_kind="SYNTHETIC"))
 
     preview = plane.tick(OBJECTIVE_ID)
     assert preview["decision"]["selected_action"]["action_type"] == CREATE_EXECUTABLE_MATERIALIZATION_PREVIEW
@@ -470,7 +470,7 @@ def test_structural_pass_stops_at_predictive_authorization_without_trial(tmp_pat
         confirmed=True,
         action=RUN_STRUCTURAL_PREFLIGHT,
     )
-    plane = AutonomousResearchControlPlaneV1(root)
+    plane = AutonomousResearchControlPlaneV1(root, execution_policy=ExecutionPolicy(mode="GOVERNED", workspace_kind="SYNTHETIC"))
 
     result = plane.inspect(OBJECTIVE_ID)
 
@@ -502,7 +502,7 @@ def test_authorized_predictive_action_remains_disabled_in_phase2(tmp_path: Path)
         "decision_id": "DECISION_CONTROL_PLANE_V1",
     }) + "\n", encoding="utf-8")
 
-    result = AutonomousResearchControlPlaneV1(root).inspect(OBJECTIVE_ID)
+    result = AutonomousResearchControlPlaneV1(root, execution_policy=ExecutionPolicy(mode="GOVERNED", workspace_kind="SYNTHETIC")).inspect(OBJECTIVE_ID)
 
     assert result["decision"]["selected_action"]["action_type"] == "START_PREDICTIVE_TRIAL"
     assert result["decision"]["permission"]["permission"] == "DENY"

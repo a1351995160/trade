@@ -25,6 +25,7 @@ if __name__ == "__main__":
     sys.modules.setdefault("chanlun_trader.research_daemon", sys.modules[__name__])
 
 from .research_factory.common import stable_hash
+from .research_factory.mutation_boundary import mutation_boundary
 from .research_factory.context import PerformanceBlindGuard
 from .research_factory.contract_correction import load_effective_contract_invalidations
 from .research_factory.objective import ResearchObjectiveV1
@@ -630,6 +631,7 @@ class CanonicalResearchRuntime:
         budget = {"objective_id": self.objective_id, "used": int(objective_bucket.get("used", 0)), "total": int(objective_bucket.get("limit", context.budget.get("total", 0))), "remaining": int(objective_bucket.get("remaining", 0)), "reserved": int(objective_bucket.get("reserved", 0)), "registry_path": str(budget_path.relative_to(self.root)).replace("\\", "/"), "registry_head_hash": SearchBudgetRegistryV1(self.objective_id, budget_path).head_hash}
         return {"budget": budget, "current_trial": None, "last_completed_trial": last_completed_trial, "research_passed_count": int(counts.get("RESEARCH_PASSED", 0)), "promising_count": int(counts.get("PROMISING", 0)), "remaining_frozen_candidates": sum(item.candidate_id not in self._completed for item in self._contracts.values()), "global_search_exhausted": context.global_search_exhausted}
 
+    @mutation_boundary(forbid_control_plane=True)
     def accept_ai_batch(self, artifact: str | Path) -> Mapping[str, Any]:
         path = Path(artifact)
         payload = self._json(path)
@@ -943,6 +945,7 @@ class ResearchDaemon:
             runtime=self.runtime,
         )
 
+    @mutation_boundary(forbid_control_plane=True)
     def run_once(self) -> dict[str, Any]:
         self.lock.acquire(run_id=self.checkpoint.daemon_run_id if self.checkpoint else "PENDING")
         lock_released_for_formal_recovery = False

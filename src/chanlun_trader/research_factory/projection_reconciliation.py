@@ -6,6 +6,8 @@ Daemon or Orchestrator state.
 """
 from __future__ import annotations
 
+from .mutation_boundary import mutation_boundary
+
 import json
 from pathlib import Path
 from typing import Any, Mapping
@@ -145,6 +147,7 @@ class ProjectionReconciliationServiceV1:
                     rows.append(dict(payload))
         return rows
 
+    @mutation_boundary()
     def reconcile(self, objective_id: str, *, apply: bool = True, reason: str = "CANONICAL_FACT_REPROJECTED") -> dict[str, Any]:
         report = ObjectiveReconciliationServiceV1(self.root).reconcile(objective_id)
         if CANONICAL_CONFLICT in set(str(item) for item in report.get("conflicts", ())) or str(report.get("conflict_level")) == CANONICAL_CONFLICT:

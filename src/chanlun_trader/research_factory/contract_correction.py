@@ -6,6 +6,8 @@ access exists for that candidate.
 """
 from __future__ import annotations
 
+from .mutation_boundary import mutation_boundary
+
 import json
 import os
 from pathlib import Path
@@ -168,6 +170,7 @@ class FrozenContractCorrectionServiceV1:
         })
         return {**preview_payload, "preview_hash": preview_hash, "confirmation_token": confirmation_token}
 
+    @mutation_boundary()
     def confirm_incompatible_contract(
         self,
         *,
