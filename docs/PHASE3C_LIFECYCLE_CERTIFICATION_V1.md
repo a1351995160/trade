@@ -1,5 +1,55 @@
 # P3-C 生命周期认证与完整语义合同
 
+## 双平台认证结论（2026-09-09）
+
+实现 HEAD：`c37fd46c9bfa83968dc1d9ba7effd5d89f4047bd`。分支仍为 `codex/phase3c-lifecycle-certification-v1`；origin/main 为 `e50f5abc26bc9aa3b5927c2d5c436f47b3ee3a08`，main 基线与 P3-B 认证 HEAD 的 ancestry 检查均 exit 0。
+
+[P3-C run 34301691534](https://github.com/a1351995160/trade/actions/runs/34301691534) 已完成，Linux 与 Windows 均 SUCCESS。以下数字来自该 run 原始 job 日志，不将 collected 当作 passed。
+
+| 验证 | Windows CI | Linux CI |
+|---|---:|---:|
+| Python | 3.13.15，MSC v.1944 | 3.11.16，GCC 13.3.0 |
+| OS | Windows Server 2025 Datacenter 10.0.26100 | Linux 6.17.0-1022-azure |
+| 实际 fixture 临时根 | C:/Users/RUNNER~1/AppData/Local/Temp | /tmp |
+| fixture 所在文件系统 | C: NTFS | /dev/root，ext4 |
+| P3-A | 66 passed | 66 passed |
+| Phase 1 | 235 passed / 12 deselected | 234 passed / 1 skipped / 12 deselected |
+| Phase 2 | 24 passed | 24 passed |
+| P3-B | 35 passed | 35 passed |
+| P3-C | **84 passed**，200.89 秒 | **84 passed**，127.42 秒 |
+| collect-only | 859 collected，另 1 个 legacy module skip | 相同 |
+| frontend | 8 tests，build 成功 | 相同 |
+
+Linux Phase 1 的 1 skipped 是既有 `test_windows_resource_monitor_has_native_fallback_without_psutil`，在非 Windows 上按原条件跳过。12 deselected 与 legacy module skip 均沿用原认证选择，无新增 skip/xfail/排除。pytest 的 1 warning 是既有 anyio BlockingPortal 弃用提示。
+
+同一 HEAD 的独立原工作流全部 SUCCESS：Phase 1 run 34301691757；Phase 2 run 34301691768；P3-A run 34301691558；P3-B run 34301691489。P3-C JUnit artifacts：Linux 10085225030、Windows 10085290888，名称均含完整实现 SHA；测试成功输出与 worker 探针见上述 CI 日志。
+
+两平台各阶段主进程 template/approve/confirm 计数一致：
+
+| 阶段 | synthetic template | approve 尝试 | confirm 尝试 |
+|---|---:|---:|---:|
+| P3-A | 5 | 1 | 4 |
+| Phase 1 | 72 | 70 | 74 |
+| Phase 2 | 18 | 17 | 17 |
+| P3-B | 33 | 33 | 33 |
+| P3-C | 1 | 61 | 61 |
+
+这些不是独立人工批准人数或动作总数。P3-C 的 template 1 来自旧轻量兼容测试，完整设计由显式合成 backend 产生并另有 Scenario 事件。各阶段已安装的 forbidden_predictive / forbidden_structural / forbidden_ai，以及 import 前 network / 非 Python process / protected-root 计数均实测为 0；P3-C worker 检查点逐项断言实际探针为 0。P3-B 硬退出明确输出 UNAVAILABLE_P3B_HARD_EXIT_USE_FSYNC_EVENTS，绝不把缺失统计当零。
+
+本地同一实现 HEAD：Windows Python 3.13.5 / C: NTFS，P3-C 84 passed（233.48 秒），原四阶段回归均通过；日志在 tmp/p3c-evidence/p3c-c37fd46.log、regressions-release.log，CI 原文亦保留在该忽略目录。设计/批准/Proposal/候选/最终 Durable 哈希已在真实正向测试分别输出，并断言不同层不混为一值、同获批语义贯穿物化。
+
+认证仅覆盖临时合成领域服务链。未启动真实研究、AI、行情、Structural/Predictive 实际执行器、Final Test、Prospective/Paper 或订单；未声称真实工作区运行态已认证。预算负向中的显式合成 reserve/consume 不计作真实研究，也不伪写成无预算操作。
+
+实现已完成，待独立复核。本文后续文档提交不改代码或测试；最终交付回复绑定最新文档 HEAD 及其分支 CI，提交时尚未结束的 CI 如实为 PENDING。
+P3C_IMPLEMENTATION_STATUS=IMPLEMENTED_AND_SOURCE_CERTIFIED
+FULL_SYNTHETIC_LIFECYCLE_REACHED_AUTH_BOUNDARY=true
+READY_FOR_INDEPENDENT_RECERTIFICATION=true
+PHASE3_CLOSED=false
+MAIN_MERGED=false
+NEXT_PACKAGE_STARTED=false
+
+回滚实现：在本独立分支执行 `git revert --no-edit c37fd46c9bfa83968dc1d9ba7effd5d89f4047bd`；不修改 main，不删除任何研究历史。
+
 ## 2026-09-09 用户明确批准的实施范围
 
 用户已批准在既有 Design → 人工审批 → Proposal → Freeze → Materialization 中传递显式完整执行语义，仅解决已复现的语义缺失与候选身份衔接。此批准覆盖 research_evolution_ai_design.py、candidate_generation.py、必要审批/物化衔接及对应测试文档；其他文件仅限本轮复现的必要缺陷。以下历史“待批准”内容保留为当时记录，当前状态为 IMPLEMENTING。
@@ -15,7 +65,7 @@
 
 ## 当前实现与认证（用户批准后）
 
-状态：IMPLEMENTED_BRANCH_CI_PENDING；本地合法主链、L1—L10 和边界已验证，分支双平台 CI 待新 HEAD。以下“历史阻断记录”仅对应 5a14f9a。
+本节保留实现期间的验证过程；最终结果以上文 c37fd46 双平台认证结论为准。更早的“历史阻断记录”仅对应 5a14f9a。
 
 ### 文件级落点与身份引用
 
