@@ -856,3 +856,23 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - progress.md：仅追加本轮操作、验证缺口与回滚记录。
 - 回滚：在本独立分支执行 git revert --no-edit <本轮文档提交SHA>；本轮基线 d3dcb68934ea8fb058c98039181d29894b6425df。不 reset main，不修改原项目。
 - ORIGINAL_REPO_ACCESS=SCOPED_SOURCE_AND_GIT_READ_ONLY；FORMAL_SOURCE_DEPENDENCY_CLOSURE=BLOCKED_MISSING_SOURCE；REAL_CANDIDATE_DATA_READINESS=NOT_VERIFIED；READY_FOR_REAL_TRIAL=false；R1_FULLY_CLOSED=false；R2_STARTED=false；MAIN_MERGED=false（本轮分支）。完成本轮交付后停止，等待独立工程复核及精确源码来源补充。
+## 2026-09-09 - Task: R1 来源调查分支双平台结果归档
+
+### What was done
+
+提交并推送 cb31d9f76ab8983e69007d89fb6868a17e7ead6b，完成来源调查交付的分支验证；追加实际 run/job、部分成功与独立失败证据，未恢复源码或更改测试。
+
+### Testing
+
+- cb31d9f 的 R1 run 34320730582 双平台 SUCCESS：Linux Python 3.11.16/ext4、Windows Python 3.13.15/C: NTFS；P3-A 66、Phase 2 24、P3-B 35、P3-C 105、R1 63 passed；Phase 1 Windows 235/12 deselected，Linux 234/1 skipped/12 deselected。943 collected、前端/compile/diff 成功，未扩大排除。
+- 17 模块冷加载、两处 corrected 缺源码阻断和资源正负向继续成立，真实 corrected 成功正向 NOT_VERIFIED。R1 安装范围内禁用执行器/网络/非测试进程/保护目录计数为 0，合成审批与确认各 59。
+- 独立 Phase 1/2/P3-A/P3-B 均成功；独立 P3-C run 34320730603 Windows 为 104 passed/1 failed，L1 dry_run 子进程被 RESEARCH_PROCESS_DISABLED 阻断、exit=79、process_calls=1，具体触发根因未验证。Linux 成功。不抹除该失败，不称全部 CI 全绿，不放宽隔离。
+- 原日志保存 tmp/r1-recovery-evidence，详细 job/link 见调查报告。Git 推送 TLS EOF 后以命令级 schannel 保持验证成功；远端分支 SHA 已核对，main 仍为 d3dcb68934ea8fb058c98039181d29894b6425df。
+- 本次只追加证据文档；归档新 HEAD 的 WINDOWS_CI/LINUX_CI 在提交时 PENDING，不以 cb31d9f 结果替代。源码/测试相同仅说明差异范围，不等同于新 SHA CI 成功。
+
+### Notes
+
+- docs/R1_TRUSTED_SOURCE_RECOVERY_V1.md：追加 cb31d9f 双平台成功范围、独立 P3-C 失败和证据绑定。
+- progress.md：仅追加本次验证归档。
+- 回滚本归档：git revert --no-edit <本归档提交SHA>；回滚来源调查：git revert --no-edit cb31d9f76ab8983e69007d89fb6868a17e7ead6b。不 reset main、不改原项目。
+- 保持 BLOCKED_MISSING_SOURCE、REAL_CANDIDATE_DATA_READINESS=NOT_VERIFIED、READY_FOR_REAL_TRIAL=false、R1_FULLY_CLOSED=false。停止并等待独立工程复核；无 main merge/auto-merge，无 R2。

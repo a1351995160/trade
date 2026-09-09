@@ -113,3 +113,15 @@ READY_FOR_INDEPENDENT_ENGINEERING_REVIEW=SOURCE_INVESTIGATION_ONLY
 ```
 
 PR #6 的已合并事实与本轮 MAIN_MERGED=false 含义不同；后者表示本轮分支未合并。回滚本轮文档：在该独立分支执行 `git revert --no-edit <本轮文档提交SHA>`，不 reset main、不修改原目录。
+
+## 2026-09-09 分支 CI 实测归档
+
+证据提交为 cb31d9f76ab8983e69007d89fb6868a17e7ead6b。R1 综合工作流 [34320730582](https://github.com/a1351995160/trade/actions/runs/34320730582) 双平台 SUCCESS：Linux job 102366541010，Python 3.11.16 / ext4；Windows job 102366541236，Python 3.13.15 / C: NTFS。两平台 P3-A=66、Phase 2=24、P3-B=35、P3-C=105、R1=63 passed；Phase 1 Windows=235 passed/12 deselected，Linux=234 passed/1 既有平台 skipped/12 deselected。943 collected 不是 passed；前端测试/构建、compile、diff 检查均 success。
+
+真实冷 worker 两个平台均输出 17 模块 LOADED、两个 loader BLOCKED_MISSING_SOURCE，prompt 资源正负向及数据根哨兵继续通过。实际 R1 主进程三类禁用执行器、网络、非测试进程和保护路径探针均为 0；合成审批/确认各 59。不能把这些计数外推至未覆盖分支或全部历史。
+
+独立 Phase 1/2/P3-A/P3-B 工作流 34320730559 / 34320730569 / 34320730558 / 34320730683 均 SUCCESS。但独立 [P3-C 34320730603](https://github.com/a1351995160/trade/actions/runs/34320730603) 为 FAILURE：Linux 成功，Windows job 102366540959 的 test_lifecycle_restart_matrix[L1] dry_run 子进程 exit=79，RESEARCH_PROCESS_DISABLED、process_calls=1；104 passed/1 failed。原日志截断具体调用栈，触发进程的根因 NOT_VERIFIED。与综合 R1 同 SHA 的 105 passed 分开保留，不称全部 CI 通过，不擅自调整隔离/进程策略或重试掩盖失败。
+
+本地日志位于忽略目录 tmp/r1-recovery-evidence/{linux.log,windows.log,p3c-failed.log}；日志源为上述 GitHub run/job。首次 Git push 两次 TLS EOF，随后仅以命令级 http.sslBackend=schannel 保持证书校验推送成功，未修改原仓库或持久 Git 配置。
+
+本次归档仅追加文档，没有源码/测试变更。归档新 HEAD 的 CI 在提交时 PENDING；上述结果严格属于 cb31d9f，不冒充后续 SHA。源码恢复成功正向仍未完成，独立 P3-C 失败仍需工程复核；本轮最终停止，不开始 R2。
