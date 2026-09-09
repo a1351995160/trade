@@ -312,3 +312,10 @@ def test_metric_zero_origin_and_shift_with_real_ledger(entry):
     events = BacktestEventLog()
     result = EngineResult(ledger, events, OrderManager(events), TradingClock(TradingCalendar(calendar)), BacktestRunContext())
     assert corrected.compute_metrics_v3(result, 100000., {}, calendar, 3)["max_exit_delay_sessions"] == 3
+
+
+def test_participation_contract_has_no_epsilon_allowance(tmp_path):
+    setup = inputs(tmp_path)
+    drifted = (*setup[:4], replace(setup[4], max_participation_rate=0.1000000001))
+    with pytest.raises(ValueError, match="PARTICIPATION_CONTRACT"):
+        run(tmp_path, setup=drifted)

@@ -2,6 +2,7 @@
 from __future__ import annotations
 import csv
 from collections import Counter
+from decimal import Decimal
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 import numpy as np
@@ -354,7 +355,7 @@ def run_corrected_candidate(root: Path, record: Any, trial_id: str, factor_value
         raise ValueError("R1_CALENDAR_OUTSIDE_POLICY")
     if record.exit_predicate.exit_type not in {"FIXED_HOLD", "STRUCTURE_INVALIDATION"}:
         raise ValueError("R1_UNSUPPORTED_EXIT_CONTRACT")
-    if policy.max_participation_rate != 0.10:
+    if Decimal(str(policy.max_participation_rate)) != Decimal("0.10"):
         raise ValueError("R1_UNSUPPORTED_PARTICIPATION_CONTRACT")
     if any(item.get("mode") == "HARD_GATE" for item in record.signal_predicate.regime_conditions) and any(
             regimes.get(d, "UNKNOWN") == "UNKNOWN" for d in exec_calendar):

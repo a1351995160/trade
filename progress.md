@@ -998,3 +998,17 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - progress.md：仅追加本轮施工与验证记录。
 - tmp/r1-snapshot-*.log、tmp/r1-integration-local-final.log、tmp/r1-targeted-final.log、tmp/r1-integration-local.xml、tmp/r1-targeted-final.xml：忽略目录保留实际失败及成功证据，逐项见本轮文档。
 回滚：git revert --no-edit <本轮实现提交SHA>；回滚点d433709b01289097f89eb24d19c9f147e38ca985。日志保留，撤销时另行追加记录；不reset、不修改原研究目录。HISTORICAL_PROVENANCE=UNVERIFIED；真实数据NOT_VERIFIED；READY_FOR_REAL_TRIAL=false；R1_FULLY_CLOSED=false；未merge、未开始R2。
+
+## 2026-09-09 - Task: R1 容量合同精确比较与可靠性门禁修正
+### What was done
+根据061daee的Sonar python:S1244实际告警，将新增容量合同校验改成十进制精确比较，仍只接受冻结0.10，不引入容差或改变成本/成交模型。其余维护性告警保持待审，不扩展重构。
+### Testing
+47 passed（5.16s），真实合成engine.run=29，禁用执行器/网络/进程/保护路径探针0；新增0.1000000001必须拒绝，原0.10合成执行继续通过。日志tmp/r1-decimal-contract.log。旧PR Sonar reliability=C失败保留；新SHA双平台/PR检查待取证，不借用旧SHA。
+### Notes
+- scripts/run_engine_corrected_phase4_v3.py：Decimal精确比较容量契约，无epsilon。
+- tests/research_factory/test_r1_snapshot_integration.py：新增微小偏移合同的拒绝验证。
+- docs/R1_SNAPSHOT_INTEGRATION_SOURCE_MANIFEST.json：更新该脚本实际适配字节/文本哈希。
+- docs/R1_SNAPSHOT_INTEGRATION_V1.md：追加告警原因、修正和验证。
+- progress.md：追加本轮实际门禁修正记录。
+- tmp/r1-decimal-contract.log：保存定向结果。
+回滚：git revert --no-edit <本提交SHA>；回滚点061daee78d910442d1ed021cba6b66bc6227edb7（有已知Sonar告警）。真实数据NOT_VERIFIED，READY_FOR_REAL_TRIAL=false，R1_FULLY_CLOSED=false，Windows L1 OPEN，未merge、未开始R2。

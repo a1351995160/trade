@@ -70,3 +70,7 @@ R2_STARTED=false
 ```
 
 回滚本轮实现使用 `git revert --no-edit <本轮实现提交SHA>`；基线为 d433709。恢复缺源码阻断，不 reset main、不触碰原工作区或历史诊断。
+
+## 061daee 后的精确合同检查修正
+
+PR #7 的 Sonar 在 061daee 报 python:S1244，new_reliability_rating=C。容量合同只允许既有十进制0.10；改为 Decimal(str(value)) 与 Decimal("0.10") 精确比较，不增加epsilon，不修改成交模型。新增0.1000000001必须拒绝的回归。定向47 passed、真实合成engine.run=29、隔离探针0；tmp/r1-decimal-contract.log保留实测。旧Sonar失败保留，最终HEAD重新认证。其他维护性告警不触发扩大重构或修改门禁阈值。
