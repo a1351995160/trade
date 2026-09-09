@@ -189,6 +189,12 @@ R1 不得移动 Final Test 日期来取得更多数据，也不得把新下载�
 
 ## 12. 当前下一项
 
+### 2026-09-09：Phase 3 工程收尾与 R1
+
+用户已完成独立最终差异复核并确认 PR #5 普通 merge。实际 origin/main 为 `1f6f29c7ad3e8d9371168dfa3bd5201723b48abd`，第二父提交为 P3-C 最终认证 HEAD `7556b3d1e800b22df8e8645a010466c20126810a`。PHASE3_ENGINEERING_CERTIFICATION_CLOSED=true，仅限既定 synthetic 入口和 Windows/Linux 平台。真实运行态仍 NOT_VERIFIED，不授权研究执行。
+
+当前工作项为 R1；独立分支 `codex/r1-source-closure-data-readiness-v1`。源码闭包缺原 corrected/legacy 实现，状态 BLOCKED_MISSING_SOURCE；只读合成数据核验及未覆盖范围见 [R1 交付说明](R1_SOURCE_CLOSURE_AND_DATA_READINESS_V1.md)。R1_FULLY_CLOSED=false，不开始 R2。以下保留此前 P3-C 状态，作为历史证据。
+
 NEXT_WORK_PACKAGE = P3-C
 GOAL = Self-contained Synthetic Lifecycle Certification
 IMPLEMENTATION_SCOPE = P3-C only

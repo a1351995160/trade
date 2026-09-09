@@ -727,3 +727,60 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - 改动文件：docs/PHASE3C_LIFECYCLE_CERTIFICATION_V1.md（追加修正实现 SHA、五个 run_id 和精确平台证据）；progress.md（仅追加本条）。
 - 代码回滚：git revert --no-edit d8596efa5331470174877594aed9d70bebb4982c；文档回滚可 git revert 本文档提交。不得 reset main 或改写领域历史。
 - 继续创建 P3-C → main PR 供独立复核，不 merge、不启用 auto-merge、不开始 R1/R2。PHASE3_CLOSED=false；MAIN_MERGED=false；NEXT_PACKAGE_STARTED=false；REAL_WORKSPACE_RUNTIME_INDEPENDENTLY_VERIFIED=NO。
+
+## 2026-09-09 - Task: R1 源码来源闭包检查与只读合成数据核验
+
+### What was done
+
+- fetch 核对 origin/main=1f6f29c7ad3e8d9371168dfa3bd5201723b48abd，父提交精确为 e50f5abc/7556b3d；从开发库创建 codex/r1-source-closure-data-readiness-v1 独立干净 worktree。按用户提供的独立复核/PR #5 merge 结论追加 Phase 3 synthetic 工程收尾，保留历史 false/PENDING。
+- 两个 corrected 调用点改为部署源码定位，engine hash 不再从数据根取源码；默认 Codex prompt 同样来自部署源码。发布仓库和全部取回历史缺 run_engine_corrected_phase4_v3.py，未编造 helper/算法、未补拿原工作区文件，正式闭包 BLOCKED_MISSING_SOURCE。
+- 增加 GuardedResearchReader 显式内存审计、从完整 Durable/政策/因子定义派生需求的只读合成核验；实际读 Parquet、独立日历/状态分母、字段/预热/时点/单位、因子计算图、身份重验和无写测试。完整来源矩阵、数据需求与未覆盖分支见 R1 文档。
+- 本轮仅局部 SYNTHETIC_DAILY_INPUTS 认证；原 VOLUME_ACCEL registry 未在发布库中提供，显式测试定义不代表真实公式。corrected parity、真实因子/政策/历史 PIT、事件/PIT_QFQ/完整分钟及真实数据均未认证。R1_IMPLEMENTATION=PARTIAL；REAL_CANDIDATE_DATA_READINESS=NOT_VERIFIED；READY_FOR_REAL_TRIAL=false。
+
+### Testing
+
+- 全新 .venv，Windows Python 3.13.5；现有 requirements-p3b hash lock 从官方 PyPI 安装，无依赖升级。C: 临时 fixture=NTFS，E: 源码=exFAT。先启用 import 前隔离，再运行 P3-A/collect。
+- 原五阶段最终整套：P3-A 66 passed；Phase 1 235 passed / 12 原有 deselected；Phase 2 24 passed；P3-B 35 passed；P3-C 105 passed（303.68 秒）。日志 tmp/r1-evidence/Run-*.log；没有新增 skip/xfail/排除。随后默认 prompt 定位修正的原 backend 专项 15 passed。
+- 冷进程复制纯源码/文档/配置，17 模块来源正向、两个缺 corrected loader、缺数据政策、schema/资源正向及缺资源负向。无关键生产模块 mock；业务执行函数被拦截，未 execute/start/resume/recover_all。
+- 初版数据夹具 bool/None 类型问题 20 passed / 1 failed，修正后 25 passed。无写子进程发现 tempfile.gettempdir 隐式试写：28 passed / 1 failed；修正后同一用例 1 passed，整组 29 passed。默认 prompt 的空数据根构造先 1 failed，修复后 1 passed；保留所有 red/green 日志。后续最终整组与 collect 结果在交付记录补充，不把中间数量合计为最终 PASS。
+- 前端 npm ci --ignore-scripts、build、8 tests 通过；compileall、git diff --check 通过。新增 workflow 继承原五阶段和双平台，增加 R1/JUnit。新 HEAD push 与 Windows/Linux CI 在本条提交前为 PENDING。
+- 原回归探针及本轮最终成功测试的禁用执行器、业务网络、非测试进程、受保护内容访问为其安装范围内 0；无全系统历史/Performance/订单计数声明。早期回归辅助脚本误选 pip 安装步骤，环境探测被拦截一次（process_calls=1、exit 79），随后修正仅选 pytest/compile；不是研究执行，日志保留。
+- 初始默认目录 Git status 枚举了原目录未跟踪文件名，尝试读取不存在的 AGENTS.md；之后只操作开发库/worktree。未读取真实数据/研究产物/未提交源码，未修改原目录。不得将元数据枚举写为零接触；真实运行态仍 NOT_VERIFIED。
+
+### Notes
+
+- src/chanlun_trader/research_factory/source_dependencies.py：精确定位部署源码，缺原 runner 明确阻断。
+- src/chanlun_trader/research_factory/predictive_executor.py：loader 和 engine hash 使用源码根。
+- src/chanlun_trader/research_factory/real_runtime.py：复用同一 loader 和源码 hash 路径。
+- src/chanlun_trader/research_factory/codex_backend.py：默认正式 prompt 取自部署源码，保留显式注入和执行逻辑。
+- src/chanlun_trader/research/io_safety.py：增加显式内存 audit_sink，默认审计落盘行为保留。
+- src/chanlun_trader/research_factory/data_readiness.py：候选绑定需求派生、临时合成包只读核验和 JSON CLI。
+- tests/research_factory/r1_fixture.py：通过 P3-C 合法链现场生成候选及显式合成数据/定义。
+- tests/research_factory/r1_cold_worker.py：新进程真实加载、来源记录和副作用拦截。
+- tests/research_factory/test_r1_source_closure.py：纯源码副本的正负闭包与默认 prompt 测试。
+- tests/research_factory/test_r1_data_readiness.py：实际 reader、字段/覆盖/身份/时点/无写入正负认证。
+- .github/workflows/r1-source-data-certification.yml：继承双平台/五阶段，追加 R1 证据 artifact。
+- docs/R1_SOURCE_CLOSURE_AND_DATA_READINESS_V1.md：记录矩阵、部署契约、来源缺口、合成边界与未来最小访问需求。
+- docs/AUTONOMOUS_RESEARCH_MASTER_ROADMAP_V1.md：追加 Phase 3 收尾及当前 R1，保留历史状态。
+- CLAUDE.md：追加已复现的源码根/数据根及隐式试写陷阱。
+- progress.md：仅追加本条实现/验证/回滚证据。
+- 回滚点为 main 基线 1f6f29c7ad3e8d9371168dfa3bd5201723b48abd；提交后在独立分支 git revert --no-edit <R1实现提交SHA>，文档提交另行 revert；不 reset main、不删除领域历史。
+- 不 merge/auto-merge、不开始 R2，不下载行情、不运行真实 Structural/Predictive、Final Test、Paper/Prospective 或订单。完成后交独立工程复核。
+
+## 2026-09-09 - Task: R1 本地最终验证记录
+
+### What was done
+
+完成 R1 本地工程交付检查，保持正式源码缺口和真实数据 NOT_VERIFIED；准备独立分支推送与双平台认证。
+
+### Testing
+
+- R1 整组 30 passed（58.78 秒），包括真实合成正向、冷加载和缺失/冲突负向；r1-release.log、tmp/r1-results.xml。
+- 最终 collect 910 collected，另 1 个继承 legacy module skipped，不计为 passed；compileall、diff --check 通过。
+- 原五阶段为 66 / 235（12 deselected）/ 24 / 35 / 105 passed；默认 prompt 变更后另运行原 backend 15 passed。前端 8 tests/build 通过。
+- 提交前 Windows/Linux 分支 CI=PENDING，最终 SHA 由 git commit 后核对；未将本地结果冒充远端结果。
+
+### Notes
+
+- progress.md：仅追加最终本地测试数量及证据。
+- 回滚：git revert --no-edit <本轮实现提交SHA>；不改 main，不删除历史或真实数据。

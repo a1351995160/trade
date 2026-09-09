@@ -12,7 +12,6 @@ from dataclasses import replace
 import hashlib
 import json
 from pathlib import Path
-import sys
 from typing import Any, Mapping, Sequence
 
 from .batch import ResearchBatchPlanV1
@@ -26,6 +25,7 @@ from .status import ResearchFactoryStatusV1
 from .strategy_adapter import candidate_similarity
 from .novelty import CandidateNoveltyGateV2, design_safe_candidate
 from .diversity import InsufficientDiverseCandidatesError
+from .source_dependencies import SOURCE_ROOT, load_corrected_module
 
 
 OBJECTIVE_ID = "RESEARCH_OBJECTIVE_SHORT_HORIZON_A_SHARE_V1"
@@ -945,11 +945,9 @@ class RealFactoryRuntimeV1:
             _write(report_dir / "stage1_blocked_candidates.json", blocked_stage1)
         machine.transition(ResearchBatchState.PERFORMANCE_VALIDATING, "Stage 1 passed; pre-registered trials may now open the performance gate")
 
-        if str(root / "scripts") not in sys.path:
-            sys.path.insert(0, str(root / "scripts"))
-        import run_engine_corrected_phase4_v3 as corrected
-        helper_path = root / "scripts/run_engine_corrected_phase4_v3.py"
-        engine_hash = _engine_hash(root, helper_path)
+        corrected = load_corrected_module()
+        helper_path = Path(corrected.__file__)
+        engine_hash = _engine_hash(SOURCE_ROOT, helper_path)
         factor_cache = root / "data/research/strategy_validation/phase4_rerun_v2_factor_values.parquet"
         if not factor_cache.exists():
             for reservation_id in reservations.values():
