@@ -121,3 +121,8 @@
 - 只读 inspect 不使用首次调用会试写文件的 tempfile.gettempdir；GuardedResearchReader 的只读诊断使用显式内存 audit_sink，默认正式审计行为保留。
 - 合成因子定义仅认证需求传递/输入核验，不证明真实公式或历史 PIT 数据已就绪；局部 SYNTHETIC_SCOPE_READY 不能当真实候选 READY 或 Trial 授权。
 - 日线 OHLC 必须为有限正数；volume/amount 为有限非负数，不可用统一大于零条件混淆价格与成交活动。价格缺陷须用既有合法 fixture、真实 Parquet 和公共 inspect_dataset 复现，保持合同、因子定义、政策和证券状态不变。
+
+## Windows 拒绝诊断约束
+
+- subprocess.Popen 的审计 argv 在 Windows 可为命令行字符串，不应假设各平台都是参数列表；只记录必要脱敏表示和 file/line/function，不读取源码行、locals 或环境。
+- P3-C 子进程 stdout/stderr 必须在失败断言前写入控制者指定的独立 synthetic 证据目录；原失败不因后续通过而关闭，未取得真实触发栈不得修改生产逻辑。

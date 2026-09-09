@@ -1,8 +1,10 @@
 """真实生命周期的 L1—L10 重启矩阵及执行证据边界。"""
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 
 import pytest
 
@@ -12,6 +14,22 @@ from test_restart_recovery_v1 import launch as cp_launch, snapshot
 
 def finish(process, expected=0):
     stdout, stderr = process.communicate(timeout=30)
+    # 证据目录由测试控制者指定，独立于被 snapshot 检查的研究输入。
+    evidence_root = os.environ.get("CHANLUN_PROCESS_EVIDENCE_DIR")
+    if evidence_root:
+        root = Path(evidence_root)
+        root.mkdir(parents=True, exist_ok=True)
+        evidence = Path(tempfile.mkdtemp(prefix=f"child-{process.pid}-", dir=root))
+        (evidence / "stdout.bin").write_bytes(stdout if isinstance(stdout, bytes) else stdout.encode("utf-8"))
+        (evidence / "stderr.bin").write_bytes(stderr if isinstance(stderr, bytes) else stderr.encode("utf-8"))
+        (evidence / "result.json").write_text(json.dumps({
+            "pid": process.pid, "returncode": process.returncode, "expected": expected,
+            "test": os.environ.get("PYTEST_CURRENT_TEST"),
+            "operation": process.args[-1] if "-c" not in process.args else "<INLINE_SYNTHETIC_PROBE>",
+            "stream_capture": "RAW_BYTES" if isinstance(stderr, bytes) else "P3B_DECODED_TEXT_UTF8",
+        }), encoding="utf-8")
+    if isinstance(stdout, bytes):
+        stdout, stderr = stdout.decode("utf-8"), stderr.decode("utf-8")
     assert process.returncode == expected, (stdout, stderr)
     probes = [line for line in stderr.splitlines() if line.startswith(("P3C_WORKER_PROBES=", "P3A_PROCESS_PROBES="))]
     if expected == 0:
@@ -25,7 +43,7 @@ def finish(process, expected=0):
 
 
 def launch(scenario, operation):
-    return subprocess.Popen([sys.executable, str(Path(__file__).with_name("p3c_process_worker.py")), str(scenario.root), scenario.objective_id, operation], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8")
+    return subprocess.Popen([sys.executable, str(Path(__file__).with_name("p3c_process_worker.py")), str(scenario.root), scenario.objective_id, operation], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 
 def selected(result):

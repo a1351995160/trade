@@ -897,3 +897,31 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - tmp/r1-source-review/（Git 忽略，不推送）：保存 17 份原字节、manifest、静态清单与一次性解析脚本。
 - 回滚提交：git revert --no-edit <本源码调查提交SHA>；回滚点 023e656ae2fc2d8efb2146a73dc8ca41647ba80d。忽略证据可保留，不涉及原目录。
 - REAL_CANDIDATE_DATA_READINESS=NOT_VERIFIED；READY_FOR_REAL_TRIAL=false；R1_FULLY_CLOSED=false。无 merge/auto-merge/R2。
+## 2026-09-09 - Task: R1 Windows 失败诊断与有上限定向复现
+
+### What was done
+
+在原进程拒绝点追加脱敏程序与 file/line/function 调用栈；P3-C 在断言前保存完整原始字节 stdout/stderr，两个 CI 工作流失败时也上传独立 synthetic 证据。保留 cb31d9f 的失败与同 SHA 综合成功，根因仍 OPEN，未修生产逻辑。
+
+### Testing
+
+- 三次冷启动 L1：各 1 passed，20.33/22.30/19.70 秒；共 27 个子进程证据，三个 dry_run 均 RAW_BYTES/exit=0。NOT_REPRODUCED_IN_3_ATTEMPTS，不扩大重试次数。
+- 本地新 venv Python 3.13.5 按既有 hash 锁安装；默认镜像 TLS 失败，官方 PyPI 保持证书与 hash 验证安装成功。旧 CI 是 3.13.15，记录 patch 差异，不声称同环境复现。
+- 完整受影响回归（隔离先验、P3-C 四模块、新诊断）：172 passed / 1 既有弃用 warning，351.28s。主进程 network/process/protected 与三类禁用执行器为 0，合成审批83/确认86，不外推到真实研究。
+- 新诊断首轮断言因 Windows argv 字符串表示失败，修正断言后通过；最终继承父保护根的定向验证另 1 passed / 0.50s。故意不存在的 synthetic 程序在创建前被拒绝，exit=79/process_calls=1/原异常/脱敏调用栈/原字节归档均确认，未修改拒绝规则。此为诊断测试，不是旧 L1 根因 red/green。
+- 旧两个 Windows job 完整日志：image windows-2025-vs2026/20260824.214.3、CPython3.13.15、cwd、安装包列表、隔离变量与 P3-C 前次序一致；旧失败仍无 executable/完整栈，ROOT_CAUSE_UNCONFIRMED。
+- AST/YAML 解析与 git diff --check 通过；审查确认未改白名单、计数递增、原异常和非零退出，无 skip/xfail，无生产语义变更。最终 SHA CI 在推送后单独读取，不以本地或旧 SHA 结果替代。
+
+### Notes
+
+- tests/isolation/sitecustomize.py：仅追加拒绝事件的脱敏 stderr 诊断。
+- tests/research_factory/test_phase3c_restart_v1.py：断言前独立证据归档；P3-C 二进制管道，P3-B 文本证据明确标识。
+- tests/research_factory/test_process_diagnostics_v1.py：新增合成拒绝、脱敏栈与失败前原字节保存回归。
+- .github/workflows/phase3c-lifecycle-certification.yml：独立外部证据路径、always 上传、新诊断用例。
+- .github/workflows/r1-source-data-certification.yml：同步同一证据路径、上传和用例。
+- docs/R1_WINDOWS_PROCESS_DIAGNOSTICS_V1.md：旧失败、对照、三次复现、诊断合同与 OPEN 边界。
+- CLAUDE.md：追加 Windows argv 表示与证据归档约束。
+- progress.md：仅追加本任务记录。
+- tmp/r1-ci-diagnostics/（Git 忽略）：所有旧日志、冷启动结果、受影响回归与后续 final-ci.json；不推送源码快照或原文。
+- 回滚：git revert --no-edit <本诊断提交SHA>，诊断前回滚点 4a25f5e；源码调查独立提交不混入。无 main merge/auto-merge，无 R2 或真实研究。
+- REAL_CANDIDATE_DATA_READINESS=NOT_VERIFIED；READY_FOR_REAL_TRIAL=false；R1_FULLY_CLOSED=false。
