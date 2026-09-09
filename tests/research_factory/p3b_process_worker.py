@@ -5,7 +5,8 @@ import os
 import sys
 
 from chanlun_trader.execution_policy import ExecutionPolicy
-from chanlun_trader.research_factory.autonomous_control_plane import AutonomousResearchControlPlaneV1
+from chanlun_trader.research_factory.autonomous_control_plane import AutonomousControlPlaneError, AutonomousResearchControlPlaneV1
+from chanlun_trader.research_factory.autonomous_action_journal import AutonomousActionExecutionJournalV1
 from chanlun_trader.research_factory.candidate_generation import CandidateGenerationManagerV1
 from chanlun_trader.research_factory.mutation_boundary import ObjectiveMutationLock
 
@@ -29,6 +30,8 @@ def main():
             print("LOCKED", flush=True)
             assert sys.stdin.readline().strip() == "GO"
         event("provider_attempt")
+        if operation == "fail_before":
+            raise AutonomousControlPlaneError("SYNTHETIC_DOMAIN_FAILURE", "合成领域调用前受控失败")
         result = original(action)
         event("domain_returned")
         if operation == "exit_after":
@@ -36,6 +39,15 @@ def main():
         return result
 
     plane._execute_domain_action = execute
+    if operation == "exit_retry_marker":
+        original_retry = AutonomousActionExecutionJournalV1.allow_retry
+
+        def exit_after_marker(journal, action, **kwargs):
+            original_retry(journal, action, **kwargs)
+            event("retry_marker")
+            os._exit(93)
+
+        AutonomousActionExecutionJournalV1.allow_retry = exit_after_marker
     if operation.startswith("graph_"):
         from chanlun_trader.research_factory.artifact_graph import ResearchArtifactGraphV1
         graph = ResearchArtifactGraphV1(root / "shared_graph.json")
@@ -59,7 +71,7 @@ def main():
 
         CandidateGenerationManagerV1._load_sources = load
         result = CandidateGenerationManagerV1(root).generate_proposal(objective)
-    elif operation == "recover":
+    elif operation in {"recover", "exit_retry_marker"}:
         result = plane.recover(objective)
     else:
         result = plane.tick(objective)

@@ -577,3 +577,29 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - docs/PHASE3B_RESTART_RECOVERY_V1.md：记录版本选择依据和 Windows 3.11 未认证限制。
 - progress.md：追加本轮运行时限定与证据。
 - 回滚方式：提交后执行 `git revert --no-edit <本轮运行时限定提交SHA>`，回到 31ac37981624e88111724498e04285a031271b3d；会恢复已知 Windows 隔离导入失败。
+
+## 2026-09-09 - Task: P3-B FAILED 与 retry marker 恢复记账修正
+
+### What was done
+
+在既有 P3-B 独立 worktree 核对 remote、HEAD fbd603be237cb6077a4484acac9a585610676569、origin/main 7e277dbe1d20061fd672cf53d1358d07f16a0b1b 与干净工作区。先用实际持久 FAILED 和真实 retry marker 后 os._exit 的两个独立进程回归复现 P2，再将重试登记收敛为一次 begin；复用已有 marker，保留历史及全部身份。未修改 journal schema、锁、planner 或研究权限。
+
+### Testing
+
+- 旧生产代码回归：`python -m pytest -q -s tests/research_factory/test_restart_recovery_v1.py -k failed_retry_registers_one_attempt`，2 failed / 33 deselected；实际 FAILED 后恢复到 attempt=3，marker 退出后恢复到 attempt=4，各仅一次恢复调用、一个成功 proposal。完整序列见 P3-B 文档；本地日志 tmp/p3b-evidence/retry-red.log。
+- 相同回归修复后 2 passed / 33 deselected；均 STARTED(1) → FAILED(1) → RECOVERY_RETRY_ALLOWED(1) → STARTED(2) → COMPLETED(2)。历史字节前缀、intent 原文与身份不变；四类 dry-run 快照不变。日志 tmp/p3b-evidence/retry-green.log。
+- 直接读取现有 P3-B workflow 的认证命令，以独立 venv 运行：P3-A 66 passed；Phase 1 235 passed / 12 deselected；Phase 2 24 passed；P3-B 35 passed；775 collected / 1 既有 legacy module skipped。没有新增 skip/xfail 或放宽排除。
+- compileall、git diff --check 通过；npm ci --ignore-scripts、npm test（8 passed）、npm run build 通过。日志位于 tmp/p3b-evidence/retry-*.log（本地忽略文件），远端 CI 提供可共享复验记录。
+- Windows Python 3.13.5、本地临时 NTFS synthetic fixture；本轮输出的禁止执行器与进程/网络/受保护目录访问探针均为 0。硬退出子进程采用 fsync marker 事件，不把缺失 atexit 输出记为零。
+- 提交时 push/PR CI PENDING。既有分支 PR 查询为空；后续按授权创建 main PR 并核对当前 HEAD、base、checkout 和 required checks。实际 main-merge-governance ruleset 要求 Deterministic governance suite、严格基线与 review thread resolution；不绕过。
+- 真实研究/Final Test、Windows Python 3.11、网络文件系统、多主机、断电、POSIX fork 仍未验证。原真实工作区未作为输入输出。没有 merge、auto-merge 或 P3-C。
+
+### Notes
+
+- src/chanlun_trader/research_factory/autonomous_control_plane.py：重试先处理 marker，再唯一 begin。
+- tests/research_factory/p3b_process_worker.py：增加可落 FAILED 的受控错误和真实 marker 后退出注入。
+- tests/research_factory/test_restart_recovery_v1.py：增加两项失败与 marker 重启回归，验证真实前置回执及历史/身份/副作用/只读。
+- docs/PHASE3B_RESTART_RECOVERY_V1.md：追加 P2 实际序列、attempt 口径和历史不回写约束。
+- CLAUDE.md：记录重复 begin 陷阱及必须验证持久前置状态。
+- progress.md：追加本轮复现、验证和交接事实。
+- 回滚：提交后在当前分支执行 `git revert --no-edit <本轮修正SHA>`，回到被复核 HEAD fbd603be237cb6077a4484acac9a585610676569；不重写历史 journal，不 reset/main/force push。

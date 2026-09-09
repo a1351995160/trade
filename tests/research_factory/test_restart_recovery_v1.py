@@ -98,6 +98,40 @@ def test_process_exit_before_effect_same_key_retry_or_stale_deny(tmp_path, stale
         assert {row.idempotency_key for row in journal.read()} == {key}
 
 
+@pytest.mark.parametrize("restart_at_marker", [False, True])
+def test_failed_retry_registers_one_attempt(tmp_path, restart_at_marker):
+    root = _prepare(tmp_path)
+    failed = finish(launch(root, "fail_before"))
+    assert failed["execution"]["execution_status"] == "FAILED"
+    journal = plane(root)._journal(OBJECTIVE_ID)
+    assert [(r.execution_status, r.attempt) for r in journal.read()] == [("STARTED", 1), ("FAILED", 1)]
+    assert not list(root.glob("reports/research_candidates/proposals/*/CANDIDATE_PROPOSAL.json"))
+    if restart_at_marker:
+        finish(launch(root, "exit_retry_marker"), expected=93)
+        assert journal.read()[-1].execution_status == "RECOVERY_RETRY_ALLOWED"
+    history = journal.path.read_bytes()
+    before = journal.read()
+    action = journal.intent({"action_id": before[0].action_id})
+    immutable_intent = journal._intent_path(action).read_bytes()
+    read_snapshot = snapshot(root)
+    for read in (lambda: plane(root).inspect(OBJECTIVE_ID), lambda: plane(root).tick(OBJECTIVE_ID, dry_run=True), lambda: plane(root).execute_action(action, dry_run=True), lambda: plane(root).recover(OBJECTIVE_ID, dry_run=True)):
+        read()
+        assert snapshot(root) == read_snapshot
+    recovered = finish(launch(root, "recover"))
+    rows = journal.read()
+    sequence = [(r.execution_status, r.attempt) for r in rows]
+    evidence = [json.loads(line) for line in (root / "process_evidence.jsonl").read_text().splitlines()]
+    print(json.dumps({"restart_at_marker": restart_at_marker, "receipts": sequence, "calls": evidence}))
+    assert recovered["execution_status"] == "COMPLETED"
+    assert recovered["safe_to_advance"] is False
+    assert journal.path.read_bytes().startswith(history)
+    assert journal._intent_path(action).read_bytes() == immutable_intent
+    assert {(r.action_id, r.idempotency_key, r.execution_intent_hash) for r in rows} == {(before[0].action_id, before[0].idempotency_key, before[0].execution_intent_hash)}
+    assert [r["event"] for r in evidence if r["operation"] == "recover"] == ["provider_attempt", "domain_returned"]
+    assert len(list(root.glob("reports/research_candidates/proposals/*/CANDIDATE_PROPOSAL.json"))) == 1
+    assert sequence == [("STARTED", 1), ("FAILED", 1), ("RECOVERY_RETRY_ALLOWED", 1), ("STARTED", 2), ("COMPLETED", 2)]
+
+
 @pytest.mark.parametrize("operation", ["hold_tick", "hold_domain"])
 def test_cp_and_real_domain_entry_share_process_boundary(tmp_path, operation):
     root = _prepare(tmp_path)

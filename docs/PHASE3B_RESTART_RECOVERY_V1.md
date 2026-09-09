@@ -77,3 +77,25 @@ P3-B 包括真实子进程 os._exit/kill、三阶段副作用后重启、前调�
 - 没有开启预测执行、扩大人工权限、引入后台恢复、merge/auto-merge 或 P3-C。当前仅准备独立复核，不自认证整体 Phase 3 完成。
 
 回滚：本轮提交后在独立分支执行 `git revert --no-edit <P3-B提交SHA>`；不 reset main、不回写原研究目录。代码回滚不自动删除 synthetic 或外部既有 journal；新 v2 journal 不能由旧代码假装已兼容，应保留证据并停止旧版写入。
+
+## 2026-09-09：P2 重试记账修正
+
+被复核 HEAD 为 `fbd603be237cb6077a4484acac9a585610676569`。新增两项独立子进程回归，在该生产代码不变时得到 2 failed。首次公共 tick 注入可被记录的 AutonomousControlPlaneError，明确断言 journal 为 STARTED(1)、FAILED(1)，并确认没有 proposal。第二项再在真实 allow_retry 已持久化后 os._exit(93)，确认末条为 RECOVERY_RETRY_ALLOWED；恢复进程只接收 root + Objective。
+
+旧实现实际序列：
+
+```text
+FAILED 后恢复：STARTED(1) → FAILED(1) → STARTED(2)
+→ RECOVERY_RETRY_ALLOWED(2) → STARTED(3) → COMPLETED(3)
+marker 后退出再恢复：STARTED(1) → FAILED(1) → STARTED(2)
+→ RECOVERY_RETRY_ALLOWED(2) → STARTED(3)
+→ RECOVERY_RETRY_ALLOWED(3) → STARTED(4) → COMPLETED(4)
+```
+
+最小修正只调整控制平面登记顺序：已有 pending 先登记 retry marker；若已经是 marker 则复用；随后统一调用一次 begin。journal schema、锁、planner 和权限解析不变。
+
+修复后两项均为 `STARTED(1) → FAILED(1) → RECOVERY_RETRY_ALLOWED(1) → STARTED(2) → COMPLETED(2)`。每项首次受控失败调用 1 次、恢复调用 1 次、成功 proposal 提交 1 个；退出 marker 的进程只报告持久 marker 事件，不将缺失 atexit 统计记为零。
+
+attempt 表示已持久化的执行/调度尝试，不保证与 provider 调用次数相同。STARTED 后调用前退出留下的合法尝试继续保留；本次不重编号、不删除、不回写已有历史。测试检查历史字节前缀、不可变 intent、action_id/idempotency_key/intent hash、单个成功工件及停止标志，四类 dry-run 的文件快照均不变。
+
+复现命令：隔离环境中执行 `python -m pytest -q -s tests/research_factory/test_restart_recovery_v1.py -k failed_retry_registers_one_attempt`。原实现 2 failed，修复后 2 passed / 33 deselected。完整本地矩阵和新 HEAD 的 push/PR 证据分别记录在本轮 progress 与交付报告，旧 CI 不认证新提交。沿用上述全部未验证限制。

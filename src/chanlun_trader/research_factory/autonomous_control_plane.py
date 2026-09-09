@@ -57,6 +57,7 @@ from .safe_runtime_context import (
 )
 from .autonomous_action_journal import (
     EXECUTION_COMPLETED,
+    EXECUTION_RETRY_ALLOWED,
     EXECUTION_STARTED,
     AutonomousActionExecutionJournalV1,
     AutonomousActionExecutionReceiptV1,
@@ -1583,12 +1584,12 @@ class AutonomousResearchControlPlaneV1:
             return {"execution_status": "DRY_RUN", "reason_code": "DRY_RUN_NO_SIDE_EFFECT", "reason_zh": "Dry-run 未执行动作。", "permission": permission.to_dict(), "safe_to_advance": False}
 
         try:
-            status, receipt = journal.begin(action)
+            retry = prior_receipt is not None and prior_receipt.execution_status != EXECUTION_COMPLETED
+            if retry and prior_receipt.execution_status != EXECUTION_RETRY_ALLOWED:
+                journal.allow_retry(action)
+            status, receipt = journal.begin(action, allow_retry=retry)
             if status == EXECUTION_COMPLETED:
                 return {"execution_status": EXECUTION_COMPLETED, "idempotent": True, "receipt": receipt.to_dict(), "safe_to_advance": False}
-            if prior_receipt is not None and prior_receipt.execution_status != EXECUTION_COMPLETED:
-                journal.allow_retry(action)
-                _, receipt = journal.begin(action, allow_retry=True)
             result = self._execute_domain_action(action)
             resulting_report = self.reconciliation.reconcile(action.objective_id)
             committed = self._reconcile_started_action_side_effect(action, resulting_report)
