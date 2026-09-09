@@ -876,3 +876,24 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - progress.md：仅追加本次验证归档。
 - 回滚本归档：git revert --no-edit <本归档提交SHA>；回滚来源调查：git revert --no-edit cb31d9f76ab8983e69007d89fb6868a17e7ead6b。不 reset main、不改原项目。
 - 保持 BLOCKED_MISSING_SOURCE、REAL_CANDIDATE_DATA_READINESS=NOT_VERIFIED、READY_FOR_REAL_TRIAL=false、R1_FULLY_CLOSED=false。停止并等待独立工程复核；无 main merge/auto-merge，无 R2。
+## 2026-09-09 - Task: R1 精确当前源码快照与静态接入审查
+
+### What was done
+
+在已有独立分支固定 corrected、legacy 与明确静态依赖共 17 个原字节源码副本，来源统一 LOCAL_WORKTREE_SNAPSHOT，历史 UNVERIFIED。形成来源矩阵、导入副作用和最小接入计划；未恢复生产源码或改变 loader。
+
+### Testing
+
+- 原路径和父路径普通文件/目录检查通过，无重解析点；精确 ls-files/check-ignore 无匹配，未重复历史查询。
+- 主快照 48823 字节，SHA256 fa7d5439e6f152e4ac6eceffbf29fab5d0d51a5fac3e487afc1542f4384063e1；17 个副本均经 AST 解析，未 import/执行。原始字节与静态读取证据留在忽略目录 tmp/r1-source-review。
+- 15 个包模块中 14 个仅行尾差异或原字节相同；io_safety 旧副本含顶层 mkdir、缺 audit_sink，不覆盖当前已认证模块。传递依赖原副本和完整隔离加载/数值正确性未验证。
+- 起始 023e656 六条 CI 均 completed/success；cb31d9f 的旧 Windows 失败继续 OPEN，不被后续成功抹除。main 实际仍 d3dcb68934ea8fb058c98039181d29894b6425df。
+- git diff --check 通过；没有读取数据/合同/绩效/凭据或运行研究。首次内联 AST 命令发生引号语法错误，改为独立工具脚本成功；未执行目标源码。
+
+### Notes
+
+- docs/R1_LOCAL_SOURCE_REVIEW_V1.md：新增真实快照来源、静态依赖与兼容性审查、接入计划。
+- progress.md：仅追加本任务记录。
+- tmp/r1-source-review/（Git 忽略，不推送）：保存 17 份原字节、manifest、静态清单与一次性解析脚本。
+- 回滚提交：git revert --no-edit <本源码调查提交SHA>；回滚点 023e656ae2fc2d8efb2146a73dc8ca41647ba80d。忽略证据可保留，不涉及原目录。
+- REAL_CANDIDATE_DATA_READINESS=NOT_VERIFIED；READY_FOR_REAL_TRIAL=false；R1_FULLY_CLOSED=false。无 merge/auto-merge/R2。
