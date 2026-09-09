@@ -199,8 +199,10 @@ def read_lc5_file_range(path, start_date: int = 0, end_date: int = RESEARCH_END,
 class GuardedResearchReader:
     """Parquet reader with PyArrow predicate pushdown + physical read audit."""
 
-    def __init__(self, guard: ResearchDataAccessGuard | None = None):
+    def __init__(self, guard: ResearchDataAccessGuard | None = None, *, audit_sink=None):
         self.guard = guard or ResearchDataAccessGuard()
+        # 默认保留原落盘审计；只读诊断显式提供内存收集器。
+        self.audit_sink = audit_sink
 
     def read_parquet(self, path, columns=None, date_column="date",
                      start_date: int = 0, end_date: int = RESEARCH_END,
@@ -217,9 +219,13 @@ class GuardedResearchReader:
         table = ds.dataset(path, format="parquet").to_table(columns=col_list, filter=filters)
         df = table.to_pandas()
         max_date = int(df[date_column].max()) if date_column in df and len(df) else None
-        _log_physical_read(dataset="parquet", path=path, requested=[start_date, end_date],
-                           date_column=date_column, physical_rows=table.num_rows,
-                           rows_materialized=len(df), max_date_materialized=max_date)
+        audit = dict(dataset="parquet", path=path, requested=[start_date, end_date],
+                     date_column=date_column, physical_rows=table.num_rows,
+                     rows_materialized=len(df), max_date_materialized=max_date)
+        if self.audit_sink is None:
+            _log_physical_read(**audit)
+        else:
+            self.audit_sink(audit)
         for col in filter_columns:
             self.guard.check_frame(df, col)
         return df

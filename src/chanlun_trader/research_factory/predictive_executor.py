@@ -10,7 +10,6 @@ from __future__ import annotations
 from dataclasses import replace
 import json
 from pathlib import Path
-import sys
 from typing import Any, Mapping
 
 from .artifact_graph import ResearchArtifactGraphV1
@@ -22,6 +21,7 @@ from .failure_adapter import FailureKnowledgeAdapterV1
 from .real_runtime import _dataset_hash, _engine_hash, _load_cumulative_private_p_values
 from .strategy_adapter import ResearchStrategyRegistryFacadeV1
 from .trial_adapter import ResearchFactoryTrialLedgerFacadeV1
+from .source_dependencies import SOURCE_ROOT, load_corrected_module
 from chanlun_trader.research.strategy_validation import (
     FinalResearchAdjudicatorV1,
     PerformanceAccessGate,
@@ -423,8 +423,8 @@ class CanonicalPredictiveExecutorV1:
             report_dir = report_dir / trial_id
         factor_cache = self.root / "data/research/strategy_validation/phase4_rerun_v2_factor_values.parquet"
         corrected = self._corrected_module()
-        helper_path = self.root / "scripts/run_engine_corrected_phase4_v3.py"
-        engine_hash = _engine_hash(self.root, helper_path)
+        helper_path = Path(corrected.__file__)
+        engine_hash = _engine_hash(SOURCE_ROOT, helper_path)
         event_ids = tuple(str(condition["event_id"]) for condition in record.signal_predicate.event_conditions)
         inline_event_definitions = {str(condition["event_id"]): dict(condition) for condition in record.signal_predicate.event_conditions}
         dataset_hash = _dataset_hash(
@@ -587,9 +587,4 @@ class CanonicalPredictiveExecutorV1:
             raise
 
     def _corrected_module(self) -> Any:
-        scripts = str(self.root / "scripts")
-        if scripts not in sys.path:
-            sys.path.insert(0, scripts)
-        import run_engine_corrected_phase4_v3 as corrected
-
-        return corrected
+        return load_corrected_module()

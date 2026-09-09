@@ -114,3 +114,10 @@
 - 完整执行语义必须在 v2 Design 审批前声明并绑定哈希，后续只传递同一语义；旧轻量格式不得静默升级。新路径不能受旧轻量因子选择或执行默认值补猜影响。
 - 控制平面读取 Predictive AUTHORIZED 必须验证既有 decision_hash；测试用真实治理服务生成授权，不以手写简化 status 行证明授权有效。即便授权有效，也保留 PHASE2_PREDICTIVE_EXECUTION_DISABLED。
 - decision_hash 可随内容重算，不能替代决定语义校验。授权读取必须复用治理服务的 decision_type/status/next_action 对应关系并要求 Structural PASS；未知、缺失或矛盾的相关决定 fail closed，不回退早先授权，不回写历史。
+
+## R1 源码与只读核验约束
+
+- 执行 helper 与默认版本化 prompt 从部署源码取；研究 root 不进入 sys.path。缺少 corrected 原实现时明确 BLOCKED_MISSING_SOURCE，不能用同名测试替身补闭包。
+- 只读 inspect 不使用首次调用会试写文件的 tempfile.gettempdir；GuardedResearchReader 的只读诊断使用显式内存 audit_sink，默认正式审计行为保留。
+- 合成因子定义仅认证需求传递/输入核验，不证明真实公式或历史 PIT 数据已就绪；局部 SYNTHETIC_SCOPE_READY 不能当真实候选 READY 或 Trial 授权。
+- 日线 OHLC 必须为有限正数；volume/amount 为有限非负数，不可用统一大于零条件混淆价格与成交活动。价格缺陷须用既有合法 fixture、真实 Parquet 和公共 inspect_dataset 复现，保持合同、因子定义、政策和证券状态不变。

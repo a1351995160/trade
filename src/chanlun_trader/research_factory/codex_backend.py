@@ -29,6 +29,7 @@ from .agent_backend import (
     assert_agent_design_time,
 )
 from .common import jsonable, now_timestamp, stable_hash
+from .source_dependencies import SOURCE_ROOT
 from .context import OutcomeBlindFieldPolicyV1, PerformanceBlindGuard
 
 
@@ -823,7 +824,7 @@ class CodexResearchAgentBackendV1(ResearchAgentBackendV1):
 
     def __init__(self, *, adapter: CodexInvocationAdapterV1, prompt: CodexResearchPromptV1 | None = None, estimator: CodexAgentCallEstimatorV1 | None = None):
         self.adapter = adapter
-        self.prompt = prompt or CodexResearchPromptV1.default(adapter.root)
+        self.prompt = prompt or CodexResearchPromptV1.default(SOURCE_ROOT)
         self.estimator = estimator or CodexAgentCallEstimatorV1()
         self._run_id = ""
         self._batch_id = ""
