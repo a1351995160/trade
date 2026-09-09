@@ -29,7 +29,6 @@ jobs:
       CHANLUN_TEST_ISOLATION: "1"
       PYTHONDONTWRITEBYTECODE: "1"
       PYTHONUTF8: "1"
-      CHANLUN_PROCESS_EVIDENCE_DIR: ${{ runner.temp }}/p3c-process-evidence
 
     steps:
       - name: Configure protected reference before Python starts

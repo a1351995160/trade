@@ -945,3 +945,20 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - CLAUDE.md：追加 job.env 上下文限制。
 - progress.md：仅追加本轮失败与修正，不覆盖先前记录。
 - 回滚：git revert --no-edit <本配置修正SHA>；前一 SHA 488d2045f14bce2fcad7a418aa4f13a0ac18db79（该点有已知 workflow 配置错误）。本次是实际配置修复提交，不是状态更新提交。
+## 2026-09-09 - Task: 清除未成功删除的 job.env 旧表达式
+
+### What was done
+
+上轮字符串替换未匹配 CRLF，添加步骤后仍残留 job.env 旧行，312a460 的 P3-C 34324256129 / R1 34324255347 再次在运行前失败。用精确补丁删除两处残留表达式，不改变诊断、测试与隔离。
+
+### Testing
+
+- GitHub 注释再次明确 Line32 runner 不可用；读取已提交 YAML 确认残留，而非重复运行到绿。
+- YAML 结构检查 job.env 无 CHANLUN_PROCESS_EVIDENCE_DIR，配置 step 含 RUNNER_TEMP/GITHUB_ENV，上传 step 仍指向 runner.temp；diff --check 通过。后续 CI 绑定新 SHA。
+
+### Notes
+
+- .github/workflows/phase3c-lifecycle-certification.yml：删除一行无效旧表达式。
+- .github/workflows/r1-source-data-certification.yml：删除同一残留行。
+- progress.md：追加本次实际修正及失败保留。
+- 回滚 git revert --no-edit <本提交SHA> 会回到已知无效配置，不建议部署该回滚点。旧 L1 根因仍 OPEN；不改变研究权限。
