@@ -603,3 +603,28 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - CLAUDE.md：记录重复 begin 陷阱及必须验证持久前置状态。
 - progress.md：追加本轮复现、验证和交接事实。
 - 回滚：提交后在当前分支执行 `git revert --no-edit <本轮修正SHA>`，回到被复核 HEAD fbd603be237cb6077a4484acac9a585610676569；不重写历史 journal，不 reset/main/force push。
+
+## 2026-09-09 - Task: P3-C 真实生命周期衔接失败复现与核心合同方案
+
+### What was done
+
+核对 origin/main=e50f5abc26bc9aa3b5927c2d5c436f47b3ee3a08、PR #4 已合并、75ec0be 在 ancestry 中，从 main 创建独立 P3-C worktree/分支。完整读取任务附件、总体规划、P3-A/B 文档与进度记录，检查实际规范。通过真实设计、人工批准、CP 生成、人工审核与 Freeze 复现物化失败；没有手工补写下游成功记录，没有生产修改。提供待批准的核心身份/语义合同方案；P3-C 未完成，L1—L10 等后续组合未认证。未 merge、auto-merge 或启动其他包。
+
+### Testing
+
+- 隔离先验 P3-A：66 passed。新正向测试先 1 failed，再用两种初始化明确复现 2 failed；错误为 EXECUTABLE_MATERIALIZATION_INCOMPLETE。补齐初始元数据后仍缺 full_semantic_record/hypothesis，真实 Freeze 已完成，预算原文不变。
+- Phase 1 首次 228 passed / 7 failed（6 个前端未构建页面、1 个子进程输出解码错误）；构建后 234 passed / 1 failed；设置 Python UTF-8 后原选择 235 passed / 12 deselected。失败日志保留，未改测试或排除项。
+- Phase 2：24 passed；P3-B：35 passed；compileall、diff 检查通过；collect 777 + 1 legacy module skipped（不是 passed）；前端 npm ci --ignore-scripts、8 tests、build 通过。
+- Windows Python 3.13.5，全新 venv；fixture 位于 C: 临时目录，Get-Volume 实测 NTFS。Linux 与最终 SHA 双平台结果由分支 CI 核对，提交时 PENDING。
+- 本轮两项失败用例探针：合成设计 2、approve 2、confirm 2；approve 内部调用 confirm，不计为四次独立批准。真实禁用执行器、网络、非测试进程、受保护参考目录访问探针均 0。其他尚未建立的 P3-C 探针统计为 NOT_REPORTED，不填零；真实运行态未独立核验。
+- 本地日志位于 tmp/p3c-evidence（忽略目录）；共享复现命令及证据范围见 P3-C 文档。未读取真实研究数据或 Final Test，未启动真实 AI/行情/Structural/Predictive/订单。
+
+### Notes
+
+- tests/research_factory/test_phase3c_lifecycle_v1.py：新增真实审批/冻结到物化的两项正向失败验收，不采用 raises/skip/xfail 掩盖断链。
+- .github/workflows/phase3c-lifecycle-certification.yml：继承完整回归和平台矩阵，添加 P3-C 阶段、UTF-8 与 fixture 盘结构化文件系统证据。
+- docs/PHASE3C_LIFECYCLE_CERTIFICATION_V1.md：记录短审计、失败、待批准方案、计数限制和未完成矩阵。
+- docs/AUTONOMOUS_RESEARCH_MASTER_ROADMAP_V1.md：当前状态记录 P3-B 经 PR #4 合并，P3-C 在物化处阻断。
+- CLAUDE.md：追加不能用手工下游 fixture 冒充生命周期、不能混用两种候选身份的陷阱。
+- progress.md：仅追加本轮记录，保留历史 PENDING 和失败事实。
+- 回滚：在独立分支执行 `git revert --no-edit <本轮提交SHA>`，基线 e50f5abc26bc9aa3b5927c2d5c436f47b3ee3a08；不 reset/main/force push，不删除执行历史。

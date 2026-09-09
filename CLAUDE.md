@@ -107,3 +107,7 @@
 - dry-run 不创建锁文件、不修补 journal、不生成工件。Windows 锁定字节可能拒绝读取；文件快照应对零长度锁文件使用空内容哈希，不尝试读取锁定字节。
 - 隔离认证使用全新 venv 与现场 synthetic workspace；系统 Python 的 editable distribution 发现可能访问原研究目录，不能沿用污染环境并把拦截次数算成零。
 - 安全重试必须先确认已有回执，再登记一次 STARTED；FAILED/retry marker 下先 begin 再 allow_retry/begin 会虚增 attempt。回归必须检查落盘 FAILED 和真实 marker 退出点，不能用返回 FAILED 或普通 STARTED 代替。
+
+## P3-C 生命周期认证约束
+
+- 物化单项测试的 `_bridge_fixture` 手工补写下游 Proposal/Freeze/Registry，不能冒充完整合法生命周期。真实 Candidate Freeze 后仍须验证生成内容能直接进入 Materialization；轻量治理 candidate_hash 与语义 preregistration_hash 不可通过覆盖字段混用。
