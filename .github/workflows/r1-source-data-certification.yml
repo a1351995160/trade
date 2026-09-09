@@ -34,7 +34,9 @@ jobs:
     steps:
       - name: Configure protected reference before Python starts
         shell: bash
-        run: echo "CHANLUN_PROTECTED_ROOT=$RUNNER_TEMP/p3c-protected-reference" >> "$GITHUB_ENV"
+        run: |
+          echo "CHANLUN_PROTECTED_ROOT=$RUNNER_TEMP/p3c-protected-reference" >> "$GITHUB_ENV"
+          echo "CHANLUN_PROCESS_EVIDENCE_DIR=$RUNNER_TEMP/p3c-process-evidence" >> "$GITHUB_ENV"
 
       - name: Check out source
         uses: actions/checkout@v4

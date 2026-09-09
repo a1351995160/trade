@@ -47,3 +47,8 @@ P3-C launch 使用二进制管道；finish 在断言和解码前保存 stdout.bi
 最终实现提交后只在忽略目录 final-ci.json 和交付回复记录实际 HEAD 的 CI，不追加状态提交。旧失败即使后续全部通过也保持 OPEN。下一步最小动作是读取一次真实复发的 RESEARCH_PROCESS_DENIED 证据，再决定是否存在有确定 red/green 的最小兼容修正。
 
 REAL_CANDIDATE_DATA_READINESS=NOT_VERIFIED；READY_FOR_REAL_TRIAL=false；R1_FULLY_CLOSED=false；R2_STARTED=false；MAIN_MERGED=false。源码取证另见 R1_LOCAL_SOURCE_REVIEW_V1.md，源码和诊断分开提交。
+
+
+## 本轮工作流配置失败与修正
+
+488d204 的 P3-C 34324090959 与 R1 34324091851 在创建 job 前失败，注释为 job.env 中 runner.temp 上下文不可用。依据 https://docs.github.com/en/actions/reference/workflows-and-actions/contexts 的 Context availability，将证据目录移到现有配置步骤，通过 RUNNER_TEMP/GITHUB_ENV 设置。保留失败，最终新 SHA 的实际 CI 单独记录；此问题不是旧 L1 隔离根因。

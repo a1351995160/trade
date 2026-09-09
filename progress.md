@@ -925,3 +925,23 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - tmp/r1-ci-diagnostics/（Git 忽略）：所有旧日志、冷启动结果、受影响回归与后续 final-ci.json；不推送源码快照或原文。
 - 回滚：git revert --no-edit <本诊断提交SHA>，诊断前回滚点 4a25f5e；源码调查独立提交不混入。无 main merge/auto-merge，无 R2 或真实研究。
 - REAL_CANDIDATE_DATA_READINESS=NOT_VERIFIED；READY_FOR_REAL_TRIAL=false；R1_FULLY_CLOSED=false。
+## 2026-09-09 - Task: 修正诊断工作流上下文错误
+
+### What was done
+
+488d204 的 P3-C/R1 在运行前被 GitHub 判为无效 workflow。将证据目录从 job.env 的 runner.temp 表达式移到已有配置步骤，通过 RUNNER_TEMP 写 GITHUB_ENV；隔离配置、测试和上传不变。
+
+### Testing
+
+- red：P3-C run 34324090959、R1 run 34324091851 为 failure、无 job。GitHub 注释明确 Line32 Col37 Unrecognized named-value runner；不是旧 L1 失败复发。
+- GitHub 官方 Context availability 说明 job.env 不支持 runner，step 支持；YAML 解析本身不足以检验 GitHub 表达式上下文。
+- 修正复用既有保护根配置步骤的 RUNNER_TEMP/GITHUB_ENV 写法；git diff --check 与 YAML 解析通过。green 以新 SHA 实际创建作业并完成 CI 为准，后续状态只存 tmp/r1-ci-diagnostics/final-ci.json。
+
+### Notes
+
+- .github/workflows/phase3c-lifecycle-certification.yml：证据目录在运行步骤设置。
+- .github/workflows/r1-source-data-certification.yml：同步相同设置。
+- docs/R1_WINDOWS_PROCESS_DIAGNOSTICS_V1.md：追加本轮配置失败与修正依据。
+- CLAUDE.md：追加 job.env 上下文限制。
+- progress.md：仅追加本轮失败与修正，不覆盖先前记录。
+- 回滚：git revert --no-edit <本配置修正SHA>；前一 SHA 488d2045f14bce2fcad7a418aa4f13a0ac18db79（该点有已知 workflow 配置错误）。本次是实际配置修复提交，不是状态更新提交。

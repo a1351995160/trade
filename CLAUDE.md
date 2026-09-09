@@ -126,3 +126,4 @@
 
 - subprocess.Popen 的审计 argv 在 Windows 可为命令行字符串，不应假设各平台都是参数列表；只记录必要脱敏表示和 file/line/function，不读取源码行、locals 或环境。
 - P3-C 子进程 stdout/stderr 必须在失败断言前写入控制者指定的独立 synthetic 证据目录；原失败不因后续通过而关闭，未取得真实触发栈不得修改生产逻辑。
+- GitHub Actions 的 job.env 不支持 runner context；runner 临时证据目录在步骤内由 RUNNER_TEMP 写入 GITHUB_ENV，不能只用 YAML 解析宣称 workflow 有效。
