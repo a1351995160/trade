@@ -222,3 +222,7 @@ P3-B 的历史实现与验证范围见 [PHASE3B_RESTART_RECOVERY_V1.md](PHASE3B_
 - 正式预测执行器：https://github.com/a1351995160/trade/blob/7f22237958731fbc5e7803ee41ff40a55a277ff1/src/chanlun_trader/research_factory/predictive_executor.py
 - 既有数据路由：https://github.com/a1351995160/trade/blob/7f22237958731fbc5e7803ee41ff40a55a277ff1/src/chanlun_trader/research/data_router.py
 - 每日观察选择器：https://github.com/a1351995160/trade/blob/7f22237958731fbc5e7803ee41ff40a55a277ff1/src/chanlun_trader/research/selector.py
+
+## 2026-09-09 R1 部分交付已合并，可信源码恢复仍阻断
+
+PR #6 已普通 merge 到 d3dcb68934ea8fb058c98039181d29894b6425df，第二父提交为最终认证 R1 部分交付 HEAD 404561c8867fdb27b01879ce553bac5e9079428f。本轮仅继续 R1，独立分支 codex/r1-trusted-source-recovery-v1；原项目固定提交及精确路径历史未提供 corrected 原脚本。详见 [可信源码恢复调查与计划](R1_TRUSTED_SOURCE_RECOVERY_V1.md)。未恢复或替代算法，源码闭包 BLOCKED_MISSING_SOURCE，真实数据 NOT_VERIFIED，READY_FOR_REAL_TRIAL=false，R1_FULLY_CLOSED=false；R2_STARTED=false。保留此前历史状态，不将部分 merge 当作 R1 完成。

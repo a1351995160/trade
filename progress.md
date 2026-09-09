@@ -832,3 +832,27 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - progress.md：仅追加本轮实现、测试、远端待验证和回滚说明。
 - 回滚点为 6aa0990cc5841a2203cf7517a364fcc7fd88e259；提交后在本独立分支执行 git revert --no-edit <本次价格修正提交SHA>。不 reset main，不删除历史证据或用户改动。
 - FORMAL_SOURCE_DEPENDENCY_CLOSURE=BLOCKED_MISSING_SOURCE；REAL_CANDIDATE_DATA_READINESS=NOT_VERIFIED；READY_FOR_REAL_TRIAL=false；R1_FULLY_CLOSED=false。没有读取真实研究数据/历史产物，没有真实运行，没有 merge/auto-merge，没有开始 R2；完成后停止并交独立复核。
+
+## 2026-09-09 - Task: R1 可信源码限定调查与恢复阻断交付
+
+### What was done
+
+核对实际 main 与 PR #6 普通合并事实，基线 d3dcb68934ea8fb058c98039181d29894b6425df、第二父提交 404561c8867fdb27b01879ce553bac5e9079428f 均符合预期。在原目录之外从远端新建独立克隆 E:/llmwiki/trade-r1-trusted-source-recovery-v1 及 codex/r1-trusted-source-recovery-v1 分支，未更新原仓库引用。完整读取附件、规范、指定文档和进度历史。
+
+仅查询授权原路径的 Git 元数据：固定导出提交存在、非 shallow，但 corrected 精确路径在固定 tree、本地 --all 可达历史及固定提交祖先均无结果。记录精确缺项、文件级恢复计划和全部已知调用接口；不假定工作区副本不存在。恢复文件 0、适配文件 0；生产代码、测试、CI 和依赖锁未改。未 import/执行原项目、未读取未跟踪文件或任何真实数据，未扫描备份。
+
+### Testing
+
+- Git 命令成功：cat-file 返回 commit；ls-tree 和两项精确路径 log 均空；is-shallow-repository=false。PR #6 state=MERGED、mergeCommit/headRefOid 与基线一致。
+- 本地文档差异、仅追加历史和 git diff --check 验证；未将来源缺失写成成功冷加载。既有缺模块负向全部保留，没有替身或新增 skip。
+- 按用户要求，推送后使用既有双平台 R1 CI 执行原五阶段与 R1 回归；提交时 WINDOWS_CI=PENDING、LINUX_CI=PENDING，实际最终 SHA/run/job 及结果在最终交付回复报告。不借用 404561c 的旧结果，不在系统 Python 中加载项目。
+- corrected 真实 loader 成功正向、内部延迟 import/资源、恢复后的顶层副作用探针均 NOT_VERIFIED，因原脚本未取得；不声明源码闭包 PASS 或未知探针计数为零。
+
+### Notes
+
+- docs/R1_TRUSTED_SOURCE_RECOVERY_V1.md：新增限定 Git 证据、来源清单、接口矩阵、文件级恢复计划、最小补充资料和停止点。
+- docs/R1_SOURCE_CLOSURE_AND_DATA_READINESS_V1.md：仅追加 PR #6 收尾及本轮来源阻断链接。
+- docs/AUTONOMOUS_RESEARCH_MASTER_ROADMAP_V1.md：仅追加已合并 R1 部分交付及继续阻断、不开始 R2 的状态。
+- progress.md：仅追加本轮操作、验证缺口与回滚记录。
+- 回滚：在本独立分支执行 git revert --no-edit <本轮文档提交SHA>；本轮基线 d3dcb68934ea8fb058c98039181d29894b6425df。不 reset main，不修改原项目。
+- ORIGINAL_REPO_ACCESS=SCOPED_SOURCE_AND_GIT_READ_ONLY；FORMAL_SOURCE_DEPENDENCY_CLOSURE=BLOCKED_MISSING_SOURCE；REAL_CANDIDATE_DATA_READINESS=NOT_VERIFIED；READY_FOR_REAL_TRIAL=false；R1_FULLY_CLOSED=false；R2_STARTED=false；MAIN_MERGED=false（本轮分支）。完成本轮交付后停止，等待独立工程复核及精确源码来源补充。

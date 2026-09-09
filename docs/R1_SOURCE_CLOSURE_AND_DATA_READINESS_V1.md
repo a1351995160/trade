@@ -143,3 +143,9 @@ REAL_WORKSPACE_RUNTIME_INDEPENDENTLY_VERIFIED=NO
 提交后的六条 push 工作流通过后，创建或复用面向 main 的“R1 部分工程交付”PR，再核验六条 pull_request 工作流、实际 required checks 和 SonarCloud。提交时这些远端结果为 PENDING；最终交付和 PR 正文记录实际最终 HEAD、base、测试合并 checkout SHA、run/job 链接与结果，不借用旧 HEAD 或 push 结果替代 PR-context。PR 不合并，也不启用 auto-merge。
 
 本次不改变源码缺口与认证边界：FORMAL_SOURCE_DEPENDENCY_CLOSURE=BLOCKED_MISSING_SOURCE，REAL_CANDIDATE_DATA_READINESS=NOT_VERIFIED，READY_FOR_REAL_TRIAL=false，R1_FULLY_CLOSED=false。corrected/legacy 原实现仍缺失；本轮不代表完整源码闭包。PHASE3_CLOSED=true 仅限既定 synthetic 工程认证；未核验真实工作区运行能力，也未开始 R2。
+
+## 2026-09-09 PR #6 合并收尾与可信来源限定调查
+
+GitHub 与 Git 父子关系均确认 PR #6 已普通 merge：main=d3dcb68934ea8fb058c98039181d29894b6425df，认证部分交付 HEAD=404561c8867fdb27b01879ce553bac5e9079428f。此前未合并、失败和 PENDING 记录保留为历史。
+
+本轮从合并 main 创建独立克隆/分支 codex/r1-trusted-source-recovery-v1。用户新批准的原项目固定提交及精确路径历史调查未找到 corrected Git blob，未恢复源码或改写算法。来源证据、文件级恢复计划、未知依赖及最小资料需求见 [R1 可信源码恢复调查](R1_TRUSTED_SOURCE_RECOVERY_V1.md)。FORMAL_SOURCE_DEPENDENCY_CLOSURE=BLOCKED_MISSING_SOURCE；REAL_CANDIDATE_DATA_READINESS=NOT_VERIFIED；READY_FOR_REAL_TRIAL=false；R1_FULLY_CLOSED=false。不开始 R2。
