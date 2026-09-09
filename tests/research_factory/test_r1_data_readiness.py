@@ -151,6 +151,25 @@ def test_missing_definition_is_not_invented(package):
     assert "FACTOR_DEFINITION:VOLUME_ACCEL" in result["missing"]
 
 
+@pytest.mark.parametrize("reference", ["policy", "registry"])
+def test_rehashed_contract_cannot_pin_another_policy(package, reference):
+    from chanlun_trader.research_factory.common import stable_hash
+    path = package / "contract.json"
+    value = json.loads(path.read_bytes())
+    if reference == "policy":
+        value["policy_identity"]["policy_hash"] = "0" * 64
+    else:
+        value["factor_event_registry_identities"]["factor_registry"]["hash"] = "0" * 64
+    value["content_hash"] = stable_hash({k: v for k, v in value.items() if k != "content_hash"})
+    write_json(path, value)
+    bundle = json.loads((package / "readiness.json").read_bytes())
+    bundle["contract_hash"] = value["content_hash"]
+    write_json(package / "readiness.json", bundle)
+    result = inspect(package)
+    assert result["status"] != "SYNTHETIC_SCOPE_READY", result
+    assert ("POLICY_REFERENCE_CONFLICT" if reference == "policy" else "REGISTRY_REFERENCE_CONFLICT") in str(result)
+
+
 def test_read_time_mutation_is_conflict(package, monkeypatch):
     from chanlun_trader.research.io_safety import GuardedResearchReader
     original = GuardedResearchReader.read_parquet

@@ -127,11 +127,18 @@ def inspect_dataset(source_root, dataset_root, *, start, end, previous_identity=
         registry = UnifiedFactorRegistry.read(file(bundle["factor_registry"]))
         requirements = derive_requirements(contract, policy, registry)
         report["requirements"] = requirements
+        if not requirements["objective_id"]:
+            raise ValueError("OBJECTIVE_IDENTITY_REQUIRED")
         report["missing"].extend(requirements["missing"])
         report["unverified"].extend(requirements["unverified"])
         # 诊断包显式钉住引用；不反向改写 P3-C 合同内的简化政策/registry ID。
         if bundle["contract_hash"] != contract.content_hash or bundle["policy_hash"] != policy.policy_hash or bundle["registry_hash"] != stable_hash(registry_payload):
             raise ValueError("INPUT_IDENTITY_CONFLICT")
+        for key in ("policy_id", "policy_version", "policy_hash"):
+            if contract.policy_identity.get(key) != getattr(policy, key):
+                raise ValueError("POLICY_REFERENCE_CONFLICT:" + key)
+        if contract.factor_event_registry_identities.get("factor_registry", {}).get("hash") != stable_hash(registry_payload):
+            raise ValueError("REGISTRY_REFERENCE_CONFLICT")
         period = contract.research_period_identity
         if not max(int(period["start"]), policy.research_start) <= start <= end <= min(int(period["end"]), policy.research_end):
             raise ValueError("CONTRACT_POLICY_WINDOW_CONFLICT")

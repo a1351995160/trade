@@ -65,7 +65,7 @@ pyproject 只发现 src packages，并未打包 scripts/docs/config 或声明完
 | 执行补充依赖 | 正式 executor 还要求 prev_close、市场基准、PIT、路由/股票池政策、factor cache、事件；warmup 常量 20210802 保留。缺 corrected 导致完整执行需求一致性 NOT_VERIFIED |
 | 用途 | 仅 SYNTHETIC_DAILY_INPUTS 的局部就绪；真实候选、历史 PIT 可复现、Trial 权限均 NOT_VERIFIED/false |
 
-**合成因子定义边界**：发布源码没有 VOLUME_ACCEL 原始 registry 定义。本轮 fixture 显式声明测试计算图 `field(volume)` 及 2 bar 预热，仅证明“输入定义 → 需求 → 实测”的传递和计算校验；它不是 VOLUME_ACCEL 的真实公式，未纳入生产 registry、不冒充算法恢复。真实公式/版本/预热仍缺证据。缺 registry 定义的独立负向保留。P3-C 简化政策/registry ID 也不代表真实政策冻结链，本报告的合成引用不能升级它们。
+**合成因子定义边界**：发布源码没有 VOLUME_ACCEL 原始 registry 定义。本轮 fixture 显式声明测试计算图 `field(volume)` 及 2 bar 预热，仅证明“输入定义 → 需求 → 实测”的传递和计算校验；它不是 VOLUME_ACCEL 的真实公式，未纳入生产 registry、不冒充算法恢复。真实公式/版本/预热仍缺证据。缺 registry 定义的独立负向保留。R1 在 Scenario 首次设计前将初始合成 Objective 的 policy_id/version/hash 与 registry hash 明确绑定，再经原审批链派生合同；不升级历史 P3-C 或真实合同。核验要求这些合同引用与实际加载文件一致，重算合同哈希也不能掩盖引用冲突。
 
 ## 只读接口与限制
 
@@ -96,6 +96,8 @@ python -m chanlun_trader.research_factory.data_readiness --source-root <绝对ch
 本地最初 20 passed / 1 failed 为 Pandas 3 的 bool 列不能直接赋 None 的测试夹具问题；修正 object 列后 25 passed，随后补充 minute/无写子进程测试。保留 r1-data-first.log，不能称它为生产缺陷 red。新的负向记录是实际不合法输入的拒绝证据。回归脚本初版误匹配安装步骤，pip 环境探测被非 Python 进程拦截（计数 1、exit 79），未触及真实内容；修正脚本仅选 pytest/compileall 后重新执行，保留日志，不把早期计数抹零。
 
 无写入子进程先复现 tempfile.gettempdir 首次调用试写（28 passed / 1 failed），移除该隐式试写后同一用例通过，整组 29 passed。随后源码资源追踪复现 backend 从空数据 root 读 prompt（1 failed），修复默认来源后 1 passed，原 Codex backend 测试也通过。保留 r1-final.log、r1-readonly-green.log、r1-prompt-red.log 与 green 日志。
+
+08fdd307 实现提交之后，补充“合同重哈希但指向另一政策”的负向先 1 failed（r1-policy-ref-red.log）。新增合同与 policy/registry 的引用一致性校验，合成定义在首次审批前钉住；合法正向及政策负向先 3 passed，继续加入 registry 引用冲突。此修正只影响诊断校验及测试初始资料，不改变治理合同/预算协议。最终证据须绑定后续提交，不能用 08fdd307 的 CI 代替。
 
 本地、最终分支 SHA/CI 精确结果追加到 progress 与最终交付；提交时 CI=PENDING。日志/JUnit 位于忽略的 tmp/r1-evidence、tmp/r1-results.xml 及分支 CI artifact，不能充当真实研究成果。
 

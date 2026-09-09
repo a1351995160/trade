@@ -14,9 +14,7 @@ def write_json(path, payload):
 
 
 def dataset(root):
-    scenario = Scenario(root).initialize().ready()
-    contract = scenario.proposal["durable_contract"]
-    write_json(root / "contract.json", contract)
+    scenario = Scenario(root).initialize()
     # 仅测试字段和预热的传递，不恢复或声称知道真实 VOLUME_ACCEL 公式。
     attributes = {item.name: "SYNTHETIC_TEST_ONLY" for item in fields(UnifiedFactorDefinition)}
     attributes.update(factor_id="VOLUME_ACCEL", version="v1", family="VOLUME", theme=[],
@@ -28,6 +26,17 @@ def dataset(root):
         implementation_status="EXECUTABLE", lifecycle_status="DISCOVERED", is_proxy=False)
     registry = UnifiedFactorRegistry([UnifiedFactorDefinition(**attributes)])
     registry.write(root / "factors.json")
+    policy = "data/research/strategy_validation/validation_decision_policy_v2.json"
+    policy_value = json.loads((root / policy).read_bytes())
+    # 所有引用在首次设计/审批前声明，不修补已批准的合同。
+    objective_path = root / f"data/research/research_factory/objectives/{scenario.objective_id}.json"
+    objective = json.loads(objective_path.read_bytes())
+    objective["policy_identity"].update({key: policy_value[key] for key in ("policy_id", "policy_version", "policy_hash")})
+    objective["factor_event_registry_identities"]["factor_registry"]["hash"] = stable_hash(registry.to_dict())
+    write_json(objective_path, objective)
+    scenario.ready()
+    contract = scenario.proposal["durable_contract"]
+    write_json(root / "contract.json", contract)
     sessions = [20240701, 20240702, 20240703, 20240704]
     symbols = ["000001.SZ", "600000.SH"]
     daily, states, factors = [], [], []
@@ -41,7 +50,6 @@ def dataset(root):
     pd.DataFrame(daily).to_parquet(root / "daily.parquet", index=False)
     pd.DataFrame(states).to_parquet(root / "state.parquet", index=False)
     pd.DataFrame(factors).to_parquet(root / "values.parquet", index=False)
-    policy = "data/research/strategy_validation/validation_decision_policy_v2.json"
     bundle = dict(scope="SYNTHETIC", dataset_id="R1_SYNTHETIC", dataset_version="1",
         contract="contract.json", contract_hash=contract["content_hash"],
         policy=policy, policy_lock=policy.replace(".json", ".lock.json"),

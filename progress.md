@@ -784,3 +784,26 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 
 - progress.md：仅追加最终本地测试数量及证据。
 - 回滚：git revert --no-edit <本轮实现提交SHA>；不改 main，不删除历史或真实数据。
+
+## 2026-09-09 - Task: R1 合同政策及因子引用一致性收口
+
+### What was done
+
+在 08fdd307481c058d7d4a1384e14950ded93945ca 已推送后，复查发现诊断包文件哈希不能替代合同引用一致性。先复现重哈希合同指向不同政策仍返回局部 READY，再要求合同 policy_id/version/hash 和 registry hash 与实际加载引用完全一致。测试初始 Objective 在首次设计前声明这些合成引用，经原审批链产生合同；不回写历史批准/合同，不改变治理协议。
+
+### Testing
+
+- r1-policy-ref-red.log：1 failed，证明旧诊断错误接受政策引用；修复后的合法正向、政策负向、缺定义组合 3 passed。
+- 新增重哈希 registry 引用负向后，最终 R1 整组 32 passed（62.61 秒），r1-identity-final.log / tmp/r1-results.xml；collect 912 collected + 1 继承 legacy module skipped；compileall、git diff --check 通过。
+- 前一实现已取得本地原五阶段 66 / 235（12 deselected）/ 24 / 35 / 105 passed，backend 15 passed、前端 8 tests/build；本次仅诊断校验/fixture 修正，原回归由新 HEAD 双平台 CI 全量再跑。
+- 08fdd307 的六个分支 CI 已启动，其中 Phase 1/2/P3-A 已 SUCCESS，其他运行中；这些不替代本次新 SHA 的结果，新提交 CI=PENDING。
+
+### Notes
+
+- src/chanlun_trader/research_factory/data_readiness.py：校验 Objective 存在及合同政策/registry 引用一致性。
+- tests/research_factory/r1_fixture.py：首次设计前绑定合成政策和 registry 内容身份。
+- tests/research_factory/test_r1_data_readiness.py：重哈希政策与 registry 引用冲突负向。
+- docs/R1_SOURCE_CLOSURE_AND_DATA_READINESS_V1.md：说明初始引用、red/green 及证据 SHA 区别。
+- progress.md：追加本轮修正证据。
+- 回滚：git revert --no-edit <本次修正提交SHA> 回到 08fdd307；不 reset main，不改真实工件。
+- 正式 corrected 源码仍 BLOCKED_MISSING_SOURCE，真实数据 NOT_VERIFIED；不 merge/auto-merge，不开始 R2。
