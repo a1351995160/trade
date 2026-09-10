@@ -1714,3 +1714,18 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - progress.md：本轮结果与限制记录。
 - 回滚：git revert 本模块提交，停用新API页面但保留合成批准、预算和账本历史；检查点d104910。不修改main。
 - 总工程仍PARTIAL，继续固定新HEAD整体回归、双平台认证、新版需求证据矩阵与集中审计；全部旧OPEN事件继续保留。
+
+## 2026-09-10 - Task: 新版本全路线矩阵与集中审计导航
+### What was done
+- 汇总A/B及原新颖性/测试使用资格四项独立批准后的当前全路线矩阵，旧待批段落明确作为历史；新增V2审计导航、实际调用图、部署/恢复和限制。
+- 同一正式创建的两候选批次链继续经独立用途确认、组合归档和Paper回放，未以研究BLOCKED结果冒充真实合格策略。
+### Testing
+- 真实页面同根贯通：批次4/4完成→两个独立用途资格确认→组合计划同股只分配一个策略（另一个NO_TRADE）→归档→所选候选9/600模拟事件、2笔实际合成成交→撤销后仍9事件且勾选确认也不能继续。真实策略0、观察0。batch-ui-paper.json与batch-ui-revoked.json保留原HTTP完整结果，服务器日志保留实际调用。
+- 前端原presentation 8 passed，batch-ui-presentation.log；页面控件选择器两次定位失败后依据实际DOM精确定位，不将自动化定位错误视为业务缺陷。
+- 文档链接与代码/测试路径核对、git diff --check。固定HEAD的整体回归与双平台下一步执行，未预填结果。
+### Notes
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：新增当前全路线矩阵，更新四项批准实施状态。
+- docs/ROADMAP_CONTINUOUS_DELIVERY_AUDIT_V2.md：新证据版本、实际调用、审阅分组、部署/恢复和未认证范围；旧V1及ZIP不改写。
+- progress.md：追加贯通验收及固定版本前状态。
+- 回滚：git revert本轮文档提交；代码检查点36d8a2c，不改主线或任何合成批准/账本。
+- 最终认证和打包未完成前仍PARTIAL；最终状态放外部final-bounded-execution，不为状态回填修改固定HEAD。

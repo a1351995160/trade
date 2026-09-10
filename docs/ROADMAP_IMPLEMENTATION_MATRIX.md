@@ -11,8 +11,8 @@
 | 独立协议 | 最新批准及边界 | 当前工程状态 |
 |---|---|---|
 | A Objective execution_binding | 已批准新版本创建前绑定政策、研究窗口及 registry；确认复核并复用原创建事务；不迁移 v1、不改变预算/统计/其他门禁 | 本地组件及正式 R2 合成闭环通过；最终整体/双平台待验收 |
-| B synthetic R3 有界批次执行授权 | 已批准明确已审批/冻结/物化候选集合的版本化预览、人工测试确认、受限委托、实际有界执行及暂停/停止/到期/撤销/恢复；必须强制资源与原账本边界 | IMPLEMENTING；单/多候选、控制、恢复、性能前竞争本地通过；操作入口及最终整体认证待验收 |
-| 事前新颖性比较集绑定 | 已批准明确来源全集、结果盲化、精确自身排除、实际确认、性能前复核及原 Gate；不授予启动权 | 已有组件验收；新 R2/R3 组合待验收 |
+| B synthetic R3 有界批次执行授权 | 已批准明确已审批/冻结/物化候选集合的版本化预览、人工测试确认、受限委托、实际有界执行及暂停/停止/到期/撤销/恢复；必须强制资源与原账本边界 | 服务、正式API及统一页面已实现；单/多候选、控制、恢复、性能前竞争及实际页面本地通过；最终整体认证待验收 |
+| 事前新颖性比较集绑定 | 已批准明确来源全集、结果盲化、精确自身排除、实际确认、性能前复核及原 Gate；不授予启动权 | 组件及正式 R2/R3 合成本地验收通过；最终整体认证待验收 |
 | 计划/Paper 测试使用资格 | 已批准仅隔离 synthetic 的请求、真实确认、用途及有效期、撤销；不授予 Trial 或批次权限 | 已有服务及子链验收；不能充当真实资格 |
 
 A、B 分别实施和记录，不互相代替，也不替代另两类合同。真实数据保持 NOT_VERIFIED，READY_FOR_REAL_TRIAL=false、R1_FULLY_CLOSED=false；真实 Trial/Paper/订单及旧 CP 预测执行仍不授权。
@@ -22,6 +22,22 @@ A、B 分别实施和记录，不互相代替，也不替代另两类合同。�
 当前 R2 进展见 [R2_FORMAL_SYNTHETIC_SERVICES.md](R2_FORMAL_SYNTHETIC_SERVICES.md)：实际两个 engine、裁决、registry 和失败回流完成，并通过新进程重放及已消费同 Trial 的实际确认恢复。固定合成输入最终 BLOCKED；无真实合格策略。148 项本地阶段回归通过，不替代最终新 HEAD 双平台或 B 的批次边界验收。
 
 当前 B 进展见 [SYNTHETIC_BATCH_AUTHORIZATION_V1.md](SYNTHETIC_BATCH_AUTHORIZATION_V1.md)及[SYNTHETIC_BATCH_RESOURCES_V1.md](SYNTHETIC_BATCH_RESOURCES_V1.md)。新批次不再是只读申请，但必要验收尚未全部完成，不能标工程完成。
+
+### 新版本全路线需求→代码→测试→证据→限制
+
+本表为 A/B 实施后的当前工程投影，覆盖下方历史待批/缺项描述。独立外审仍 PENDING。最终固定 HEAD、测试数量、平台结果、完整差异及未执行清单在仓库外 `final-bounded-execution/delivery.json` 与其原始证据报告，不把预定执行算作通过。审计导航见 [ROADMAP_CONTINUOUS_DELIVERY_AUDIT_V2.md](ROADMAP_CONTINUOUS_DELIVERY_AUDIT_V2.md)。
+
+| 路线/要求 | 实际代码与调用入口 | 正向、负向、异常测试 | 阶段原始证据 | 范围和限制 |
+|---|---|---|---|---|
+| R1 源码、真实文件/PIT/时点与双组合 | source_dependencies、caller_inputs、data_readiness；canonical及real_runtime复用；原corrected两runner | test_r1_source_closure/data_readiness/snapshot_integration/caller_io_parity/r1_batch_caller_inputs；含F01–F04、NaT/available_at、零价、双源缺失、冷启动 | r1-stage、r1-final-affected、d1-shared-regression；原caller交付证据 | 源码checkout、V2 DAILY RAW支持矩阵；分钟、未知公司行动、真实数据不冒充完整支持；R1_FULLY_CLOSED=false |
+| R2 A正式创建至单候选闭环 | objective_execution_binding V2 → 原设计/治理/冻结/物化 → StructuralEntry → 新颖性绑定 → SyntheticNoveltyTrialStart → CanonicalPredictiveExecutor → 原预算/Trial/裁决/registry/failure | test_objective_execution_binding、test_r2_formal_services、test_synthetic_novelty；正式创建不补字段/家族/回执；真实进程退出/同Trial恢复/完成重放 | objective-binding阶段、r2-formal阶段及 batch-snapshot-boundary；R2_FORMAL_SYNTHETIC_SERVICES | 实际合成最终BLOCKED合法；旧v1不迁移；真实Trial未授权；各门禁职责分开 |
+| R3 B明确清单与合法有限运行 | synthetic_batch、synthetic_batch_delegation、synthetic_batch_worker；正式本机API与SyntheticBatchConsole；原CP/规划/失败知识保持 | test_synthetic_batch_contract/resources/recovery/races/web；两候选四动作、额度/清单/动作、到期撤销、跨根、重启/并发、实际OS资源不足；原Phase2 backend/盲化回归 | batch-core-final、batch-admission-review、batch-snapshot-boundary、batch-web-final、batch-ui-* | 仅已审/冻结/物化清单；并发1、重试0、NONE模型/调用/token/费用0；原CP预测禁令不变；真实批次未授权 |
+| D1 同信号/退出的每日计划 | daily_plan → 共享corrected策略语义、原ledger；strategy_admission + SyntheticUsageService；workbench preview/publish | test_daily_plan/strategy_admission/synthetic_usage/engineering_workbench；空库、时点/现金/持仓变化、预算/T+1、资格到期撤销/历史丢失 | d1-archive、strategy-admission-final、synthetic-usage-expiry/history-green | 研究窗口收盘计划；合成用途资格不代表统计通过/真实使用资格；真实策略0 |
+| D2 原engine模拟账户与对账 | PaperReplaySession → 原broker/ledger/费用/lot；advance、事件存储、冷重放 | test_paper_replay/engineering_workspace/synthetic_usage；同输入对照、部分成交原语义、拒单/重复/退出73/重启/输入变化 | d2-final-core、workbench-restart-final、synthetic-usage-ui-final/restart-server | SIMULATED_TIME；独立候选账户，原缩量FILLED语义不改；真实Paper/观察未开始 |
+| M1 多策略组合与统一界面 | PortfolioPreviewPolicy、portfolio_plan → 源计划；资金/冲突/归属；EngineeringWorkbench + 新批次区域 | test_portfolio_plan/synthetic_usage；0/1/多个、现金竞争、同股重叠、买卖冲突、策略失效、归档；真实浏览器 | m1-preview-final、synthetic-usage-complete、batch-ui-* | 共享资金组合计划；不把独立Paper账户相加成组合资产；真实组合政策未批准，不做收益权重优化 |
+| 运维与所有入口 | engineering_workspace inspect/serve、engineering_backup；原只读策略、本机确认、状态/停止、故障结算 | test_engineering_workspace/backup、原P3A/B/C及批次Web；不同cwd/两个根/备份/恢复/只读不写 | workbench-package-cli/server、workbench-backup-cli/restore-cli、batch-controller/recovery、最终认证原件 | 无startup recovery、真实后台服务或定时任务；源码部署，不宣称wheel；L1/L6继续OPEN |
+
+320e980阶段Ubuntu R1通过，Windows新夹具在来源路径校验失败，原日志与附件保留；d104910在首次创建前规范临时根，实际别名路径本地通过。新的双平台结果未到达前保持合成整体验证PARTIAL，不能据此关闭既有Windows事件。全量collect中的未运行现场测试列出原因；此前22项依赖缺失历史合同的失败不能由读取真实目录补齐或记作PASS。
 
 ```text
 REPOSITORY=a1351995160/trade
