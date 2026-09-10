@@ -832,3 +832,229 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - progress.md：仅追加本轮实现、测试、远端待验证和回滚说明。
 - 回滚点为 6aa0990cc5841a2203cf7517a364fcc7fd88e259；提交后在本独立分支执行 git revert --no-edit <本次价格修正提交SHA>。不 reset main，不删除历史证据或用户改动。
 - FORMAL_SOURCE_DEPENDENCY_CLOSURE=BLOCKED_MISSING_SOURCE；REAL_CANDIDATE_DATA_READINESS=NOT_VERIFIED；READY_FOR_REAL_TRIAL=false；R1_FULLY_CLOSED=false。没有读取真实研究数据/历史产物，没有真实运行，没有 merge/auto-merge，没有开始 R2；完成后停止并交独立复核。
+
+## 2026-09-09 - Task: R1 可信源码限定调查与恢复阻断交付
+
+### What was done
+
+核对实际 main 与 PR #6 普通合并事实，基线 d3dcb68934ea8fb058c98039181d29894b6425df、第二父提交 404561c8867fdb27b01879ce553bac5e9079428f 均符合预期。在原目录之外从远端新建独立克隆 E:/llmwiki/trade-r1-trusted-source-recovery-v1 及 codex/r1-trusted-source-recovery-v1 分支，未更新原仓库引用。完整读取附件、规范、指定文档和进度历史。
+
+仅查询授权原路径的 Git 元数据：固定导出提交存在、非 shallow，但 corrected 精确路径在固定 tree、本地 --all 可达历史及固定提交祖先均无结果。记录精确缺项、文件级恢复计划和全部已知调用接口；不假定工作区副本不存在。恢复文件 0、适配文件 0；生产代码、测试、CI 和依赖锁未改。未 import/执行原项目、未读取未跟踪文件或任何真实数据，未扫描备份。
+
+### Testing
+
+- Git 命令成功：cat-file 返回 commit；ls-tree 和两项精确路径 log 均空；is-shallow-repository=false。PR #6 state=MERGED、mergeCommit/headRefOid 与基线一致。
+- 本地文档差异、仅追加历史和 git diff --check 验证；未将来源缺失写成成功冷加载。既有缺模块负向全部保留，没有替身或新增 skip。
+- 按用户要求，推送后使用既有双平台 R1 CI 执行原五阶段与 R1 回归；提交时 WINDOWS_CI=PENDING、LINUX_CI=PENDING，实际最终 SHA/run/job 及结果在最终交付回复报告。不借用 404561c 的旧结果，不在系统 Python 中加载项目。
+- corrected 真实 loader 成功正向、内部延迟 import/资源、恢复后的顶层副作用探针均 NOT_VERIFIED，因原脚本未取得；不声明源码闭包 PASS 或未知探针计数为零。
+
+### Notes
+
+- docs/R1_TRUSTED_SOURCE_RECOVERY_V1.md：新增限定 Git 证据、来源清单、接口矩阵、文件级恢复计划、最小补充资料和停止点。
+- docs/R1_SOURCE_CLOSURE_AND_DATA_READINESS_V1.md：仅追加 PR #6 收尾及本轮来源阻断链接。
+- docs/AUTONOMOUS_RESEARCH_MASTER_ROADMAP_V1.md：仅追加已合并 R1 部分交付及继续阻断、不开始 R2 的状态。
+- progress.md：仅追加本轮操作、验证缺口与回滚记录。
+- 回滚：在本独立分支执行 git revert --no-edit <本轮文档提交SHA>；本轮基线 d3dcb68934ea8fb058c98039181d29894b6425df。不 reset main，不修改原项目。
+- ORIGINAL_REPO_ACCESS=SCOPED_SOURCE_AND_GIT_READ_ONLY；FORMAL_SOURCE_DEPENDENCY_CLOSURE=BLOCKED_MISSING_SOURCE；REAL_CANDIDATE_DATA_READINESS=NOT_VERIFIED；READY_FOR_REAL_TRIAL=false；R1_FULLY_CLOSED=false；R2_STARTED=false；MAIN_MERGED=false（本轮分支）。完成本轮交付后停止，等待独立工程复核及精确源码来源补充。
+## 2026-09-09 - Task: R1 来源调查分支双平台结果归档
+
+### What was done
+
+提交并推送 cb31d9f76ab8983e69007d89fb6868a17e7ead6b，完成来源调查交付的分支验证；追加实际 run/job、部分成功与独立失败证据，未恢复源码或更改测试。
+
+### Testing
+
+- cb31d9f 的 R1 run 34320730582 双平台 SUCCESS：Linux Python 3.11.16/ext4、Windows Python 3.13.15/C: NTFS；P3-A 66、Phase 2 24、P3-B 35、P3-C 105、R1 63 passed；Phase 1 Windows 235/12 deselected，Linux 234/1 skipped/12 deselected。943 collected、前端/compile/diff 成功，未扩大排除。
+- 17 模块冷加载、两处 corrected 缺源码阻断和资源正负向继续成立，真实 corrected 成功正向 NOT_VERIFIED。R1 安装范围内禁用执行器/网络/非测试进程/保护目录计数为 0，合成审批与确认各 59。
+- 独立 Phase 1/2/P3-A/P3-B 均成功；独立 P3-C run 34320730603 Windows 为 104 passed/1 failed，L1 dry_run 子进程被 RESEARCH_PROCESS_DISABLED 阻断、exit=79、process_calls=1，具体触发根因未验证。Linux 成功。不抹除该失败，不称全部 CI 全绿，不放宽隔离。
+- 原日志保存 tmp/r1-recovery-evidence，详细 job/link 见调查报告。Git 推送 TLS EOF 后以命令级 schannel 保持验证成功；远端分支 SHA 已核对，main 仍为 d3dcb68934ea8fb058c98039181d29894b6425df。
+- 本次只追加证据文档；归档新 HEAD 的 WINDOWS_CI/LINUX_CI 在提交时 PENDING，不以 cb31d9f 结果替代。源码/测试相同仅说明差异范围，不等同于新 SHA CI 成功。
+
+### Notes
+
+- docs/R1_TRUSTED_SOURCE_RECOVERY_V1.md：追加 cb31d9f 双平台成功范围、独立 P3-C 失败和证据绑定。
+- progress.md：仅追加本次验证归档。
+- 回滚本归档：git revert --no-edit <本归档提交SHA>；回滚来源调查：git revert --no-edit cb31d9f76ab8983e69007d89fb6868a17e7ead6b。不 reset main、不改原项目。
+- 保持 BLOCKED_MISSING_SOURCE、REAL_CANDIDATE_DATA_READINESS=NOT_VERIFIED、READY_FOR_REAL_TRIAL=false、R1_FULLY_CLOSED=false。停止并等待独立工程复核；无 main merge/auto-merge，无 R2。
+## 2026-09-09 - Task: R1 精确当前源码快照与静态接入审查
+
+### What was done
+
+在已有独立分支固定 corrected、legacy 与明确静态依赖共 17 个原字节源码副本，来源统一 LOCAL_WORKTREE_SNAPSHOT，历史 UNVERIFIED。形成来源矩阵、导入副作用和最小接入计划；未恢复生产源码或改变 loader。
+
+### Testing
+
+- 原路径和父路径普通文件/目录检查通过，无重解析点；精确 ls-files/check-ignore 无匹配，未重复历史查询。
+- 主快照 48823 字节，SHA256 fa7d5439e6f152e4ac6eceffbf29fab5d0d51a5fac3e487afc1542f4384063e1；17 个副本均经 AST 解析，未 import/执行。原始字节与静态读取证据留在忽略目录 tmp/r1-source-review。
+- 15 个包模块中 14 个仅行尾差异或原字节相同；io_safety 旧副本含顶层 mkdir、缺 audit_sink，不覆盖当前已认证模块。传递依赖原副本和完整隔离加载/数值正确性未验证。
+- 起始 023e656 六条 CI 均 completed/success；cb31d9f 的旧 Windows 失败继续 OPEN，不被后续成功抹除。main 实际仍 d3dcb68934ea8fb058c98039181d29894b6425df。
+- git diff --check 通过；没有读取数据/合同/绩效/凭据或运行研究。首次内联 AST 命令发生引号语法错误，改为独立工具脚本成功；未执行目标源码。
+
+### Notes
+
+- docs/R1_LOCAL_SOURCE_REVIEW_V1.md：新增真实快照来源、静态依赖与兼容性审查、接入计划。
+- progress.md：仅追加本任务记录。
+- tmp/r1-source-review/（Git 忽略，不推送）：保存 17 份原字节、manifest、静态清单与一次性解析脚本。
+- 回滚提交：git revert --no-edit <本源码调查提交SHA>；回滚点 023e656ae2fc2d8efb2146a73dc8ca41647ba80d。忽略证据可保留，不涉及原目录。
+- REAL_CANDIDATE_DATA_READINESS=NOT_VERIFIED；READY_FOR_REAL_TRIAL=false；R1_FULLY_CLOSED=false。无 merge/auto-merge/R2。
+## 2026-09-09 - Task: R1 Windows 失败诊断与有上限定向复现
+
+### What was done
+
+在原进程拒绝点追加脱敏程序与 file/line/function 调用栈；P3-C 在断言前保存完整原始字节 stdout/stderr，两个 CI 工作流失败时也上传独立 synthetic 证据。保留 cb31d9f 的失败与同 SHA 综合成功，根因仍 OPEN，未修生产逻辑。
+
+### Testing
+
+- 三次冷启动 L1：各 1 passed，20.33/22.30/19.70 秒；共 27 个子进程证据，三个 dry_run 均 RAW_BYTES/exit=0。NOT_REPRODUCED_IN_3_ATTEMPTS，不扩大重试次数。
+- 本地新 venv Python 3.13.5 按既有 hash 锁安装；默认镜像 TLS 失败，官方 PyPI 保持证书与 hash 验证安装成功。旧 CI 是 3.13.15，记录 patch 差异，不声称同环境复现。
+- 完整受影响回归（隔离先验、P3-C 四模块、新诊断）：172 passed / 1 既有弃用 warning，351.28s。主进程 network/process/protected 与三类禁用执行器为 0，合成审批83/确认86，不外推到真实研究。
+- 新诊断首轮断言因 Windows argv 字符串表示失败，修正断言后通过；最终继承父保护根的定向验证另 1 passed / 0.50s。故意不存在的 synthetic 程序在创建前被拒绝，exit=79/process_calls=1/原异常/脱敏调用栈/原字节归档均确认，未修改拒绝规则。此为诊断测试，不是旧 L1 根因 red/green。
+- 旧两个 Windows job 完整日志：image windows-2025-vs2026/20260824.214.3、CPython3.13.15、cwd、安装包列表、隔离变量与 P3-C 前次序一致；旧失败仍无 executable/完整栈，ROOT_CAUSE_UNCONFIRMED。
+- AST/YAML 解析与 git diff --check 通过；审查确认未改白名单、计数递增、原异常和非零退出，无 skip/xfail，无生产语义变更。最终 SHA CI 在推送后单独读取，不以本地或旧 SHA 结果替代。
+
+### Notes
+
+- tests/isolation/sitecustomize.py：仅追加拒绝事件的脱敏 stderr 诊断。
+- tests/research_factory/test_phase3c_restart_v1.py：断言前独立证据归档；P3-C 二进制管道，P3-B 文本证据明确标识。
+- tests/research_factory/test_process_diagnostics_v1.py：新增合成拒绝、脱敏栈与失败前原字节保存回归。
+- .github/workflows/phase3c-lifecycle-certification.yml：独立外部证据路径、always 上传、新诊断用例。
+- .github/workflows/r1-source-data-certification.yml：同步同一证据路径、上传和用例。
+- docs/R1_WINDOWS_PROCESS_DIAGNOSTICS_V1.md：旧失败、对照、三次复现、诊断合同与 OPEN 边界。
+- CLAUDE.md：追加 Windows argv 表示与证据归档约束。
+- progress.md：仅追加本任务记录。
+- tmp/r1-ci-diagnostics/（Git 忽略）：所有旧日志、冷启动结果、受影响回归与后续 final-ci.json；不推送源码快照或原文。
+- 回滚：git revert --no-edit <本诊断提交SHA>，诊断前回滚点 4a25f5e；源码调查独立提交不混入。无 main merge/auto-merge，无 R2 或真实研究。
+- REAL_CANDIDATE_DATA_READINESS=NOT_VERIFIED；READY_FOR_REAL_TRIAL=false；R1_FULLY_CLOSED=false。
+## 2026-09-09 - Task: 修正诊断工作流上下文错误
+
+### What was done
+
+488d204 的 P3-C/R1 在运行前被 GitHub 判为无效 workflow。将证据目录从 job.env 的 runner.temp 表达式移到已有配置步骤，通过 RUNNER_TEMP 写 GITHUB_ENV；隔离配置、测试和上传不变。
+
+### Testing
+
+- red：P3-C run 34324090959、R1 run 34324091851 为 failure、无 job。GitHub 注释明确 Line32 Col37 Unrecognized named-value runner；不是旧 L1 失败复发。
+- GitHub 官方 Context availability 说明 job.env 不支持 runner，step 支持；YAML 解析本身不足以检验 GitHub 表达式上下文。
+- 修正复用既有保护根配置步骤的 RUNNER_TEMP/GITHUB_ENV 写法；git diff --check 与 YAML 解析通过。green 以新 SHA 实际创建作业并完成 CI 为准，后续状态只存 tmp/r1-ci-diagnostics/final-ci.json。
+
+### Notes
+
+- .github/workflows/phase3c-lifecycle-certification.yml：证据目录在运行步骤设置。
+- .github/workflows/r1-source-data-certification.yml：同步相同设置。
+- docs/R1_WINDOWS_PROCESS_DIAGNOSTICS_V1.md：追加本轮配置失败与修正依据。
+- CLAUDE.md：追加 job.env 上下文限制。
+- progress.md：仅追加本轮失败与修正，不覆盖先前记录。
+- 回滚：git revert --no-edit <本配置修正SHA>；前一 SHA 488d2045f14bce2fcad7a418aa4f13a0ac18db79（该点有已知 workflow 配置错误）。本次是实际配置修复提交，不是状态更新提交。
+## 2026-09-09 - Task: 清除未成功删除的 job.env 旧表达式
+
+### What was done
+
+上轮字符串替换未匹配 CRLF，添加步骤后仍残留 job.env 旧行，312a460 的 P3-C 34324256129 / R1 34324255347 再次在运行前失败。用精确补丁删除两处残留表达式，不改变诊断、测试与隔离。
+
+### Testing
+
+- GitHub 注释再次明确 Line32 runner 不可用；读取已提交 YAML 确认残留，而非重复运行到绿。
+- YAML 结构检查 job.env 无 CHANLUN_PROCESS_EVIDENCE_DIR，配置 step 含 RUNNER_TEMP/GITHUB_ENV，上传 step 仍指向 runner.temp；diff --check 通过。后续 CI 绑定新 SHA。
+
+### Notes
+
+- .github/workflows/phase3c-lifecycle-certification.yml：删除一行无效旧表达式。
+- .github/workflows/r1-source-data-certification.yml：删除同一残留行。
+- progress.md：追加本次实际修正及失败保留。
+- 回滚 git revert --no-edit <本提交SHA> 会回到已知无效配置，不建议部署该回滚点。旧 L1 根因仍 OPEN；不改变研究权限。
+## 2026-09-09 - Task: R1 已有源码快照独立复核交付
+### What was done
+按固定清单校验并打包 17 份原字节源码，附原清单、原提交报告、逻辑路径映射、固定 HEAD 静态比较、旧 io_safety 精确差异与接入定位。来源 LOCAL_WORKTREE_SNAPSHOT，历史 UNVERIFIED。
+### Testing
+固定 HEAD d433709b01289097f89eb24d19c9f147e38ca985；清单/报告/字节数/SHA256 17/17 通过；主脚本与 legacy 指定指纹通过；ZIP 29 成员无缺项、额外项、重名，逐成员字节及 SHA256SUMS 通过；重解析点检查通过；有限静态敏感规则未命中（不构成认证）。未执行或 import 源码，未运行 CI。ZIP SHA256：af9643db56a3218a40ad6b5f12fa50613f076e8f371f9f3b5641bffafb4aed58。
+### Notes
+- tmp/R1_SOURCE_SNAPSHOT_REVIEW_d433709.zip：新增 Git 忽略的本地纯源码审查包，内含文档与验证材料。
+- progress.md：仅追加本轮交付记录。
+回滚：Remove-Item -LiteralPath 'E:\llmwiki\trade-r1-trusted-source-recovery-v1\tmp\R1_SOURCE_SNAPSHOT_REVIEW_d433709.zip'；进度记录保留，追加撤销说明即可。
+真实数据 NOT_VERIFIED；READY_FOR_REAL_TRIAL=false；R1_FULLY_CLOSED=false；Windows L1 OPEN / ROOT_CAUSE_UNCONFIRMED；未接入、未提交推送、未 merge、未开始 R2。
+
+## 2026-09-09 - Task: R1 已固定快照限定接入与合成回归
+### What was done
+将两个缺失脚本的必要调用子图接入部署树，隔离历史批次入口，分离代码/数据/证据根。对 F01–F04 取得真实项目 red/green，限定支持 DAILY/RAW 合成合同。保留当前 io_safety、原 Windows L1 OPEN、全部冻结治理和研究边界。已有快照交付日志原文保留。
+### Testing
+- 原固定副本 17/17 字节/哈希匹配；主脚本、helper 和 ZIP 均匹配指定指纹。来源清单记录本机原字节与 LF 部署文本的不同哈希。
+- 首轮 F01 red，其余在 git 进程调用前拒绝（process_calls=3）；显式传递 UNKNOWN 源码身份后 F01–F04 全部真实 red，再最小修正为 4 passed。
+- 扩展 fixture/精度口径失败保留；公开 helper 导入清理错误导致一次 26 failed/80 passed，恢复真实导出后定向通过。未用 mock 替代核心组件，未放宽隔离。
+- 独立 .venv Python 3.13.5；完整 R1 109 passed（136.87s）；最终新增索引0/100纯指标和完整来源输出后，受影响定向+冷加载51 passed（18.58s）。其中真实合成引擎调用29次，另有真实 Ledger/Fill 指标用例2个。最终执行器/网络/进程/保护路径探针均0；完整R1现有合成审批/确认各59次。
+- git diff --check；冷加载源树/数据哨兵/缺corrected/helper/prompt通过。CI提交时PENDING，最终SHA的既有双平台分支与PR认证单独记录，不借用旧SHA。
+### Notes
+- scripts/run_engine_corrected_phase4_v3.py：提取限定runner/指标，修复排名、退出延迟和成本压力；历史入口拒绝，输出根显式。
+- scripts/run_automated_strategy_validation_v1_rerun_v2.py：提取必要helper，双来源PIT缺证据拒绝，去除历史基准路径和固定身份。
+- src/chanlun_trader/research_factory/source_dependencies.py：两个部署脚本按明确路径加载，不用同名缓存。
+- src/chanlun_trader/engine/engine.py：构造参数传递来源身份；EngineConfig和交易逻辑不变。
+- src/chanlun_trader/research/run_manifest.py：显式来源身份可免隐式git；默认行为不变。
+- tests/research_factory/test_r1_snapshot_integration.py：新增真实编译器/引擎/账务定向与边界矩阵。
+- tests/research_factory/test_r1_source_closure.py：真实正向与独立缺失部署副本负向。
+- tests/research_factory/r1_cold_worker.py：核验两个脚本及所有加载包的实际来源，保留无副作用探针。
+- .github/workflows/r1-source-data-certification.yml：原CI添加本轮定向文件，原选择器和白名单不变。
+- docs/R1_SNAPSHOT_INTEGRATION_V1.md：记录支持/阻断矩阵、红绿证据、失败和未覆盖范围。
+- docs/R1_SNAPSHOT_INTEGRATION_SOURCE_MANIFEST.json：记录原快照和适配后的内容身份。
+- CLAUDE.md：追加动态helper公开导出及显式来源身份注意事项。
+- progress.md：仅追加本轮施工与验证记录。
+- tmp/r1-snapshot-*.log、tmp/r1-integration-local-final.log、tmp/r1-targeted-final.log、tmp/r1-integration-local.xml、tmp/r1-targeted-final.xml：忽略目录保留实际失败及成功证据，逐项见本轮文档。
+回滚：git revert --no-edit <本轮实现提交SHA>；回滚点d433709b01289097f89eb24d19c9f147e38ca985。日志保留，撤销时另行追加记录；不reset、不修改原研究目录。HISTORICAL_PROVENANCE=UNVERIFIED；真实数据NOT_VERIFIED；READY_FOR_REAL_TRIAL=false；R1_FULLY_CLOSED=false；未merge、未开始R2。
+
+## 2026-09-09 - Task: R1 容量合同精确比较与可靠性门禁修正
+### What was done
+根据061daee的Sonar python:S1244实际告警，将新增容量合同校验改成十进制精确比较，仍只接受冻结0.10，不引入容差或改变成本/成交模型。其余维护性告警保持待审，不扩展重构。
+### Testing
+47 passed（5.16s），真实合成engine.run=29，禁用执行器/网络/进程/保护路径探针0；新增0.1000000001必须拒绝，原0.10合成执行继续通过。日志tmp/r1-decimal-contract.log。旧PR Sonar reliability=C失败保留；新SHA双平台/PR检查待取证，不借用旧SHA。
+### Notes
+- scripts/run_engine_corrected_phase4_v3.py：Decimal精确比较容量契约，无epsilon。
+- tests/research_factory/test_r1_snapshot_integration.py：新增微小偏移合同的拒绝验证。
+- docs/R1_SNAPSHOT_INTEGRATION_SOURCE_MANIFEST.json：更新该脚本实际适配字节/文本哈希。
+- docs/R1_SNAPSHOT_INTEGRATION_V1.md：追加告警原因、修正和验证。
+- progress.md：追加本轮实际门禁修正记录。
+- tmp/r1-decimal-contract.log：保存定向结果。
+回滚：git revert --no-edit <本提交SHA>；回滚点061daee78d910442d1ed021cba6b66bc6227edb7（有已知Sonar告警）。真实数据NOT_VERIFIED，READY_FOR_REAL_TRIAL=false，R1_FULLY_CLOSED=false，Windows L1 OPEN，未merge、未开始R2。
+
+## 2026-09-10 - Task: 原锁依赖恢复与 R1 available_at 空值最小修正
+
+### What was done
+
+核验官方原 wheel 和锁哈希，修正本轮安装命令遗漏 /simple 的索引路径，在全新 venv 完成原完整锁安装；未改全局网络、TLS 或依赖锁。恢复隔离后取得真实部署 loader/runner 的入场和已持仓结构退出 red，在共享适配行入口拒绝缺失及解析后 NaT，保留原时区、合法未来时间和固定持有语义，追加明确诊断计数。复用 PR #7，保持 Draft。
+
+### Testing
+
+- 官方 JSON、Simple 和 wheel HTTP 200；此前错误包路径 HTTP 404。wheel 5302 bytes、SHA256 117bac03a25ede5df5440e855b32d556049ca169ead221505badf432fed4b101 匹配原锁。默认镜像 TLS EOF 根因仍未确认。
+- Python 3.13.5/pip 25.1.1；原 requirements-p3b.txt 递归完整哈希安装成功，pip check 通过，原锁字节哈希不变。pytdx 使用 pip 接受的缓存构建 wheel，不声称全套构建可复现。
+- 隔离先验 66 passed；原正向/未来/缺列验证 2 passed、engine 2 次。真实 protected root 为原研究工作区，未读取真实数据。
+- 项目 red 13 项入场放行和 5 项未知时间结构退出；原生 datetime64[us, Asia/Shanghai] 的 None/NaN 实际均为 NaT，object 原值另有逐格记录。不可解析文本的原解析拒绝不计 red。
+- 首轮 28 failed/6 passed、engine 27 次中包含 7 项固定持有 fixture 错配；保持生产校验，修正测试装配后补跑 6 failed/1 passed、engine 7 次（5 项缺新诊断、1 项原解析拒绝），不将这些计作业务放行 red。原始失败日志保留。
+- 修正后定向 81 passed、engine 63 次；完整 R1 146 passed/146.65s、engine 63 次，合成审批/确认各59次。原 F01–F04、loader 正向/缺依赖负向及源根毒化未删除。新用例 DataFrame/只读 fixture 哈希不变，写打开/禁用执行器/网络/进程/保护访问计数为0。五种合法时间完整信号/订单摘要/退出决定红绿相同，空值固定持有首次退出相同。
+- git diff --check 通过；局部顺序复核确认共享 compiler/时间函数、治理、进程白名单未变。最终新 HEAD 的五阶段/R1 分支与 PR 双平台 CI 待推送取证，状态只写独立证据和 PR，不沿用旧结果。
+
+### Notes
+
+- scripts/run_engine_corrected_phase4_v3.py：拒绝无效因子时间行并计数，同时覆盖入场和结构退出。
+- tests/research_factory/test_r1_snapshot_integration.py：保留原测试，新增34项时间边界回归和逐例输入/运行证据。
+- docs/R1_SNAPSHOT_INTEGRATION_SOURCE_MANIFEST.json：更新本轮适配脚本的实际字节与 LF 哈希。
+- docs/R1_AVAILABLE_AT_NULL_FIX_V1.md：记录依赖恢复、真实 red/green、范围和回滚。
+- CLAUDE.md：追加 NaT 与官方索引路径的本轮经验。
+- progress.md：仅追加本轮记录。
+- E:/llmwiki/r1-dependency-evidence（仓库外）：脱敏安装诊断、官方元数据、原 wheel、全部失败及成功测试日志、XML、逐例比较与后续 CI 证据。
+- 回滚：git revert <本轮修正提交SHA>；回滚点 f4a3681ccf8d44c71bcfa71bf04a0ea2134a5539；不 reset 或覆盖旧日志。
+- HISTORICAL_WINDOWS_L1_INCIDENT=OPEN_ROOT_CAUSE_UNCONFIRMED；HISTORICAL_PROVENANCE=UNVERIFIED；REAL_CANDIDATE_DATA_READINESS=NOT_VERIFIED；READY_FOR_REAL_TRIAL=false；R1_FULLY_CLOSED=false；未merge、未auto-merge、未退出Draft、未开始R2。
+
+## 2026-09-10 - Task: 清理本轮新增测试的五处复合断言提示
+
+### What was done
+
+725eb55 的 Sonar gate 通过，总29条提示中有5条来自本轮新增测试。将这5处复合断言拆成独立断言，使失败位置更明确；保持测试内容、生产代码及原24条问题不变。
+
+### Testing
+
+受影响时间矩阵34 passed/12.95s，engine34次，禁用执行器/网络/进程/保护访问计数0。日志 assertions-green.log 与 XML 保存在仓库外依赖恢复证据目录；git diff --check通过。新最终HEAD重新认证原五阶段与R1分支/PR双平台，不照抄前一HEAD状态。
+
+### Notes
+
+- tests/research_factory/test_r1_snapshot_integration.py：仅拆开本轮新增的5处复合断言。
+- docs/R1_AVAILABLE_AT_NULL_FIX_V1.md：追加实际Sonar提示及验证说明。
+- progress.md：仅追加本轮测试质量修正记录。
+- 回滚：git revert <本次断言提交SHA>；回滚点725eb559727dcc088e8c06c8134b7288a2e4552b。该回滚不撤销时间校验，只恢复复合断言。
+- PR #7仍Draft；旧Windows L1保持OPEN_ROOT_CAUSE_UNCONFIRMED；REAL_CANDIDATE_DATA_READINESS=NOT_VERIFIED；READY_FOR_REAL_TRIAL=false；R1_FULLY_CLOSED=false；未merge、未开始R2。

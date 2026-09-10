@@ -7,7 +7,7 @@ import sys
 
 import pytest
 
-from chanlun_trader.research_factory.source_dependencies import SOURCE_ROOT
+from chanlun_trader.research_factory.source_dependencies import SOURCE_ROOT, load_corrected_module
 
 
 def test_backend_default_prompt_comes_from_deployment_not_empty_data_root(tmp_path):
@@ -19,16 +19,20 @@ def test_backend_default_prompt_comes_from_deployment_not_empty_data_root(tmp_pa
     assert list(tmp_path.iterdir()) == []
 
 
-@pytest.mark.parametrize("missing_resource", [False, True])
+@pytest.mark.parametrize("missing_resource", [None, "prompt", "corrected", "legacy"])
 def test_clean_source_fresh_process_without_production_module_mocks(tmp_path, missing_resource):
     source, data = tmp_path / "source", tmp_path / "data"
     source.mkdir()
     data.mkdir()
-    for directory in ("src", "docs"):
+    for directory in ("src", "docs", "scripts"):
         shutil.copytree(SOURCE_ROOT / directory, source / directory, ignore=shutil.ignore_patterns("__pycache__"))
     shutil.copyfile(SOURCE_ROOT / "config.yaml", source / "config.yaml")
-    if missing_resource:
+    if missing_resource == "prompt":
         (source / "docs/CODEX_RESEARCH_PROMPT_V1.md").unlink()
+    if missing_resource in {"corrected", "legacy"}:
+        assert load_corrected_module().legacy.StrategyCandidateCompilerV2
+        script = "run_engine_corrected_phase4_v3.py" if missing_resource == "corrected" else "run_automated_strategy_validation_v1_rerun_v2.py"
+        (source / "scripts" / script).unlink()
     # 同名数据 root 脚本是拒绝路径的哨兵，不作为任何成功依赖。
     (data / "scripts").mkdir()
     (data / "scripts/run_engine_corrected_phase4_v3.py").write_text("raise AssertionError('DATA_ROOT_CODE_IMPORTED')", encoding="utf-8")
@@ -37,8 +41,9 @@ def test_clean_source_fresh_process_without_production_module_mocks(tmp_path, mi
     assert result.returncode == 0, result.stdout + result.stderr
     report = json.loads(result.stdout)
     assert report["status"] == "PARTIAL"
-    assert sum(row["status"] == "LOADED" for row in report["matrix"]) == 17
-    assert sum(row["status"] == "BLOCKED_MISSING_SOURCE" for row in report["matrix"]) == 2
+    missing_script = missing_resource in {"corrected", "legacy"}
+    assert sum(row["status"] == "LOADED" for row in report["matrix"]) == (17 if missing_script else 19)
+    assert sum(row["status"] == "BLOCKED_MISSING_SOURCE" for row in report["matrix"]) == (2 if missing_script else 0)
     assert any(row["status"] == "MISSING_DATA_POLICY" for row in report["matrix"])
-    assert any(row["status"] == ("MISSING_RESOURCE" if missing_resource else "RESOURCE_LOADED") for row in report["matrix"])
+    assert any(row["status"] == ("MISSING_RESOURCE" if missing_resource == "prompt" else "RESOURCE_LOADED") for row in report["matrix"])
     print("R1_COLD_EVIDENCE=" + json.dumps(report, ensure_ascii=False))

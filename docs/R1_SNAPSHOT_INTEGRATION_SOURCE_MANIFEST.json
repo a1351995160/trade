@@ -1,0 +1,65 @@
+{
+  "source_kind": "LOCAL_WORKTREE_SNAPSHOT",
+  "historical_provenance": "UNVERIFIED",
+  "base_commit": "d433709b01289097f89eb24d19c9f147e38ca985",
+  "snapshot_archive_sha256": "af9643db56a3218a40ad6b5f12fa50613f076e8f371f9f3b5641bffafb4aed58",
+  "files": [
+    {
+      "path": "scripts/run_engine_corrected_phase4_v3.py",
+      "snapshot_sha256": "fa7d5439e6f152e4ac6eceffbf29fab5d0d51a5fac3e487afc1542f4384063e1",
+      "snapshot_bytes": 48823,
+      "adapted_local_raw_sha256": "f699168d444c51a5548a53cb0d4597c29e9cf7e1ab77f77980460c566745ce48",
+      "adapted_local_bytes": 38445,
+      "adapted_lf_sha256": "615ad2ca7a385914b2bdbbb15fc3aba8de5cdd90ee21e708aead78abc92d1750",
+      "present_names_from_snapshot": [
+        "jsonable",
+        "write_csv",
+        "corrected_order_record",
+        "corrected_trade_record",
+        "corrected_snapshot_record",
+        "session_index",
+        "percentile",
+        "compute_metrics_v3",
+        "recompute_cost_stress_metrics",
+        "run_corrected_candidate",
+        "bootstrap_result",
+        "concentration",
+        "subperiods",
+        "regime_split",
+        "invalidate_old_run",
+        "create_corrected_trial_registry",
+        "classification",
+        "main_run",
+        "main"
+      ]
+    },
+    {
+      "path": "scripts/run_automated_strategy_validation_v1_rerun_v2.py",
+      "snapshot_sha256": "3c9fe6ad2ce6558515a6612369ed03dc7f3c9cfc694b511059cce19dabbd86a1",
+      "snapshot_bytes": 62801,
+      "adapted_local_raw_sha256": "76d65e0b24fd8fdc8a1712bf619e84865cfa3d8baa9940ef69702602e3e0000a",
+      "adapted_local_bytes": 9529,
+      "adapted_lf_sha256": "ec7d2556dba5975e658f9db08d791cfc4850850964e97ce7aff87d55a56ae6ee",
+      "present_names_from_snapshot": [
+        "sha256",
+        "ts_for_date",
+        "parse_date",
+        "PITStateMap",
+        "load_universe_sets",
+        "load_market_index",
+        "market_regimes",
+        "verify_freezes",
+        "build_store",
+        "load_events",
+        "make_engine",
+        "factor_row_values",
+        "run_candidate",
+        "run",
+        "main"
+      ]
+    }
+  ],
+  "hash_note": "local raw bytes and LF-normalized deployment text are distinct identities; Git checkout line endings may differ",
+  "io_safety_modified": false,
+  "historical_equivalence_claimed": false
+}

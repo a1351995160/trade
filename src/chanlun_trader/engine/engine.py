@@ -104,7 +104,7 @@ class BacktestEngineV2:
                  index_closes: Optional[Dict[int, float]] = None,
                  universe: Optional["UniverseService"] = None,
                  security_master: Optional[SecurityMaster] = None,
-                 seed: int = 42):
+                 seed: int = 42, *, source_identity: tuple[str, bool] | None = None):
         self.store = store
         self.config = config or EngineConfig()
         self.calendar = TradingCalendar(list(calendar_days))
@@ -113,6 +113,7 @@ class BacktestEngineV2:
         self.universe = universe
         self.security_master = security_master or SecurityMaster()
         self.seed = seed
+        self.source_identity = source_identity
         self.signals: List[Signal] = []
         self._signal_seq = 0
         self._intent_seq = 0
@@ -196,6 +197,7 @@ class BacktestEngineV2:
             fee_model_version=type(fee).__name__,
             slippage_model_version=type(slip).__name__,
             calendar_version=calendar_version,
+            source_identity=self.source_identity,
         )
         self.context = BacktestRunContext(
             config_hash=self._config_hash(),

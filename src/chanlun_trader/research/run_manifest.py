@@ -43,9 +43,11 @@ def build_run_manifest(*, config_hash: str, strategy_hash: str,
                        execution_model_version: str = "UNSPECIFIED",
                        fee_model_version: str = "UNSPECIFIED",
                        slippage_model_version: str = "UNSPECIFIED",
-                       calendar_version: str = "UNSPECIFIED") -> dict[str, Any]:
-    commit = _git(["rev-parse", "HEAD"], "UNKNOWN")
-    dirty = bool(_git(["status", "--porcelain"], "UNKNOWN"))
+                       calendar_version: str = "UNSPECIFIED",
+                       source_identity: tuple[str, bool] | None = None) -> dict[str, Any]:
+    # 受控调用方可传入已核验身份；缺省仍保留既有 Git 采集行为。
+    commit, dirty = source_identity if source_identity is not None else (
+        _git(["rev-parse", "HEAD"], "UNKNOWN"), bool(_git(["status", "--porcelain"], "UNKNOWN")))
     manifest = {
         "code_commit": commit,
         "dirty_worktree": dirty,

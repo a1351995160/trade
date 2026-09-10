@@ -40,6 +40,19 @@ if os.environ.get("CHANLUN_TEST_ISOLATION") == "1":
             executable = os.path.basename(str(target)).lower()
             if executable not in {"python", "python.exe", "python3", "python3.11", "python3.13"}:
                 counts["process_calls"] += 1
+                frame = sys._getframe(1)
+                callers = []
+                while frame is not None:
+                    callers.append({"file": frame.f_code.co_filename, "line": frame.f_lineno,
+                                    "function": frame.f_code.co_name})
+                    frame = frame.f_back
+                # 不输出环境、源码行或参数值；字符串命令不进行 shell 解析。
+                argv = ["<REDACTED_COMMAND_LINE>"] if isinstance(command, str) else [executable] + ["<REDACTED>" for _ in command[1:]]
+                print("RESEARCH_PROCESS_DENIED=" + json.dumps({
+                    "executable": str(target), "argv": argv,
+                    "cwd": os.fsdecode(args[2]) if args[2] is not None else os.getcwd(),
+                    "python": sys.version, "stack": callers,
+                }, ensure_ascii=True), file=sys.stderr, flush=True)
                 raise AssertionError("RESEARCH_PROCESS_DISABLED")
 
     sys.addaudithook(audit)

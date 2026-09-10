@@ -60,11 +60,16 @@ for constructor in (PredictiveTrialStartServiceV1, PredictiveTrialReauthorizatio
 RealSampleFeasibilityProviderV1(data)
 for label, loader in (("CanonicalPredictiveExecutorV1._corrected_module", CanonicalPredictiveExecutorV1(data, "R1")._corrected_module), ("real_runtime.corrected_loader", load_corrected_module)):
     try:
-        loader()
+        loaded = loader()
     except ModuleNotFoundError as exc:
         rows.append(dict(entrypoint=label, status="BLOCKED_MISSING_SOURCE", error=str(exc)))
     else:
-        raise AssertionError("Expected absent original runner; provenance must be reviewed if restored")
+        for module in (loaded, loaded.legacy):
+            path = Path(module.__file__).resolve()
+            assert path.is_relative_to(source / "scripts")
+            assert Path(module.__spec__.origin).resolve() == path
+        rows.append(dict(entrypoint=label, status="LOADED", source=str(Path(loaded.__file__).relative_to(source)),
+            helper=str(Path(loaded.legacy.__file__).relative_to(source))))
 try:
     ResearchDataRouter(data)
 except FileNotFoundError as exc:
@@ -77,9 +82,12 @@ try:
 except FileNotFoundError as exc:
     rows.append(dict(entrypoint="CodexResearchPromptV1", status="MISSING_RESOURCE", error=str(exc)))
 yaml.safe_load((source / "config.yaml").read_text(encoding="utf-8"))
+origins = {}
 for name, module in tuple(sys.modules.items()):
     if name.startswith("chanlun_trader") and getattr(module, "__file__", None):
         assert Path(module.__file__).resolve().is_relative_to(source / "src"), name
+        origins[name] = str(Path(module.__file__).resolve().relative_to(source))
 print(json.dumps({"status": "PARTIAL", "matrix": rows, "python": sys.version,
+    "source_origins": origins,
     "packages": {name: importlib.metadata.version(name) for name in ("pandas", "numpy", "pyarrow", "jsonschema", "pyyaml", "pytdx", "baostock")},
-    "unverified": ["corrected runner transitive imports", "real data", "engine execution", "wheel deployment"]}, ensure_ascii=False))
+    "unverified": ["real data", "engine execution in cold worker", "wheel deployment"]}, ensure_ascii=False))

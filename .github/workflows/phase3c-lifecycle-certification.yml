@@ -33,7 +33,9 @@ jobs:
     steps:
       - name: Configure protected reference before Python starts
         shell: bash
-        run: echo "CHANLUN_PROTECTED_ROOT=$RUNNER_TEMP/p3c-protected-reference" >> "$GITHUB_ENV"
+        run: |
+          echo "CHANLUN_PROTECTED_ROOT=$RUNNER_TEMP/p3c-protected-reference" >> "$GITHUB_ENV"
+          echo "CHANLUN_PROCESS_EVIDENCE_DIR=$RUNNER_TEMP/p3c-process-evidence" >> "$GITHUB_ENV"
 
       - name: Check out source
         uses: actions/checkout@v4
@@ -152,6 +154,7 @@ jobs:
           tests/research_factory/test_phase3c_lifecycle_v1.py
           tests/research_factory/test_phase3c_lifecycle_boundaries_v1.py
           tests/research_factory/test_phase3c_restart_v1.py
+          tests/research_factory/test_process_diagnostics_v1.py
           tests/research_factory/test_phase3c_entry_boundaries_v1.py
 
       - name: Upload lifecycle test evidence
@@ -159,5 +162,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: p3c-${{ matrix.os }}-${{ github.sha }}
-          path: tmp/p3c-results.xml
+          path: |
+            tmp/p3c-results.xml
+            ${{ runner.temp }}/p3c-process-evidence
           if-no-files-found: warn
