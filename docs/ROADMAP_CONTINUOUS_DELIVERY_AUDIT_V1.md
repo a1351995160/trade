@@ -4,6 +4,8 @@
 
 本页是当前状态；ROADMAP_IMPLEMENTATION_MATRIX.md 的早期 PARTIAL 段落是历史快照，其后追加记录说明已修复项。工程投影不构成任何运行授权。
 
+2026-09-10 新批准增量：已实现 synthetic-novelty-binding-v1 来源范围/快照/实际测试确认服务，并将新版启动预览和 canonical 性能准入接到原 CandidateNoveltyGateV2。下文“canonical 事前新颖性未接入”仅描述旧流程及此前 d821d0a 审计快照；新版本的组件验收见 SYNTHETIC_NOVELTY_BINDING_V1.md。旧流程保留原校验，不获得新版本认证。Objective execution_binding 仍未批准，完整 R2 及其恢复仍 NOT_VERIFIED。新的固定 HEAD 证据单列在仓库外 final-novelty/，不覆盖原 final/。
+
 ## 当前需求→代码→测试→限制
 
 | 路线 | 已实施及实际调用点 | 测试与阶段原始证据（均在外部证据根） | 当前限制与状态 |

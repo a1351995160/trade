@@ -1521,3 +1521,33 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - .github/workflows/r1-source-data-certification.yml：加入既有新增结构持久边界回归。
 - progress.md：追加本轮记录。
 - 回滚：git revert --no-edit <本轮提交SHA>；回滚点1223664，仅去除本轮文档/测试入口，不删除原始证据或改变main。
+
+## 2026-09-10 - Task: 按明确批准实施隔离 synthetic 事前新颖性比较集绑定
+
+### What was done
+
+记录本次用户“选择 1”的批准：仅限隔离 synthetic 新流程的来源解析、快照、启动预览与实际人工测试确认、性能访问前复核及原 CandidateNoveltyGateV2。Objective execution_binding 继续独立待批；不扩展预算、统计、CP、真实研究、Trial、Paper 或订单权限。
+
+实现实际 registry 全成员收集、设计 allowlist、精确自身排除、冲突阻断、完整来源映射、版本链/当前版本/工作区身份、不可覆盖预览与测试确认。新版启动合同携带绑定，canonical 短准入边界复用原资源锁和 Gate；旧流程不迁移且不冒称新绑定。补充正式 CLI 和整体认证入口。
+
+### Testing
+
+- novelty-cli.log/XML：24 passed，实际服务确认、空/非空、换名重复、参数邻居、来源异常/变更/缩小/丢失、跨根、CLI、其他门禁、兼容通过；执行/网络/受保护访问探针均 0。真实子进程锁内 writer 拒绝、锁外成功、重启确认复核保留原始 stdout/stderr。
+- novelty-scope-head.log/XML：22 passed；早期两次新增夹具断言失败完整保留，不作为旧业务缺陷 red。
+- 顺序自检：确认后来源变化不刷新授权；损坏当前范围不退旧版本；原确认不替代启动 intent；新 intent 内容 hash 复核且不迁移旧 intent；长期计算在共享资源锁外。I/O 拒绝是异常注入，不称 OS ACL 验收。
+- git diff --check 通过。完整固定 HEAD 回归/双平台结果将写仓库外 final-novelty，原 d821d0a final 证据不覆盖。完整 R2 服务启动与恢复仍未认证。
+
+### Notes
+
+- src/chanlun_trader/research_factory/synthetic_novelty.py：实际来源范围、盲化快照、确认与共享锁复核。
+- src/chanlun_trader/research_factory/synthetic_novelty_start.py：版本化预览/实际 intent 绑定，旧 intent 拒绝。
+- src/chanlun_trader/research_factory/synthetic_novelty_cli.py：正式声明、预览、测试确认、历史及只读启动预览命令。
+- src/chanlun_trader/research_factory/predictive_executor.py：新绑定复核与原性能准入共用短临界区、真实 Gate 证据。
+- tests/research_factory/test_synthetic_novelty.py：实际服务与原算法正负向、兼容及身份/范围测试。
+- tests/research_factory/novelty_worker.py：真实进程重启和 registry 写锁竞争。
+- .github/workflows/r1-source-data-certification.yml：原双平台选择器加入新测试，不改 skip/超时/白名单。
+- docs/SYNTHETIC_NOVELTY_BINDING_V1.md：授权、来源信任边界、部署、需求/证据/限制。
+- docs/ROADMAP_CONTINUOUS_DELIVERY_AUDIT_V1.md：新版本增量与旧版本缺口区分，保留整体 PARTIAL。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：追加批准及最新范围索引。
+- progress.md：本轮实际实施与验证记录。
+- 回滚：git revert --no-edit <本轮提交SHA>；回滚点 d821d0ab99a181329949c92383a2ab1495009c15。保留所有历史合成证据；不改 main，不移动真实目录。

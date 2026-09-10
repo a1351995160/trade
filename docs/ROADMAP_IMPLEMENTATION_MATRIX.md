@@ -251,3 +251,7 @@ python -m chanlun_trader.research_factory.engineering_workspace serve --config <
 serve 固定绑定127.0.0.1，默认READ_ONLY，打开 /research/workbench；仅在隔离合成域显式操作时加 --governed，仍须逐次实际确认与资格验证。Ctrl+C停止，不安装后台任务。此为源码检出部署入口，不宣称独立wheel包含scripts或前端资源。合成输入首次生成仍可使用既有 workbench_demo.py，其后恢复和服务不调用夹具工厂。
 
 不同cwd真实子进程inspect只读验证纳入冷重建套件，6 passed/19.91s，workbench-package-cli.log/XML，原始stdout/stderr在process/workbench-package-cli，隔离探针0。源码serve实际浏览器GET显示既有10/44事件、2成交、真实资格0与观察天数0，确认/归档/推进均禁用，未自动恢复；workbench-package-server.log保留。服务已Ctrl+C停止并核对8857无监听，不把手动停止服务的未导出探针宣称0。
+
+## 2026-09-10 新批准：仅 synthetic 事前新颖性比较集绑定
+
+用户明确批准来源范围解析/快照/人工测试确认/性能前复核及原 CandidateNoveltyGateV2；不批准 Objective execution_binding。实现与需求→代码→测试→证据→限制见 [SYNTHETIC_NOVELTY_BINDING_V1.md](SYNTHETIC_NOVELTY_BINDING_V1.md)。组件 24 项真实服务测试通过，新版本 canonical 准入已接入；完整 R2 及恢复仍 BLOCKED/NOT_VERIFIED，CP 预测禁令、真实数据和运行边界不变。最终固定 HEAD 证据单列 final-novelty，不覆盖 d821d0a 的 final 包；L1/L6 继续 OPEN。

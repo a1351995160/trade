@@ -185,6 +185,7 @@ jobs:
           tests/research_factory/test_r2_structural_result_boundary.py
           tests/research_factory/test_strategy_admission.py
           tests/research_factory/test_synthetic_usage.py
+          tests/research_factory/test_synthetic_novelty.py
           tests/research_factory/test_paper_replay.py
           tests/engine
           tests/lookahead
