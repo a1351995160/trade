@@ -1624,3 +1624,18 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - progress.md：本轮证据和回滚记录。
 - 回滚：git revert 本阶段提交，恢复点991281a；已创建目标与Trial历史保留、不返还消费、不删失败工件，不merge/reset main。
 - 总工程仍PARTIAL。B实际有界批次、最终固定HEAD回归/双平台/新版审计包待完成。真实数据NOT_VERIFIED、READY_FOR_REAL_TRIAL=false、R1_FULLY_CLOSED=false，真实策略0、真实观察0，旧OPEN事件不关闭。
+
+## 2026-09-10 - Task: B 合成批次实际资源执行组件
+### What was done
+- 实现 Windows 挂起启动、同一 Job 总内存、父进程退出清理和 Linux 地址空间/时间/父进程生命期限制；领域组件必须在资源握手后导入。
+- Windows venv 启动器及解释器共享已声明总内存，进程上限2；不把配置打印当作限制生效。
+### Testing
+- batch-resources-suspended.log/XML：3 passed；正常、实际内存分配失败、实际超时终止均有独立原始 stdout/stderr。首轮失败和中间通过日志全部保留。
+- 尚未完成最终固定 HEAD 双平台，批次调度、撤销竞争和恢复验收继续；本提交不标 B 完成。
+### Notes
+- src/chanlun_trader/synthetic_batch_resources.py：实际 OS 资源及进程生命期约束。
+- tests/research_factory/batch_resource_worker.py：资源握手后执行正常、内存和超时动作。
+- tests/research_factory/test_synthetic_batch_resources.py：真实子进程正负向断言及原始流保存。
+- docs/SYNTHETIC_BATCH_RESOURCES_V1.md：执行指标、适用平台和当前证据限制。
+- progress.md：本轮结果、失败证据和回滚记录。
+- 回滚：git revert 本资源模块提交；恢复点90f5f0c，停用新批次入口并保留合成历史和失败工件，不重置 main。
