@@ -89,3 +89,26 @@ def load_engineering_workspace(path) -> EngineeringWorkbenchV1:
             raise ValueError("WORKSPACE_INPUT_CHANGED")
         sources[contract.candidate_id] = dict(root=source_root, contract=contract, record=record, policy=execution, inputs=inputs)
     return EngineeringWorkbenchV1(root, sources, PortfolioLedger(cash), policy, output)
+
+
+if __name__ == "__main__":
+    import argparse
+    import os
+    parser = argparse.ArgumentParser(description="显式合成工作台配置检查与本机服务；默认只读")
+    parser.add_argument("command", choices=("inspect", "serve"))
+    parser.add_argument("--config", type=Path, required=True)
+    parser.add_argument("--port", type=int)
+    parser.add_argument("--governed", action="store_true", help="允许已配置合成域的显式确认操作，不授予真实权限")
+    args = parser.parse_args()
+    if os.environ.get("CHANLUN_TEST_ISOLATION") != "1":
+        parser.error("IMPORT_TIME_ISOLATION_REQUIRED")
+    if args.command == "serve" and (args.port is None or not 1 <= args.port <= 65535):
+        parser.error("EXPLICIT_LOCAL_PORT_REQUIRED")
+    service = load_engineering_workspace(args.config)
+    if args.command == "inspect":
+        print(json.dumps({"read_only": True, **service.inspect()}, ensure_ascii=False))
+    else:
+        import uvicorn
+        from chanlun_trader.webapp import create_app
+        policy = ExecutionPolicy("GOVERNED" if args.governed else "READ_ONLY", "SYNTHETIC")
+        uvicorn.run(create_app(service.root, policy, engineering_workbench=service), host="127.0.0.1", port=args.port)

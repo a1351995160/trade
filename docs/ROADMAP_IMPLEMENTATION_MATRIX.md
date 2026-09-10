@@ -238,3 +238,16 @@ search_budget_reservation现读取Trial最早的REGISTERED_BEFORE_PERFORMANCE事
 结构化自检在f2541c0发现：configured仅由当前请求数推导，移走整个资格历史目录会回退无资格工程回放。使用实际请求/确认后将历史移入同一合成根的保留目录，原实现确实未拒绝第1事件，red 1 failed（synthetic-usage-history-red.log），不是mock结果。现首次实际请求同时独占保存synthetic-usage-mode.json作为持续收紧标记；资格历史丢失后仍要求资格，没有可用记录即阻断，不修写或补造历史。标记只收紧模式，不授予权限，随限定输出树备份。
 
 修复后资格15+备份3共18 passed/50.68s，synthetic-usage-history-green.log/XML，隔离三探针0。旧开发根没有该新标记时不自动迁移；正式复现从新根启动。此修复属于已批准资格语义的实现修正。结构化自检为主任务顺序执行，不是独立审计已完成；完整R2执行绑定与事前相似性证据缺项仍保留。
+
+### 正式源码启动入口
+
+工作台现可从源码内模块启动，不依赖演示脚本或其夹具工厂。先按原哈希锁安装依赖、构建 frontend，使用实际保存的绝对 workbench.json 路径；设置 PYTHONPATH 为源码绝对路径与 tests/isolation 绝对路径，CHANLUN_TEST_ISOLATION=1、CHANLUN_PROTECTED_ROOT 为受保护原根。执行：
+
+```powershell
+python -m chanlun_trader.research_factory.engineering_workspace inspect --config <绝对配置路径>
+python -m chanlun_trader.research_factory.engineering_workspace serve --config <绝对配置路径> --port 8857
+```
+
+serve 固定绑定127.0.0.1，默认READ_ONLY，打开 /research/workbench；仅在隔离合成域显式操作时加 --governed，仍须逐次实际确认与资格验证。Ctrl+C停止，不安装后台任务。此为源码检出部署入口，不宣称独立wheel包含scripts或前端资源。合成输入首次生成仍可使用既有 workbench_demo.py，其后恢复和服务不调用夹具工厂。
+
+不同cwd真实子进程inspect只读验证纳入冷重建套件，6 passed/19.91s，workbench-package-cli.log/XML，原始stdout/stderr在process/workbench-package-cli，隔离探针0。源码serve实际浏览器GET显示既有10/44事件、2成交、真实资格0与观察天数0，确认/归档/推进均禁用，未自动恢复；workbench-package-server.log保留。服务已Ctrl+C停止并核对8857无监听，不把手动停止服务的未导出探针宣称0。

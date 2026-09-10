@@ -1483,3 +1483,22 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - docs/ROADMAP_IMPLEMENTATION_MATRIX.md：自检缺陷、证据和旧开发根限制。
 - progress.md：追加本轮记录。
 - 回滚：git revert --no-edit <本轮提交SHA>；回滚点f2541c0，会恢复已知回退缺陷，须停止合成服务并保留历史。main及真实根不变。
+
+## 2026-09-10 - Task: 提供显式配置的源码工作台启动入口
+
+### What was done
+
+从正式源码模块提供只读检查和本机工作台服务，支持不同cwd和既有配置恢复；不依赖演示夹具生成，不自动推进事件。
+
+### Testing
+
+- 冷重建及实际子进程检查6 passed/19.91s，workbench-package-cli.log/XML，进程/网络/受保护访问探针0。
+- 实际源码服务浏览器只读显示10/44事件、2成交，写入控件禁用，真实资格/观察天数0；workbench-package-server.log。已停止并核对端口关闭。
+
+### Notes
+
+- src/chanlun_trader/research_factory/engineering_workspace.py：inspect/serve、显式端口、固定本机与默认只读入口。
+- tests/research_factory/test_engineering_workspace.py：不同cwd实际子进程无写检查。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：源码部署命令、证据和wheel范围限制。
+- progress.md：追加本轮记录。
+- 回滚：git revert --no-edit <本轮提交SHA>；回滚点f3ab4fd。停止合成服务，保留配置和全部证据，不改main或真实根。

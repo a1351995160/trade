@@ -88,3 +88,27 @@ def test_new_process_rebuilds_public_application_and_resumes_paper(tmp_path):
     assert completed["real_observation_days"] == 0
     assert before == {path: path.read_bytes() for path in service.root.rglob("*") if path.is_file()}
     assert service.inspect()["paper"][candidate]["state"] == completed["state"]
+
+
+def test_source_package_inspect_cli_from_other_cwd_is_readonly(tmp_path):
+    service = workbench(tmp_path)
+    config = save_engineering_workspace(tmp_path / "workbench.json", service)
+    before = {path: path.read_bytes() for path in service.root.rglob("*") if path.is_file()}
+    environment = dict(os.environ, PYTHONPATH=os.pathsep.join([str(SOURCE_ROOT / "tests/isolation"), str(SOURCE_ROOT / "src")]))
+    evidence = Path(os.environ.get("CHANLUN_PROCESS_EVIDENCE_DIR", str(tmp_path / "evidence"))) / "workbench-package-cli"
+    evidence.mkdir(parents=True, exist_ok=True)
+    try:
+        result = subprocess.run([sys.executable, "-m", "chanlun_trader.research_factory.engineering_workspace",
+            "inspect", "--config", str(config)], cwd=tmp_path, env=environment, capture_output=True, timeout=60)
+    except subprocess.TimeoutExpired as exc:
+        (evidence / "stdout.bin").write_bytes(exc.stdout or b"")
+        (evidence / "stderr.bin").write_bytes(exc.stderr or b"")
+        raise
+    (evidence / "stdout.bin").write_bytes(result.stdout)
+    (evidence / "stderr.bin").write_bytes(result.stderr)
+    assert result.returncode == 0, result.stderr.decode("utf-8")
+    view = json.loads(result.stdout)
+    assert view["read_only"] is True and view["qualified_strategy_count"] == 0
+    assert view["frozen_input_count"] == 1
+    assert not service.output_root.exists()
+    assert before == {path: path.read_bytes() for path in service.root.rglob("*") if path.is_file()}
