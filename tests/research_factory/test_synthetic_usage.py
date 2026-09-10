@@ -177,3 +177,18 @@ def test_expiry_during_real_input_validation_never_persists_a_request(tmp_path, 
         operate(service, "request", candidate_id=next(iter(service.sources)), purposes=["DAILY_PLAN"],
             valid_until=(now + timedelta(hours=1)).isoformat())
     assert not list(service.output_root.rglob("request.json"))
+
+
+def test_lost_qualification_history_never_restores_unqualified_replay(tmp_path):
+    service = workbench(tmp_path)
+    pending = request(service)
+    operate(service, "confirm", request_id=pending["request_id"])
+    history = service.output_root / "synthetic-usage"
+    preserved = service.output_root / "preserved-usage-history"
+    assert history.resolve().is_relative_to(tmp_path.resolve()) and preserved.resolve().is_relative_to(tmp_path.resolve())
+    history.rename(preserved)
+    with pytest.raises(ValueError, match="QUALIFICATION_REQUIRED"):
+        service.advance(GOVERNED, {"confirmed": True, "context_hash": service.inspect()["context_hash"],
+            "candidate_id": next(iter(service.sources)), "event_count": 1})
+    assert service.inspect()["synthetic_usage"]["configured"] is True
+    assert not list(service.output_root.rglob("header.json"))

@@ -1464,3 +1464,22 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - docs/ROADMAP_IMPLEMENTATION_MATRIX.md：精确批准、测试、操作与限制。
 - progress.md：追加本轮记录。
 - 回滚：git revert --no-edit <本轮提交SHA>，回滚点ab41aa4；回滚后停止合成服务，不用旧工程预览模式继续受资格约束的回放。保留所有资格/回放/外部证据，不迁移真实registry、不改main。
+
+## 2026-09-10 - Task: 修复资格历史丢失后的错误回退
+
+### What was done
+
+结构化自检发现并修复资格模式依赖当前记录数的问题。首次实际请求保存持续收紧标记，历史丢失不恢复无资格回放；保留旧记录和失败证据。
+
+### Testing
+
+- 实际服务登记/确认后移走历史目录，原实现第1事件未拒绝，red 1 failed/4.62s；synthetic-usage-history-red.log保留。
+- 修复后资格15+备份3共18 passed/50.68s，synthetic-usage-history-green.log/XML；隔离三探针0，无新增skip、超时或权限白名单。
+
+### Notes
+
+- src/chanlun_trader/research_factory/synthetic_usage.py：持续收紧标记及只读验证。
+- tests/research_factory/test_synthetic_usage.py：实际目录丢失场景，使用同根保留目录而非删除。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：自检缺陷、证据和旧开发根限制。
+- progress.md：追加本轮记录。
+- 回滚：git revert --no-edit <本轮提交SHA>；回滚点f2541c0，会恢复已知回退缺陷，须停止合成服务并保留历史。main及真实根不变。

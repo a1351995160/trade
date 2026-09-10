@@ -70,6 +70,11 @@ class SyntheticUsageServiceV1:
 
     def inspect(self):
         records = []
+        mode_path = self.workbench.output_root / "synthetic-usage-mode.json"
+        if mode_path.exists():
+            mode = self._read(mode_path)
+            if mode.get("schema_version") != "synthetic-test-usage-mode-v1" or mode.get("qualification_required") is not True:
+                raise ValueError("SYNTHETIC_USAGE_MODE_INVALID")
         for directory in sorted(self.root.glob("SYNTHETIC_USAGE_*")):
             request = self._read(directory / "request.json")
             request_id = "SYNTHETIC_USAGE_" + stable_hash(request["request"])
@@ -105,7 +110,7 @@ class SyntheticUsageServiceV1:
             elif data["binding"]["candidate_id"] not in self.workbench.sources or data["binding"] != self._binding(data["binding"]["candidate_id"]):
                 status = "BINDING_CHANGED"
             records.append({"request_id": request_id, "status": status, **data})
-        return {"configured": bool(records), "records": records, "real_qualified_strategy_count": 0}
+        return {"configured": mode_path.exists() or self.root.exists(), "records": records, "real_qualified_strategy_count": 0}
 
     def active(self, candidate_id, purpose):
         return [item for item in self.inspect()["records"] if item["status"] == "ACTIVE"
@@ -135,6 +140,8 @@ class SyntheticUsageServiceV1:
                     "binding": binding, "purposes": sorted(purposes), "valid_until": expiry.isoformat(),
                     "real_execution_authorized": False}
                 request_id = "SYNTHETIC_USAGE_" + stable_hash(data)
+                self._write(self.workbench.output_root / "synthetic-usage-mode.json",
+                    {"schema_version": "synthetic-test-usage-mode-v1", "qualification_required": True})
                 request_path = self._directory(request_id) / "request.json"
                 if not request_path.exists():
                     self._write(request_path, {"request": data, "requested_at": utc_now().isoformat()})
