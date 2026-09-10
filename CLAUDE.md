@@ -134,3 +134,9 @@
 - 隔离合成 engine 通过显式 source_identity 传递 UNKNOWN，不启动 git 来猜测 cwd 身份；不能把快照哈希伪装成 code_commit，也不能为通过测试放宽进程白名单。
 - 因子 available_at 列存在仍可能包含 NaT；限定 runner 必须在共享入场/持仓因子行入口拒绝原始缺失及解析后 NaT，保留拒绝计数，不补造时间。复现须记录 pandas 实际 dtype，不能将解析异常或 fixture 合同拒绝当作信号放行 red。
 - pip 的官方索引地址为 https://pypi.org/simple；遗漏 /simple 可导致包路径 404 和 No matching distribution，不能据此断言发行版不存在。恢复依赖仍须按原完整锁和哈希安装，再恢复业务测试隔离。
+
+## R1 正式调用方输入输出约束
+
+- 缓存读取必须保留原 available_at；缺时点或非法时间在 caller 准备层阻断，不补收盘、不修旧缓存。单缓存因子的合成接通不认证多因子共享行时间、真实公式或历史来源。
+- 显式冻结日历与 registry 预热是读取窗口依据，不能从行情反推缺失 session。输入/源码/证据根分离，准备审计进入内存诊断，由已授权正式输出路径持久化。
+- runner 返回不表示研究通过；结果字段、真实账务和来源必须一致。默认无落盘时 metrics_ref=None，正式裁决只能引用已经写出的 provisional 文件。

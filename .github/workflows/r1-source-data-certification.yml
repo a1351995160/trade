@@ -173,11 +173,14 @@ jobs:
           tests/research_factory/test_r1_source_closure.py
           tests/research_factory/test_r1_data_readiness.py
           tests/research_factory/test_r1_snapshot_integration.py
+          tests/research_factory/test_r1_caller_io_parity.py
 
       - name: Upload R1 diagnostic evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: r1-${{ matrix.os }}-${{ github.sha }}
-          path: tmp/r1-results.xml
+          path: |
+            tmp/r1-results.xml
+            ${{ runner.temp }}/p3c-process-evidence/r1-caller
           if-no-files-found: warn

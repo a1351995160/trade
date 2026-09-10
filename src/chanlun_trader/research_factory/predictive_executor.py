@@ -33,7 +33,6 @@ from chanlun_trader.research.strategy_validation import (
 from chanlun_trader.research.validation_policy_v2 import load_validation_decision_policy_v2
 
 
-WARMUP_START = 20210802
 LEGAL_CLASSIFICATIONS = {"RESEARCH_PASSED", "PROMISING", "WEAK", "REJECTED"}
 
 
@@ -202,92 +201,91 @@ class CanonicalPredictiveExecutorV1:
         return policy, policy_hash, policy_path
 
     def _prepare_inputs(self, policy: Any, record: Any, corrected: Any, factor_cache: Path, *, contract: Any | None = None) -> dict[str, Any]:
-        router = corrected.legacy.ResearchDataRouter(self.root)
-        guard = corrected.legacy.ResearchDataAccessGuard()
-        daily = router.read_daily(WARMUP_START, policy.research_end, columns=["symbol", "date", "open", "high", "low", "close", "volume", "amount", "prev_close"])
-        daily["symbol"] = daily["symbol"].astype(str)
-        daily["date"] = daily["date"].astype(int)
-        daily = daily[daily["symbol"].str.endswith((".SH", ".SZ"))].sort_values(["date", "symbol"]).reset_index(drop=True)
-        all_dates = sorted(int(day) for day in daily["date"].unique())
-        exec_calendar = [day for day in all_dates if policy.research_start <= day <= policy.research_end]
-        if not exec_calendar or exec_calendar[0] != policy.research_start or exec_calendar[-1] != policy.research_end:
-            raise RuntimeError("CANONICAL_RESEARCH_PERIOD_CALENDAR_INCOMPLETE")
-        universe = corrected.legacy.load_universe_sets(self.root, all_dates, set(daily["symbol"].unique()))
-        status_map = corrected.legacy.PITStateMap(self.root / "data/research/security_state/normalized", exec_calendar)
-        index_close = corrected.legacy.load_market_index(self.root, guard, min(all_dates), policy.research_end)
-        regimes = corrected.legacy.market_regimes(index_close)
-        store = corrected.legacy.build_store(daily)
-        factor_ids = {str(item["factor_id"]) for item in record.candidate.factor_bindings}
-        import pyarrow.parquet as parquet
+        from .caller_inputs import prepare_inputs
 
-        cached_factor_ids = set(parquet.read_schema(factor_cache).names)
-        missing = factor_ids - cached_factor_ids
-        inline_factors = {
-            str(item.get("factor_id")): dict(item)
-            for item in record.candidate.factor_bindings
-            if isinstance(item, Mapping)
-            and item.get("factor_id")
-            and "".join(str(item.get("formula", "")).lower().split()) == "(close-low)/max(high-low,epsilon)"
-            and str(item.get("available_at", "")).upper() == "T_CLOSE"
-        }
-        unsupported = missing - {"GAP_SIZE"} - set(inline_factors)
-        if unsupported:
-            raise RuntimeError(f"CANONICAL_FACTOR_CACHE_MISSING:{sorted(unsupported)}")
-        factor_values = router.reader.read_parquet(factor_cache, columns=sorted({"date", "symbol", "volume", *(factor_ids & cached_factor_ids)}), date_column="date", start_date=WARMUP_START, end_date=policy.research_end)
-        if "GAP_SIZE" in missing:
-            gap = daily[["date", "symbol", "open", "prev_close"]].copy()
-            denominator = gap["prev_close"].where(gap["prev_close"] != 0)
-            gap["GAP_SIZE"] = gap["open"] / denominator - 1.0
-            factor_values = factor_values.merge(gap[["date", "symbol", "GAP_SIZE"]], on=["date", "symbol"], how="left", validate="one_to_one")
-        for factor_id in sorted(missing & set(inline_factors)):
-            inline = daily[["date", "symbol", "high", "low", "close"]].copy()
-            spread = inline["high"] - inline["low"]
-            inline[factor_id] = (inline["close"] - inline["low"]) / spread.where(spread > 0)
-            factor_values = factor_values.merge(inline[["date", "symbol", factor_id]], on=["date", "symbol"], how="left", validate="one_to_one")
-        event_ids = sorted({str(condition["event_id"]) for condition in record.signal_predicate.event_conditions})
-        events: dict[tuple[int, str], dict[str, dict[str, Any]]] = {}
-        stored_event_ids = {
-            event_id for event_id in event_ids
-            if (self.root / "data/research/event_store_repaired" / f"{event_id}_v2.parquet").exists()
-        }
-        if stored_event_ids:
-            events.update(corrected.legacy.load_events(self.root, router, stored_event_ids))
-        if set(event_ids) - stored_event_ids:
-            from .real_sample_feasibility import RealSampleFeasibilityProviderV1
+        if self.root.is_relative_to(SOURCE_ROOT) or SOURCE_ROOT.is_relative_to(self.root):
+            raise ValueError("R1_CALLER_SOURCE_INPUT_ROOT_OVERLAP")
+        if contract is None:
+            raise ValueError("R1_CALLER_FROZEN_CONTRACT_REQUIRED")
+        if str(policy.policy_id) != "VALIDATION_DECISION_POLICY_V2":
+            raise ValueError("R1_CALLER_POLICY_VERSION_NOT_VERIFIED")
+        frozen_policy, _, _ = self._load_policy(contract)
+        if frozen_policy.to_dict() != policy.to_dict():
+            raise ValueError("R1_CALLER_POLICY_IDENTITY_MISMATCH")
+        return prepare_inputs(self.root, policy, record, corrected, factor_cache, contract)
 
-            provider = RealSampleFeasibilityProviderV1(self.root, streaming=False)
-            provider_candidate = contract.provider_candidate_payload() if contract is not None else record.to_dict()
-            missing_conditions = [
-                condition
-                for condition in record.signal_predicate.event_conditions
-                if str(condition["event_id"]) not in stored_event_ids
-            ]
-            _event_values, resolutions = provider.materialize_event_rows(
-                missing_conditions,
-                daily,
-                WARMUP_START,
-                policy.research_end,
-                record=provider_candidate,
-            )
-            for condition in missing_conditions:
-                event_id = str(condition["event_id"])
-                rows = [
-                    row
-                    for (day, symbol), values in _event_values.items()
-                    for row in values
-                    if str(row.get("event_id")) == event_id
-                ]
-                if not rows:
-                    resolution = resolutions.get(event_id, {})
-                    raise RuntimeError(f"CANONICAL_EVENT_NOT_MATERIALIZABLE:{event_id}:{resolution.get('mode', 'UNKNOWN')}")
-                for row in rows:
-                    day = int(row["event_trade_date"])
-                    events.setdefault((day, str(row["symbol"])), {})[event_id] = {
-                        "event_id": event_id,
-                        "event_time": day,
-                        "available_at_ts": str(row["event_available_at"]),
-                    }
-        return {"factor_values": factor_values, "store": store, "exec_calendar": exec_calendar, "universe": universe, "status_map": status_map, "regimes": regimes, "events": events, "index_close": index_close, "event_ids": event_ids}
+    def _invoke_runner(self, policy: Any, record: Any, trial_id: str, inputs: Mapping[str, Any],
+                       *, portfolio_name: str, evidence_root: Path | None = None) -> dict[str, Any]:
+        if evidence_root is not None and (not evidence_root.is_absolute() or any(
+                evidence_root.resolve().is_relative_to(root) or root.is_relative_to(evidence_root.resolve())
+                for root in (self.root, SOURCE_ROOT))):
+            raise ValueError("R1_SEPARATE_EVIDENCE_ROOT_REQUIRED")
+        corrected = self._corrected_module()
+        result = corrected.run_corrected_candidate(self.root, record, trial_id,
+            inputs["factor_values"], inputs["store"], inputs["exec_calendar"], inputs["universe"],
+            inputs["status_map"], inputs["regimes"], inputs["events"], inputs["index_close"], policy,
+            portfolio_name=portfolio_name, write_evidence=evidence_root is not None, evidence_root=evidence_root)
+        return self._adapt_result(result, record, trial_id, portfolio_name, inputs, evidence_root=evidence_root)
+
+    @staticmethod
+    def _adapt_result(result: Any, record: Any, trial_id: str, portfolio_name: str,
+                      inputs: Mapping[str, Any], *, evidence_root: Path | None = None) -> dict[str, Any]:
+        if not isinstance(result, tuple) or len(result) != 3:
+            raise ValueError("R1_CALLER_RUNNER_RESULT_INCOMPLETE")
+        engine, metrics, diagnostics = result
+        required = {"candidate_id", "candidate_preregistration_hash", "trial_id", "portfolio_id",
+            "closed_trade_count", "net_return", "profit_factor", "certification_status", "invariant_errors",
+            "signal_diagnostics", "source_identity", "order_count", "filled_order_count"}
+        if not isinstance(metrics, Mapping) or not required.issubset(metrics):
+            raise ValueError("R1_CALLER_RUNNER_METRICS_INCOMPLETE")
+        if not isinstance(diagnostics, Mapping) or not {"entry_signals", "qualified_rows"}.issubset(diagnostics):
+            raise ValueError("R1_CALLER_RUNNER_DIAGNOSTICS_INCOMPLETE")
+        if (any(not isinstance(diagnostics[key], list) for key in ("entry_signals", "qualified_rows"))
+                or not isinstance(metrics["signal_diagnostics"], Mapping)):
+            raise ValueError("R1_CALLER_RUNNER_DIAGNOSTICS_INCOMPATIBLE")
+        expected = {"candidate_id": record.candidate.candidate_id,
+            "candidate_preregistration_hash": record.preregistration_hash,
+            "trial_id": trial_id, "portfolio_id": portfolio_name}
+        if any(metrics[key] != value for key, value in expected.items()):
+            raise ValueError("R1_CALLER_RUNNER_IDENTITY_MISMATCH")
+        if (not hasattr(engine, "ledger") or not hasattr(engine, "orders")
+                or metrics["order_count"] != len(engine.orders.orders)
+                or metrics["invariant_errors"] != engine.ledger.check_invariants()
+                or metrics["certification_status"] != engine.ledger.certification_status
+                or engine.context.strategy_hash != record.preregistration_hash):
+            raise ValueError("R1_CALLER_ENGINE_RESULT_MISMATCH")
+        recomputed = load_corrected_module().compute_metrics_v3(engine, engine.ledger.initial_cash,
+            inputs["regimes"], inputs["exec_calendar"], int(record.candidate.holding_period))
+        if any(key not in metrics or metrics[key] != value for key, value in recomputed.items()):
+            raise ValueError("R1_CALLER_METRICS_ENGINE_MISMATCH")
+        source = metrics["source_identity"]
+        corrected = load_corrected_module()
+        if (not isinstance(source, Mapping)
+                or source.get("corrected_sha256") != corrected.legacy.sha256(Path(corrected.__file__))
+                or source.get("helper_sha256") != corrected.legacy.sha256(Path(corrected.legacy.__file__))):
+            raise ValueError("R1_CALLER_RESULT_SOURCE_MISMATCH")
+        evidence_ref = None
+        if evidence_root is None:
+            if "evidence_dir" in metrics:
+                raise ValueError("R1_CALLER_UNEXPECTED_EVIDENCE_REFERENCE")
+        else:
+            evidence_ref = evidence_root / "metrics.json"
+            if metrics.get("evidence_dir") != str(evidence_root) or not evidence_ref.is_file():
+                raise ValueError("R1_CALLER_EVIDENCE_NOT_MATERIALIZED")
+            saved = json.loads(evidence_ref.read_text(encoding="utf-8"))
+            if saved != {key: value for key, value in metrics.items() if key != "evidence_dir"}:
+                raise ValueError("R1_CALLER_EVIDENCE_IDENTITY_MISMATCH")
+        input_diagnostics = inputs["input_diagnostics"]
+        status = "DIAGNOSTIC_ONLY"
+        if not engine.ledger.valid_trades:
+            status = "INSUFFICIENT_EXECUTION_EVIDENCE"
+        if metrics["invariant_errors"] or metrics["certification_status"] == "INVALID":
+            status = "INVALID_ENGINE_RESULT"
+        return {"engine": engine, "metrics": metrics, "diagnostics": diagnostics,
+            "input_diagnostics": input_diagnostics, "status": status,
+            "evidence_status": "MATERIALIZED" if evidence_ref else "UNMATERIALIZED",
+            "metrics_ref": str(evidence_ref) if evidence_ref else None,
+            "ready_for_real_trial": False}
 
     def _write_gate(self, gate_path: Path, policy: Any, policy_hash: str, policy_path: Path) -> None:
         if str(policy.policy_id) == "VALIDATION_DECISION_POLICY_V2":
@@ -474,8 +472,12 @@ class CanonicalPredictiveExecutorV1:
                 performance_accessed = True
             inputs = self._prepare_inputs(policy, record, corrected, factor_cache, contract=contract)
             small_policy = replace(policy, initial_cash=policy.small_capital_cash, max_positions=policy.small_capital_slots, lot_size=policy.small_capital_lot_size)
-            base_engine, base_metrics, _ = corrected.run_corrected_candidate(self.root, record, trial_id, inputs["factor_values"], inputs["store"], inputs["exec_calendar"], inputs["universe"], inputs["status_map"], inputs["regimes"], inputs["events"], inputs["index_close"], policy, portfolio_name="BASE_RESEARCH", evidence_run_id=f"DAEMON_{batch_id}")
-            ten_engine, ten_metrics, _ = corrected.run_corrected_candidate(self.root, record, trial_id, inputs["factor_values"], inputs["store"], inputs["exec_calendar"], inputs["universe"], inputs["status_map"], inputs["regimes"], inputs["events"], inputs["index_close"], small_policy, portfolio_name="SMALL_CAPITAL_10K", evidence_run_id=f"DAEMON_{batch_id}")
+            base_result = self._invoke_runner(policy, record, trial_id, inputs, portfolio_name="BASE_RESEARCH")
+            ten_result = self._invoke_runner(small_policy, record, trial_id, inputs, portfolio_name="SMALL_CAPITAL_10K")
+            base_engine, base_metrics = base_result["engine"], base_result["metrics"]
+            ten_engine, ten_metrics = ten_result["engine"], ten_result["metrics"]
+            if base_result["status"] != "DIAGNOSTIC_ONLY" or ten_result["status"] != "DIAGNOSTIC_ONLY":
+                raise ValueError("R1_CALLER_EXECUTION_EVIDENCE_INSUFFICIENT_OR_INVALID")
             pnl = [float(trade.realized_pnl) for trade in base_engine.ledger.valid_trades if trade.side == corrected.Side.SELL]
             bootstrap = corrected.bootstrap_result(pnl, int(policy.bootstrap_iterations), seed)
             concentration = corrected.concentration(base_engine, float(policy.initial_cash))
@@ -485,8 +487,13 @@ class CanonicalPredictiveExecutorV1:
             reason_codes = ("VALIDATOR_INVALID_INVARIANT",) if validator_classification == "INVALID" else (() if validator_classification in LEGAL_CLASSIFICATIONS else ("VALIDATOR_INSUFFICIENT_EVIDENCE",))
             small_contract = small_capital_contract(policy)
             engine_integrity = {"certification_status": base_metrics.get("certification_status"), "invariant_errors": base_metrics.get("invariant_errors", [])}
-            gates = {"engine_integrity": {"passed": not engine_integrity["invariant_errors"] and engine_integrity["certification_status"] != "INVALID"}, "data_validity": {"passed": True}, "pit_validity": {"passed": True}, "sample_adequacy": {"passed": int(base_metrics.get("closed_trade_count", 0)) >= 30 and bootstrap.get("status") == "COMPLETE"}, "local_base_return": {"passed": float(base_metrics.get("net_return", 0.0)) > 0}, "local_profit_factor": {"passed": base_metrics.get("profit_factor") is None or float(base_metrics.get("profit_factor")) > 1.0}, "raw_bootstrap_support": {"passed": float(bootstrap.get("p_value", 1.0)) < 0.05}, "cost_stress_combined_x2": {"passed": cost_stress["COMBINED_X2"].get("net_return") is not None and float(cost_stress["COMBINED_X2"]["net_return"]) > 0}, "small_capital_execution_feasibility": {"passed": bool(small_contract.get("fixed_contract")) and not ten_metrics.get("invariant_errors") and ten_metrics.get("certification_status") != "INVALID"}, "baseline_preregistration": {"passed": bool(baseline_registry.items())}, "intended_holding_contract": {"passed": 2 <= int(record.candidate.holding_period) <= 10}, "microstructure_realism": {"passed": True}, "candidate_similarity_control": {"passed": True}, "search_budget_reservation": {"passed": True}}
-            validation_row = {"trial_id": trial_id, "candidate_id": record.candidate.candidate_id, "candidate_hash": record.preregistration_hash, "validator_classification": validator_classification, "local_classification": validator_classification, "classification": None, "final_adjudication_pending": True, "base_metrics": base_metrics, "small_capital_10k_metrics": ten_metrics, "small_capital_contract": small_contract, "bootstrap": bootstrap, "concentration": concentration, "robustness": robustness, "cost_stress": cost_stress, "engine_integrity": engine_integrity, "gates": gates, "gate_roles": {key: value.get("role", "") for key, value in policy.gates.items()}, "soft_evidence": {"small_capital_economic_performance": {"status": "REPORT_ONLY"}, "concentration_diagnostics": {"status": "AVAILABLE", "warning": "NONE"}, "subperiod_robustness": {"status": "AVAILABLE", "warning": "NONE"}, "regime_robustness": {"status": "AVAILABLE", "warning": "NONE"}, "baseline_result_comparison": {"status": "REPORT_ONLY", "warning": "BASELINE_COMPARISON_WARNING"}}, "final_test_access": {"physical": 0, "analytical": 0, "decision": 0}, "performance_completed": True}
+            gates = {"engine_integrity": {"passed": not engine_integrity["invariant_errors"] and engine_integrity["certification_status"] != "INVALID"}, "data_validity": {"passed": inputs["input_diagnostics"]["data_validity"] == "VALIDATED_DAILY_RAW"}, "pit_validity": {"passed": inputs["input_diagnostics"]["pit_validity"] == "EXPLICIT_DUAL_SOURCE_NORMAL_TRADING"}, "sample_adequacy": {"passed": int(base_metrics.get("closed_trade_count", 0)) >= 30 and bootstrap.get("status") == "COMPLETE"}, "local_base_return": {"passed": float(base_metrics.get("net_return", 0.0)) > 0}, "local_profit_factor": {"passed": base_metrics.get("profit_factor") is None or float(base_metrics.get("profit_factor")) > 1.0}, "raw_bootstrap_support": {"passed": float(bootstrap.get("p_value", 1.0)) < 0.05}, "cost_stress_combined_x2": {"passed": cost_stress["COMBINED_X2"].get("net_return") is not None and float(cost_stress["COMBINED_X2"]["net_return"]) > 0}, "small_capital_execution_feasibility": {"passed": bool(small_contract.get("fixed_contract")) and not ten_metrics.get("invariant_errors") and ten_metrics.get("certification_status") != "INVALID"}, "baseline_preregistration": {"passed": bool(baseline_registry.items())}, "intended_holding_contract": {"passed": 2 <= int(record.candidate.holding_period) <= 10}, "microstructure_realism": {"passed": True}, "candidate_similarity_control": {"passed": True}, "search_budget_reservation": {"passed": True}}
+            validation_row = {"trial_id": trial_id, "candidate_id": record.candidate.candidate_id, "candidate_hash": record.preregistration_hash, "validator_classification": validator_classification, "local_classification": validator_classification, "classification": None, "final_adjudication_pending": True, "base_metrics": base_metrics, "small_capital_10k_metrics": ten_metrics, "small_capital_contract": small_contract, "bootstrap": bootstrap, "concentration": concentration, "robustness": robustness, "cost_stress": cost_stress, "engine_integrity": engine_integrity, "gates": gates, "gate_roles": {key: value.get("role", "") for key, value in policy.gates.items()}, "soft_evidence": {"small_capital_economic_performance": {"status": "REPORT_ONLY"}, "concentration_diagnostics": {"status": "AVAILABLE", "warning": "NONE"}, "subperiod_robustness": {"status": "AVAILABLE", "warning": "NONE"}, "regime_robustness": {"status": inputs["input_diagnostics"]["benchmark"], "warning": "BENCHMARK_NOT_VERIFIED"}, "baseline_result_comparison": {"status": "REPORT_ONLY", "warning": "BASELINE_COMPARISON_WARNING"}}, "final_test_access": {"physical": 0, "analytical": 0, "decision": 0}, "performance_completed": True}
+            validation_row["input_diagnostics"] = inputs["input_diagnostics"]
+            validation_row["runner_diagnostics"] = {name: {"status": result["status"],
+                "evidence_status": result["evidence_status"], "metrics_ref": result["metrics_ref"],
+                "entry_signal_count": len(result["diagnostics"]["entry_signals"])}
+                for name, result in (("BASE_RESEARCH", base_result), ("SMALL_CAPITAL_10K", ten_result))}
             provisional_path = report_dir / "provisional_validation_evidence" / f"{trial_id}.json"
             self._write(provisional_path, {**validation_row, "p_value": float(bootstrap.get("p_value", 1.0))})
             ledger.mark_provisional(trial_id, local_classification=validator_classification, evidence_ref=str(provisional_path.relative_to(self.root)).replace("\\", "/"), result={"validator_classification": validator_classification, "performance_completed": True})
@@ -500,7 +507,7 @@ class CanonicalPredictiveExecutorV1:
             multiple_testing.update({"decision_family_id": decision_family_id, "decision_denominator": int(multiple_testing["hypothesis_count"]), "current_batch_hypothesis_count": 1, "cumulative_legal_history_denominator": int(multiple_testing["hypothesis_count"]), "history_snapshot_hash": history_snapshot_hash, "family_contract_hash": getattr(policy, "multiple_testing_contract_hash", None), "historical_outcomes_loaded_only_after_performance_gate": True, "design_context_received_exact_outcomes": False})
             self._write(report_dir / "multiple_testing.json", multiple_testing)
             adjudicator = FinalResearchAdjudicatorV1(policy, policy_hash=policy_hash)
-            decision = adjudicator.adjudicate(candidate_id=record.candidate.candidate_id, candidate_hash=record.preregistration_hash, trial_id=trial_id, local_classification=validator_classification, multiple_testing=multiple_testing, decision_family_id=decision_family_id, decision_denominator=int(multiple_testing["decision_denominator"]), history_snapshot_hash=history_snapshot_hash, metrics_ref=str(base_metrics.get("evidence_dir", "BASE_RESEARCH")), evidence={"engine_integrity": engine_integrity, "gates": gates, "soft_evidence": validation_row["soft_evidence"], "gate_roles": validation_row["gate_roles"], "small_capital_evidence_status": "AVAILABLE_SOFT_EVIDENCE", "small_capital_contract_valid": bool(small_contract.get("fixed_contract"))})
+            decision = adjudicator.adjudicate(candidate_id=record.candidate.candidate_id, candidate_hash=record.preregistration_hash, trial_id=trial_id, local_classification=validator_classification, multiple_testing=multiple_testing, decision_family_id=decision_family_id, decision_denominator=int(multiple_testing["decision_denominator"]), history_snapshot_hash=history_snapshot_hash, metrics_ref=str(provisional_path.relative_to(self.root)).replace("\\", "/"), evidence={"engine_integrity": engine_integrity, "gates": gates, "soft_evidence": validation_row["soft_evidence"], "gate_roles": validation_row["gate_roles"], "small_capital_evidence_status": "AVAILABLE_SOFT_EVIDENCE", "small_capital_contract_valid": bool(small_contract.get("fixed_contract"))})
             decision_payload = decision.to_dict()
             validation_row["classification"] = decision.effective_classification
             validation_row["final_adjudication_pending"] = False

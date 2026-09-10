@@ -1058,3 +1058,40 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - progress.md：仅追加本轮测试质量修正记录。
 - 回滚：git revert <本次断言提交SHA>；回滚点725eb559727dcc088e8c06c8134b7288a2e4552b。该回滚不撤销时间校验，只恢复复合断言。
 - PR #7仍Draft；旧Windows L1保持OPEN_ROOT_CAUSE_UNCONFIRMED；REAL_CANDIDATE_DATA_READINESS=NOT_VERIFIED；READY_FOR_REAL_TRIAL=false；R1_FULLY_CLOSED=false；未merge、未开始R2。
+
+## 2026-09-10 - Task: R1 正式调用方输入输出适配与真实合成链路验证
+
+### What was done
+
+从已核验的 PR #7 合并 main e72fa6ae0ace0dbff6eeac87ae0e09082431d89a 创建独立 worktree/分支 codex/r1-caller-io-parity-v1，保留原工作区改动。接通 canonical caller 的实际文件准备、部署 runner 调用与结果适配；冻结身份、显式日历/预热、时间、双来源 PIT 和结果证据均明确校验。正式 execute 在原治理位置复用同一子路径，本轮未调用完整正式链。real_runtime、其他合同及真实研究仍 NOT_VERIFIED。
+
+### Testing
+
+- 基线真实丢列 red：1 failed，缓存 available_at 经原 _prepare_inputs 被丢弃；原始 red.log 保留。该最初 fixture 在首次设计前重建了合成政策起点；最终 fixture 完整保留原 V2 政策/锁，仅在候选首次审批前声明政策内子窗口，差别未隐藏。
+- 中间装配失败独立记录：非法 ExitPredicate 对象、结构语义指纹遗漏、负向合同缺 hypothesis lineage/第二因子 roles，均为实际领域校验提前拒绝，不冒充业务 red；未放宽治理验证。
+- 新 venv：Python 3.13.5，Pandas3.0.5/NumPy2.4.6/PyArrow25.0.1/pytest9.1.1；原完整 hash 锁经官方 Simple API 安装，pip check通过。源码 E: exFAT，临时 fixture C: NTFS。
+- 原五阶段：隔离先验66 passed；Phase1 235 passed/原12 deselected；Phase2 24 passed；P3-B 35 passed；P3-C 106 passed（311.81s）。既有弃用 warning保留；未新增skip/xfail/选择器排除。
+- 源码编译通过；全量收集1090项（既有收集skip保留，收集不计通过）。Node24.15.0前端构建通过，8项前端测试通过；原大chunk警告未扩展处理。
+- 完整 R1 209 passed（239.54s）：旧146项在新工作树实跑，新caller矩阵63项；不是抄旧数字。主进程原runner矩阵engine63次、caller22次，独立cold worker另1次。新进程无pytest替身，writes/forbidden=0；所有最终主进程禁用预测/Structural/AI、网络/进程/保护目录探针均0。R1真实合成审批/确认各62次，未冒充零治理动作。
+- 合法文件链正向与独立参考输入的信号/排序、订单、成交、lot、退出、metrics/来源精确一致，有BUY/SELL；BASE/10K独立引擎。输入/治理目录内容与mtime不变；默认UNMATERIALIZED、metrics_ref=None，独立显式证据文件与返回内容一致。
+- 首次精确比较输入身份35e97ff3aa42435fa16f4b38e29ab444c7e4f9bbef8f6c37d8154260eb328b59、合同ccdf7ffdea31a370197d3a881ae211f2d9e1652f935beeb170875001976b71db，详见suite-7.log。源码原始字节哈希按实际平台记录，不混同LF部署哈希。
+- git diff --check通过。两个已合并脚本、engine、原依赖锁与基线无差异；最终按数据/输出边界、范围和禁止路径顺序复核，无新增授权开关或测试替身。既有预算/最终裁决规则不改；仅将真实输入诊断和已写出的provisional引用交接给原流程。
+- 提交时双平台分支/PR CI=PENDING；提交后所有run/head/platform证据写仓库外记录和Draft PR，不为状态变化追加提交、不使用PR #7旧CI。
+
+### Notes
+
+- src/chanlun_trader/research_factory/predictive_executor.py：正式复用prepare/invoke/result，保留治理顺序；无证据不猜路径，无执行不交统计裁决。
+- src/chanlun_trader/research_factory/caller_inputs.py：新增单缓存因子DAILY/RAW/V2窄准备，显式日历/预热/时间/PIT及输入内容身份。
+- src/chanlun_trader/research_factory/data_readiness.py：提取原日线数值/包络/单位校验供双方复用，既有检查/错误码不变。
+- tests/research_factory/r1_caller_fixture.py：真实治理服务首次审批前形成自包含合成合同和文件。
+- tests/research_factory/test_r1_caller_io_parity.py：63项文件链、独立参考、负向和治理无副作用验证。
+- tests/research_factory/r1_caller_cold_worker.py：独立新进程实际准备/engine/适配及禁止写/完整执行探针。
+- .github/workflows/r1-source-data-certification.yml：加入本轮测试和原字节cold证据上传，原选择器不变。
+- docs/R1_CALLER_INPUT_OUTPUT_PARITY_V1.md：输入输出矩阵、短审计、支持边界、真实验证及失败分层。
+- docs/R1_SNAPSHOT_INTEGRATION_V1.md：追加PR #7合并事实和本轮窄适配链接，旧历史保留。
+- docs/R1_SOURCE_CLOSURE_AND_DATA_READINESS_V1.md：追加当前部署可加载与其他调用方仍未验证的范围说明。
+- CLAUDE.md：追加时间保留、显式日历和真实证据引用约束。
+- progress.md：仅追加本轮任务闭环记录。
+- 仓库外 E:/llmwiki/r1-caller-io-evidence：保存安装、所有red/装配失败/green、原五阶段/R1日志、XML、冷进程原字节及后续新HEAD CI证据；不推送研究数据或环境。
+- 回滚：本轮单提交可执行 `git revert --no-edit codex/r1-caller-io-parity-v1`；回滚点 e72fa6ae0ace0dbff6eeac87ae0e09082431d89a。无需reset或触碰原工作区，历史记录保留并追加撤销说明。
+- WINDOWS_L1与WINDOWS_L6继续OPEN_ROOT_CAUSE_UNCONFIRMED；HISTORICAL_PROVENANCE=UNVERIFIED；REAL_CANDIDATE_DATA_READINESS=NOT_VERIFIED；READY_FOR_REAL_TRIAL=false；R1_FULLY_CLOSED=false。完成分支推送后交独立差异复核；不merge/auto-merge、不开始R2。

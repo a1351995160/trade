@@ -74,3 +74,7 @@ R2_STARTED=false
 ## 061daee 后的精确合同检查修正
 
 PR #7 的 Sonar 在 061daee 报 python:S1244，new_reliability_rating=C。容量合同只允许既有十进制0.10；改为 Decimal(str(value)) 与 Decimal("0.10") 精确比较，不增加epsilon，不修改成交模型。新增0.1000000001必须拒绝的回归。定向47 passed、真实合成engine.run=29、隔离探针0；tmp/r1-decimal-contract.log保留实测。旧Sonar失败保留，最终HEAD重新认证。其他维护性告警不触发扩大重构或修改门禁阈值。
+
+## 2026-09-10 合并后正式调用方适配
+
+PR #7 已普通合并到 e72fa6ae0ace0dbff6eeac87ae0e09082431d89a；前述状态保留为历史。本轮在新分支继续 canonical caller 的文件输入、调用和结果交接，详见 [R1 调用方输入输出适配](R1_CALLER_INPUT_OUTPUT_PARITY_V1.md)。两个已合并脚本、F01–F04 和空时间修复未重做；real_runtime 等其他调用方仍 NOT_VERIFIED。真实数据 NOT_VERIFIED，READY_FOR_REAL_TRIAL=false，R1_FULLY_CLOSED=false。

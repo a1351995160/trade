@@ -69,6 +69,19 @@ def derive_requirements(contract, policy, registry):
     }
 
 
+def validate_daily_values(daily, fields):
+    """共享日线价格、成交活动、包络和单位校验，保持既有拒绝原因。"""
+    numeric = daily[fields].apply(pd.to_numeric, errors="coerce")
+    if not np.isfinite(numeric.to_numpy()).all() or (numeric[OHLCVA] < 0).any().any():
+        raise ValueError("INVALID_NUMERIC_OR_UNITS")
+    if (numeric[["open", "high", "low", "close"]] <= 0).any().any():
+        raise ValueError("NON_POSITIVE_DAILY_PRICE")
+    if (daily["high"] < daily[["open", "low", "close"]].max(axis=1)).any() or (daily["low"] > daily[["open", "high", "close"]].min(axis=1)).any():
+        raise ValueError("IMPOSSIBLE_OHLC")
+    if not (daily["volume_unit"].eq("SHARE") & daily["amount_unit"].eq("CNY") & daily["price_mode"].eq("RAW")).all():
+        raise ValueError("UNIT_OR_PRICE_MODE_CONFLICT")
+
+
 def inspect_dataset(source_root, dataset_root, *, start, end, previous_identity=None):
     """核验临时自包含合成包。真实目录入口留待具体访问范围批准。"""
     report = {
@@ -206,15 +219,7 @@ def inspect_dataset(source_root, dataset_root, *, start, end, previous_identity=
         if set(zip(daily["date"], daily["symbol"])) != expected_daily:
             report["missing"].append("DAILY_COVERAGE_OR_UNEXPECTED_ROWS")
         report["coverage"] = {"expected_state_rows": len(expected), "actual_state_rows": len(state), "expected_daily_rows": len(expected_daily), "actual_daily_rows": len(daily)}
-        numeric = daily[requirements["daily_fields"]].apply(pd.to_numeric, errors="coerce")
-        if not np.isfinite(numeric.to_numpy()).all() or (numeric[OHLCVA] < 0).any().any():
-            raise ValueError("INVALID_NUMERIC_OR_UNITS")
-        if (numeric[["open", "high", "low", "close"]] <= 0).any().any():
-            raise ValueError("NON_POSITIVE_DAILY_PRICE")
-        if (daily["high"] < daily[["open", "low", "close"]].max(axis=1)).any() or (daily["low"] > daily[["open", "high", "close"]].min(axis=1)).any():
-            raise ValueError("IMPOSSIBLE_OHLC")
-        if not (daily["volume_unit"].eq("SHARE") & daily["amount_unit"].eq("CNY") & daily["price_mode"].eq("RAW")).all():
-            raise ValueError("UNIT_OR_PRICE_MODE_CONFLICT")
+        validate_daily_values(daily, requirements["daily_fields"])
 
         def availability(frame):
             if not frame["available_at"].map(lambda value: isinstance(value, str) and pd.Timestamp(value).tzinfo is not None).all():
