@@ -45,6 +45,8 @@ from .research_factory.structural_entry import StructuralEntryError, StructuralE
 from .research_factory.projection_reconciliation import ProjectionReconciliationError, ProjectionReconciliationServiceV1
 from .research_factory.trial_reconciliation import CanonicalTrialReconciliationServiceV1, TrialReconciliationError
 from .research_factory.autonomous_control_plane import AutonomousControlPlaneError, AutonomousResearchControlPlaneV1
+from .research_factory.batch_scope_request import BatchScopeRequestServiceV1
+from .research_factory.safe_runtime_context import SafeRuntimeContextError
 from .screener import scan_all
 from .tdx_data import TdxData
 
@@ -400,6 +402,15 @@ def research_console_autonomous_control_plane_tick(objective_id: str, request: R
     _require_local_console_request(request)
     body = payload or {}
     return _console_autonomous_control_plane(request).tick(objective_id, dry_run=bool(body.get("dry_run", False)))
+
+
+@app.get("/api/research-console/{objective_id}/batch-scope-request")
+def research_batch_scope_request(request: Request, objective_id: str, scope: str | None = Query(default=None, max_length=8192)) -> dict:
+    service = BatchScopeRequestServiceV1(_console_service(request).root)
+    try:
+        return service.context(objective_id) if scope is None else service.check(objective_id, scope)
+    except SafeRuntimeContextError as exc:
+        raise HTTPException(status_code=exc.status_code, detail={"code": exc.code, "message_zh": exc.message_zh}) from exc
 
 
 @app.get("/api/research-console/{objective_id}/ai-tasks")

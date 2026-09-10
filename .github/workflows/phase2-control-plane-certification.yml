@@ -110,3 +110,4 @@ jobs:
           tests/research_factory/test_autonomous_action_journal_v1.py
           tests/research_factory/test_autonomous_control_plane_v1.py
           tests/research_factory/test_autonomous_control_plane_web_v1.py
+          tests/research_factory/test_batch_scope_request.py

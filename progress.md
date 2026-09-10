@@ -1153,3 +1153,30 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - CLAUDE.md：追加跨服务盲性与正式Objective fixture边界经验。
 - progress.md：追加本轮记录。
 - 回滚：执行git revert --no-edit <本轮提交SHA>；回滚点1d461de5c2da74906ecab74e70f0cc6eb41eeeda，不reset/main，不删除历史证据。证据位于仓库外E:/llmwiki/roadmap-engineering-evidence。
+
+## 2026-09-10 - Task: R3 只读批次范围申请与有限循环停止报告
+
+### What was done
+
+在R2身份协议待批准期间继续独立R3工程。复用安全上下文、数据能力、预算和能力注册表，完成批次范围申请服务/API/治理页表单；校验输入、版本、日期、额度、到期和撤回，始终不授予执行权限。表单修改/切目标后旧结果失效，实际调用领域服务。修复有限循环实际停下却报告未停止的问题，不改变执行动作和人工门禁。
+
+### Testing
+
+- r3-request-first.log：17 passed；r3-request-regression.log/XML：105 passed，含原控制平面合法推进/人工等待/权限与隔离。
+- r3-loop-limit-red.log：真实Proposal完成后stopped=false复现，1 failed/17 deselected；修复后r3-final-affected.log/XML共106 passed/19.86s，network/process/protected=0。真实下一次loop在人工Freeze前停下，无重复执行。
+- npm ci --ignore-scripts使用既有package-lock；原前端8 passed；vue-tsc/Vite最终build成功。原大chunk警告不改阈值，未新增依赖。
+- 临时synthetic root、默认READ_ONLY、原import-time isolation下启动一次localhost测试Web，无后台研究恢复。浏览器实际校验成功、编辑后失效、撤回拒绝，截图在任务工具记录；无mock接口。旧fixture缺orchestrator资料的503如实显示/记录，不冒充完整研究运行。测试页关闭，临时服务终止。
+- diff --check、单模块compile通过；最终固定HEAD双平台认证未完成。R2完整路径仍待批准；R3其余整合及D1/D2/M1继续实施。
+
+### Notes
+
+- src/chanlun_trader/research_factory/batch_scope_request.py：明确范围契约和只读检查，非授权权威。
+- src/chanlun_trader/research_factory/autonomous_control_plane.py：有限循环停止状态与原因纠正。
+- src/chanlun_trader/webapp.py：新增只读请求查询/校验入口，现有执行策略中间件不改。
+- frontend/src/console/components/BatchScopeRequest.vue：真实API表单、输入更新失效、状态与限制提示。
+- frontend/src/console/ResearchConsole.vue：在既有治理页接入申请表。
+- tests/research_factory/test_batch_scope_request.py：18项申请/隔离/版本/资源及真实循环停止验证。
+- .github/workflows/phase2-control-plane-certification.yml：原矩阵增加新测试，选择器/超时不变。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：追加本阶段实测、操作入口和工程缺项。
+- progress.md：追加本轮闭环。
+- 回滚：git revert --no-edit <本轮提交SHA>；回滚点86c1403，保留历史与外部证据，不修改main。外部原始日志在E:/llmwiki/roadmap-engineering-evidence，浏览器测试输入全部synthetic。

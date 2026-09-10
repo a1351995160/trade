@@ -88,3 +88,13 @@ RealFactoryRuntimeV1 已在正式 run 中逐候选复用 canonical caller 的 pr
 实际 provider 的零 Prospective 安全计数在原 PerformanceBlindGuard 已允许的两个精确路径内，但持久化层未使用同一合同，造成真实 Structural 结果被拒绝。持久化层现在复用原路径，并拒绝非零 Prospective；未新增隔离白名单。针对性 red 为1 failed/3 passed，修复后4 passed；相关回归88 passed，另2项旧现场测试依赖未交付真实 Objective/报告，失败原样保留（r2-structural-regression.log），不读取真实文件补齐、不增 skip。network/process/protected 探针均0。
 
 五轮独立合成探索保留原日志与根路径，分别定位合约状态、执行约束、PIT资料和下界证明缺口；最终真实 Provider PASS 下界64/上界65/最低30，预测授权由真实服务生成。正式 start 因缺 canonical family 拒绝，预测/engine/PerformanceAccess均0。因此本阶段只关闭结构结果持久化适配，R2 E2E仍未通过。两项现场测试不属于已通过证据；最终全量测试须明确保留此运行条件限制。
+
+## R3 内部阶段：范围申请与有界停止报告
+
+实现 BatchScopeRequestServiceV1 及治理页表单，GET /api/research-console/{objective_id}/batch-scope-request 提供当前安全上下文和只读校验（scope为JSON查询参数，最多8192字符）。绑定Objective、context/data manifest、数据范围/版本、动作、候选/Trial/批次数、模型/token/费用/时间/内存和到期/撤回声明，核对已有预算；固定八类停止条件。只产生申请检查结果，execution_authorized始终false，不生成canonical authorization/receipt，不扣账。撤回仅为该申请的声明，不声称撤销已存在授权。未来真实授权来源和强制执行资源限额仍须另批/集成。
+
+控制平面复用原loop/tick/对账，修复达到max_ticks后错误报告stopped=false：返回stopped=true及MAX_TICKS_REACHED。执行顺序、门禁、预算和锁不改。真实合成Proposal后一步停止，再次进入即等待人工Freeze，无重复生成。
+
+验证：请求首轮17项；原控制平面/权限/隔离合并105项；新增真实一步停止red后最终106 passed/19.86s，探针network/process/protected=0。前端原8项及vue-tsc/Vite构建通过，原大chunk警告保留不调阈值。全新临时根运行只读本地页面，浏览器经实际API验证通过、修改后旧结果消失、撤回拒绝，截图在本任务工具记录；页面和临时服务已结束。旧现场fixture没有orchestrator运行文件，页面准确报读取错误；该演示不认证运行控制全链。服务日志r3-ui-server.log/root.txt与最终测试日志/XML位于外部证据根。
+
+R3仍PARTIAL：已有合法循环及本节申请入口已验；批次自动权限WAITING_POLICY_APPROVAL，不把申请有效当执行授权。完整backend错误矩阵、统一监控/运行控制及D1/D2/M1仍需继续工程，不宣称路线完成。
