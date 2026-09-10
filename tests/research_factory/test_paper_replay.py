@@ -241,14 +241,21 @@ def test_stale_in_memory_session_cannot_replace_committed_head(tmp_path):
 
 def test_actual_legacy_archive_is_readable_but_never_silently_upgraded(tmp_path):
     import hashlib
-    import shutil
+    import zipfile
     source = Path(__file__).parent / "fixtures/ca03_legacy_paper"
     provenance = json.loads((source / "provenance.json").read_bytes())
-    for item in provenance["records"]:
-        assert hashlib.sha256((source / item["path"]).read_bytes()).hexdigest() == item["sha256"]
+    container = source / provenance["container"]
+    assert hashlib.sha256(container.read_bytes()).hexdigest() == provenance["container_sha256"]
     _, _, create = setup(tmp_path)
     root = tmp_path / "paper"
-    shutil.copytree(source, root)
+    with zipfile.ZipFile(container) as archive:
+        assert set(archive.namelist()) == {item["path"] for item in provenance["records"]}
+        for item in provenance["records"]:
+            data = archive.read(item["path"])
+            assert hashlib.sha256(data).hexdigest() == item["sha256"]
+            target = root / item["path"]
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(data)
     before = {str(path): path.read_bytes() for path in root.rglob("*") if path.is_file()}
     archive = read_paper_archive(root)
     assert archive["status"] == "LEGACY_UNVERIFIED_HISTORY"

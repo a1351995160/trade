@@ -67,3 +67,9 @@ source_identity扩展为显式daily-plan-source-v2，按确定性文件名排序
 回退源码可逐模块git revert，但必须同时停用对应新版写入口，保留新版目录，不能让旧实现把新版批准/事件当作可继续运行的旧记录。故障目录只用于诊断，恢复须核对完整原件，禁止用重算hash补造成功。
 
 四项模块已完成服务级验证；固定最终HEAD的整体/双平台结果、原始日志/JUnit、base完整差异及ffbff08增量由新版本外部审计包绑定。本文不预先声称CI通过或外审关闭。全路线工程、合成验证与真实运行授权继续分别报告；旧Windows事件及真实未核验不因此关闭。
+
+## 最终认证候选4fdc841的夹具封装修正
+
+PR侧Linux原空白检查发现CA-03真实旧归档CRLF被当作trailing whitespace。未转码旧记录、未豁免检查：改以archive.zip保存原10份JSON字节，provenance保留各原SHA256并新增容器SHA256；兼容测试现场解包逐项核验。只把新增provenance说明作为普通LF文本，不改变原回执。随后显式Linux空白规则也检出CA-01原字节夹具的同类问题，统一采用ZIP容器保留三份原回执；移除本轮新增的全部-text规则，不增加任何skip/timeout/白名单。
+
+4fdc841的原CI失败及本地已完成6阶段、主动中断的P3C日志保留在final-4fdc841，标记NOT_FINAL_CERTIFICATION。封装修正之后重新固定新HEAD并全量运行同一认证范围，不将前候选结果拼接冒充最终认证。

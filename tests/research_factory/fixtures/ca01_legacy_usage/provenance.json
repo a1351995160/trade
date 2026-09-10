@@ -15,5 +15,7 @@
       "path": "revocation.json",
       "sha256": "42f90665a245367756455784dfcfd38181fe4b2637dc43a248e9f30aacadcf97"
     }
-  ]
+  ],
+  "container": "archive.zip",
+  "container_sha256": "edc85786a89688840a6cbd5c3f65a60af84d12c0d2a43c8c59a8d43a57337f39"
 }

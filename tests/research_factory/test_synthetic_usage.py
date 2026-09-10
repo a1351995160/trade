@@ -287,16 +287,21 @@ def test_actual_legacy_receipts_are_read_only_without_silent_migration(tmp_path)
     import hashlib
     import json
     from pathlib import Path
+    import zipfile
     fixture = Path(__file__).with_name("fixtures") / "ca01_legacy_usage"
     provenance = json.loads((fixture / "provenance.json").read_text(encoding="utf-8"))
     service = workbench(tmp_path)
     old_id = Path(provenance["source_path"]).name
     directory = service.output_root / "synthetic-usage" / old_id
     directory.mkdir(parents=True)
-    for item in provenance["files"]:
-        data = (fixture / item["path"]).read_bytes()
-        assert hashlib.sha256(data).hexdigest() == item["sha256"]
-        (directory / item["path"]).write_bytes(data)
+    container = fixture / provenance["container"]
+    assert hashlib.sha256(container.read_bytes()).hexdigest() == provenance["container_sha256"]
+    with zipfile.ZipFile(container) as archive:
+        assert set(archive.namelist()) == {item["path"] for item in provenance["files"]}
+        for item in provenance["files"]:
+            data = archive.read(item["path"])
+            assert hashlib.sha256(data).hexdigest() == item["sha256"]
+            (directory / item["path"]).write_bytes(data)
     assert SyntheticUsageServiceV1(service).inspect()["records"][0]["status"] == "LEGACY_REVOKED"
     (directory / "revocation.json").rename(directory / "preserved-revocation.bin")
     before = {p.name: p.read_bytes() for p in directory.iterdir()}

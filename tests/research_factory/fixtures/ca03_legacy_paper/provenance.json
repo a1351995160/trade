@@ -51,5 +51,7 @@
       "source": "final/ui-evidence/planning/paper/cc44ddbdcb6e3c7279f2914b771c6791136ce1bc564de268353e937e02b31369/header.json",
       "sha256": "891b106af23a6904f17dfec72e1471320350bfec941eafb5fdae5419b864922e"
     }
-  ]
+  ],
+  "container": "archive.zip",
+  "container_sha256": "ef9b68dfc47f3a0a4dc05fe9dbc57c73a9d6129e7134ebd402b6ac4ab48aa939"
 }

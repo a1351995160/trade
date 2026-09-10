@@ -1841,3 +1841,20 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - tests/research_factory/test_daily_plan.py：四种实际比较接口red/green、依赖源码身份变化但计划条目保持一致的验证。
 - docs/CONSOLIDATED_REMEDIATION_CA01_CA04.md：四项矩阵、CA-04证据、部署/回退及限制；CLAUDE.md追加教训；progress.md追加本轮。
 - 回滚点51834c59c17e16e23a9a1fb6136c60181f0b83c5，可git revert本模块提交；回退后禁止依赖旧CURRENT判定授予用途。旧审计包与原检查不变，无真实数据或运行。
+
+## 2026-09-11 - Task: CA-03旧原字节夹具跨平台封装
+### What was done
+- 修复候选4fdc841在PR Linux空白门禁中的夹具封装失败；原10份旧JSON原字节装入archive.zip，原来源哈希不变，provenance新增容器哈希。
+- 不转码旧批准/事件、不添加空白豁免，移除CA-03 -text规则；旧格式兼容测试解包后校验全部原字节。
+### Testing
+- ca03-container.log/xml：1 passed/17 deselected，旧归档完整性与只读兼容通过。
+- final-4fdc841保存原push/PR日志与失败；本地6阶段完成、P3C主动中断并记interruption.json，不作为最终认证。因实际CI失败而重建认证HEAD，不无理由重跑。
+- 按Linux默认空白规则检查完整base差异；最终新HEAD重新运行全部认证，不扩大skip/timeout或隔离白名单。
+### Notes
+- tests/research_factory/fixtures/ca03_legacy_paper/archive.zip：包含原header与9事件原字节；移除10个展开JSON，provenance.json保留各来源哈希并记录容器。
+- tests/research_factory/test_paper_replay.py：显式读容器和全部成员hash再写隔离夹具；.gitattributes移除CA-03特殊text规则。
+- docs/CONSOLIDATED_REMEDIATION_CA01_CA04.md记录真实CI失败/封装变更；CLAUDE.md追加教训；progress.md追加日志。
+- 回滚点4fdc8418de87de50e350510d05198560e5ba2c75，可git revert本提交恢复展开夹具；将恢复原Linux空白门禁失败，不得据此绕过检查。生产代码无变化。
+
+- 同轮显式Linux规则检查进一步检出CA-01旧回执CRLF，原失败输出保留linux-whitespace-green.log（文件名不代表通过）。CA-01也改为archive.zip保存原三回执，provenance原来源哈希不变；test_synthetic_usage.py逐项验证后使用；本轮新增.gitattributes全部移除，无空白豁免。
+- legacy-containers.log/xml：2 passed/41 deselected，两种原字节容器兼容均通过；最终空白复核写入新的linux-whitespace-final.log，不覆盖前次失败。
