@@ -759,6 +759,7 @@ class RealFactoryRuntimeV1:
             )
             novelty_rows.append({
                 "candidate_id": decision.candidate_id,
+                "passed": decision.allowed,
                 "comparison_set_hash": decision.comparison_set_hash,
                 "exact_duplicate": decision.exact_duplicate,
                 "nearest_semantic_neighbor": decision.nearest_semantic_neighbor,
@@ -1066,7 +1067,7 @@ class RealFactoryRuntimeV1:
                     "baseline_preregistration": {"passed": bool(orchestrator.baseline_registry.items())},
                     "intended_holding_contract": {"passed": 2 <= int(record.candidate.holding_period) <= 10},
                     "microstructure_realism": microstructure,
-                    "candidate_similarity_control": {"passed": True},
+                    "candidate_similarity_control": dict(next(row for row in novelty_rows if row["candidate_id"] == candidate_id)),
                     "search_budget_reservation": budget_registration,
                 }
                 validation_row = {

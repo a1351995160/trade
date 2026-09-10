@@ -198,3 +198,13 @@ red是将原常量判断提取为helper后，以真实runner结果副本注入5�
 search_budget_reservation现读取Trial最早的REGISTERED_BEFORE_PERFORMANCE事件，核对原事件hash、候选/Objective/预留身份与实际预算状态；正常执行要求ACTIVE及原Objective/batch/family占用，恢复要求原预留CONSUMED。批次把已有预算身份字段传入事前登记；未访问性能时核验失败释放当前仍活动预留，不进入原性能失败消费分支。没有扩预算、改扣账规则、补历史事件或生成批准回执。消费后预算v1仅保留预留ID和状态，完整恢复身份仍依赖原canonical恢复门禁，本helper不宣称重建已删除的预算引用。
 
 新增组件首轮6 passed；扩大回归38 passed/22 failed，22项全部在旧test_predictive_trial_start_v1夹具读取未交付AI_HANDOFF_V2_e1ddf合同处FileNotFoundError，尚未进入执行，不从真实根补读。原始budget-registration-final.log/XML保留；可独立关联回归37 passed/27.87s，随后补错batch负向及引用核对后预算7+batch5共12 passed/10.43s，budget-registration-affected与binding日志/XML。隔离三探针0；CI未增加任何skip或排除。完整R2仍未通过，历史夹具依赖列入集中待办。
+
+### 批次新颖性证据接入
+
+批次最终candidate_similarity_control直接引用该候选在性能访问前实际CandidateNoveltyGateV2生成的decision、passed、比较集hash、邻近信息和政策版本。未改变新颖性算法、比较集或冻结规则。批次/既有新颖性与有限编排回归36 passed/20.73s，batch-novelty-evidence.log/XML，隔离三探针0。canonical单候选目前仍缺可追溯事前比较证据，其旧常量gate未被本项认证，属于完整R2必要缺项。
+
+### 策略使用资格的具体批准范围
+
+现有ResearchStrategyRegistryFacadeV1记录研究状态和固定DISABLED的promotion_state，未发现可用于计划/Paper的资格批准、有效期、撤销合同。不能把PROMISING、RESEARCH_PASSED或PROSPECTIVE_SUPPORTED直接解释为使用授权；也不能只签一个synthetic内容hash即放行。
+
+已请求批准仅隔离synthetic域的版本化测试使用资格服务：请求→实际人工确认→撤销，绑定候选、冻结合同、数据身份、测试用途、有效期，供计划/组合准入核验。新增合同不迁移旧记录，不修改Trial/预算/CP/真实资格，兼容旧入口继续无资格；回滚新增服务与调用后回到只读/未就绪。拟验证实际服务生成正向0/1/多个记录、缺/错确认、失效/撤销、跨根和版本变化拒绝，真实资格计数始终0。因新增人工门禁，依据本次附件4.4等待具体批准；不是自动认可的运行权。等待期间只读registry状态衔接继续实施。

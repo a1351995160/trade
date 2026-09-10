@@ -1400,3 +1400,21 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - docs/ROADMAP_IMPLEMENTATION_MATRIX.md：记录结果、失败入口及消费后引用限制。
 - progress.md：追加本轮记录。
 - 回滚：git revert --no-edit <本轮提交SHA>；回滚点e6adc07，会恢复预算gate常量缺陷；保留全部外部日志，不改main或真实根。
+
+## 2026-09-10 - Task: 批次最终裁决绑定实际事前新颖性结果
+
+### What was done
+
+最终相似性gate引用原实际新颖性决策及比较集身份，删除批次常量通过。记录策略使用资格新人工入口所需的具体批准范围，未实施该权限协议。
+
+### Testing
+
+- 批次及既有新颖性/编排36 passed/20.73s，batch-novelty-evidence.log/XML，隔离三探针0；无新增skip/超时。
+- canonical相似性证据与完整服务仍未认证。
+
+### Notes
+
+- src/chanlun_trader/research_factory/real_runtime.py：直接传递事前新颖性决策。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：结果与新增资格批准待办。
+- progress.md：追加本轮记录。
+- 回滚：git revert --no-edit <本轮提交SHA>；回滚点3a49d06，保留外部证据，不改main或真实根。
