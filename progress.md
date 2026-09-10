@@ -1280,3 +1280,31 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - docs/ROADMAP_IMPLEMENTATION_MATRIX.md：证据与剩余接口范围。
 - progress.md：追加本轮记录。
 - 回滚：git revert --no-edit <本轮提交SHA>；回滚点f2a759e，移除本轮预览不修改main或既有账务。原始证据位于E:/llmwiki/roadmap-engineering-evidence。
+
+## 2026-09-10 - Task: 接通合成计划、组合与Paper操作工作台
+
+### What was done
+
+同一控制台内提供真实服务支持的研究预览/归档/有界回放和账务证据入口。显式服务装配绑定输入根，沿用执行策略与资源锁，领域层核对确认和当前上下文；默认只读不恢复，候选账户和真实资格明确区分。提供新临时根合成演示命令。
+
+### Testing
+
+- 首轮工作台API7 passed；联合原启动隔离、D1/D2/M1共106 passed/107.35s，workbench-final.log/XML。网络/进程拒绝/保护根探针0；原业务执行禁用计数0。Starlette弃用警告保留。
+- 补齐已有输出树链接检查后，工作台最终受影响7 passed/18.45s，workbench-output-check.log；未扩大隔离白名单。
+- frontend既有8项测试通过，workbench-frontend-tests.log；最终build成功，workbench-frontend-fixed.log，大chunk警告未调整阈值。
+- 浏览器真实预览、归档、9事件2成交、44事件6成交；现金333175.17、费用830.83，重载仍44且推进禁用。第二候选NO_SESSION，资格/真实观察天数0。完成目标控件曾显示45，已修为44并重载确认。临时服务停止、8857无监听，原HTTP日志保留；没有凭空填写UI进程退出探针。
+- 2cd521b中间六套CI成功；本轮及最终固定HEAD仍需认证。正式准入与完整服务缺项见矩阵，未宣布工程全部完成。
+
+### Notes
+
+- src/chanlun_trader/research_factory/engineering_workbench.py：实际预览/归档/逐事件服务与确认边界。
+- src/chanlun_trader/webapp.py：显式装配与只读/操作API，保留原middleware语义。
+- frontend/src/console/components/EngineeringWorkbench.vue：真实API表单、资金/成交/证据、确认失效与只读状态。
+- frontend/src/console/ResearchConsole.vue：统一导航入口，工程页不加载无关默认Objective。
+- tests/research_factory/test_engineering_workbench.py：实际服务与API7项，含只读、确认、上下文、损坏和新应用继续。
+- tests/research_factory/workbench_demo.py：新合成根的显式本机演示启动。
+- .github/workflows/r1-source-data-certification.yml：加入工作台测试，原边界/超时不扩大。
+- CLAUDE.md：记录显式输入与独立账户边界。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：实际能力、操作说明与必要缺项。
+- progress.md：追加本轮记录。
+- 回滚：git revert --no-edit <本轮提交SHA>；回滚点2cd521b。先Ctrl+C停止临时Web服务，保留独立合成归档，不修改main或真实数据。外部证据E:/llmwiki/roadmap-engineering-evidence。

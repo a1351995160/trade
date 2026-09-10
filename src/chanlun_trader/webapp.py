@@ -46,6 +46,7 @@ from .research_factory.projection_reconciliation import ProjectionReconciliation
 from .research_factory.trial_reconciliation import CanonicalTrialReconciliationServiceV1, TrialReconciliationError
 from .research_factory.autonomous_control_plane import AutonomousControlPlaneError, AutonomousResearchControlPlaneV1
 from .research_factory.batch_scope_request import BatchScopeRequestServiceV1
+from .research_factory.engineering_workbench import EngineeringWorkbenchV1
 from .research_factory.safe_runtime_context import SafeRuntimeContextError
 from .screener import scan_all
 from .tdx_data import TdxData
@@ -416,6 +417,44 @@ def research_batch_scope_request(request: Request, objective_id: str, scope: str
 @app.get("/api/research-console/{objective_id}/ai-tasks")
 def research_console_ai_tasks(request: Request, objective_id: str, page: int = 1, page_size: int = 20, search: str = "", status: str = "ALL", mode: str = "ALL", sort: str = "created_at", direction: str = "desc") -> dict:
     return _console_service(request).list_ai_tasks(objective_id, page=page, page_size=page_size, search=search, status=status, mode=mode, sort=sort, direction=direction)
+
+
+def _engineering_workbench(request: Request) -> EngineeringWorkbenchV1:
+    service = request.app.state.engineering_workbench
+    if service is None:
+        raise HTTPException(status_code=503, detail={"code": "ENGINEERING_WORKSPACE_NOT_CONFIGURED"})
+    return service
+
+
+@app.get("/api/research-engineering/workbench")
+def engineering_workbench_read(request: Request, plan_at: str | None = None) -> dict:
+    service = _engineering_workbench(request)
+    try:
+        return {**service.inspect(), "actions_allowed": request.app.state.execution_policy.governance_allowed} if plan_at is None else service.preview(plan_at)
+    except (ValueError, OSError) as exc:
+        raise HTTPException(status_code=409, detail={"code": "WORKBENCH_NOT_READY", "reason": str(exc)}) from exc
+
+
+@app.post("/api/research-engineering/workbench/publish")
+def engineering_workbench_publish(request: Request, payload: dict = Body(...)) -> dict:
+    _require_local_console_request(request)
+    try:
+        return _engineering_workbench(request).publish(request.app.state.execution_policy, payload)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail={"code": str(exc)}) from exc
+    except (ValueError, OSError) as exc:
+        raise HTTPException(status_code=409, detail={"code": "WORKBENCH_NOT_READY", "reason": str(exc)}) from exc
+
+
+@app.post("/api/research-engineering/workbench/advance")
+def engineering_workbench_advance(request: Request, payload: dict = Body(...)) -> dict:
+    _require_local_console_request(request)
+    try:
+        return _engineering_workbench(request).advance(request.app.state.execution_policy, payload)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail={"code": str(exc)}) from exc
+    except (ValueError, OSError) as exc:
+        raise HTTPException(status_code=409, detail={"code": "WORKBENCH_NOT_READY", "reason": str(exc)}) from exc
 
 
 @app.get("/api/research-console/{objective_id}/ai-results")
@@ -1009,15 +1048,18 @@ def frontend_history_fallback(frontend_path: str) -> FileResponse:
 _route_template = app
 
 
-def create_app(research_root: str | Path | None = None, execution_policy: ExecutionPolicy | None = None) -> FastAPI:
+def create_app(research_root: str | Path | None = None, execution_policy: ExecutionPolicy | None = None, *, engineering_workbench: EngineeringWorkbenchV1 | None = None) -> FastAPI:
     """显式组合研究工作区；默认应用不绑定业务目录，也不执行恢复。"""
     policy = execution_policy or ExecutionPolicy()
     root = validate_research_root(research_root, policy)
+    if engineering_workbench is not None and (root is None or engineering_workbench.root.resolve() != root):
+        raise ValueError("WORKBENCH_APPLICATION_ROOT_CONFLICT")
     application = FastAPI(title="缠论选股交易系统")
     application.router.routes = list(_route_template.router.routes)
     application.exception_handlers.update(_route_template.exception_handlers)
     application.state.research_root = root
     application.state.execution_policy = policy
+    application.state.engineering_workbench = engineering_workbench
     application.state.tasks = {}
     application.state.services = SimpleNamespace()
     application.state.recovery_status = "RECOVERY_DISABLED"

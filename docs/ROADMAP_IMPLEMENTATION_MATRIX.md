@@ -130,3 +130,28 @@ PortfolioPreviewPolicyV1要求显式候选/冻结合同、现金比例、优先�
 0/1/两个独立冻结候选、优先级同股排斥、费用/现金、容量/换手、真实lot退出与T+1、版本/过期剔除、成员缺失及异常账户均有测试。成员不完整时保留未解决持仓提示并禁止新增买入。敞口基于传入账本价格快照，买入基于T_CLOSE估价；不是实盘风险计算或收益优化。测试首次7 passed；最终M1 11+D1 12+D2 8共31 passed/79.22s，隔离三探针0，日志m1-preview-first.log、m1-preview-final.log/XML。
 
 M1仍PARTIAL：这里只认证两个合法冻结但**未取得使用资格**的合成候选预览，不冒充两个合格可用策略。正式策略准入读取/撤销衔接、公开操作服务和统一界面仍待实施；真实组合政策与策略资格保持等待。R2核心协议批准仍未收到，暂停相应路径并继续其他工程。
+
+## D1/D2/M1 入口阶段：实际合成工作台
+
+控制台新增`/research/workbench`，后端`/api/research-engineering/workbench`只读查看/计算预览，以及显式publish/advance。应用构造必须显式注入EngineeringWorkbenchV1并匹配研究根；默认未配置，不能从页面指定磁盘路径或回退真实根。GET不恢复Paper，不写归档；操作沿用现有GOVERNED/SYNTHETIC执行策略和本机请求检查，领域层仍要求confirmed=true及当前context_hash，并复用现有资源锁后二次核对。内容hash单独不提供权限；不会调用Trial、CP预测或修改既有治理回执。公开操作仅为已显式装配的工程合成输入，不能称为真实Paper或策略使用授权。
+
+页面能计算同股冲突组合预览、归档单策略与组合计划、按累计事件数推进实际引擎、查看现金/费用/逐笔成交/lots/orders及证据，改变选择后原确认失效。各候选Paper账户独立，不能相加为组合资产。正式合格策略数显示0：本入口刻意只装配冻结工程候选，不从PROMISING推断使用资格。
+
+验证：API第一轮7 passed；工作台/原启动隔离/组合/每日/Paper联合106 passed/107.35s，原始workbench-final.log/XML，隔离三探针0。前端原测试8 passed、最终build成功；既有大chunk警告和Starlette弃用警告保留。浏览器真实操作：组合预览和归档成功；最终新根9/44事件有2笔实际合成成交，44/44后6笔，现金333175.17、费用830.83；重载不续跑，切换另一候选NO_SESSION，资格与真实观察天数均0。截图在本次工具会话，HTTP原始日志workbench-ui-server.log及workbench-ui-final-server.log、根指针文件在外部证据目录。服务手动停止后端口8857无监听；UI进程被终止，未把未导出的退出计数宣称为0。
+
+仍未完成：正式registry使用准入/撤销到计划的衔接、合格策略测试合同正向、生产公开装配/跨进程重建工作台、组合账户执行、发布计划到执行入口的版本准入校验、运行维护集中交付。已有Paper核心冷恢复测试不能替代这些入口缺项，全路线维持PARTIAL_WITH_BLOCKERS。
+
+### 当前可复现的合成入口
+
+仅在独立工程checkout和已按原锁安装的venv内运行；root必须是新建且不存在的绝对路径。脚本自行通过既有fixture生成两个冻结候选、实际文件与输入，不要求手改JSON，不代表完整R2创建流程认证。
+
+```powershell
+$env:PYTHONPATH='tests/isolation;tests/research_factory;src'
+$env:CHANLUN_TEST_ISOLATION='1'
+$env:CHANLUN_PROTECTED_ROOT='E:\llmwiki\chanlun-trading-system'
+$env:PYTHONDONTWRITEBYTECODE='1'
+$demoRoot = Join-Path $env:TEMP ('workbench-' + [guid]::NewGuid().ToString('N'))
+.\.venv\Scripts\python.exe tests/research_factory/workbench_demo.py --root $demoRoot --port 8857 --governed
+```
+
+先在frontend执行`npm ci --ignore-scripts`及`npm run build`；打开`http://127.0.0.1:8857/research/workbench`。不加`--governed`则只读；即使加了仍须页面确认当前上下文才能归档/推进。Ctrl+C停止，不创建定时任务。旧根保留证据，当前demo不支持用旧root启动，不能手动删除归档以免费重跑。
