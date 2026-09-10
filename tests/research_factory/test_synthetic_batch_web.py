@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 import json
 import os
 from pathlib import Path
+import sys
 
 from fastapi.testclient import TestClient
 import pytest
@@ -21,8 +22,17 @@ def web_batch():
     return prepare_batch()
 
 
-def test_real_api_preview_confirmation_run_and_readonly_history(web_batch):
+def test_real_api_preview_confirmation_run_and_readonly_history(web_batch, monkeypatch):
     root, policy, body = web_batch
+    import chanlun_trader.research_factory.synthetic_batch as batch_module
+    bounded = batch_module.run_bounded_worker
+    launches = []
+
+    def record_actual_launch(command, **kwargs):
+        launches.append({"command": command, "execution": kwargs["execution"]})
+        return bounded(command, **kwargs)
+
+    monkeypatch.setattr(batch_module, "run_bounded_worker", record_actual_launch)
     with TestClient(create_app(root, policy)) as client:
         context = client.get(BASE + "/context")
         assert context.status_code == 200, context.text
@@ -40,6 +50,11 @@ def test_real_api_preview_confirmation_run_and_readonly_history(web_batch):
         (output / "web-run-result.json").write_text(result.text, encoding="utf-8")
         assert result.status_code == 200, result.text
         assert result.json()["status"] == "COMPLETED", result.text
+        assert len(launches) == 2
+        assert all(item["command"] == [sys.executable, "-m", "chanlun_trader.synthetic_batch_worker"] for item in launches)
+        assert all(item["execution"]["batch_authorization_id"] == preview["batch_authorization_id"]
+                   and item["execution"]["root"] == str(root) for item in launches)
+        (output / "worker-launch-transport.json").write_text(json.dumps(launches), encoding="utf-8")
         context = client.get(BASE + "/context").json()
         assert context["candidates"][0]["status"] == "BLOCKED"
         assert context["candidates"][0]["reason"] == "BATCH_CANONICAL_BUDGET_EXHAUSTED"

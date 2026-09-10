@@ -7,8 +7,8 @@ import time
 
 from chanlun_trader.synthetic_batch_resources import worker_resource_handshake
 
-worker_resource_handshake()
-root = Path(sys.argv[1])
+config = worker_resource_handshake()
+root = Path(config["execution"]["root"])
 counts = {"engine": 0, "performance": 0}
 paused = False
 
@@ -38,7 +38,7 @@ def observe(frame, event, arg):
 sys.setprofile(observe)
 try:
     from chanlun_trader.synthetic_batch_worker import execute
-    execute()
+    execute(config["execution"])
 finally:
     sys.setprofile(None)
     (root / "r3-boundary-counts.json").write_text(json.dumps(counts), encoding="utf-8")

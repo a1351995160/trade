@@ -9,6 +9,15 @@ import pytest
 from chanlun_trader.synthetic_batch_resources import run_bounded_worker
 
 
+@pytest.mark.parametrize("context", [None, [], {}, {"root": "-c"},
+    {"root": "/test", "batch_authorization_id": "batch", "execution_id": "exec", "command": "other"},
+    {"root": "/test", "batch_authorization_id": [], "execution_id": "exec"}])
+def test_worker_rejects_missing_or_non_data_execution_context(context):
+    from chanlun_trader.synthetic_batch_worker import execute
+    with pytest.raises(ValueError, match="BATCH_WORKER_CONTEXT_INVALID"):
+        execute(context)
+
+
 @pytest.mark.parametrize("action", ["normal", "memory", "timeout"])
 def test_actual_worker_resource_boundaries(tmp_path, action):
     source = Path(__file__).resolve().parents[2]

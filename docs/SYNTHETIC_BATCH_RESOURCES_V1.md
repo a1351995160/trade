@@ -15,3 +15,5 @@
 Windows 启动顺序依据 [Microsoft 线程与句柄文档](https://github.com/MicrosoftDocs/win32/blob/docs/desktop-src/ProcThread/thread-handles-and-identifiers.md)及 [Toolhelp 快照 API](https://learn.microsoft.com/en-us/windows/win32/api/tlhelp32/nf-tlhelp32-createtoolhelp32snapshot)。
 
 真实数据 NOT_VERIFIED，READY_FOR_REAL_TRIAL=false，R1_FULLY_CLOSED=false；旧 CP 预测禁令保持。资源约束成功不代表某个具体运行获准。
+
+生产worker命令固定，执行身份作为execution对象经标准输入资源握手传入；对象只能含root、batch_authorization_id、execution_id三个非空字符串，随后仍校验父批准与实际进程身份。资源安装及先安装后准入顺序不变。见批次授权文档的S6350收紧记录。

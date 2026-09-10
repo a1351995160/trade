@@ -26,7 +26,7 @@ def test_current_parent_and_sources_rechecked_immediately_before_performance(mon
     def wait_at_real_boundary(command, **kwargs):
         if change == "snapshot":
             kwargs["environment"] = {**kwargs["environment"], "R3_TEST_RACE_STAGE": "SNAPSHOT"}
-        return bounded([command[0], str(Path(__file__).with_name("batch_boundary_race_worker.py")), *command[3:]], **kwargs)
+        return bounded([command[0], str(Path(__file__).with_name("batch_boundary_race_worker.py"))], **kwargs)
 
     monkeypatch.setattr(synthetic_batch, "run_bounded_worker", wait_at_real_boundary)
     with ThreadPoolExecutor(max_workers=1) as pool:

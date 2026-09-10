@@ -1729,3 +1729,26 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - progress.md：追加贯通验收及固定版本前状态。
 - 回滚：git revert本轮文档提交；代码检查点36d8a2c，不改主线或任何合成批准/账本。
 - 最终认证和打包未完成前仍PARTIAL；最终状态放外部final-bounded-execution，不为状态回填修改固定HEAD。
+
+## 2026-09-10 - Task: 批次worker固定命令与数据传输
+### What was done
+- 根据Sonar S6350实际污点链，将生产worker命令固定，身份经资源握手JSON传入并严格验证；原父批准、进程关系、资源、预算和历史语义不变。
+- 未证明旧shell=False且标识已验入口可被利用，不伪造业务漏洞red；未改变Sonar规则、问题状态或添加抑制。
+### Testing
+- batch-stdin.log/XML：18 passed、22 deselected定向验证，1既有Starlette警告；真实OS上限、API两动作、两候选、中断及三类并发边界均通过，禁止进程/网络/受保护访问探针0。新增6个数据上下文合同负向。
+- abb0073的Sonar原检查、问题流、annotations已保存；本地固定HEAD候选验证前7步通过（P3C107），第8步因本项必要收紧主动停止，未生成最终JUnit，不宣称整体通过。停止该测试进程后才修改源码，没有混用新旧代码证据。
+### Notes
+- src/chanlun_trader/research_factory/synthetic_batch.py：固定生产启动命令，身份进入数据通道。
+- src/chanlun_trader/synthetic_batch_resources.py：原资源握手携带execution数据。
+- src/chanlun_trader/synthetic_batch_worker.py：严格校验执行数据，保留原服务授权核验。
+- tests/research_factory/batch_interruption_worker.py：退出注入使用实际握手身份。
+- tests/research_factory/batch_boundary_race_worker.py：并发注入使用实际握手身份。
+- tests/research_factory/test_synthetic_batch_contract.py：真实退出替换入口沿用数据握手。
+- tests/research_factory/test_synthetic_batch_races.py：真实边界替换入口不接受身份命令参数。
+- tests/research_factory/test_synthetic_batch_resources.py：6类无效数据合同拒绝。
+- tests/research_factory/test_synthetic_batch_web.py：观察真实启动，断言命令固定及身份经数据传输。
+- docs/SYNTHETIC_BATCH_AUTHORIZATION_V1.md：收紧依据及定向证据。
+- docs/SYNTHETIC_BATCH_RESOURCES_V1.md：数据握手说明。
+- CLAUDE.md：记录固定进程入口约定。
+- progress.md：本轮验证和未完成认证记录。
+- 回滚：git revert本轮提交，并停用受影响新入口；检查点abb0073，保留全部原始证据与账本，不改main。

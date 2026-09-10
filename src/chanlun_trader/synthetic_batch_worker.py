@@ -1,22 +1,24 @@
 """先安装 OS 资源上限，再导入正式领域服务的合成批次 worker。"""
-import sys
-
 from .synthetic_batch_resources import worker_resource_handshake
 
 
 def main():
-    worker_resource_handshake()
-    execute()
+    config = worker_resource_handshake()
+    execute(config["execution"])
 
 
-def execute():
+def execute(context):
+    # 身份通过数据通道传入，不能成为解释器或进程启动选项。
+    if (not isinstance(context, dict) or set(context) != {"root", "batch_authorization_id", "execution_id"}
+            or any(type(value) is not str or not value for value in context.values())):
+        raise ValueError("BATCH_WORKER_CONTEXT_INVALID")
     from .execution_policy import ExecutionPolicy
     from .research_factory.paper_replay import _immutable
     from .research_factory.synthetic_batch import SyntheticBatchServiceV1
     from .research_factory.structural_entry import StructuralEntryServiceV1
     from .research_factory.synthetic_batch_delegation import BatchPredictiveGovernanceServiceV1, BatchPredictiveTrialStartServiceV1
 
-    root, identifier, execution_id = sys.argv[1:]
+    root, identifier, execution_id = context["root"], context["batch_authorization_id"], context["execution_id"]
     batch = SyntheticBatchServiceV1(root, ExecutionPolicy("GOVERNED", "SYNTHETIC"))
     batch.register_worker(identifier, execution_id)
     active = batch.inspect(identifier)["state"]["active_execution"]

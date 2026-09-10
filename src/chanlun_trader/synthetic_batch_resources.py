@@ -116,7 +116,7 @@ def worker_resource_handshake():
     return config
 
 
-def run_bounded_worker(command, *, root, memory_mib, wall_seconds, on_started, environment=None):
+def run_bounded_worker(command, *, root, memory_mib, wall_seconds, on_started, environment=None, execution=None):
     """仅启动显式 Python worker；先安装 OS 上限，再允许调用领域服务。"""
     if type(memory_mib) is not int or memory_mib < 1 or wall_seconds <= 0:
         raise ValueError("BATCH_RESOURCE_LIMIT_INVALID")
@@ -133,7 +133,8 @@ def run_bounded_worker(command, *, root, memory_mib, wall_seconds, on_started, e
         on_started(process.pid)
         if job:
             job.resume(process)
-        config = {"memory_mib": memory_mib, "wall_seconds": wall_seconds, "parent_pid": os.getpid()}
+        config = {"memory_mib": memory_mib, "wall_seconds": wall_seconds, "parent_pid": os.getpid(),
+                  "execution": execution}
         try:
             stdout, stderr = process.communicate((json.dumps(config) + "\n").encode(), timeout=wall_seconds)
             return {"returncode": process.returncode, "stdout": stdout, "stderr": stderr, "timed_out": False}

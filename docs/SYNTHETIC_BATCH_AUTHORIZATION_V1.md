@@ -65,3 +65,8 @@ $env:CHANLUN_PROCESS_EVIDENCE_DIR='E:\llmwiki\roadmap-engineering-evidence\batch
 `batch-web-final.log/XML`：4项真实API测试通过，包括实际两动作执行、未确认拒绝、只读不写、非本机拒绝、未来/到期撤销、旧CP拒绝。`batch-ui-build.log`构建通过；保留现有bundle体积警告，未调大阈值。实际浏览器批次625e3ba4e2244d4abdbb556385a7d868一次确认后4/4动作完成，四项均BATCH_DELEGATED；页面显示原预算耗尽、VALIDATION_BLOCKED、合格策略0、真实观察0，浏览器error/warn为空。原HTTP状态分别保存在batch-ui-completed.json、batch-ui-context.json、batch-ui-workbench.json，服务器日志batch-ui-server.log。页面导出能力不可用，未伪造导出文件。
 
 操作入口及页面已完成上述本地验收；最终整体固定HEAD与双平台认证仍待完成。本节覆盖前面的“必要剩余验收”中入口/界面开发状态，但不覆盖最终交付要求。
+
+## 进程传输收紧（Sonar S6350）
+abb0073的Sonar安全门禁C，规则pythonsecurity:S6350指出HTTP批次标识经服务传入通用Popen参数。已有标识检查且shell=False，未证明存在可利用命令注入，也未标记误报或修改规则。生产启动命令现固定为当前Python及chanlun_trader.synthetic_batch_worker；根、父批次和执行身份经原资源握手的JSON标准输入传入，worker严格检查数据字段，再执行原父批准/进程关系/动作核验。数据通道不能产生权限，原预览/确认/预算/历史记录格式不变。
+
+batch-stdin.log/XML：18项定向测试通过、22项未选（只表示此次受影响选择范围，不是最终全套）；含真实API两次固定命令启动、6类无效上下文拒绝、真实OS限制、两个候选连续执行、性能后真实退出和三类并发边界。worker-launch-transport.json保存实际命令与数据身份，不替换runner或权限。最终新HEAD仍需全部套件和Sonar验证。

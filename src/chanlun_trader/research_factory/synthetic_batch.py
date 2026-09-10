@@ -424,9 +424,9 @@ class SyntheticBatchServiceV1:
         environment["PYTHONPATH"] = os.pathsep.join([package_root, *sys.path])
         environment.update(OPENBLAS_NUM_THREADS="1", OMP_NUM_THREADS="1", NUMEXPR_NUM_THREADS="1")
         try:
-            result = run_bounded_worker([sys.executable, "-m", "chanlun_trader.synthetic_batch_worker",
-                str(self.root), identifier, execution_id], root=self.root,
+            result = run_bounded_worker([sys.executable, "-m", "chanlun_trader.synthetic_batch_worker"], root=self.root,
                 memory_mib=request["limits"]["memory_mib"], wall_seconds=remaining,
+                execution={"root": str(self.root), "batch_authorization_id": identifier, "execution_id": execution_id},
                 on_started=lambda pid: self._launcher_started(identifier, execution_id, pid), environment=environment)
         except Exception as exc:
             # 资源安装或控制竞争失败后，launcher 已在 finally 终止 worker；仍须结算原领域事实。

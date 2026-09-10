@@ -249,7 +249,7 @@ def test_worker_exit_after_performance_consumes_original_budget_without_retry(mo
 
     def inject_actual_process_exit(command, **kwargs):
         # 只换入会退出73的测试驱动；OS约束、正式服务与授权核验仍实际执行。
-        replacement = [command[0], str(Path(__file__).with_name("batch_interruption_worker.py")), *command[3:]]
+        replacement = [command[0], str(Path(__file__).with_name("batch_interruption_worker.py"))]
         return bounded(replacement, **kwargs)
 
     monkeypatch.setattr(synthetic_batch, "run_bounded_worker", inject_actual_process_exit)
