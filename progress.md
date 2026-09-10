@@ -1180,3 +1180,27 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - docs/ROADMAP_IMPLEMENTATION_MATRIX.md：追加本阶段实测、操作入口和工程缺项。
 - progress.md：追加本轮闭环。
 - 回滚：git revert --no-edit <本轮提交SHA>；回滚点86c1403，保留历史与外部证据，不修改main。外部原始日志在E:/llmwiki/roadmap-engineering-evidence，浏览器测试输入全部synthetic。
+
+## 2026-09-10 - Task: D1 共享每日语义、资金持仓预览与不可覆盖归档
+
+### What was done
+
+正式runner提取当日信号/PIT输入与执行支持范围校验，共享给每日预览，不另写评分规则。预览复用真实ledger持仓、退出评估器、lot/sizer/fee/slippage，输出买入预览、持有/退出及NOT_READY；副本计算不改原账户。新增合同/数据/账户/代码/时点绑定和不可覆盖归档，变化生成新身份，旧计划可查且标STALE。未授予策略资格或真实执行许可。
+
+### Testing
+
+- d1-preview-first.log：新预览/批次14 passed/28.39s。
+- d1-shared-regression.log/XML：原R1快照/caller/批次及每日共160 passed/136.26s；真实runner信号对照、原F01–F04和available_at所处套件保留。
+- 增加归档后d1-archive.log：每日12 passed/24.42s；实际ledger Fill产生持仓/T+1、同退出评估器对照、现金改变身份、缺PIT/因子、未来时间/NaT、不可覆盖及损坏归档拒绝。所有轮次network/process/protected=0，重叠测试不合计。
+- 本阶段仅每日计算与归档，D1正式资格/API/UI尚未验收，D2/M1未完成。整体固定HEAD/双平台认证仍待最终阶段。不得把研究预览当可用策略或真实观察。
+
+### Notes
+
+- scripts/run_engine_corrected_phase4_v3.py：共享原执行范围校验和当日输入逻辑，runner继续原缓存与执行语义。
+- src/chanlun_trader/research_factory/daily_plan.py：账户副本每日预览、资金费用/T+1、版本身份及不可覆盖归档。
+- tests/research_factory/test_daily_plan.py：12项真实组件对照、错误输入、身份与归档检查。
+- .github/workflows/r1-source-data-certification.yml：原双平台R1矩阵增加每日回归，原skip/超时不改。
+- CLAUDE.md：追加共享语义与预览非授权经验。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：本阶段实际完成、证据与必要工程缺项。
+- progress.md：追加本轮记录。
+- 回滚：git revert --no-edit <本轮提交SHA>；回滚点54838ac，保留历史归档和日志，不reset/main。原始证据位于E:/llmwiki/roadmap-engineering-evidence。

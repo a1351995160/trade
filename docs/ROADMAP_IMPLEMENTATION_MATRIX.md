@@ -98,3 +98,13 @@ RealFactoryRuntimeV1 已在正式 run 中逐候选复用 canonical caller 的 pr
 验证：请求首轮17项；原控制平面/权限/隔离合并105项；新增真实一步停止red后最终106 passed/19.86s，探针network/process/protected=0。前端原8项及vue-tsc/Vite构建通过，原大chunk警告保留不调阈值。全新临时根运行只读本地页面，浏览器经实际API验证通过、修改后旧结果消失、撤回拒绝，截图在本任务工具记录；页面和临时服务已结束。旧现场fixture没有orchestrator运行文件，页面准确报读取错误；该演示不认证运行控制全链。服务日志r3-ui-server.log/root.txt与最终测试日志/XML位于外部证据根。
 
 R3仍PARTIAL：已有合法循环及本节申请入口已验；批次自动权限WAITING_POLICY_APPROVAL，不把申请有效当执行授权。完整backend错误矩阵、统一监控/运行控制及D1/D2/M1仍需继续工程，不宣称路线完成。
+
+## D1 内部阶段：共享每日语义与不可覆盖预览
+
+将正式corrected runner的执行支持校验和当日输入提取为共享入口，原runner继续使用同一实现及原日缓存。daily_plan.preview_daily_plan复用编译器、PIT输入和PortfolioExitEvaluatorV1，接收正式caller准备的输入及真实PortfolioLedger，生成买入预览、持有、退出、NO_TRADE/NOT_READY。只操作账户副本，使用既有sizer/lot/fee/slippage估算；价格基于T收盘，实际成交须重验。缺当日PIT/因子、NaT、未来因子、非法计划时间和不一致账户拒绝或NOT_READY。
+
+预览绑定合同/政策/代码/输入/账户/时点身份，DailyPlanArchiveV1首次独占写入、重复校验、损坏拒绝；现金变化生成新版本并将旧版本对比为STALE，不覆盖历史。内容身份不是授权。当前execution_ready=false、usage_qualification=NOT_VERIFIED；现有registry PROMISING或普通登记不能变成可采用计划。范围仍DAILY/RAW、T_CLOSE、冻结研究窗口内，非“今天实时计划”。
+
+测试：首轮新预览与批次14 passed；共享入口最终R1快照/caller/批次/每日共160 passed/136.26s；新增归档后每日12 passed/24.42s，探针全部0。信号对照真实runner，真实ledger Fill产生持仓/T+1并对照同一退出评估器；账户不变、现金约束、时间/PIT负向、归档不可覆盖与损坏检查。证据d1-preview-first.log、d1-shared-regression.log/XML、d1-archive.log。
+
+D1仍PARTIAL：本节为实际计算内核与归档；正式策略准入、发布服务/API/UI及与Paper/组合的完整衔接尚未完成，不能登记缺项后称D1工程通过。下一步继续可独立的Paper回放/对账，再完成统一入口和准入整合；真实使用资格与运行仍未授权。

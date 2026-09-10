@@ -144,3 +144,5 @@
 - RealFactoryRuntime 的冻结 registry 使用 path/sha256，canonical caller 原格式使用内容 hash；适配须验证各自原始绑定，不能混同文件字节哈希与内容哈希，不能改写旧冻结合同来凑接口。
 
 - Structural producer 的零 Prospective 安全计数使用既有精确路径合同，持久化必须一致且拒绝非零计数及收益字段。手工初始化 Objective 的旧 fixture 不证明正式创建服务可生成执行绑定及 canonical family；完整服务认证必须实际经过目标创建。
+
+- 每日计划与正式runner共用执行范围校验及当日信号/PIT/持仓输入；退出复用PortfolioExitEvaluatorV1。现金、持仓、数据、代码或时点变化产生新预览身份，归档不得覆盖。研究预览和内容哈希不授予策略使用资格，缺数据不能表现为正常零信号。
