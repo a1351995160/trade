@@ -1095,3 +1095,34 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - 仓库外 E:/llmwiki/r1-caller-io-evidence：保存安装、所有red/装配失败/green、原五阶段/R1日志、XML、冷进程原字节及后续新HEAD CI证据；不推送研究数据或环境。
 - 回滚：本轮单提交可执行 `git revert --no-edit codex/r1-caller-io-parity-v1`；回滚点 e72fa6ae0ace0dbff6eeac87ae0e09082431d89a。无需reset或触碰原工作区，历史记录保留并追加撤销说明。
 - WINDOWS_L1与WINDOWS_L6继续OPEN_ROOT_CAUSE_UNCONFIRMED；HISTORICAL_PROVENANCE=UNVERIFIED；REAL_CANDIDATE_DATA_READINESS=NOT_VERIFIED；READY_FOR_REAL_TRIAL=false；R1_FULLY_CLOSED=false。完成分支推送后交独立差异复核；不merge/auto-merge、不开始R2。
+
+## 2026-09-10 - Task: 连续交付接续与 R1 批次调用方输入输出适配
+
+### What was done
+
+完整读取用户批准的连续交付文件，核对caller本地/远端HEAD 4f780cf6454c36124f8a9477ca73098551d49f04、实际main e72fa6ae0ace0dbff6eeac87ae0e09082431d89a、12份文件与19份日志哈希。PR #8仍OPEN/Draft/未合并；查询时19项push/PR检查SUCCESS。由caller创建独立总集成分支codex/roadmap-engineering-completion-v1，未改原dirty研究区，未回退main。新增全路线剩余需求及集中真实授权待办矩阵。
+
+批次正式run复用canonical输入/runner/结果适配；冻结日历/时点保留，BASE/10K独立，裁决只引用已落盘provisional。按原合同分别验证registry内容hash或路径/字节sha256，不修改冻结含义。缺输入不伪报零信号。旧policy-pin测试改为临时生成默认政策和锁，消除cwd真实文件依赖。
+
+### Testing
+
+- 新venv Windows Python3.13.5，原requirements-p3b递归哈希锁经官方Simple安装；pip check成功。隔离先验66 passed，network/process/protected探针0。
+- 新批次初版4 passed；R1第一轮完整213 passed/251.15s；补原批次文件身份后5 passed/14.71s；最终受影响caller63+批次5+policy6共74 passed/48.13s。不同轮次不合计。真实reader/runner、双独立engine正向及时间/日历/列/文件hash负向通过。
+- 扩展回归39 passed/1 failed，失败为旧政策测试读取未交付cwd政策；原日志batch-regression.log保留，不算业务red。临时默认政策fixture修正后6 passed/0.26s，最终74项包含该6项。
+- 第一轮R1主进程caller engine22次、原snapshot矩阵63次，cold独立计数保留；批次正向真实运行BASE/10K两次。合成审批/确认与禁止端探针分别记录原日志，不当真实业务动作。未调用完整execute、Trial/PerformanceAccess、真实行情/AI/Paper/broker。
+- 源码compile、git diff --check成功；初次全量1094 collected（第五项新增前），非passed。最终固定HEAD整体和双平台认证尚未进行，旧callerCI不认证本次代码。
+- 限制：完整RealFactoryRuntime.run及恢复、R2全服务尚未验收；当前不能声明全路线完成。原Windows L1/L6仍OPEN_ROOT_CAUSE_UNCONFIRMED。
+
+### Notes
+
+- src/chanlun_trader/research_factory/real_runtime.py：移除重复准备，复用正式caller、真实诊断及provisional引用；预性能准备失败释放尚活动预留。
+- src/chanlun_trader/research_factory/caller_inputs.py：兼容并严格验证已有registry文件身份。
+- tests/research_factory/r1_caller_fixture.py：首次审批前可按批次既有格式生成合成registry身份，默认旧fixture不变。
+- tests/research_factory/test_r1_batch_caller_inputs.py：新增5项实际批次准备/双组合/错误拒绝验证。
+- tests/research/test_predictive_executor_policy_pin.py：政策与锁改为临时现场生成，不读cwd运行工件。
+- .github/workflows/r1-source-data-certification.yml：原R1认证增加上述测试，原隔离/选择器/timeout保留。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：接续基线、剩余需求、阶段证据、真实授权待办与限制。
+- CLAUDE.md：追加文件与内容registry身份不可混用的经验。
+- progress.md：仅追加本轮记录。
+- 仓库外E:/llmwiki/roadmap-engineering-evidence：安装、原始失败/成功日志、XML、caller远端证据及后续交接。
+- 回滚：在总集成分支执行git revert --no-edit <本轮提交SHA>；回滚点4f780cf6454c36124f8a9477ca73098551d49f04。保留历史日志，不reset、不修改main或原研究目录。下一步自动继续R2合法合成完整服务验证；真实运行仍未授权。

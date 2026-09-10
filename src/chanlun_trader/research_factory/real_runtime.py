@@ -30,7 +30,6 @@ from .source_dependencies import SOURCE_ROOT, load_corrected_module
 
 OBJECTIVE_ID = "RESEARCH_OBJECTIVE_SHORT_HORIZON_A_SHARE_V1"
 PASSED_CANDIDATE_ID = "CAND_EVENT_REVERSAL_SENTIMENT_EVENT_EXHAUSTION_WITH_P_2A6052ED_V1_V3"
-WARMUP_START = 20210802
 MAX_HYPOTHESES = 12
 MAX_FROZEN_CANDIDATES = 8
 MAX_REAL_TRIALS = 8
@@ -507,6 +506,17 @@ def _checkpoint(orchestrator: Any, machine: ResearchBatchStateMachineV1, plan: R
 class RealFactoryRuntimeV1:
     """Execute one fully governed real research batch."""
 
+    @staticmethod
+    def _prepare_candidate_inputs(caller, policy, records, contracts, factor_cache):
+        """逐候选复用正式准备，冻结窗口和原始时间不在批次层重新推导。"""
+        by_id = {item.candidate_id: item for item in contracts}
+        corrected = caller._corrected_module()
+        return {
+            record.candidate.candidate_id: caller._prepare_inputs(
+                policy, record, corrected, factor_cache, contract=by_id[record.candidate.candidate_id])
+            for record in records
+        }
+
     def run(self, orchestrator: Any, *, plan: ResearchBatchPlanV1):
         from .orchestrator import FactoryRunResultV1, RESEARCH_FACTORY_CANONICAL_DEPENDENCIES_V1
         from .artifact_graph import ResearchArtifactGraphV1, add_frozen_contract_node_idempotent
@@ -955,48 +965,21 @@ class RealFactoryRuntimeV1:
             raise RuntimeError("canonical factor cache is missing")
         event_ids = sorted({str(condition["event_id"]) for record in eligible_records for condition in record.signal_predicate.event_conditions})
         dataset_hash = _dataset_hash(root, factor_cache, event_ids, corrected.legacy)
-        router = corrected.legacy.ResearchDataRouter(root)
-        guard = corrected.legacy.ResearchDataAccessGuard()
-        daily = router.read_daily(WARMUP_START, policy.research_end, columns=["symbol", "date", "open", "high", "low", "close", "volume", "amount", "prev_close"])
-        daily["symbol"] = daily["symbol"].astype(str)
-        daily["date"] = daily["date"].astype(int)
-        daily = daily[daily["symbol"].str.endswith((".SH", ".SZ"))].sort_values(["date", "symbol"]).reset_index(drop=True)
-        all_dates = sorted(int(day) for day in daily["date"].unique())
-        exec_calendar = [day for day in all_dates if policy.research_start <= day <= policy.research_end]
-        universe = corrected.legacy.load_universe_sets(root, all_dates, set(daily["symbol"].unique()))
-        status_map = corrected.legacy.PITStateMap(root / "data/research/security_state/normalized", exec_calendar)
-        index_close = corrected.legacy.load_market_index(root, guard, min(all_dates), policy.research_end)
-        regimes = corrected.legacy.market_regimes(index_close)
-        store = corrected.legacy.build_store(daily)
-        requested_factor_ids = {str(binding["factor_id"]) for record in eligible_records for binding in record.candidate.factor_bindings}
-        import pyarrow.parquet as parquet
-        cached_factor_ids = set(parquet.read_schema(factor_cache).names)
-        missing_cached_factor_ids = requested_factor_ids - cached_factor_ids
-        unsupported_cache_gap = missing_cached_factor_ids - {"GAP_SIZE"}
-        if unsupported_cache_gap:
+        from .predictive_executor import CanonicalPredictiveExecutorV1
+
+        caller = CanonicalPredictiveExecutorV1(root, orchestrator.objective.objective_id)
+        try:
+            inputs_by_candidate = self._prepare_candidate_inputs(caller, policy, eligible_records, reloaded_contracts, factor_cache)
+        except Exception:
             for reservation_id in reservations.values():
-                orchestrator.budget.release(reservation_id)
-            raise RuntimeError(f"canonical factor cache is missing executable factors: {sorted(unsupported_cache_gap)}")
-        factor_columns = sorted({"date", "symbol", "volume", *(requested_factor_ids & cached_factor_ids)})
-        factor_values = router.reader.read_parquet(factor_cache, columns=factor_columns, date_column="date", start_date=WARMUP_START, end_date=policy.research_end)
-        if "GAP_SIZE" in missing_cached_factor_ids:
-            # GAP_SIZE is a registered PIT-safe daily primitive.  Rebuild it
-            # in memory from its canonical open/previous-close formula without
-            # mutating the shared factor cache.
-            gap = daily[["date", "symbol", "open", "prev_close"]].copy()
-            denominator = gap["prev_close"].where(gap["prev_close"] != 0)
-            gap["GAP_SIZE"] = gap["open"] / denominator - 1.0
-            gap = gap[["date", "symbol", "GAP_SIZE"]]
-            factor_values = factor_values.merge(gap, on=["date", "symbol"], how="left", validate="one_to_one")
+                if reservation_id in orchestrator.budget.snapshot().get("active_reservations", {}):
+                    orchestrator.budget.release(reservation_id)
+            raise
         _write(report_dir / "factor_data_routing.json", {
-            "requested_factor_ids": sorted(requested_factor_ids),
-            "cache_factor_ids_used": sorted(requested_factor_ids & cached_factor_ids),
-            "in_memory_registered_factor_rebuild": sorted(missing_cached_factor_ids),
-            "gap_size_formula": "open / prev_close - 1" if "GAP_SIZE" in missing_cached_factor_ids else None,
+            "candidates": {key: value["input_diagnostics"] for key, value in inputs_by_candidate.items()},
             "cache_mutated": False,
-            "research_end": policy.research_end,
+            "in_memory_registered_factor_rebuild": [],
         })
-        events = corrected.legacy.load_events(root, router, set(event_ids)) if event_ids else {}
         small_policy = replace(policy, initial_cash=policy.small_capital_cash, max_positions=policy.small_capital_slots, lot_size=policy.small_capital_lot_size)
         gate_path = report_dir / "performance_access_gate.json"
         if policy_v2_active:
@@ -1041,18 +1024,17 @@ class RealFactoryRuntimeV1:
             )
             try:
                 orchestrator.trial_ledger.mark_performance_accessed(trial_id)
-                base_engine, base_metrics, _ = corrected.run_corrected_candidate(
-                    root, record, trial_id, factor_values, store, exec_calendar, universe, status_map, regimes, events, index_close, policy,
-                    portfolio_name="BASE_RESEARCH", evidence_run_id=f"FACTORY_{plan.batch_id}",
-                )
-                ten_engine, ten_metrics, _ = corrected.run_corrected_candidate(
-                    root, record, trial_id, factor_values, store, exec_calendar, universe, status_map, regimes, events, index_close, small_policy,
-                    portfolio_name="SMALL_CAPITAL_10K", evidence_run_id=f"FACTORY_{plan.batch_id}",
-                )
+                inputs = inputs_by_candidate[candidate_id]
+                base_result = caller._invoke_runner(policy, record, trial_id, inputs, portfolio_name="BASE_RESEARCH")
+                ten_result = caller._invoke_runner(small_policy, record, trial_id, inputs, portfolio_name="SMALL_CAPITAL_10K")
+                base_engine, base_metrics = base_result["engine"], base_result["metrics"]
+                ten_engine, ten_metrics = ten_result["engine"], ten_result["metrics"]
+                if base_result["status"] != "DIAGNOSTIC_ONLY" or ten_result["status"] != "DIAGNOSTIC_ONLY":
+                    raise ValueError("R1_CALLER_EXECUTION_EVIDENCE_INSUFFICIENT_OR_INVALID")
                 pnl = [float(trade.realized_pnl) for trade in base_engine.ledger.valid_trades if trade.side == corrected.Side.SELL]
                 bootstrap = corrected.bootstrap_result(pnl, int(policy.bootstrap_iterations), int(policy.bootstrap_seed) + index)
                 concentration = corrected.concentration(base_engine, float(policy.initial_cash))
-                robustness = {"subperiods": corrected.subperiods(base_engine, float(policy.initial_cash)), "regime_split": corrected.regime_split(base_engine, regimes)}
+                robustness = {"subperiods": corrected.subperiods(base_engine, float(policy.initial_cash)), "regime_split": corrected.regime_split(base_engine, inputs["regimes"])}
                 cost_stress = {}
                 for name, multipliers in {"BASE": (1.0, 1.0, 1.0), "FEES_X2": (2.0, 2.0, 1.0), "SLIPPAGE_X2": (1.0, 1.0, 2.0), "COMBINED_X2": (2.0, 2.0, 2.0)}.items():
                     cost_stress[name] = corrected.recompute_cost_stress_metrics(base_engine, base_metrics, policy, float(policy.initial_cash), fee_mult=multipliers[0], stamp_mult=multipliers[1], slip_mult=multipliers[2])
@@ -1064,8 +1046,8 @@ class RealFactoryRuntimeV1:
                 engine_integrity = {"certification_status": base_metrics.get("certification_status"), "invariant_errors": base_metrics.get("invariant_errors", [])}
                 v2_gates = {
                     "engine_integrity": {"passed": not engine_integrity.get("invariant_errors") and engine_integrity.get("certification_status") != "INVALID"},
-                    "data_validity": {"passed": True},
-                    "pit_validity": {"passed": True},
+                    "data_validity": {"passed": inputs["input_diagnostics"]["data_validity"] == "VALIDATED_DAILY_RAW"},
+                    "pit_validity": {"passed": inputs["input_diagnostics"]["pit_validity"] == "EXPLICIT_DUAL_SOURCE_NORMAL_TRADING"},
                     "sample_adequacy": {"passed": int(base_metrics.get("closed_trade_count", 0)) >= 30 and bootstrap.get("status") == "COMPLETE"},
                     "local_base_return": {"passed": float(base_metrics.get("net_return", 0.0)) > 0},
                     "local_profit_factor": {"passed": base_metrics.get("profit_factor") is None or float(base_metrics.get("profit_factor")) > 1.0},
@@ -1115,9 +1097,10 @@ class RealFactoryRuntimeV1:
                         "small_capital_economic_performance": {"status": "REPORT_ONLY"},
                         "concentration_diagnostics": {"status": "AVAILABLE", "metrics_ref": f"{trial_id}:concentration", "warning": "NONE"},
                         "subperiod_robustness": {"status": "AVAILABLE", "warning": "NONE"},
-                        "regime_robustness": {"status": "AVAILABLE", "warning": "NONE"},
+                        "regime_robustness": {"status": inputs["input_diagnostics"]["benchmark"], "warning": "BENCHMARK_NOT_VERIFIED"},
                         "baseline_result_comparison": {"status": "REPORT_ONLY", "warning": "BASELINE_COMPARISON_WARNING"},
                     }
+                validation_row["input_diagnostics"] = inputs["input_diagnostics"]
                 validation_rows.append(validation_row)
                 p_values[candidate_id] = float(bootstrap.get("p_value", 1.0))
                 provisional_path = provisional_evidence_dir / f"{trial_id}.json"
@@ -1194,7 +1177,7 @@ class RealFactoryRuntimeV1:
                 decision_family_id=decision_family_id,
                 decision_denominator=int(multiple_testing["decision_denominator"]),
                 history_snapshot_hash=history_snapshot_hash,
-                metrics_ref=str(row.get("base_metrics", {}).get("evidence_dir", "BASE_RESEARCH")),
+                metrics_ref=str((provisional_evidence_dir / f"{trial_id}.json").relative_to(root)),
                 evidence={
                     "engine_integrity": row.get("engine_integrity"),
                     "gates": row.get("gates", {}),
@@ -1402,7 +1385,7 @@ class RealFactoryRuntimeV1:
                 decision_family_id=decision_family_id,
                 decision_denominator=int(multiple_testing["decision_denominator"]),
                 history_snapshot_hash=history_snapshot_hash,
-                metrics_ref=str(row.get("base_metrics", {}).get("evidence_dir", "BASE_RESEARCH")),
+                metrics_ref=str((provisional_dir / f"{trial_id}.json").relative_to(root)),
                 evidence={"engine_integrity": row.get("engine_integrity"), "gates": row.get("gates", {}), "soft_evidence": row.get("soft_evidence", {}), "gate_roles": ({key: item.get("role", "") for key, item in policy.gates.items()} if policy_v2_active else row.get("gate_roles", {})), "small_capital_evidence_status": ("AVAILABLE_SOFT_EVIDENCE" if policy_v2_active else "AVAILABLE_REPORT_ONLY"), "small_capital_contract_valid": bool(row.get("small_capital_contract", {}).get("fixed_contract"))},
             )
             decisions.append(decision.to_dict())

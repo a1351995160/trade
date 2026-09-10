@@ -174,6 +174,8 @@ jobs:
           tests/research_factory/test_r1_data_readiness.py
           tests/research_factory/test_r1_snapshot_integration.py
           tests/research_factory/test_r1_caller_io_parity.py
+          tests/research_factory/test_r1_batch_caller_inputs.py
+          tests/research/test_predictive_executor_policy_pin.py
 
       - name: Upload R1 diagnostic evidence
         if: always()

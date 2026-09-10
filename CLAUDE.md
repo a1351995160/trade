@@ -140,3 +140,5 @@
 - 缓存读取必须保留原 available_at；缺时点或非法时间在 caller 准备层阻断，不补收盘、不修旧缓存。单缓存因子的合成接通不认证多因子共享行时间、真实公式或历史来源。
 - 显式冻结日历与 registry 预热是读取窗口依据，不能从行情反推缺失 session。输入/源码/证据根分离，准备审计进入内存诊断，由已授权正式输出路径持久化。
 - runner 返回不表示研究通过；结果字段、真实账务和来源必须一致。默认无落盘时 metrics_ref=None，正式裁决只能引用已经写出的 provisional 文件。
+
+- RealFactoryRuntime 的冻结 registry 使用 path/sha256，canonical caller 原格式使用内容 hash；适配须验证各自原始绑定，不能混同文件字节哈希与内容哈希，不能改写旧冻结合同来凑接口。

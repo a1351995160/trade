@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from pathlib import Path
 
 import numpy as np
@@ -24,9 +25,19 @@ def prepare_inputs(root, policy, record, corrected, factor_cache, contract):
     # 多因子行级时间尚无逐依赖来源证明；不发明聚合时间规则。
     if len(contract.factor_ids) != 1:
         raise ValueError("R1_CALLER_SHARED_FACTOR_TIME_NOT_VERIFIED")
-    registry = UnifiedFactorRegistry.read(root / "data/research/factor_library_v1/registry.json")
-    if contract.factor_event_registry_identities.get("factor_registry", {}).get("hash") != stable_hash(registry.to_dict()):
-        raise ValueError("R1_CALLER_REGISTRY_IDENTITY_MISMATCH")
+    registry_identity = contract.factor_event_registry_identities.get("factor_registry", {})
+    if "sha256" in registry_identity:
+        registry_path = root / str(registry_identity.get("path", ""))
+        if (not registry_path.resolve().is_relative_to(root) or registry_path.resolve().is_relative_to(SOURCE_ROOT)
+                or hashlib.sha256(registry_path.read_bytes()).hexdigest() != registry_identity["sha256"]):
+            raise ValueError("R1_CALLER_REGISTRY_IDENTITY_MISMATCH")
+        registry = UnifiedFactorRegistry.read(registry_path)
+        if "hash" in registry_identity and registry_identity["hash"] != stable_hash(registry.to_dict()):
+            raise ValueError("R1_CALLER_REGISTRY_IDENTITY_MISMATCH")
+    else:
+        registry = UnifiedFactorRegistry.read(root / "data/research/factor_library_v1/registry.json")
+        if registry_identity.get("hash") != stable_hash(registry.to_dict()):
+            raise ValueError("R1_CALLER_REGISTRY_IDENTITY_MISMATCH")
     requirements = derive_requirements(contract, policy, registry)
     if requirements["missing"]:
         raise ValueError("R1_CALLER_FACTOR_DEFINITION_MISSING")

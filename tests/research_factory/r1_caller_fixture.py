@@ -1,6 +1,7 @@
 """首次审批前声明合同；输入均现场生成，不使用历史研究文件。"""
 from dataclasses import fields, replace
 import json
+import hashlib
 
 import pandas as pd
 
@@ -15,7 +16,7 @@ from chanlun_trader.research_factory.durability import DurableFrozenCandidateCon
 from chanlun_trader.research_factory.predictive_executor import CanonicalPredictiveExecutorV1
 
 
-def fixture(root, *, structure_exit=False):
+def fixture(root, *, structure_exit=False, file_registry_identity=False):
     scenario = Scenario(root).initialize()
     sessions = [20250715, 20250716, 20250717, 20250718, 20250721, 20250722,
                 20250723, 20250724, 20250725, 20250728, 20250729, 20250730, 20250731]
@@ -37,6 +38,14 @@ def fixture(root, *, structure_exit=False):
     objective = json.loads(objective_path.read_bytes())
     objective["policy_identity"].update({key: getattr(policy, key) for key in ("policy_id", "policy_version", "policy_hash")})
     objective["factor_event_registry_identities"]["factor_registry"]["hash"] = stable_hash(registry.to_dict())
+    if file_registry_identity:
+        registry_path = root / "data/research/unified_factor_registry/registry.json"
+        registry_path.parent.mkdir(parents=True, exist_ok=True)
+        registry.write(registry_path)
+        objective["factor_event_registry_identities"]["factor_registry"] = {
+            "path": registry_path.relative_to(root).as_posix(),
+            "sha256": hashlib.sha256(registry_path.read_bytes()).hexdigest(),
+        }
     objective["research_period_identity"] = {"id": "R1_CALLER_SYNTHETIC", "start": sessions[2], "end": sessions[-1]}
     write_json(objective_path, objective)
     design = scenario.design_input()
