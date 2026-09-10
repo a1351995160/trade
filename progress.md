@@ -1765,3 +1765,26 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - docs/ROADMAP_CONTINUOUS_DELIVERY_AUDIT_V2.md：记录实际超时依据、精确覆盖并集和认证要求。
 - progress.md：追加本轮验证与限制。
 - 回滚：git revert本轮提交，检查点08e3146；不能以回滚分组掩盖超时，不改main或运行权限。
+
+## 2026-09-11 - Task: CA-01 使用资格提交状态完整性
+### What was done
+- 接收并核验ffbff08集中审计包，按用户统一修正CA-01至CA-04的范围继续原分支及Draft PR9。
+- 真实服务请求、确认、撤销后移走单个撤销文件，独立新进程实际恢复ACTIVE并把Paper9事件推进至10，取得项目red；外审AST探针单列，不冒充E2E。
+- 新v2请求增加每请求提交头，绑定不可变请求/确认/撤销证据序列；缺事件、缺/坏头、旧头回退、写点中断均阻断。不补历史、不改引擎或权限边界。
+- 旧v1回执只读，实际原审计合成回执作为兼容夹具，附来源和原字节哈希；新的合法v2请求仍可正常使用。
+### Testing
+- ca01-red.log/xml：1项真实服务冷进程复现失败，inspect/active/preview放行，实际advance至10；原子进程输出保留。
+- ca01-green.log/xml：原使用资格及新增冷进程复现16 passed。
+- ca01-contract.log/xml：使用资格/工作台31 passed，包括缺/坏head、缺确认/撤销、旧head、API拒绝不修复、真实os._exit(73)确认/撤销写点与新进程拒绝、原回执兼容。
+- ca01-race.log/xml：1 passed/24 deselected，仅新增真实Paper与撤销共享互斥竞争；不是全量重复计数。进程保护访问/网络/禁止进程探针均0，原Starlette警告保留。
+- 证据根E:/llmwiki/roadmap-engineering-evidence/ca-remediation-ffbff08；最终HEAD整体验证及双平台尚待四项完成。
+### Notes
+- src/chanlun_trader/research_factory/synthetic_usage.py：v2提交头、完整性核验和旧格式只读。
+- tests/research_factory/test_synthetic_usage.py：实际服务red/green、缺文件、硬退出、API及锁竞争兼容测试。
+- tests/research_factory/usage_integrity_worker.py：实际新进程消费与真实写点退出驱动，无假权限/领域替身。
+- tests/research_factory/fixtures/ca01_legacy_usage/request.json、confirmation.json、revocation.json：原审计包中的实际合成旧回执原字节，仅历史兼容。
+- tests/research_factory/fixtures/ca01_legacy_usage/provenance.json：旧回执来源与SHA256。
+- docs/CONSOLIDATED_REMEDIATION_CA01_CA04.md：统一范围、执行矩阵、v2写点/兼容/故障策略。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：标明外审CHANGES_REQUESTED及新修正索引。
+- CLAUDE.md：记录撤销历史必须有提交见证的实现教训。
+- progress.md：追加本轮记录。回滚点ffbff0856f95fdd3206ac70de6a82f3fd1164a16；可git revert本模块提交，但须先停用新资格入口并保留v2记录，不允许旧代码继续消费新批准。旧审计包不变；不merge、不auto-merge、不读真实数据。

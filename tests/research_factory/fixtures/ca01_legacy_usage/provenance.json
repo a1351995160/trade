@@ -1,0 +1,19 @@
+{
+  "source_zip_sha256": "0c8a35c59980684c8738b7308cb761cc56cbbc34ab670a94769214c5f2d0b2ac",
+  "source_path": "final/ui-evidence/planning/synthetic-usage/SYNTHETIC_USAGE_65051a8b7e02a32d154b54f1cf97b2a10cdbd10ad9a28be5c0384c0c573816c0/",
+  "meaning": "实际服务生成的旧v1合成回执原字节，仅用于历史兼容，不授予新运行权限",
+  "files": [
+    {
+      "path": "request.json",
+      "sha256": "7900017f86a53896489bf81ccf1d9db62c487b8fccea32c25f5660b05097bb8c"
+    },
+    {
+      "path": "confirmation.json",
+      "sha256": "dc69586882f7bd4667d76eae75401d7a33e368107a7b57de4d7b54cad9451a54"
+    },
+    {
+      "path": "revocation.json",
+      "sha256": "42f90665a245367756455784dfcfd38181fe4b2637dc43a248e9f30aacadcf97"
+    }
+  ]
+}

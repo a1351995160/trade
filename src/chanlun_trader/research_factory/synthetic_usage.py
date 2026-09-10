@@ -5,6 +5,7 @@ import re
 from types import SimpleNamespace
 
 from .common import stable_hash
+from .durability import _atomic_write
 from .mutation_boundary import ObjectiveMutationLock
 from .paper_replay import _immutable
 from .predictive_executor import CanonicalPredictiveExecutorV1
@@ -68,6 +69,26 @@ class SyntheticUsageServiceV1:
     def _write(self, path, value):
         _immutable(path, {**value, "evidence_hash": stable_hash(value)})
 
+    def _head_value(self, directory):
+        request = self._read(directory / "request.json")
+        events = [request]
+        for name in ("confirmation.json", "revocation.json"):
+            if (directory / name).exists():
+                events.append(self._read(directory / name))
+        value = {"schema_version": "synthetic-test-usage-head-v2", "request_id": directory.name,
+            "request_evidence_hash": request["evidence_hash"], "revision": len(events) - 1,
+            "event_hashes": [item["evidence_hash"] for item in events]}
+        return {**value, "evidence_hash": stable_hash(value)}
+
+    def _commit_head(self, directory):
+        _atomic_write(directory / "head.json", self._head_value(directory))
+
+    def _verify_head(self, directory):
+        if not (directory / "head.json").exists():
+            raise ValueError("SYNTHETIC_USAGE_COMMITTED_HEAD_MISSING")
+        if self._read(directory / "head.json") != self._head_value(directory):
+            raise ValueError("SYNTHETIC_USAGE_COMMITTED_HISTORY_CONFLICT")
+
     def inspect(self):
         records = []
         mode_path = self.workbench.output_root / "synthetic-usage-mode.json"
@@ -81,7 +102,7 @@ class SyntheticUsageServiceV1:
             if self._directory(request_id) != directory:
                 raise ValueError("SYNTHETIC_USAGE_REQUEST_ID_CONFLICT")
             data = request["request"]
-            if (data.get("schema_version") != "synthetic-test-usage-request-v1"
+            if (data.get("schema_version") not in {"synthetic-test-usage-request-v1", "synthetic-test-usage-request-v2"}
                     or data.get("domain") != "SYNTHETIC_TEST_ONLY" or data.get("real_execution_authorized") is not False
                     or not isinstance(data.get("purposes"), list) or not data["purposes"]
                     or any(item not in ("DAILY_PLAN", "PAPER_REPLAY") for item in data["purposes"])):
@@ -109,6 +130,11 @@ class SyntheticUsageServiceV1:
                 status = "EXPIRED"
             elif data["binding"]["candidate_id"] not in self.workbench.sources or data["binding"] != self._binding(data["binding"]["candidate_id"]):
                 status = "BINDING_CHANGED"
+            if data["schema_version"] == "synthetic-test-usage-request-v2":
+                self._verify_head(directory)
+            else:
+                # 旧格式没有提交见证，不能证明撤销尾部完整；只保留历史展示。
+                status = "LEGACY_REVOKED" if revoke_path.exists() else "LEGACY_UNVERIFIED"
             records.append({"request_id": request_id, "status": status, **data})
         return {"configured": mode_path.exists() or self.root.exists(), "records": records, "real_qualified_strategy_count": 0}
 
@@ -136,7 +162,7 @@ class SyntheticUsageServiceV1:
                     raise ValueError("SYNTHETIC_USAGE_EXPIRED")
                 if binding["registry_blocked"]:
                     raise ValueError("SYNTHETIC_USAGE_STRATEGY_BLOCKED")
-                data = {"schema_version": "synthetic-test-usage-request-v1", "domain": "SYNTHETIC_TEST_ONLY",
+                data = {"schema_version": "synthetic-test-usage-request-v2", "domain": "SYNTHETIC_TEST_ONLY",
                     "binding": binding, "purposes": sorted(purposes), "valid_until": expiry.isoformat(),
                     "real_execution_authorized": False}
                 request_id = "SYNTHETIC_USAGE_" + stable_hash(data)
@@ -145,6 +171,7 @@ class SyntheticUsageServiceV1:
                 request_path = self._directory(request_id) / "request.json"
                 if not request_path.exists():
                     self._write(request_path, {"request": data, "requested_at": utc_now().isoformat()})
+                    self._commit_head(request_path.parent)
                 state = next(item["status"] for item in self.inspect()["records"] if item["request_id"] == request_id)
                 return {"request_id": request_id, "status": state, "request": data}
             request_id = payload.get("request_id")
@@ -163,11 +190,15 @@ class SyntheticUsageServiceV1:
                         "request_evidence_hash": request["evidence_hash"], "confirmed": True,
                         "confirmed_at": utc_now().isoformat(),
                         "domain": "SYNTHETIC_TEST_ONLY", "real_execution_authorized": False})
+                    self._commit_head(directory)
                 return {"request_id": request_id, "status": "ACTIVE", "real_execution_authorized": False}
             if not (directory / "confirmation.json").exists():
                 raise ValueError("SYNTHETIC_USAGE_NOT_CONFIRMED")
+            if current["schema_version"] != "synthetic-test-usage-request-v2":
+                raise ValueError("SYNTHETIC_USAGE_LEGACY_READ_ONLY")
             if not (directory / "revocation.json").exists():
                 self._write(directory / "revocation.json", {"request_id": request_id, "revoked": True,
                     "revoked_at": utc_now().isoformat(),
                     "domain": "SYNTHETIC_TEST_ONLY", "real_execution_authorized": False})
+                self._commit_head(directory)
             return {"request_id": request_id, "status": "REVOKED", "real_execution_authorized": False}

@@ -192,3 +192,152 @@ def test_lost_qualification_history_never_restores_unqualified_replay(tmp_path):
             "candidate_id": next(iter(service.sources)), "event_count": 1})
     assert service.inspect()["synthetic_usage"]["configured"] is True
     assert not list(service.output_root.rglob("header.json"))
+
+
+def test_revocation_loss_is_blocked_by_actual_cold_consumers(tmp_path):
+    import json
+    import os
+    from pathlib import Path
+    import subprocess
+    import sys
+    from chanlun_trader.research_factory.engineering_workspace import save_engineering_workspace
+    from chanlun_trader.research_factory.source_dependencies import SOURCE_ROOT
+
+    service = workbench(tmp_path)
+    config = save_engineering_workspace(tmp_path / "workbench.json", service)
+    pending = request(service)
+    operate(service, "confirm", request_id=pending["request_id"])
+    candidate = next(iter(service.sources))
+    assert service.advance(GOVERNED, {"confirmed": True, "context_hash": service.inspect()["context_hash"],
+        "candidate_id": candidate, "event_count": 9})["completed_events"] == 9
+    operate(service, "revoke", request_id=pending["request_id"])
+    assert SyntheticUsageServiceV1(service).inspect()["records"][0]["status"] == "REVOKED"
+    directory = service.output_root / "synthetic-usage" / pending["request_id"]
+    preserved = directory / "preserved-revocation.bin"
+    (directory / "revocation.json").rename(preserved)
+    environment = dict(os.environ, PYTHONPATH=os.pathsep.join([str(SOURCE_ROOT / "tests/isolation"), str(SOURCE_ROOT / "src")]))
+    result = subprocess.run([sys.executable, str(Path(__file__).with_name("usage_integrity_worker.py")), str(config)],
+        cwd=tmp_path, env=environment, capture_output=True, timeout=60)
+    evidence = Path(os.environ["CHANLUN_PROCESS_EVIDENCE_DIR"]) / "ca01-revocation-loss"
+    evidence.mkdir(parents=True, exist_ok=True)
+    (evidence / "stdout.bin").write_bytes(result.stdout)
+    (evidence / "stderr.bin").write_bytes(result.stderr)
+    assert result.returncode == 0, result.stderr.decode("utf-8")
+    values = json.loads(result.stdout)
+    assert all(item["blocked"] for item in values.values()), values
+
+
+@pytest.mark.parametrize("defect", ["head_missing", "head_corrupt", "confirmation_missing", "revocation_missing", "old_head"])
+def test_committed_usage_damage_blocks_api_and_does_not_repair(tmp_path, defect):
+    service = workbench(tmp_path)
+    pending = request(service)
+    operate(service, "confirm", request_id=pending["request_id"])
+    directory = service.output_root / "synthetic-usage" / pending["request_id"]
+    active_head = (directory / "head.json").read_bytes()
+    operate(service, "revoke", request_id=pending["request_id"])
+    operate(service, "revoke", request_id=pending["request_id"])
+    if defect.endswith("_missing"):
+        (directory / (defect.removesuffix("_missing") + ".json")).rename(directory / "preserved.bin")
+    else:
+        (directory / "head.json").write_bytes(active_head if defect == "old_head" else b"{}")
+    before = {path.name: path.read_bytes() for path in directory.iterdir()}
+    with TestClient(create_app(service.root, GOVERNED, engineering_workbench=service), base_url="http://127.0.0.1") as client:
+        assert client.get(ENDPOINT).status_code == 409
+        for action in ("publish", "advance", "usage/confirm"):
+            assert client.post(ENDPOINT + "/" + action, json={"confirmed": True, "context_hash": "stale",
+                "request_id": pending["request_id"]}).status_code == 409
+    assert before == {path.name: path.read_bytes() for path in directory.iterdir()}
+
+
+@pytest.mark.parametrize("action", ["confirm", "revoke"])
+def test_hard_exit_after_usage_event_never_rolls_back_to_active(tmp_path, action):
+    import json
+    import os
+    from pathlib import Path
+    import subprocess
+    import sys
+    from chanlun_trader.research_factory.engineering_workspace import save_engineering_workspace
+    from chanlun_trader.research_factory.source_dependencies import SOURCE_ROOT
+    service = workbench(tmp_path)
+    config = save_engineering_workspace(tmp_path / "workbench.json", service)
+    pending = request(service)
+    if action == "revoke":
+        operate(service, "confirm", request_id=pending["request_id"])
+    directory = service.output_root / "synthetic-usage" / pending["request_id"]
+    head = (directory / "head.json").read_bytes()
+    environment = dict(os.environ, PYTHONPATH=os.pathsep.join([str(SOURCE_ROOT / "tests/isolation"), str(SOURCE_ROOT / "src")]))
+    command = [sys.executable, str(Path(__file__).with_name("usage_integrity_worker.py")), str(config)]
+    evidence = Path(os.environ["CHANLUN_PROCESS_EVIDENCE_DIR"]) / ("ca01-crash-" + action)
+    evidence.mkdir(parents=True, exist_ok=True)
+    crash = subprocess.run([*command, action], cwd=tmp_path, env=environment, capture_output=True, timeout=60)
+    (evidence / "crash-stdout.bin").write_bytes(crash.stdout)
+    (evidence / "crash-stderr.bin").write_bytes(crash.stderr)
+    assert crash.returncode == 73
+    assert (directory / ("confirmation.json" if action == "confirm" else "revocation.json")).exists()
+    assert (directory / "head.json").read_bytes() == head
+    restored = subprocess.run(command, cwd=tmp_path, env=environment, capture_output=True, timeout=60)
+    (evidence / "restarted-stdout.bin").write_bytes(restored.stdout)
+    (evidence / "restarted-stderr.bin").write_bytes(restored.stderr)
+    assert restored.returncode == 0, restored.stderr.decode("utf-8")
+    assert all(value["blocked"] for value in json.loads(restored.stdout).values())
+    assert (directory / "head.json").read_bytes() == head
+
+
+def test_actual_legacy_receipts_are_read_only_without_silent_migration(tmp_path):
+    import hashlib
+    import json
+    from pathlib import Path
+    fixture = Path(__file__).with_name("fixtures") / "ca01_legacy_usage"
+    provenance = json.loads((fixture / "provenance.json").read_text(encoding="utf-8"))
+    service = workbench(tmp_path)
+    old_id = Path(provenance["source_path"]).name
+    directory = service.output_root / "synthetic-usage" / old_id
+    directory.mkdir(parents=True)
+    for item in provenance["files"]:
+        data = (fixture / item["path"]).read_bytes()
+        assert hashlib.sha256(data).hexdigest() == item["sha256"]
+        (directory / item["path"]).write_bytes(data)
+    assert SyntheticUsageServiceV1(service).inspect()["records"][0]["status"] == "LEGACY_REVOKED"
+    (directory / "revocation.json").rename(directory / "preserved-revocation.bin")
+    before = {p.name: p.read_bytes() for p in directory.iterdir()}
+    assert SyntheticUsageServiceV1(service).inspect()["records"][0]["status"] == "LEGACY_UNVERIFIED"
+    assert service.inspect()["synthetic_qualified_strategy_count"] == 0
+    with pytest.raises(ValueError, match="NOT_CONFIRMABLE"):
+        operate(service, "confirm", request_id=old_id)
+    assert before == {p.name: p.read_bytes() for p in directory.iterdir()}
+    current = request(service)
+    operate(service, "confirm", request_id=current["request_id"])
+    assert service.inspect()["synthetic_qualified_strategy_count"] == 1
+
+
+def test_revoke_and_actual_paper_use_share_existing_mutation_lock(tmp_path, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event
+    from chanlun_trader.research_factory.paper_replay import PaperReplaySessionV1
+    from chanlun_trader.research_factory.mutation_boundary import MutationBusyError
+    service = workbench(tmp_path)
+    pending = request(service)
+    operate(service, "confirm", request_id=pending["request_id"])
+    candidate = next(iter(service.sources))
+    entered, proceed = Event(), Event()
+    original = PaperReplaySessionV1.advance
+    def pause_at_use(session, count):
+        entered.set()
+        assert proceed.wait(10)
+        return original(session, count)
+    monkeypatch.setattr(PaperReplaySessionV1, "advance", pause_at_use)
+    payload = {"confirmed": True, "context_hash": service.inspect()["context_hash"],
+        "candidate_id": candidate, "event_count": 9}
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        running = executor.submit(service.advance, GOVERNED, payload)
+        try:
+            assert entered.wait(10)
+            with pytest.raises(MutationBusyError):
+                operate(service, "revoke", request_id=pending["request_id"])
+        finally:
+            proceed.set()
+        assert running.result()["completed_events"] == 9
+    operate(service, "revoke", request_id=pending["request_id"])
+    with pytest.raises(ValueError, match="QUALIFICATION_REQUIRED"):
+        service.advance(GOVERNED, {**payload, "context_hash": service.inspect()["context_hash"], "event_count": 10})
+    assert service.inspect()["paper"][candidate]["completed_events"] == 9
