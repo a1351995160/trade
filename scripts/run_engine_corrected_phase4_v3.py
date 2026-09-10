@@ -427,6 +427,16 @@ def run_corrected_candidate(root: Path, record: Any, trial_id: str, factor_value
         rows: list[dict[str, Any]] = []
         factor_state: dict[str, dict[str, Any]] = {}
         for row in day.itertuples(index=False):
+            try:
+                if pd.isna(row.available_at):
+                    raise ValueError("MISSING_FACTOR_AVAILABLE_AT")
+                factor_available_at = ensure_aware(row.available_at)
+                if pd.isna(factor_available_at):
+                    raise ValueError("INVALID_FACTOR_AVAILABLE_AT")
+            except (TypeError, ValueError, OverflowError):
+                # 同时拒绝入场与结构退出证据；固定持有仍按原日历执行。
+                stats["INVALID_FACTOR_AVAILABLE_AT"] += 1
+                continue
             symbol = str(row.symbol)
             tradable, status_reason = status_map.tradable(symbol, d)
             volume = float(row.volume) if pd.notna(row.volume) else 0.0
@@ -456,7 +466,7 @@ def run_corrected_candidate(root: Path, record: Any, trial_id: str, factor_value
             }
             qualified_records.append(row_payload)
             rows.append(row_payload)
-            factor_state[symbol] = {"values": values, "available_at": ensure_aware(row.available_at)}
+            factor_state[symbol] = {"values": values, "available_at": factor_available_at}
             if status_reason != "PIT_STATUS_EXPLICIT_NORMAL_TRADING":
                 stats[status_reason] += 1
         stats["rows_seen"] += len(rows)

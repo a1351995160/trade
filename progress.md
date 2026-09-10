@@ -1012,3 +1012,31 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - progress.md：追加本轮实际门禁修正记录。
 - tmp/r1-decimal-contract.log：保存定向结果。
 回滚：git revert --no-edit <本提交SHA>；回滚点061daee78d910442d1ed021cba6b66bc6227edb7（有已知Sonar告警）。真实数据NOT_VERIFIED，READY_FOR_REAL_TRIAL=false，R1_FULLY_CLOSED=false，Windows L1 OPEN，未merge、未开始R2。
+
+## 2026-09-10 - Task: 原锁依赖恢复与 R1 available_at 空值最小修正
+
+### What was done
+
+核验官方原 wheel 和锁哈希，修正本轮安装命令遗漏 /simple 的索引路径，在全新 venv 完成原完整锁安装；未改全局网络、TLS 或依赖锁。恢复隔离后取得真实部署 loader/runner 的入场和已持仓结构退出 red，在共享适配行入口拒绝缺失及解析后 NaT，保留原时区、合法未来时间和固定持有语义，追加明确诊断计数。复用 PR #7，保持 Draft。
+
+### Testing
+
+- 官方 JSON、Simple 和 wheel HTTP 200；此前错误包路径 HTTP 404。wheel 5302 bytes、SHA256 117bac03a25ede5df5440e855b32d556049ca169ead221505badf432fed4b101 匹配原锁。默认镜像 TLS EOF 根因仍未确认。
+- Python 3.13.5/pip 25.1.1；原 requirements-p3b.txt 递归完整哈希安装成功，pip check 通过，原锁字节哈希不变。pytdx 使用 pip 接受的缓存构建 wheel，不声称全套构建可复现。
+- 隔离先验 66 passed；原正向/未来/缺列验证 2 passed、engine 2 次。真实 protected root 为原研究工作区，未读取真实数据。
+- 项目 red 13 项入场放行和 5 项未知时间结构退出；原生 datetime64[us, Asia/Shanghai] 的 None/NaN 实际均为 NaT，object 原值另有逐格记录。不可解析文本的原解析拒绝不计 red。
+- 首轮 28 failed/6 passed、engine 27 次中包含 7 项固定持有 fixture 错配；保持生产校验，修正测试装配后补跑 6 failed/1 passed、engine 7 次（5 项缺新诊断、1 项原解析拒绝），不将这些计作业务放行 red。原始失败日志保留。
+- 修正后定向 81 passed、engine 63 次；完整 R1 146 passed/146.65s、engine 63 次，合成审批/确认各59次。原 F01–F04、loader 正向/缺依赖负向及源根毒化未删除。新用例 DataFrame/只读 fixture 哈希不变，写打开/禁用执行器/网络/进程/保护访问计数为0。五种合法时间完整信号/订单摘要/退出决定红绿相同，空值固定持有首次退出相同。
+- git diff --check 通过；局部顺序复核确认共享 compiler/时间函数、治理、进程白名单未变。最终新 HEAD 的五阶段/R1 分支与 PR 双平台 CI 待推送取证，状态只写独立证据和 PR，不沿用旧结果。
+
+### Notes
+
+- scripts/run_engine_corrected_phase4_v3.py：拒绝无效因子时间行并计数，同时覆盖入场和结构退出。
+- tests/research_factory/test_r1_snapshot_integration.py：保留原测试，新增34项时间边界回归和逐例输入/运行证据。
+- docs/R1_SNAPSHOT_INTEGRATION_SOURCE_MANIFEST.json：更新本轮适配脚本的实际字节与 LF 哈希。
+- docs/R1_AVAILABLE_AT_NULL_FIX_V1.md：记录依赖恢复、真实 red/green、范围和回滚。
+- CLAUDE.md：追加 NaT 与官方索引路径的本轮经验。
+- progress.md：仅追加本轮记录。
+- E:/llmwiki/r1-dependency-evidence（仓库外）：脱敏安装诊断、官方元数据、原 wheel、全部失败及成功测试日志、XML、逐例比较与后续 CI 证据。
+- 回滚：git revert <本轮修正提交SHA>；回滚点 f4a3681ccf8d44c71bcfa71bf04a0ea2134a5539；不 reset 或覆盖旧日志。
+- HISTORICAL_WINDOWS_L1_INCIDENT=OPEN_ROOT_CAUSE_UNCONFIRMED；HISTORICAL_PROVENANCE=UNVERIFIED；REAL_CANDIDATE_DATA_READINESS=NOT_VERIFIED；READY_FOR_REAL_TRIAL=false；R1_FULLY_CLOSED=false；未merge、未auto-merge、未退出Draft、未开始R2。

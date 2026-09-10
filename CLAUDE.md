@@ -132,3 +132,5 @@
 
 - 动态 helper 的公开导出（例如 StrategyCandidateCompilerV2）可能只由外部模块通过属性访问；清理导入必须核对调用方，不可只按本文件 AST Name 判定未使用。
 - 隔离合成 engine 通过显式 source_identity 传递 UNKNOWN，不启动 git 来猜测 cwd 身份；不能把快照哈希伪装成 code_commit，也不能为通过测试放宽进程白名单。
+- 因子 available_at 列存在仍可能包含 NaT；限定 runner 必须在共享入场/持仓因子行入口拒绝原始缺失及解析后 NaT，保留拒绝计数，不补造时间。复现须记录 pandas 实际 dtype，不能将解析异常或 fixture 合同拒绝当作信号放行 red。
+- pip 的官方索引地址为 https://pypi.org/simple；遗漏 /simple 可导致包路径 404 和 No matching distribution，不能据此断言发行版不存在。恢复依赖仍须按原完整锁和哈希安装，再恢复业务测试隔离。

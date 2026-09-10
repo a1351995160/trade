@@ -1,6 +1,8 @@
 """限定快照接入：真实部署模块、编译器与引擎，自包含合成输入。"""
 from dataclasses import replace
+import hashlib
 import json
+import os
 import sys
 
 import pandas as pd
@@ -23,7 +25,7 @@ def engine_call_evidence():
         if previous is not None:
             previous(frame, event, arg)
     sys.setprofile(observe)
-    yield
+    yield counts
     sys.setprofile(previous)
     print("R1_SYNTHETIC_ENGINE_EVIDENCE=" + json.dumps(counts))
 
@@ -319,3 +321,131 @@ def test_participation_contract_has_no_epsilon_allowance(tmp_path):
     drifted = (*setup[:4], replace(setup[4], max_participation_rate=0.1000000001))
     with pytest.raises(ValueError, match="PARTICIPATION_CONTRACT"):
         run(tmp_path, setup=drifted)
+
+
+INVALID_TIMES = [pytest.param(None, id="none"), pytest.param(pd.NaT, id="nat"),
+    pytest.param(float("nan"), id="nan"), pytest.param("", id="empty"),
+    pytest.param("NaT", id="nat-text"), pytest.param("not-a-date", id="invalid-text")]
+
+
+def run_time_case(tmp_path, setup, request, engine_counts, *, candidate=None):
+    """记录真实输入和边界计数；异常与信号放行分开保存。"""
+    frames = [setup[i].copy(deep=True) for i in (2, 3)]
+    files = {p: hashlib.sha256(p.read_bytes()).hexdigest() for p in tmp_path.rglob("*") if p.is_file()}
+    probes = getattr(request.config, "_p3a_probes", ({},))[0]
+    process = getattr(sys.modules.get("sitecustomize"), "counts", {})
+    before = dict(engine_counts) | dict(probes) | dict(process)
+    evidence = {"case": request.node.name, "pandas": pd.__version__,
+        "dtype": str(setup[3].available_at.dtype),
+        "cells": [{"index": int(i), "value": repr(v), "type": type(v).__name__}
+                  for i, v in setup[3].available_at.items()]}
+    writes = {"active": True, "calls": 0}
+    def audit(event, args):
+        if writes["active"] and event == "open":
+            mode, flags = args[1:3]
+            if (isinstance(mode, str) and any(c in mode for c in "wax+")) or (
+                    isinstance(flags, int) and flags & (os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_TRUNC)):
+                writes["calls"] += 1
+    sys.addaudithook(audit)
+    try:
+        result = run(tmp_path, setup=setup, candidate=candidate)
+        engine, metrics, diag = result[3]
+        evidence.update(entry_signals=diag["entry_signals"],
+            orders=[{"symbol": o.symbol, "side": o.side.value} for o in engine.orders.orders.values()],
+            exit_decisions=[{"symbol": e.symbol, **e.payload} for e in engine.event_log if e.event_type == "EXIT_DECISION"],
+            diagnostics=metrics["signal_diagnostics"])
+        return result
+    except Exception as exc:
+        evidence.update(exception=type(exc).__name__ + ": " + str(exc), result="NOT_RETURNED")
+        raise
+    finally:
+        writes["active"] = False
+        after = dict(engine_counts) | dict(probes) | dict(process)
+        evidence["counter_delta"] = {k: v - before[k] for k, v in after.items()}
+        evidence["runtime_write_calls"] = writes["calls"]
+        print("R1_AVAILABLE_AT_EVIDENCE=" + json.dumps(evidence, default=str, sort_keys=True))
+        for actual, expected in zip((setup[2], setup[3]), frames):
+            pd.testing.assert_frame_equal(actual, expected)
+        assert files == {p: hashlib.sha256(p.read_bytes()).hexdigest() for p in tmp_path.rglob("*") if p.is_file()}
+        assert writes["calls"] == 0
+
+
+@pytest.mark.parametrize("value", INVALID_TIMES)
+@pytest.mark.parametrize("scope", ["mixed", "all"])
+def test_invalid_available_at_entry(tmp_path, request, engine_call_evidence, value, scope):
+    setup = inputs(tmp_path)
+    # object 保留原始单元格；另有 native dtype 用例记录 pandas 自动规范化。
+    setup[3]["available_at"] = setup[3].available_at.astype(object)
+    indices = setup[3].index if scope == "all" else [0]
+    setup[3].loc[indices, "available_at"] = value
+    _, calendar, _, (engine, metrics, diag) = run_time_case(tmp_path, setup, request, engine_call_evidence)
+    if scope == "all":
+        assert not diag["entry_signals"] and not engine.orders.orders and not engine.ledger.valid_trades
+    else:
+        assert diag["entry_signals"][0]["symbol"] == "000001.SZ"
+        assert all(row["symbol"] != "600000.SH" for row in diag["qualified_rows"]
+                   if row["current_session_index"] == 0)
+        assert engine.ledger.valid_trades[0].symbol == "000001.SZ"
+    assert metrics["signal_diagnostics"]["INVALID_FACTOR_AVAILABLE_AT"] == len(indices)
+
+
+@pytest.mark.parametrize("value", INVALID_TIMES[:3])
+def test_invalid_available_at_native_dtype(tmp_path, request, engine_call_evidence, value):
+    setup = inputs(tmp_path)
+    setup[3].loc[:, "available_at"] = value
+    _, _, _, (engine, metrics, diag) = run_time_case(tmp_path, setup, request, engine_call_evidence)
+    assert not diag["entry_signals"] and not engine.orders.orders
+    assert metrics["signal_diagnostics"]["INVALID_FACTOR_AVAILABLE_AT"] == len(setup[3])
+
+
+@pytest.mark.parametrize("value", INVALID_TIMES + [pytest.param("2025-01-01", id="future")])
+@pytest.mark.parametrize("exit_type", ["STRUCTURE_INVALIDATION", "FIXED_HOLD"])
+def test_invalid_available_at_held_exit(tmp_path, request, engine_call_evidence, value, exit_type):
+    setup = inputs(tmp_path)
+    setup[3].loc[setup[3].date >= setup[1][2], "RETURN_5D"] = -1.
+    rec = record(hold=5)
+    if exit_type == "STRUCTURE_INVALIDATION":
+        rec = replace(rec, exit_predicate=replace(rec.exit_predicate, exit_type=exit_type,
+            logic="OR", factor_conditions=({"factor_id": "RETURN_5D", "operator": "LT", "value": 0.},)))
+    setup[3]["available_at"] = setup[3].available_at.astype(object)
+    setup[3].loc[setup[3].date >= setup[1][2], "available_at"] = value
+    _, calendar, _, (engine, metrics, _) = run_time_case(tmp_path, setup, request, engine_call_evidence, candidate=rec)
+    assert any(t.side.value == "BUY" for t in engine.ledger.valid_trades)
+    decisions = [e for e in engine.event_log if e.event_type == "EXIT_DECISION"]
+    assert all(e.payload["reason_code"] != "EXIT_DUE_STRUCTURE_INVALIDATION" for e in decisions)
+    sells = [t for t in engine.ledger.valid_trades if t.side.value == "SELL"]
+    if value == "2025-01-01":
+        # 既有未来时间会阻断退出，不能借本轮改动改变它。
+        assert not decisions and not sells
+    else:
+        assert decisions and sells
+        assert int(sells[0].fill_time.strftime("%Y%m%d")) == calendar[7]
+        assert decisions[0].payload["reason_code"] == "EXIT_DUE_FIXED_HOLD"
+        assert metrics["signal_diagnostics"]["INVALID_FACTOR_AVAILABLE_AT"] > 0
+
+
+@pytest.mark.parametrize("time_form", ["same-day", "history", "naive", "utc", "future"])
+def test_valid_available_at_controls(tmp_path, request, engine_call_evidence, time_form):
+    setup = inputs(tmp_path)
+    setup[3].loc[setup[3].date >= setup[1][2], "RETURN_5D"] = -1.
+    rec = record(hold=5)
+    rec = replace(rec, exit_predicate=replace(rec.exit_predicate, exit_type="STRUCTURE_INVALIDATION",
+        logic="OR", factor_conditions=({"factor_id": "RETURN_5D", "operator": "LT", "value": 0.},)))
+    if time_form == "history":
+        setup[3]["available_at"] -= pd.Timedelta(days=1)
+    elif time_form == "naive":
+        setup[3]["available_at"] = setup[3].available_at.dt.tz_localize(None)
+    elif time_form == "utc":
+        setup[3]["available_at"] = setup[3].available_at.dt.tz_convert("UTC")
+    elif time_form == "future":
+        setup[3]["available_at"] = pd.Timestamp("2025-01-01", tz="Asia/Shanghai")
+    _, calendar, _, (engine, metrics, diag) = run_time_case(tmp_path, setup, request, engine_call_evidence, candidate=rec)
+    assert metrics["signal_diagnostics"].get("INVALID_FACTOR_AVAILABLE_AT", 0) == 0
+    if time_form == "future":
+        assert not diag["entry_signals"] and not engine.orders.orders
+    else:
+        assert diag["entry_signals"][0]["symbol"] == "600000.SH"
+        sells = [t for t in engine.ledger.valid_trades if t.side.value == "SELL"]
+        assert int(sells[0].fill_time.strftime("%Y%m%d")) == calendar[3]
+        assert any(e.payload["reason_code"] == "EXIT_DUE_STRUCTURE_INVALIDATION"
+                   for e in engine.event_log if e.event_type == "EXIT_DECISION")
