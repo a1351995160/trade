@@ -9,7 +9,8 @@ from tests.golden._helpers import CAL, make_store
 def test_strategy_fn_full_buy_sell_flow():
     store = make_store()
     cfg = EngineConfig(initial_cash=1_000_000.0, max_positions=10, mode="DAILY")
-    eng = BacktestEngineV2(store, CAL, config=cfg)
+    cfg.persist_run_manifest = False
+    eng = BacktestEngineV2(store, CAL, config=cfg, source_identity=("UNKNOWN", True))
 
     def strat(view, ts, d):
         sigs = []

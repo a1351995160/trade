@@ -518,52 +518,48 @@ class BacktestEngineV2:
             self._submit_intent(intent, ts)
 
     # ---------- run ----------
-    def run(
-        self,
-        strategy_fn: Optional[Callable[[AsOfDataView, pd.Timestamp, int], List[Signal]]] = None,
-        exit_fn: Optional[Callable[[AsOfDataView, pd.Timestamp, int, PortfolioLedger], Iterable[PortfolioExitDecision]]] = None,
-    ) -> "EngineResult":
-        self._build()
-        pending_signals = sorted(self.signals, key=lambda s: (s.generated_at, -s.score, s.signal_id))
-        for ev in self.clock.events:
-            ts = ev.timestamp
-            self._sync_lot_contract_fields()
-            # 1. Market State Update
-            self._mark_to_market(ts, ev.kind)
-            # 2. Pending Order Fill
-            self.broker.process_orders(ev.kind, ts)
-            self._sync_lot_contract_fields()
-            self._refresh_exit_states()
-            # 3. Data Visibility Update & Strategy Signal
-            if (strategy_fn is not None or exit_fn is not None) and ev.kind in (EventKind.BAR_CLOSE, EventKind.AFTER_CLOSE):
-                view = AsOfDataView(self.store, ts, feature_price_mode=self.config.feature_price_mode)
-                if exit_fn is not None:
-                    self._submit_exit_decisions(exit_fn(view, ts, date_key(ts), self.ledger), ts)
-                if strategy_fn is None:
-                    generated_signals = []
-                else:
-                    generated_signals = strategy_fn(view, ts, date_key(ts))
-                for sig in generated_signals:
-                    self.add_signal(sig)
-                    pending_signals.append(sig)
-                pending_signals.sort(key=lambda s: (s.generated_at, -s.score, s.signal_id))
-            # 3.5 Forced exits (max_holding_days) at BAR_CLOSE, before new buy signals
-            if ev.kind == EventKind.BAR_CLOSE:
-                self._submit_forced_exits(ts)
-                self._retry_pending_exits(ts)
-            # 4. Signal -> Intent -> Order for signals whose generated_at <= now
-            while pending_signals and ensure_aware(pending_signals[0].generated_at) <= ts:
-                sig = pending_signals.pop(0)
-                intent = self._signal_to_intent(sig)
-                if intent is not None:
-                    self._submit_intent(intent, ts)
-                    self.event_log.log(BacktestEvent(
-                        event_id="", timestamp=ts, event_type="SIGNAL_SUBMITTED",
-                        strategy_id=sig.strategy_id, symbol=sig.symbol,
-                        signal_id=sig.signal_id, intent_id=intent.intent_id,
-                    ))
-            # 5. Ledger Mark
-            self.ledger.snapshot(ts)
+    def _process_clock_event(self, ev, pending_signals, strategy_fn=None, exit_fn=None) -> None:
+        """回测与逐步Paper回放共用同一事件顺序。"""
+        ts = ev.timestamp
+        self._sync_lot_contract_fields()
+        # 1. Market State Update
+        self._mark_to_market(ts, ev.kind)
+        # 2. Pending Order Fill
+        self.broker.process_orders(ev.kind, ts)
+        self._sync_lot_contract_fields()
+        self._refresh_exit_states()
+        # 3. Data Visibility Update & Strategy Signal
+        if (strategy_fn is not None or exit_fn is not None) and ev.kind in (EventKind.BAR_CLOSE, EventKind.AFTER_CLOSE):
+            view = AsOfDataView(self.store, ts, feature_price_mode=self.config.feature_price_mode)
+            if exit_fn is not None:
+                self._submit_exit_decisions(exit_fn(view, ts, date_key(ts), self.ledger), ts)
+            if strategy_fn is None:
+                generated_signals = []
+            else:
+                generated_signals = strategy_fn(view, ts, date_key(ts))
+            for sig in generated_signals:
+                self.add_signal(sig)
+                pending_signals.append(sig)
+            pending_signals.sort(key=lambda s: (s.generated_at, -s.score, s.signal_id))
+        # 3.5 Forced exits (max_holding_days) at BAR_CLOSE, before new buy signals
+        if ev.kind == EventKind.BAR_CLOSE:
+            self._submit_forced_exits(ts)
+            self._retry_pending_exits(ts)
+        # 4. Signal -> Intent -> Order for signals whose generated_at <= now
+        while pending_signals and ensure_aware(pending_signals[0].generated_at) <= ts:
+            sig = pending_signals.pop(0)
+            intent = self._signal_to_intent(sig)
+            if intent is not None:
+                self._submit_intent(intent, ts)
+                self.event_log.log(BacktestEvent(
+                    event_id="", timestamp=ts, event_type="SIGNAL_SUBMITTED",
+                    strategy_id=sig.strategy_id, symbol=sig.symbol,
+                    signal_id=sig.signal_id, intent_id=intent.intent_id,
+                ))
+        # 5. Ledger Mark
+        self.ledger.snapshot(ts)
+
+    def _finish_run(self) -> "EngineResult":
         # end of session: expire DAY orders at last event
         for order in list(self.order_manager.open_orders()):
             if order.time_in_force == TimeInForce.DAY:
@@ -579,6 +575,17 @@ class BacktestEngineV2:
             clock=self.clock, context=self.context, signals=self.signals,
         )
         return self.result
+
+    def run(
+        self,
+        strategy_fn: Optional[Callable[[AsOfDataView, pd.Timestamp, int], List[Signal]]] = None,
+        exit_fn: Optional[Callable[[AsOfDataView, pd.Timestamp, int, PortfolioLedger], Iterable[PortfolioExitDecision]]] = None,
+    ) -> "EngineResult":
+        self._build()
+        pending_signals = sorted(self.signals, key=lambda s: (s.generated_at, -s.score, s.signal_id))
+        for ev in self.clock.events:
+            self._process_clock_event(ev, pending_signals, strategy_fn, exit_fn)
+        return self._finish_run()
 
 
 @dataclass

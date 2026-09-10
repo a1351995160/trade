@@ -176,6 +176,9 @@ jobs:
           tests/research_factory/test_r1_caller_io_parity.py
           tests/research_factory/test_r1_batch_caller_inputs.py
           tests/research_factory/test_daily_plan.py
+          tests/research_factory/test_paper_replay.py
+          tests/engine
+          tests/lookahead
           tests/research/test_predictive_executor_policy_pin.py
 
       - name: Upload R1 diagnostic evidence

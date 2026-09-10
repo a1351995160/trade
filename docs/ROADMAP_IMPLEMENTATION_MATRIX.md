@@ -108,3 +108,13 @@ R3仍PARTIAL：已有合法循环及本节申请入口已验；批次自动权�
 测试：首轮新预览与批次14 passed；共享入口最终R1快照/caller/批次/每日共160 passed/136.26s；新增归档后每日12 passed/24.42s，探针全部0。信号对照真实runner，真实ledger Fill产生持仓/T+1并对照同一退出评估器；账户不变、现金约束、时间/PIT负向、归档不可覆盖与损坏检查。证据d1-preview-first.log、d1-shared-regression.log/XML、d1-archive.log。
 
 D1仍PARTIAL：本节为实际计算内核与归档；正式策略准入、发布服务/API/UI及与Paper/组合的完整衔接尚未完成，不能登记缺项后称D1工程通过。下一步继续可独立的Paper回放/对账，再完成统一入口和准入整合；真实使用资格与运行仍未授权。
+
+## D2 内部阶段：真实引擎逐事件回放、恢复与对账
+
+引擎原事件处理和收尾提取为共享方法；corrected runner装配函数同时提供同一真实engine/strategy/exit回调。PaperReplaySessionV1在明确独立输入/输出根内逐步处理这些事件，使用既有broker/ledger/order/fee/fill，不另造账务模型。累计event_count请求可重复；每事件独占落盘并fsync，包含顺序/链哈希/账务摘要/计划。重新构造时用同一合同/输入/源码重放并逐项对账；改输入、缺事件、损坏摘要拒绝，落盘失败后内存会话标RECOVERY_REQUIRED，不能丢失事件后继续。read_paper_archive只读取核对持久历史，不启动引擎。
+
+真实进程在9事件落盘后os._exit(73)，新进程恢复到完成，原始stdout/stderr保存process/paper-replay；中断前实际隔离计数为0/0/0，恢复亦保持隔离。完整回放现金、费用、逐笔交易、lots、orders和event_hash与独立完整runner一致；真实SELL部分成交与涨停拒单通过。SIMULATED_TIME与real_observation_days=0固定分开，未启动真实Paper。
+
+验证记录：首次引擎扩展13 passed/12 failed，全部为旧fixture尝试Git源码探测的进程拒绝，原日志d2-engine-extraction.log保留，不算业务red。七处构造所在六个测试文件显式UNKNOWN身份/禁清单落盘后26 passed（含第一版冷恢复）。后来完整相关184项中183 passed/1 failed；失败为测试误假定BUY会保留余量。现有BUY合约缩量后FILLED，未改其语义；换为真实SELL部分成交fixture后28 passed。最终增加只读归档摘要的受影响40项通过，原失败记录均保留。全量R1快照/caller在上述183项内通过，最终固定HEAD仍需再认证。
+
+D2仍PARTIAL：目前是实际回放/恢复核心，尚无完整公开操作界面和策略使用准入；BUY保留余量重试NOT_SUPPORTED（既有执行合同），真实市场偏差和逐日观察NOT_VERIFIED。不得把本节视为正式Paper验收关闭。

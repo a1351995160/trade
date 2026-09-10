@@ -56,7 +56,8 @@ def test_daily_fill_model_partial_fill():
 def test_limit_up_reject_in_broker():
     store = _store_with_day(day=CAL[1], open_px=11.0, high_px=11.0, low_px=11.0, close_px=11.0, volume=10000.0)
     cfg = EngineConfig(initial_cash=1_000_000.0, max_positions=10, mode="DAILY", max_position_weight=1.0)
-    eng = BacktestEngineV2(store, CAL, config=cfg)
+    cfg.persist_run_manifest = False
+    eng = BacktestEngineV2(store, CAL, config=cfg, source_identity=("UNKNOWN", True))
     sig = Signal(strategy_id="S", signal_id="s1", symbol="600000.SH",
                  generated_at=tz_aware(2025, 1, 2, 15, 0), direction=Side.BUY,
                  execution_policy=ExecutionPolicy.NEXT_SESSION_OPEN)
@@ -70,7 +71,8 @@ def test_limit_up_reject_in_broker():
 def test_suspension_day_order_rejected():
     store = _store_with_day(day=CAL[1], open_px=10.0, high_px=10.0, low_px=10.0, close_px=10.0, volume=0.0)
     cfg = EngineConfig(initial_cash=1_000_000.0, max_positions=10, mode="DAILY", max_position_weight=1.0)
-    eng = BacktestEngineV2(store, CAL, config=cfg)
+    cfg.persist_run_manifest = False
+    eng = BacktestEngineV2(store, CAL, config=cfg, source_identity=("UNKNOWN", True))
     eng.add_signal(Signal(strategy_id="S", signal_id="s1", symbol="600000.SH",
                           generated_at=tz_aware(2025, 1, 2, 15, 0), direction=Side.BUY,
                           execution_policy=ExecutionPolicy.NEXT_SESSION_OPEN))

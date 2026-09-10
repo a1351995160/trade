@@ -455,21 +455,15 @@ def validate_corrected_inputs(record: Any, policy: Any, store: Any, exec_calenda
         raise ValueError("R1_FACTOR_AVAILABLE_AT_EVIDENCE_MISSING")
 
 
-def run_corrected_candidate(root: Path, record: Any, trial_id: str, factor_values: pd.DataFrame,
-                            store: Any, exec_calendar: list[int], universe: Mapping[int, set[str]],
-                            status_map: Any, regimes: Mapping[int, str], events: Mapping[tuple[int, str], Mapping[str, dict[str, Any]]],
-                            index_close: Mapping[int, float], policy: Any, *, portfolio_name: str,
-                            initial_cash: float | None = None, fee_mult: float = 1.0,
-                            stamp_mult: float = 1.0, slip_mult: float = 1.0,
-                            evidence_run_id: str | None = None,
-                            write_evidence: bool = False,
-                            evidence_root: Path | None = None) -> tuple[Any, dict[str, Any], dict[str, Any]]:
+def prepare_corrected_run(record: Any, inputs: Mapping[str, Any], policy: Any, *,
+                          initial_cash: float | None = None, fee_mult: float = 1.0,
+                          stamp_mult: float = 1.0, slip_mult: float = 1.0):
+    """装配同一个真实执行内核和回调，供完整回测及有界合成回放。"""
     candidate = record.candidate
+    factor_values, store, exec_calendar = inputs["factor_values"], inputs["store"], inputs["exec_calendar"]
+    universe, status_map, regimes = inputs["universe"], inputs["status_map"], inputs["regimes"]
+    events, index_close = inputs["events"], inputs["index_close"]
     validate_corrected_inputs(record, policy, store, exec_calendar, regimes, factor_values, initial_cash)
-    if write_evidence and (evidence_root is None or not evidence_root.is_absolute()
-            or evidence_root.resolve().is_relative_to(root.resolve())
-            or evidence_root.resolve().is_relative_to(Path(__file__).resolve().parents[1])):
-        raise ValueError("R1_SEPARATE_EVIDENCE_ROOT_REQUIRED")
     compiler = legacy.StrategyCandidateCompilerV2().compile(record)
     factor_view = factor_values.set_index(["date", "symbol"], drop=False)
     engine = legacy.make_engine(store, exec_calendar, universe, index_close, policy,
@@ -529,6 +523,29 @@ def run_corrected_candidate(root: Path, record: Any, trial_id: str, factor_value
             return []
         _, factor_state = build_day(d, ensure_aware(ts))
         return exit_evaluator.evaluate(ledger.lots.values(), d, calendar_pos[d], factor_state, ensure_aware(ts))
+    return engine, strategy_fn, exit_fn, stats, emitted_records, qualified_records
+
+
+def run_corrected_candidate(root: Path, record: Any, trial_id: str, factor_values: pd.DataFrame,
+                            store: Any, exec_calendar: list[int], universe: Mapping[int, set[str]],
+                            status_map: Any, regimes: Mapping[int, str], events: Mapping[tuple[int, str], Mapping[str, dict[str, Any]]],
+                            index_close: Mapping[int, float], policy: Any, *, portfolio_name: str,
+                            initial_cash: float | None = None, fee_mult: float = 1.0,
+                            stamp_mult: float = 1.0, slip_mult: float = 1.0,
+                            evidence_run_id: str | None = None,
+                            write_evidence: bool = False,
+                            evidence_root: Path | None = None) -> tuple[Any, dict[str, Any], dict[str, Any]]:
+    candidate = record.candidate
+    validate_corrected_inputs(record, policy, store, exec_calendar, regimes, factor_values, initial_cash)
+    if write_evidence and (evidence_root is None or not evidence_root.is_absolute()
+            or evidence_root.resolve().is_relative_to(root.resolve())
+            or evidence_root.resolve().is_relative_to(Path(__file__).resolve().parents[1])):
+        raise ValueError("R1_SEPARATE_EVIDENCE_ROOT_REQUIRED")
+    inputs = {"factor_values": factor_values, "store": store, "exec_calendar": exec_calendar,
+              "universe": universe, "status_map": status_map, "regimes": regimes,
+              "events": events, "index_close": index_close}
+    engine, strategy_fn, exit_fn, stats, emitted_records, qualified_records = prepare_corrected_run(
+        record, inputs, policy, initial_cash=initial_cash, fee_mult=fee_mult, stamp_mult=stamp_mult, slip_mult=slip_mult)
 
     result = engine.run(strategy_fn=strategy_fn, exit_fn=exit_fn)
     engine._sync_lot_contract_fields()

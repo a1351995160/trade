@@ -1204,3 +1204,36 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - docs/ROADMAP_IMPLEMENTATION_MATRIX.md：本阶段实际完成、证据与必要工程缺项。
 - progress.md：追加本轮记录。
 - 回滚：git revert --no-edit <本轮提交SHA>；回滚点54838ac，保留历史归档和日志，不reset/main。原始证据位于E:/llmwiki/roadmap-engineering-evidence。
+
+## 2026-09-10 - Task: D2 共享引擎逐事件回放、持久恢复与账务对照
+
+### What was done
+
+从现有引擎/runner提取同一事件处理和装配入口，完成真实broker/ledger支持的有界Paper工程回放。逐事件持久历史与源码/合同/输入身份绑定；恢复重放后逐项核对，重复累计请求幂等，写失败必须重新打开。增加页面可读取的历史账务摘要，读取不构造引擎。全程只用隔离合成输入，真实观察天数0。
+
+### Testing
+
+- d2-engine-extraction.log：13 passed/12 failed；12次Git探测被原进程隔离拒绝。修正相关旧合成fixture显式源码身份和禁清单落盘，不放宽隔离。该失败不算业务red，原始拒绝栈保留。
+- d2-replay-first.log：5 passed/14.46s；d2-replay-process.log：26 passed/18.06s，含真实子进程落盘后退出73及恢复。
+- d2-final-core.log/XML：183 passed/1 failed/151.24s，失败是BUY缩量后FILLED与测试假设不同。d2-partial-diagnostic.log保留1 failed/1 passed；不改既有BUY合同，用真实SELL余量验证部分成交后d2-corrected-core.log/XML：28 passed/22.30s。
+- 最终d2-final-affected.log/XML：40 passed，含回放8、每日12及原engine/lookahead20；现金/费用/交易/lot/order/event_hash与完整真实runner一致；历史缺失/损坏、数据变更、写失败与恢复、部分卖出和涨停拒绝。主进程及冷进程实际隔离探针0；中断前计数专门写stdout，非猜测。
+- 原始冷进程字节位于process/paper-replay。相同输入目录在冷恢复前后内容不变。最终双平台认证仍待固定HEAD；当前D2公开操作/资格整合未完成，不能宣称D2工程完成。
+
+### Notes
+
+- src/chanlun_trader/engine/engine.py：提取原逐事件处理及结束清算，原run使用同一逻辑。
+- scripts/run_engine_corrected_phase4_v3.py：抽出正式engine与回调装配供回放复用。
+- src/chanlun_trader/research_factory/paper_replay.py：隔离根逐事件持久回放/恢复、账务哈希及只读历史。
+- tests/research_factory/test_paper_replay.py：8项真实回测对照、持久故障、子进程和成交验证。
+- tests/research_factory/paper_replay_worker.py：现场合同加载与真实落盘后中断/恢复。
+- tests/engine/test_engine_strategy_api.py：合成fixture传UNKNOWN源码身份并禁止清单落盘。
+- tests/engine/test_order_broker.py：两处合成fixture采用上述显式身份。
+- tests/engine/test_portfolio_exit_semantics_v1.py：合成引擎fixture采用上述显式身份。
+- tests/engine/test_universe.py：合成引擎fixture采用上述显式身份。
+- tests/lookahead/test_daily_fill_volume.py：未来成交量对照fixture采用上述显式身份。
+- tests/lookahead/test_lookahead.py：指数时点对照fixture采用上述显式身份。
+- .github/workflows/r1-source-data-certification.yml：原矩阵追加Paper及engine/lookahead测试，不改skip/超时。
+- CLAUDE.md：追加逐事件对账和BUY缩量语义经验。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：本阶段实测、原失败与尚未实现项。
+- progress.md：追加本轮记录。
+- 回滚：git revert --no-edit <本轮提交SHA>；回滚点ee58df3，历史模拟归档保留且因源码身份变化拒绝续写，不修改main。证据位于E:/llmwiki/roadmap-engineering-evidence。
