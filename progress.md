@@ -1331,3 +1331,25 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - docs/ROADMAP_IMPLEMENTATION_MATRIX.md：更新能力和重启命令，旧阶段结论保留为历史。
 - progress.md：追加本轮记录。
 - 回滚：git revert --no-edit <本轮提交SHA>；回滚点8e0c72d。回滚后仅失去此装配入口，原输出和配置留存，不修改main或真实根。
+
+## 2026-09-10 - Task: 合成工作区备份与新根恢复验证
+
+### What was done
+
+实现显式配置输入/输出树的受控备份、逐文件清单及新目录恢复CLI；复用工作台锁，拒绝覆盖/越界/损坏/超限，恢复后正式caller重新核验但不启动事件。补充操作与保留失败证据说明。
+
+### Testing
+
+- 首轮3 passed；备份/重建/工作台联合15 passed/34.31s，workbench-backup-first.log、workbench-backup-final.log/XML；清单字节计入上限后的受影响3 passed，workbench-backup-limit.log。
+- 真实CLI备份90个合成文件到synthetic-workbench-backup.zip，恢复至新根返回RESTORED_WITHOUT_EXECUTION；setup/backup/restore各进程日志与根指针保留，隔离探针均0。
+- 恢复账务与原9事件一致，新根续至10不改变原根；损坏内容、清单入口绝对路径、ZIP越界、已有恢复目录和超限拒绝。无真实数据备份/恢复，无新增skip/超时。
+
+### Notes
+
+- src/chanlun_trader/research_factory/engineering_backup.py：限定树的备份/恢复与命令行。
+- tests/research_factory/test_engineering_backup.py：恢复后实际续跑及路径/完整性/资源约束3项。
+- .github/workflows/r1-source-data-certification.yml：加入备份测试。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：实际证据及备份恢复说明。
+- CLAUDE.md：记录清单入口和字节边界。
+- progress.md：追加本轮记录。
+- 回滚：git revert --no-edit <本轮提交SHA>；回滚点de3199a，保留外部ZIP和新旧合成根，不删除或覆盖任何历史目录，不修改main。

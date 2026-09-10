@@ -169,3 +169,18 @@ $demoRoot = Join-Path $env:TEMP ('workbench-' + [guid]::NewGuid().ToString('N'))
 环境隔离设置与首次命令相同；不加governed仍只读。仅支持保存时的初始计划账户，不能把真实账户或任意持仓状态塞进配置；Paper持仓仍来自原事件序列。已有无workbench.json的早期浏览器临时根不自动迁移。
 
 首轮4 passed；最终配置5+工作台7共12 passed/31.11s，workbench-restart-first/final.log及XML。独立子进程仅凭配置，经公共Web API从9事件继续完成；原输入字节不变、真实观察0。原始进程stdout/stderr见process/workbench-restart，父子隔离探针均0。完整正式准入及R2批准待办仍未关闭。
+
+### 合成备份与新目录恢复
+
+engineering_backup只备份workbench.json及其声明的输入/模拟输出树，在现有工作台资源锁内核对；不枚举父目录中的其他项目。ZIP包含逐文件SHA256与清单身份，要求显式解压字节上限，清单本身也计入上限。只写不存在的新归档/恢复根，不覆盖历史；恢复验证重复/越界路径、清单配置入口、全部内容hash后才写新目录，再用正式caller验证。恢复完成只重建输入，不产生事件或运行授权。异常时保留已写证据，不能清空原根重试。
+
+保持同一隔离环境，先停止演示Web再执行明确路径：
+
+```powershell
+.\.venv\Scripts\python.exe -m chanlun_trader.research_factory.engineering_backup backup --config "$demoRoot/workbench.json" --archive "$env:TEMP/workbench-backup.zip" --max-bytes 20000000
+.\.venv\Scripts\python.exe -m chanlun_trader.research_factory.engineering_backup restore --archive "$env:TEMP/workbench-backup.zip" --destination "$env:TEMP/workbench-restored-new" --max-bytes 20000000
+```
+
+示例20MB是明确合成工件I/O上限，不是研究预算；换路径时仍须全新输出。只在合成根验证，不授权备份真实研究数据。恢复后若需页面，使用新根和demo的resume；是否governed仍在启动时显式选择，页面操作继续逐次确认。
+
+首轮3 passed；与装配/工作台联合15 passed/34.31s；最后补清单字节上限后受影响3 passed。原始workbench-backup-first/final/limit.log和XML保留。实际CLI现场生成两个合成候选，备份90个文件、恢复成功且未执行，备份ZIP及setup/backup/restore原始日志在证据目录；三进程隔离探针0。测试恢复后的Paper从9续至10，原根仍9；内容损坏、清单入口绝对路径、ZIP越界、重复恢复/超限均拒绝。以上不关闭真实备份/恢复或历史来源核验。
