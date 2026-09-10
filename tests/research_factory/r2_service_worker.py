@@ -90,6 +90,10 @@ def main():
         # 日期仅是预先声明的合成交易日历，不声称真实市场观察天数。
         sessions = [int(day.strftime("%Y%m%d")) for day in pd.bdate_range("2025-01-01", "2025-07-31")]
         caller, policy, contract, record, cache = formal_fixture(root, sessions)
+        additional = None
+        if len(sys.argv) > 2 and sys.argv[2] == "prepare_multiple":
+            from r2_formal_fixture import additional_formal_candidate
+            additional = additional_formal_candidate(root, sessions, holding_period=8)
         raw = root / "data/research/security_state/raw"
         codes = ["sz.000001", "sh.600000"]
         write_json(raw / "stock_basic.json", {"rows": [dict(code=code, type="1", ipoDate="2020-01-01", outDate="") for code in codes]})
@@ -104,11 +108,20 @@ def main():
         build_normalized_state(raw, root / "data/research/security_state/normalized",
             datetime.strptime(str(sessions[0]), "%Y%m%d").date(), datetime.strptime(str(sessions[-1]), "%Y%m%d").date())
         structural_proof(root, contract, policy)
+        if additional:
+            structural_proof(root, additional[2], policy)
         # 本阶段安全证据取自已安装计数；它是结构检查资料，不是授权 receipt。
         write_json(root / "reports/PLATFORM_ARCHITECTURE_MANIFEST_V2.json", {"safety": {
             "outcome_blind": counts["performance_access"] == 0,
             "NEW_PREDICTIVE_TRIALS": counts["predictive_execute"], "PERFORMANCE_ACCESS": counts["performance_access"],
             "FINAL_TEST_ACCESS": {"analytical": 0, "decision": 0, "physical": 0}, "PROSPECTIVE": 0, "REAL_ORDER": "DISABLED"}})
+        if len(sys.argv) > 2 and sys.argv[2] in {"prepare", "prepare_multiple"}:
+            write_json(root / "r3-prepared-candidate.json", {"objective_id": caller.objective_id,
+                "candidate_id": contract.candidate_id, "contract_hash": contract.content_hash})
+            if additional:
+                write_json(root / "r3-second-candidate.json", {"objective_id": additional[0].objective_id,
+                    "candidate_id": additional[2].candidate_id, "contract_hash": additional[2].content_hash})
+            return
         structural = StructuralEntryServiceV1(root).start(caller.objective_id, confirmed=True, candidate_id=contract.candidate_id)
         write_json(root / "r2-structural-result.json", structural)
         print("R2_STRUCTURAL=" + json.dumps(structural, ensure_ascii=False), flush=True)

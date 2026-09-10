@@ -1639,3 +1639,40 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - docs/SYNTHETIC_BATCH_RESOURCES_V1.md：执行指标、适用平台和当前证据限制。
 - progress.md：本轮结果、失败证据和回滚记录。
 - 回滚：git revert 本资源模块提交；恢复点90f5f0c，停用新批次入口并保留合成历史和失败工件，不重置 main。
+
+## 2026-09-10 - Task: B 明确候选合成批次授权与实际有界服务组合
+### What was done
+- 形成独立版本的预览、实际测试人工确认、委托派生、单进程实际调度、暂停/停止/到期/撤销及审计恢复。每个明确候选保留自己的正式 Objective、原预算和统计家族；没有新建可重置消费的预算账本。
+- 启动与首次性能访问核验父批准、候选、完整来源、原创建事务和不可变家族；批次锁与原共享来源锁保持至内存输入快照完成，两个 engine 在锁外运行。
+- 实際委托标记 BATCH_DELEGATED，旧启动入口拒绝消费它；删除 metadata 不能绕过 canonical 意图，委托不能改成未授权收尾类型或调用重试入口。旧 CP 预测禁令不变。
+- 实际 worker 性能准入后退出按原协议消费；控制者退出恢复只结算不自动重跑。撤销事件先于 head 落盘时只能前滚该完整事件，不回退旧 ACTIVE。
+### Testing
+- batch-admission-review.log/XML：27 passed，包括正式创建工件、单/多候选完整链、原额度、实际进程退出/恢复、来源变化和性能前撤销；受拒绝的竞争场景 engine0/performance0。
+- batch-snapshot-boundary.log/XML：5 passed；源锁在真实 caller 快照读取期间拒绝并发替换，随后实际 engine2/performance1；原两个 R2 完整服务/恢复场景通过。
+- batch-quota-final.log/XML：2 passed；Trial数不足拒绝，原实际消费后不能通过另一批次重置预算。batch-root-check：2 passed，相对输入根拒绝、真实合同确认通过。
+- batch-recovery-final：4 passed；实际控制者退出73、新进程结算、到期、8MiB阻断，以及撤销事件落盘/head更新前退出73。batch-core-final：24 passed，含实际OS资源与原完整R2组合。
+- batch-stage：77 passed/22 failed；旧启动测试依赖缺失历史合同，在fixture第40行失败，未进入启动服务。测试源码与e288746相同，Git blob均9459bbc20ec42c971df634250375739fef8216b3。没有读取真实目录补合同，没有改变旧测试、skip或隔离名单；失败保持独立，不以其他集合通过覆盖。
+- batch-synthetic-stage：78 passed/1 failed；96MiB负向假设错误，实际Structural成功。改用明确8MiB负向输入后阻断；原96MiB成功与失败断言证据保留，不算业务缺陷red，不扩大资源或超时。
+- 新测试原始流按各自r3-contract临时根分目录保存，实际父子进程、退出码、预算和域状态均留证；新增CI入口及原始流上传路径。git diff --check通过；本轮顺序内部自检不冒充独立集中审计或最终双平台。
+### Notes
+- .github/workflows/r1-source-data-certification.yml：加入批次资源/合同/恢复/竞争测试，并上传正式A/R2/B原始进程证据。
+- CLAUDE.md：记录Windows启动器和资源握手，以及历史委托结算范围。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：统一B当前IMPLEMENTING状态，启动时矩阵明确为历史。
+- docs/SYNTHETIC_BATCH_AUTHORIZATION_V1.md：协议职责、实现边界、正负向和失败证据、剩余必要工程。
+- src/chanlun_trader/research_factory/synthetic_batch.py：父批准、实际边界、原领域结算、重启和事件恢复。
+- src/chanlun_trader/research_factory/synthetic_batch_delegation.py：明确版本的领域授权解析、重试拒绝及性能准入。
+- src/chanlun_trader/research_factory/predictive_trial_start.py：旧入口拒绝批次委托授权记录。
+- src/chanlun_trader/research_factory/predictive_executor.py：性能准入与输入快照在原共享来源边界内完成。
+- src/chanlun_trader/synthetic_batch_worker.py：实际受限进程调用既有Structural/预测领域服务。
+- tests/research_factory/r1_caller_fixture.py：在首次设计前支持明确持有周期，默认不变。
+- tests/research_factory/r2_formal_fixture.py：第二个已知候选仍经过正式v2创建，原目标和额度不改。
+- tests/research_factory/r2_service_worker.py：生成单/多候选正式测试前置，未预填PASS或授权回执。
+- tests/research_factory/batch_interruption_worker.py：真实engine边界退出注入。
+- tests/research_factory/batch_controller_worker.py：真实控制者退出、恢复和head写入中断。
+- tests/research_factory/batch_boundary_race_worker.py：暂停真实边界供另一操作方并发变更，保存实际计数。
+- tests/research_factory/test_synthetic_batch_contract.py：正式合同、正负向、单/多候选、原预算与兼容。
+- tests/research_factory/test_synthetic_batch_recovery.py：控制者重启、到期、实际资源不足与撤销事件恢复。
+- tests/research_factory/test_synthetic_batch_races.py：性能前撤销/来源变化及实际快照共享锁。
+- progress.md：本轮结果、差异与回滚记录。
+- 回滚：git revert 本模块提交，停用B新入口并保留全部新合成历史/消费；恢复点991adc3。不reset/merge main，不返还已消费预算。
+- 当前总工程仍PARTIAL；B正式操作入口/统一界面、固定新HEAD全路线回归、双平台和新版集中审计包继续。真实数据NOT_VERIFIED、READY_FOR_REAL_TRIAL=false、R1_FULLY_CLOSED=false；既有OPEN事件不关闭。

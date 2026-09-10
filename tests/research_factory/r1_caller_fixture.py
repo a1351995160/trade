@@ -55,13 +55,15 @@ def fixture(root, *, structure_exit=False, file_registry_identity=False, session
     return materialized_fixture(root, scenario, policy, sessions, structure_exit=structure_exit, validation_ready=validation_ready)
 
 
-def materialized_fixture(root, scenario, policy, sessions, *, structure_exit=False, validation_ready=False):
+def materialized_fixture(root, scenario, policy, sessions, *, structure_exit=False, validation_ready=False, holding_period=None):
     """只通过真实审批/冻结/物化构建候选与合成行情；不写 Objective、预算或家族。"""
     objective = json.loads((root / f"data/research/research_factory/objectives/{scenario.objective_id}.json").read_bytes())
     design = scenario.design_input()
     old = DurableFrozenCandidateContractV1.from_dict(design["durable_contract"])
     seed = old.reconstruct_candidate().candidate.to_dict()
     seed["max_positions"] = policy.max_positions
+    if holding_period is not None:
+        seed["holding_period"] = holding_period
     if validation_ready:
         seed["candidate_status"] = "VALIDATION_READY"
         seed["risk_filters"] = [{"type": "PIT_UNIVERSE"}]

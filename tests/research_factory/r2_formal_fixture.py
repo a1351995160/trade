@@ -10,6 +10,27 @@ from test_objective_execution_binding import setup_binding, approve, confirm
 from test_research_proposal_governance_v1 import _write_json, OBJECTIVE_ID
 
 
+def additional_formal_candidate(root, sessions, *, holding_period):
+    """第二个明确预先设计的合成候选；新目标仍通过正式创建，不修改原目标。"""
+    from chanlun_trader.execution_policy import ExecutionPolicy
+    from chanlun_trader.research_factory.common import stable_hash
+    from chanlun_trader.research_factory.objective_execution_binding import ResearchProposalGovernanceServiceV2
+    from test_research_proposal_governance_v1 import _proposal, _confirm_payload, PROPOSAL_ID
+
+    service = ResearchProposalGovernanceServiceV2(root, execution_policy=ExecutionPolicy("GOVERNED", "SYNTHETIC"))
+    binding = service._load_preview(PROPOSAL_ID)["binding_evidence"]["execution_binding"]
+    proposal = _proposal()
+    proposal["proposal_id"] += "_SECOND"
+    proposal["proposal_hash"] = stable_hash({k: v for k, v in proposal.items() if k != "proposal_hash"})
+    _write_json(root, "reports/research_evolution/proposals/R3_SECOND_PROPOSAL.json", proposal)
+    preview = service.review(proposal["proposal_id"], "approve", "synthetic-test-driver", execution_binding=binding)["objective_creation_preview"]
+    receipt = service.confirm(proposal["proposal_id"], {**_confirm_payload(preview, confirmer="synthetic-test-driver"),
+        "test_confirmation": True, "idempotency_key": "R3_SECOND_OBJECTIVE"})
+    policy, _ = load_validation_decision_policy_v2(root / POLICY_PATH)
+    return materialized_fixture(root, Scenario(root, receipt["objective_id"]), policy, sessions,
+        validation_ready=True, holding_period=holding_period)
+
+
 def formal_fixture(root, sessions):
     fixture, service, binding = setup_binding(root)
     parent = json.loads(fixture["objective_path"].read_bytes())

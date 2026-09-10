@@ -268,8 +268,13 @@ class PredictiveTrialStartServiceV1:
             except json.JSONDecodeError as exc:
                 raise PredictiveTrialStartError("PREDICTIVE_GOVERNANCE_LEDGER_INVALID", "预测治理授权账本存在无法解析的记录", status_code=503) from exc
             if isinstance(item, Mapping):
+                self._validate_authorization_record(item)
                 rows.append(dict(item))
         return rows
+
+    def _validate_authorization_record(self, record):
+        if record.get("authorization_origin") == "BATCH_DELEGATED" or record.get("batch_delegation") is not None:
+            raise PredictiveTrialStartError("BATCH_VERSIONED_START_REQUIRED", "批次委托必须通过核验当前父授权的新版本入口")
 
     def _trial_records(self, objective_id: str) -> dict[str, Mapping[str, Any]]:
         root = self.root / "data/research/research_factory/batches"

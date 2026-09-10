@@ -189,6 +189,10 @@ jobs:
           tests/research_factory/test_objective_execution_binding.py
           tests/research_factory/test_pit_window_projection.py
           tests/research_factory/test_r2_formal_services.py
+          tests/research_factory/test_synthetic_batch_resources.py
+          tests/research_factory/test_synthetic_batch_contract.py
+          tests/research_factory/test_synthetic_batch_recovery.py
+          tests/research_factory/test_synthetic_batch_races.py
           tests/research_factory/test_paper_replay.py
           tests/engine
           tests/lookahead
@@ -202,4 +206,8 @@ jobs:
           path: |
             tmp/r1-results.xml
             ${{ runner.temp }}/p3c-process-evidence/r1-caller
+            ${{ runner.temp }}/p3c-process-evidence/objective-binding
+            ${{ runner.temp }}/p3c-process-evidence/r2-formal
+            ${{ runner.temp }}/p3c-process-evidence/batch-resources
+            ${{ runner.temp }}/p3c-process-evidence/r3-contract-*
           if-no-files-found: warn

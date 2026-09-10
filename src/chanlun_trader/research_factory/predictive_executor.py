@@ -474,11 +474,14 @@ class CanonicalPredictiveExecutorV1:
             if not budget_registration["passed"]:
                 raise RuntimeError("CANONICAL_BUDGET_PREREGISTRATION_NOT_VERIFIED")
             from .synthetic_novelty import canonical_novelty_boundary
+            from .synthetic_batch_delegation import batch_performance_boundary
             with canonical_novelty_boundary(self.root, self.objective_id, candidate, contract) as novelty_evidence:
-                if not recovery:
-                    ledger.mark_performance_accessed(trial_id)
-                    performance_accessed = True
-            inputs = self._prepare_inputs(policy, record, corrected, factor_cache, contract=contract)
+                with batch_performance_boundary(self.root, self.objective_id, candidate):
+                    if not recovery:
+                        ledger.mark_performance_accessed(trial_id)
+                        performance_accessed = True
+                    # Capture in-memory inputs within the source boundary; run both engines outside it.
+                    inputs = self._prepare_inputs(policy, record, corrected, factor_cache, contract=contract)
             small_policy = replace(policy, initial_cash=policy.small_capital_cash, max_positions=policy.small_capital_slots, lot_size=policy.small_capital_lot_size)
             base_result = self._invoke_runner(policy, record, trial_id, inputs, portfolio_name="BASE_RESEARCH")
             ten_result = self._invoke_runner(small_policy, record, trial_id, inputs, portfolio_name="SMALL_CAPITAL_10K")
