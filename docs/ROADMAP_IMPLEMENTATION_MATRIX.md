@@ -208,3 +208,11 @@ search_budget_reservation现读取Trial最早的REGISTERED_BEFORE_PERFORMANCE事
 现有ResearchStrategyRegistryFacadeV1记录研究状态和固定DISABLED的promotion_state，未发现可用于计划/Paper的资格批准、有效期、撤销合同。不能把PROMISING、RESEARCH_PASSED或PROSPECTIVE_SUPPORTED直接解释为使用授权；也不能只签一个synthetic内容hash即放行。
 
 已请求批准仅隔离synthetic域的版本化测试使用资格服务：请求→实际人工确认→撤销，绑定候选、冻结合同、数据身份、测试用途、有效期，供计划/组合准入核验。新增合同不迁移旧记录，不修改Trial/预算/CP/真实资格，兼容旧入口继续无资格；回滚新增服务与调用后回到只读/未就绪。拟验证实际服务生成正向0/1/多个记录、缺/错确认、失效/撤销、跨根和版本变化拒绝，真实资格计数始终0。因新增人工门禁，依据本次附件4.4等待具体批准；不是自动认可的运行权。等待期间只读registry状态衔接继续实施。
+
+2026-09-10用户明确回复“批准上述仅合成测试资格服务”。上述精确synthetic测试资格范围现为APPROVED_TO_IMPLEMENT；Objective执行绑定的另一项请求仍等待答复，两者不能混用。
+
+### 策略库只读事实衔接
+
+工作台按既有canonical预算绑定定位源工作区的实际策略registry，读取研究状态、版本/证据失效和原文件SHA256；不写registry、不把研究状态映射成使用授权。退役、INVALIDATED、失效证据或冻结版本冲突会剔除工程预览来源并拒绝后续回放；registry变化改变上下文与组合计划身份。没有登记的冻结输入仍可做已授权工程预览，使用资格仍为false，界面明确给出原因。
+
+首轮3 passed/1 failed是测试错误请求DRAFT直接RETIRED，原服务正确拒绝；改走既有VALIDATION_BLOCKED→RETIRED，未改状态机。最终只读准入/工作台/冷重建/备份19 passed/47.49s，strategy-admission-first/final.log/XML，隔离三探针0。前端8 passed/build成功（原chunk警告保留）；最终资格功能集成后再做浏览器交互验收。本节仍不代表正向使用资格完成。

@@ -10,6 +10,7 @@ from .mutation_boundary import ObjectiveMutationLock
 from .paper_replay import PaperReplaySessionV1, read_paper_archive, _immutable
 from .portfolio_plan import preview_portfolio_plan
 from .source_dependencies import SOURCE_ROOT
+from .strategy_admission import inspect_strategy_admission
 
 
 class EngineeringWorkbenchV1:
@@ -45,12 +46,18 @@ class EngineeringWorkbenchV1:
                 "input_identity": value["inputs"]["input_diagnostics"]["input_identity"],
                 "sessions": value["inputs"]["exec_calendar"]} for key, value in self.sources.items()],
             "paper": replays,
+            "strategy_admission": {key: inspect_strategy_admission(value) for key, value in self.sources.items()},
             "limitations": ["RESEARCH_PREVIEWS_ONLY", "INDEPENDENT_PAPER_ACCOUNTS_NOT_AGGREGATED", "NO_REAL_OBSERVATION"]}
         result["context_hash"] = stable_hash(result)
         return result
 
     def preview(self, plan_at):
-        return preview_portfolio_plan(self.portfolio_policy, self.sources, self.ledger, plan_at=plan_at)
+        admission = {key: inspect_strategy_admission(value) for key, value in self.sources.items()}
+        sources = {key: value for key, value in self.sources.items() if not admission[key]["preview_blocked"]}
+        result = preview_portfolio_plan(self.portfolio_policy, sources, self.ledger, plan_at=plan_at)
+        result["strategy_admission"] = admission
+        result["plan_id"] = "PORTFOLIO_PLAN_" + stable_hash({key: value for key, value in result.items() if key != "plan_id"})
+        return result
 
     def _confirm(self, policy, payload):
         if not policy.governance_allowed:
@@ -83,5 +90,7 @@ class EngineeringWorkbenchV1:
         with ObjectiveMutationLock.for_resource(self.output_root / "workbench"):
             self._confirm(policy, payload)
             source = self.sources[candidate_id]
+            if inspect_strategy_admission(source)["preview_blocked"]:
+                raise ValueError("WORKBENCH_STRATEGY_RETIRED_INVALIDATED_OR_CHANGED")
             replay = PaperReplaySessionV1(source["root"], root, source["record"], source["contract"], source["policy"], source["inputs"])
             return replay.advance(payload.get("event_count"))

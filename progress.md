@@ -1418,3 +1418,25 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - docs/ROADMAP_IMPLEMENTATION_MATRIX.md：结果与新增资格批准待办。
 - progress.md：追加本轮记录。
 - 回滚：git revert --no-edit <本轮提交SHA>；回滚点3a49d06，保留外部证据，不改main或真实根。
+
+## 2026-09-10 - Task: 策略注册事实接入工作台与失效检查
+
+### What was done
+
+只读显示实际研究状态和未准入原因；退役、证据失效与合同冲突剔除预览并阻止继续回放，绑定状态变化到上下文和计划身份。记录用户已批准仅合成测试资格服务，后续继续正向实现。
+
+### Testing
+
+- 首轮3 passed/1 failed为测试请求非法DRAFT→RETIRED；改用既有合法路径后联合19 passed/47.49s，strategy-admission-first/final.log/XML，隔离三探针0。
+- 前端8 passed、build成功；原chunk/Starlette警告保留；浏览器待完整资格功能一起验证。
+
+### Notes
+
+- src/chanlun_trader/research_factory/strategy_admission.py：只读canonical registry投影。
+- src/chanlun_trader/research_factory/engineering_workbench.py：状态、计划身份和失效阻断。
+- frontend/src/console/components/EngineeringWorkbench.vue：当前研究状态与原因。
+- tests/research_factory/test_strategy_admission.py：实际登记/退役/失效/错版4项。
+- .github/workflows/r1-source-data-certification.yml：纳入只读准入测试。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：证据与具体批准更新。
+- progress.md：追加本轮记录。
+- 回滚：git revert --no-edit <本轮提交SHA>；回滚点962fe78，保留外部日志与registry历史，不改main。
