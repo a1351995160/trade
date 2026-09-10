@@ -63,6 +63,8 @@ class PITStateMap:
                         continue
                     row = json.loads(line)
                     d = parse_date(row.get("effective_from") or row.get("trade_date"))
+                    if d not in self.calendar:
+                        continue
                     dates.add(d)
                     status = str(row.get("status", "UNKNOWN"))
                     if status != expected:

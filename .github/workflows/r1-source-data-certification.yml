@@ -187,6 +187,8 @@ jobs:
           tests/research_factory/test_synthetic_usage.py
           tests/research_factory/test_synthetic_novelty.py
           tests/research_factory/test_objective_execution_binding.py
+          tests/research_factory/test_pit_window_projection.py
+          tests/research_factory/test_r2_formal_services.py
           tests/research_factory/test_paper_replay.py
           tests/engine
           tests/lookahead

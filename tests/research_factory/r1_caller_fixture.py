@@ -16,12 +16,7 @@ from chanlun_trader.research_factory.durability import DurableFrozenCandidateCon
 from chanlun_trader.research_factory.predictive_executor import CanonicalPredictiveExecutorV1
 
 
-def fixture(root, *, structure_exit=False, file_registry_identity=False, sessions=None, validation_ready=False, objective_id=None):
-    scenario = (Scenario(root) if objective_id is None else Scenario(root, objective_id)).initialize()
-    sessions = sessions if sessions is not None else [20250715, 20250716, 20250717, 20250718, 20250721, 20250722,
-                20250723, 20250724, 20250725, 20250728, 20250729, 20250730, 20250731]
-    policy_path = root / "data/research/strategy_validation/validation_decision_policy_v2.json"
-    policy, _ = load_validation_decision_policy_v2(policy_path)
+def synthetic_factor_registry():
     attrs = {field.name: "SYNTHETIC_TEST_ONLY" for field in fields(UnifiedFactorDefinition)}
     attrs.update(factor_id="VOLUME_ACCEL", version="v1", family="VOLUME", theme=[],
         canonical_formula=field_node("volume"), operator_graph=field_node("volume"), inputs=["volume"],
@@ -30,7 +25,16 @@ def fixture(root, *, structure_exit=False, file_registry_identity=False, session
         pit_status="PIT_VERIFIED", data_support_status="FULL", data_dependencies=[],
         source_type="DERIVED_INTERNAL", source_commit=None, attribution=[], clean_room_reimplementation=False,
         implementation_status="EXECUTABLE", lifecycle_status="DISCOVERED", is_proxy=False)
-    registry = UnifiedFactorRegistry([UnifiedFactorDefinition(**attrs)])
+    return UnifiedFactorRegistry([UnifiedFactorDefinition(**attrs)])
+
+
+def fixture(root, *, structure_exit=False, file_registry_identity=False, sessions=None, validation_ready=False, objective_id=None):
+    scenario = (Scenario(root) if objective_id is None else Scenario(root, objective_id)).initialize()
+    sessions = sessions if sessions is not None else [20250715, 20250716, 20250717, 20250718, 20250721, 20250722,
+                20250723, 20250724, 20250725, 20250728, 20250729, 20250730, 20250731]
+    policy_path = root / "data/research/strategy_validation/validation_decision_policy_v2.json"
+    policy, _ = load_validation_decision_policy_v2(policy_path)
+    registry = synthetic_factor_registry()
     registry_path = root / "data/research/factor_library_v1/registry.json"
     registry_path.parent.mkdir(parents=True, exist_ok=True)
     registry.write(registry_path)
@@ -48,6 +52,12 @@ def fixture(root, *, structure_exit=False, file_registry_identity=False, session
         }
     objective["research_period_identity"] = {"id": "R1_CALLER_SYNTHETIC", "start": sessions[2], "end": sessions[-1]}
     write_json(objective_path, objective)
+    return materialized_fixture(root, scenario, policy, sessions, structure_exit=structure_exit, validation_ready=validation_ready)
+
+
+def materialized_fixture(root, scenario, policy, sessions, *, structure_exit=False, validation_ready=False):
+    """只通过真实审批/冻结/物化构建候选与合成行情；不写 Objective、预算或家族。"""
+    objective = json.loads((root / f"data/research/research_factory/objectives/{scenario.objective_id}.json").read_bytes())
     design = scenario.design_input()
     old = DurableFrozenCandidateContractV1.from_dict(design["durable_contract"])
     seed = old.reconstruct_candidate().candidate.to_dict()

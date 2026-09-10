@@ -10,7 +10,7 @@
 
 | 独立协议 | 最新批准及边界 | 当前工程状态 |
 |---|---|---|
-| A Objective execution_binding | 已批准新版本创建前绑定政策、研究窗口及 registry；确认复核并复用原创建事务；不迁移 v1、不改变预算/统计/其他门禁 | IMPLEMENTING；完整 R2 尚未验收 |
+| A Objective execution_binding | 已批准新版本创建前绑定政策、研究窗口及 registry；确认复核并复用原创建事务；不迁移 v1、不改变预算/统计/其他门禁 | 本地组件及正式 R2 合成闭环通过；最终整体/双平台待验收 |
 | B synthetic R3 有界批次执行授权 | 已批准明确已审批/冻结/物化候选集合的版本化预览、人工测试确认、受限委托、实际有界执行及暂停/停止/到期/撤销/恢复；必须强制资源与原账本边界 | IMPLEMENTING；实际批次执行尚未验收 |
 | 事前新颖性比较集绑定 | 已批准明确来源全集、结果盲化、精确自身排除、实际确认、性能前复核及原 Gate；不授予启动权 | 已有组件验收；新 R2/R3 组合待验收 |
 | 计划/Paper 测试使用资格 | 已批准仅隔离 synthetic 的请求、真实确认、用途及有效期、撤销；不授予 Trial 或批次权限 | 已有服务及子链验收；不能充当真实资格 |
@@ -18,6 +18,8 @@
 A、B 分别实施和记录，不互相代替，也不替代另两类合同。真实数据保持 NOT_VERIFIED，READY_FOR_REAL_TRIAL=false、R1_FULLY_CLOSED=false；真实 Trial/Paper/订单及旧 CP 预测执行仍不授权。
 
 接续顺序：A 合同与兼容测试 → 正式创建至完整 R2 合成闭环 → B 实际批次与资源/恢复测试 → 固定新 HEAD 的整体回归、双平台及新版集中审计。沿用当前总集成分支和 Draft PR #9，不 merge main、不 auto-merge。所有必要工程验收前保持 PARTIAL。
+
+当前 R2 进展见 [R2_FORMAL_SYNTHETIC_SERVICES.md](R2_FORMAL_SYNTHETIC_SERVICES.md)：实际两个 engine、裁决、registry 和失败回流完成，并通过新进程重放及已消费同 Trial 的实际确认恢复。固定合成输入最终 BLOCKED；无真实合格策略。148 项本地阶段回归通过，不替代最终新 HEAD 双平台或 B 的批次边界验收。
 
 ```text
 REPOSITORY=a1351995160/trade

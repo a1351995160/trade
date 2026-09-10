@@ -1596,3 +1596,31 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - progress.md：本轮实现、验证与回滚记录。
 - 回滚点 e288746490912ae979dd3643f36eaee063335720；执行 git revert 本模块提交，停用 v2 入口，保留新历史工件并由旧入口拒绝写入；不 reset/revert main。
 - 完整 R2、B 实际批次及最终固定 HEAD 整体/双平台验收仍需继续。工程总体 PARTIAL；真实数据 NOT_VERIFIED，READY_FOR_REAL_TRIAL=false，R1_FULLY_CLOSED=false；所有既有 OPEN 事件保留。
+
+## 2026-09-10 - Task: 完成正式服务 R2 合成链及同 Trial 中断恢复
+### What was done
+- 新建合成目标从实际 v2 创建事务开始，直接完成设计/批准/冻结/物化、实际 PIT 规范化与 Structural、实际新颖性及预测确认、Trial/预算/家族、两个 engine、统计裁决、registry 和盲化失败回流。
+- 复用 R1 测试的数据/候选生成段，明确拆出不写 Objective/预算/家族的入口；新目标及创建工件在物化后字节不变。
+- 修复实际 PIT reader 对较长源历史的误拒绝：只投影明确执行日历，窗口内缺任一路仍拒绝。
+- 正常完成的新进程确认/恢复重放不重复 engine 或性能准入；另一根实际性能准入后进程退出73，经原协议结算及真实恢复预览/确认完成同一 Trial，消费仍1、预留0。
+### Testing
+- r2-formal-stage.log/XML：148 passed / 149.82s，包含2条独立进程完整服务组合、2项 PIT 窗口正负向及原 F01–F04/available_at/caller 回归，三项隔离探针0。
+- r2-pit-window-red.log：1 failed/1 passed；r2-pit-window-green.log/XML：146 passed。原始真实组合第二轮同样复现窗口误拒绝，未运行 engine，但性能准入已记账；该失败根与日志保留。
+- 每条完整正常链实际 Structural build2、engine2、predictive_execute1、performance_access1、外部AI0；最终BLOCKED（RAW_BOOTSTRAP_NOT_SUPPORTED），registry正确VALIDATION_BLOCKED并产生失败条目，不要求RESEARCH_PASSED。
+- 子进程原始流位于 E:/llmwiki/roadmap-engineering-evidence/r2-formal-stage-process/r2-formal，正常与中断测试分目录，单次60秒边界未扩张。恢复完成后仍同一Trial、原预算消费1，正常重放账本字节不变。
+- 首轮缺universe policy的合成输入失败、第二轮PIT失败、第三轮首次完整完成、后续自动化验收与中断探索均保留原始根/日志，不合并计数，不把 fixture 缺输入当作业务red。git diff --check通过；内部顺序检查通过，不是独立审计完成。
+### Notes
+- .github/workflows/r1-source-data-certification.yml：加入PIT窗口及正式R2组合测试。
+- CLAUDE.md：记录较长PIT历史与执行窗口投影规则。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：更新A/R2当前本地工程验收状态，B继续IMPLEMENTING。
+- docs/R2_FORMAL_SYNTHETIC_SERVICES.md：完整服务、恢复、计数、失败证据与限制矩阵。
+- scripts/run_automated_strategy_validation_v1_rerun_v2.py：窗口外状态不参与窗口覆盖判定。
+- tests/research_factory/r1_caller_fixture.py：提取可复用因子和正式已创建目标的候选/行情生成段，旧fixture默认行为保持。
+- tests/research_factory/r2_formal_fixture.py：实际创建目标至真实物化；创建后不补字段/预算/家族。
+- tests/research_factory/r2_service_worker.py：从旧探索驱动升级正式新流程，增加真实新颖性、账本/registry/失败断言与退出点。
+- tests/research_factory/r2_recovery_worker.py：真实新进程重放及实际人工确认恢复驱动。
+- tests/research_factory/test_pit_window_projection.py：覆盖窗口内完整/缺失及窗口外拒绝。
+- tests/research_factory/test_r2_formal_services.py：正常完整链和性能后退出/恢复两个真实进程验收。
+- progress.md：本轮证据和回滚记录。
+- 回滚：git revert 本阶段提交，恢复点991281a；已创建目标与Trial历史保留、不返还消费、不删失败工件，不merge/reset main。
+- 总工程仍PARTIAL。B实际有界批次、最终固定HEAD回归/双平台/新版审计包待完成。真实数据NOT_VERIFIED、READY_FOR_REAL_TRIAL=false、R1_FULLY_CLOSED=false，真实策略0、真实观察0，旧OPEN事件不关闭。

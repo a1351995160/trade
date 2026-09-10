@@ -9,6 +9,8 @@
 
 ## Forward Data Contract pitfalls
 
+- PITStateMap 必须先把较长原始历史投影到显式执行日历，再判断双路状态是否完整；预热或窗口外记录不能使窗口内完整数据变成 ROW_MISSING。窗口内缺任一路仍 fail closed，窗口外不可交易。
+
 - Prospective observation 的起点必须由 Policy Freeze 之后的显式 host trading calendar 确认；工作日推断和历史回填都不能替代交易日历。
 - 现有 Paper host 的 `E_CONSEC_LIMIT` runtime 不能冒充当前 `E_LIMITUP_SENT` event-reversal candidate 的 prospective evidence；候选运行适配器未就绪时必须 fail closed。
 - Validation Policy 的声明契约 hash 与文档文件 SHA-256 是两个不同字段；冻结 lineage 必须分别记录并比较。

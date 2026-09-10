@@ -1,8 +1,4 @@
-"""R2 探索驱动；当前旧 fixture 缺正式目标绑定/家族，不能作为完整验收通过。
-
-只接受全新临时根，使用 import-time isolation，不加载 pytest conftest。
-完整路径在正式目标创建协议批准和实现之前保持阻塞。
-"""
+"""R2 正式合成组合驱动；只接受新临时根，不加载 pytest 的替代 runner。"""
 import json
 import os
 from pathlib import Path
@@ -12,11 +8,13 @@ from datetime import datetime
 
 import pandas as pd
 
-from r1_caller_fixture import fixture
+from r2_formal_fixture import formal_fixture
 from p3c_scenario import Scenario
 from r1_fixture import write_json
 from chanlun_trader.research_factory.structural_entry import StructuralEntryServiceV1
-from chanlun_trader.research_factory.predictive_trial_start import PredictiveTrialStartServiceV1
+from chanlun_trader.execution_policy import ExecutionPolicy
+from chanlun_trader.research_factory.synthetic_novelty import SyntheticNoveltyBindingServiceV1
+from chanlun_trader.research_factory.synthetic_novelty_start import SyntheticNoveltyTrialStartServiceV1
 from chanlun_trader.research.pit_tradability import build_normalized_state
 from chanlun_trader.research_factory.real_sample_feasibility import RealSampleFeasibilityProviderV1
 from chanlun_trader.research_factory.sample_feasibility import CandidateSampleFeasibilityPreflightV1
@@ -77,6 +75,10 @@ def main():
             if hasattr(owner, "root") and Path(owner.root).resolve() != root:
                 raise AssertionError("SERVICE_ROOT_CONFLICT")
             counts[key] += 1
+            if key == "engine_run" and len(sys.argv) > 2 and sys.argv[2] == "crash":
+                write_json(root / "r2-test-counts.json", counts)
+                print("R2_PROCESS_EXIT_AFTER_PERFORMANCE_BEFORE_ENGINE_BODY", flush=True)
+                os._exit(73)
         if module.endswith("autonomous_orchestrator_v2") and name == "invoke":
             counts["external_ai_attempts"] += 1
             raise AssertionError("EXTERNAL_AI_DISABLED")
@@ -87,7 +89,7 @@ def main():
     try:
         # 日期仅是预先声明的合成交易日历，不声称真实市场观察天数。
         sessions = [int(day.strftime("%Y%m%d")) for day in pd.bdate_range("2025-01-01", "2025-07-31")]
-        caller, policy, contract, record, cache = fixture(root, sessions=sessions, validation_ready=True)
+        caller, policy, contract, record, cache = formal_fixture(root, sessions)
         raw = root / "data/research/security_state/raw"
         codes = ["sz.000001", "sh.600000"]
         write_json(raw / "stock_basic.json", {"rows": [dict(code=code, type="1", ipoDate="2020-01-01", outDate="") for code in codes]})
@@ -112,20 +114,45 @@ def main():
         print("R2_STRUCTURAL=" + json.dumps(structural, ensure_ascii=False), flush=True)
         if structural.get("status") != "PASS":
             raise AssertionError("R2_REAL_STRUCTURAL_NOT_PASS")
-        Scenario(root).authorize()
-        service = PredictiveTrialStartServiceV1(root, auto_run=False)
+        execution_policy = ExecutionPolicy("GOVERNED", "SYNTHETIC")
+        novelty = SyntheticNoveltyBindingServiceV1(root)
+        novelty.declare_sources(execution_policy, [f"data/research/research_factory/batches/{caller.objective_id}_B01/durable_frozen_candidate_contracts.json"])
+        novelty_preview = novelty.preview(execution_policy, contract.candidate_id, contract.content_hash)
+        novelty.confirm(execution_policy, {"confirmed": True, "preview_id": novelty_preview["preview_id"]})
+        service = SyntheticNoveltyTrialStartServiceV1(root, execution_policy, novelty_preview["preview_id"], auto_run=False)
+        before_authorization = service.readiness(caller.objective_id)
+        assert before_authorization["available"] is False
+        write_json(root / "r2-before-start-authorization.json", before_authorization)
+        Scenario(root, caller.objective_id).authorize()
         preview = service.preview(caller.objective_id)
-        receipt = service.confirm(caller.objective_id, {
+        request = {
             "confirmed": True, "action": "START_PREDICTIVE_TRIAL_1", "start_intent_id": "R2_SYNTHETIC_START",
             "candidate_id": contract.candidate_id, "candidate_hash": contract.candidate_hash,
             "preview_hash": preview["preview_hash"], "confirmation_token": preview["confirmation_token"],
-        })
+        }
+        write_json(root / "r2-test-start-request.json", request)
+        receipt = service.confirm(caller.objective_id, request)
         write_json(root / "r2-start-receipt-copy.json", receipt)
         service._run_intent(caller.objective_id, "R2_SYNTHETIC_START")
         result = service._load_intents(caller.objective_id)["R2_SYNTHETIC_START"]
         print("R2_FINAL=" + json.dumps(result, ensure_ascii=False), flush=True)
         write_json(root / "r2-test-result.json", {"intent": result, "counts": counts})
         assert result["stage"] == "TRIAL_COMPLETED", result
+        batch = root / f"data/research/research_factory/batches/{caller.objective_id}_B01"
+        ledger = json.loads((batch / "factory_trial_ledger.json").read_bytes())
+        final = ledger["events"][-1]
+        assert final["status"] == "COMPLETED" and final["performance_complete"] is True
+        assert final["final_adjudicated"] is True and final["registry_committed"] is True
+        budget = json.loads((batch / "search_budget_registry.json").read_bytes())
+        assert all(bucket["used"] == 1 and bucket["reserved"] == 0 for bucket in budget["buckets"])
+        strategies = json.loads((batch / "strategy_registry.json").read_bytes())["records"]
+        assert len(strategies) == 1 and strategies[0]["promotion_state"] == "DISABLED"
+        report = root / f"reports/research_daemon/{caller.objective_id}/predictive/{caller.objective_id}_B01/{contract.candidate_id}"
+        failure = json.loads((report / "failure_extraction.json").read_bytes())
+        assert failure["entries"]
+        write_json(root / "r2-safe-summary.json", {"engineering_chain_complete": True, "classification": final["classification"],
+            "strategy_state": strategies[0]["research_state"], "qualified_real_strategies": 0,
+            "real_observation_days": 0, "failure_entries": len(failure["entries"]), "counts": counts})
     finally:
         sys.setprofile(None)
         write_json(root / "r2-test-counts.json", counts)
