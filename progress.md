@@ -1237,3 +1237,22 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - docs/ROADMAP_IMPLEMENTATION_MATRIX.md：本阶段实测、原失败与尚未实现项。
 - progress.md：追加本轮记录。
 - 回滚：git revert --no-edit <本轮提交SHA>；回滚点ee58df3，历史模拟归档保留且因源码身份变化拒绝续写，不修改main。证据位于E:/llmwiki/roadmap-engineering-evidence。
+
+## 2026-09-10 - Task: 修复中间CI遗漏的只读路由清单
+
+### What was done
+
+定位54838ac远端Phase1/Phase2失败：新增批次范围GET后精确路由数测试未同步。改为47并显式断言该接口是GET；原25条POST及权限检查不变。
+
+### Testing
+
+- 远端原始失败ci-phase1-54838ac-failure.log、ci-phase2-54838ac-failure.log保存；均为47!=46，无权限探针触发。
+- 本地整文件及请求套件42 passed/2 failed，失败为原CI已排除的两项真实现场依赖，未新增排除或读取真实目录；误名r3-route-catalog-green.log实际失败仍原样保留。
+- 精确受影响测试及请求18项最终19 passed，见r3-route-catalog-final.log。隔离探针0，最终CI留待新HEAD；原Windows事件状态不变。
+
+### Notes
+
+- tests/research_console/test_research_console_read_boundary_v1.py：同步精确GET数量并断言新路由。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：追加CI失败与验证实情。
+- progress.md：追加本轮记录。
+- 回滚：git revert --no-edit <本轮提交SHA>；回滚点4d94b1b，回滚会恢复已定位的旧计数失败，不修改main。

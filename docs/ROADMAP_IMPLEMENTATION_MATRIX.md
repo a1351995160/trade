@@ -118,3 +118,7 @@ D1仍PARTIAL：本节为实际计算内核与归档；正式策略准入、发�
 验证记录：首次引擎扩展13 passed/12 failed，全部为旧fixture尝试Git源码探测的进程拒绝，原日志d2-engine-extraction.log保留，不算业务red。七处构造所在六个测试文件显式UNKNOWN身份/禁清单落盘后26 passed（含第一版冷恢复）。后来完整相关184项中183 passed/1 failed；失败为测试误假定BUY会保留余量。现有BUY合约缩量后FILLED，未改其语义；换为真实SELL部分成交fixture后28 passed。最终增加只读归档摘要的受影响40项通过，原失败记录均保留。全量R1快照/caller在上述183项内通过，最终固定HEAD仍需再认证。
 
 D2仍PARTIAL：目前是实际回放/恢复核心，尚无完整公开操作界面和策略使用准入；BUY保留余量重试NOT_SUPPORTED（既有执行合同），真实市场偏差和逐日观察NOT_VERIFIED。不得把本节视为正式Paper验收关闭。
+
+## 中间 CI 修复记录：只读路由清单
+
+54838ac的Phase1/Phase2 CI失败均定位到本轮新增GET后遗漏更新的固定路由数（实际47，旧断言46）。同步精确数量，并明确断言batch-scope-request属于GET；POST仍25，不改权限/隔离。远端失败日志ci-phase1/phase2-54838ac-failure.log保留。相关本地整文件42 passed/2 failed，两项为原CI已排除且依赖真实现场的测试，未补数据/新增skip；精确受影响路由与新请求套件最终19 passed（r3-route-catalog-final.log）。最终平台认证仍以最终HEAD为准。
