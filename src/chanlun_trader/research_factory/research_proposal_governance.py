@@ -356,6 +356,8 @@ class ResearchProposalGovernanceServiceV1:
     """Govern a Proposal through review, preview, and explicit creation."""
 
     _mutex = threading.RLock()
+    preview_schema_version = PREVIEW_SCHEMA_VERSION
+    receipt_schema_version = RECEIPT_SCHEMA_VERSION
 
     def __init__(self, root: str | Path, *, clock: Callable[[], datetime] | None = None, crash_at: str | None = None):
         self.root = Path(root).resolve()
@@ -765,6 +767,8 @@ class ResearchProposalGovernanceServiceV1:
         if payload is None:
             raise ResearchProposalGovernanceError("OBJECTIVE_PREVIEW_NOT_FOUND", "当前 Proposal 尚未生成 Objective Creation Preview", status_code=404)
         preview = dict(payload)
+        if preview.get("schema_version") != self.preview_schema_version:
+            raise ResearchProposalGovernanceError("OBJECTIVE_PREVIEW_VERSION_MISMATCH", "请使用对应版本的 Objective 创建入口", status_code=409)
         expected_hash = stable_hash(_without_dynamic_preview_fields(preview))
         if str(preview.get("preview_hash") or "") != expected_hash:
             raise ResearchProposalGovernanceError("OBJECTIVE_PREVIEW_HASH_INVALID", "Objective Creation Preview 校验失败", status_code=503)
@@ -1195,7 +1199,7 @@ class ResearchProposalGovernanceServiceV1:
         stage_json(governance_relative, governance_record, "after_governance_record_write")
 
         receipt = {
-            "schema_version": RECEIPT_SCHEMA_VERSION,
+            "schema_version": self.receipt_schema_version,
             "execution_id": execution_id,
             "action": CREATE_OBJECTIVE,
             "proposal_id": proposal_id,
@@ -1421,6 +1425,7 @@ class ResearchProposalGovernanceServiceV1:
                 journal = _read_json(path)
                 if journal is None:
                     continue
+                self._load_preview(proposal_id)
                 if str(journal.get("status") or "") == "COMPLETED" and isinstance(journal.get("receipt_payload"), Mapping):
                     return {**dict(journal["receipt_payload"]), "idempotent": True}
                 receipt = self._recover_transaction(path, journal)

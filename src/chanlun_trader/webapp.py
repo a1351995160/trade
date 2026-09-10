@@ -959,6 +959,29 @@ def research_evolution_proposal_confirm(proposal_id: str, request: Request, payl
     return request.app.state.services.research_proposal_governance_service.confirm(proposal_id, payload or {})
 
 
+@app.post("/api/research/evolution/v2/proposals/{proposal_id}/{action}")
+def research_evolution_bound_objective(proposal_id: str, action: str, request: Request, payload: dict[str, Any] = Body(...)) -> dict:
+    """新版本合成创建入口；原 v1 路由和恢复默认值不变。"""
+    _require_local_console_request(request)
+    from .research_factory.objective_execution_binding import ResearchProposalGovernanceServiceV2
+    try:
+        service = ResearchProposalGovernanceServiceV2(request.app.state.research_root,
+            execution_policy=request.app.state.execution_policy)
+        if action == "review":
+            return service.review(proposal_id, payload, execution_binding=payload.get("execution_binding"))
+        if action == "preview":
+            return service.preview(proposal_id)
+        if action == "confirm":
+            return service.confirm(proposal_id, payload)
+        if action == "recover":
+            return service.recover(proposal_id, payload.get("execution_id"))
+        raise HTTPException(status_code=404, detail="未知的新版本 Objective 动作")
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except (ValueError, OSError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
 @app.get("/api/research/candidates/proposals")
 def research_candidate_proposals(request: Request, objective_id: str | None = Query(default=None), status: str | None = Query(default=None)) -> dict:
     return request.app.state.services.candidate_generation_service.list_proposals(objective_id=objective_id, status=status)

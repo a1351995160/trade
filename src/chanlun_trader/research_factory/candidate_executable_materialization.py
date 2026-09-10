@@ -920,7 +920,13 @@ class CandidateExecutableMaterializationManagerV1:
             )
 
         try:
-            PerformanceBlindGuard.assert_blind({"proposal": proposal, "registry_entry": registry_entry, "objective": objective, "design": design, "approval": approval_receipt, "lineage": lineage, "record": full_record, "hypothesis": hypothesis})
+            blind_objective = dict(objective)
+            risk = dict(objective.get("risk_constraints") or {})
+            # 正式创建的精确禁止标记不是推荐结果；原文件及来源哈希保持不变。
+            if risk.get("recommendation") == "DISABLED":
+                del risk["recommendation"]
+            blind_objective["risk_constraints"] = risk
+            PerformanceBlindGuard.assert_blind({"proposal": proposal, "registry_entry": registry_entry, "objective": blind_objective, "design": design, "approval": approval_receipt, "lineage": lineage, "record": full_record, "hypothesis": hypothesis})
         except PerformanceLeakError as exc:
             raise CandidateExecutableMaterializationError("OUTCOME_FIELD_BLOCKED", "执行合同来源包含被禁止的结果字段", status_code=503) from exc
 

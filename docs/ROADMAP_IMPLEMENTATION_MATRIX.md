@@ -4,6 +4,21 @@
 
 ## 接续基线
 
+### 当前统一批准清单（2026-09-10 接续 e288746）
+
+本表覆盖下文历史阶段的待批状态；历史记录和既有集中审计 ZIP 不改写。工程批准不构成具体运行授权。
+
+| 独立协议 | 最新批准及边界 | 当前工程状态 |
+|---|---|---|
+| A Objective execution_binding | 已批准新版本创建前绑定政策、研究窗口及 registry；确认复核并复用原创建事务；不迁移 v1、不改变预算/统计/其他门禁 | IMPLEMENTING；完整 R2 尚未验收 |
+| B synthetic R3 有界批次执行授权 | 已批准明确已审批/冻结/物化候选集合的版本化预览、人工测试确认、受限委托、实际有界执行及暂停/停止/到期/撤销/恢复；必须强制资源与原账本边界 | IMPLEMENTING；实际批次执行尚未验收 |
+| 事前新颖性比较集绑定 | 已批准明确来源全集、结果盲化、精确自身排除、实际确认、性能前复核及原 Gate；不授予启动权 | 已有组件验收；新 R2/R3 组合待验收 |
+| 计划/Paper 测试使用资格 | 已批准仅隔离 synthetic 的请求、真实确认、用途及有效期、撤销；不授予 Trial 或批次权限 | 已有服务及子链验收；不能充当真实资格 |
+
+A、B 分别实施和记录，不互相代替，也不替代另两类合同。真实数据保持 NOT_VERIFIED，READY_FOR_REAL_TRIAL=false、R1_FULLY_CLOSED=false；真实 Trial/Paper/订单及旧 CP 预测执行仍不授权。
+
+接续顺序：A 合同与兼容测试 → 正式创建至完整 R2 合成闭环 → B 实际批次与资源/恢复测试 → 固定新 HEAD 的整体回归、双平台及新版集中审计。沿用当前总集成分支和 Draft PR #9，不 merge main、不 auto-merge。所有必要工程验收前保持 PARTIAL。
+
 ```text
 REPOSITORY=a1351995160/trade
 ACTUAL_MAIN_AT_START=e72fa6ae0ace0dbff6eeac87ae0e09082431d89a
@@ -63,7 +78,7 @@ RealFactoryRuntimeV1 已在正式 run 中逐候选复用 canonical caller 的 pr
 
 ## R2 必需的具体批准请求：新 Objective 执行绑定
 
-状态：WAITING_POLICY_APPROVAL；不是已经实施的治理变化。
+当前状态：IMPLEMENTING；2026-09-10 已单独获 A 限定实施批准。以下为原缺口及批准范围记录，最新实现见 [OBJECTIVE_EXECUTION_BINDING_V2.md](OBJECTIVE_EXECUTION_BINDING_V2.md)，完整 R2 尚未验收。
 
 现状证据：在全新临时根，通过实际 ResearchProposalGovernanceServiceV1.review/confirm 创建 Objective、预算、家族、lineage 和真实服务回执，生成的 Objective 缺少 batch_id、policy_identity、research_period_identity、factor_event_registry_identities 四字段。原始结果为仓库外 r2-objective-binding-gap.log，合成根 r2-objective-service-jaidcwv2。research_evolution_ai_design.py 的完整执行语义审批要求这四项逐项一致，因此生成目标无法直接进入已批准的完整语义设计路径。旧 P3-C/R1 fixture 在首次设计前手工初始化这些字段，并手工创建初始目标/演进状态，不能冒充“正式 Objective 创建 → 全闭环”的认证。
 

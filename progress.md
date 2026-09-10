@@ -1571,3 +1571,28 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - docs/R1_WINDOWS_PROCESS_DIAGNOSTICS_V1.md：新增 Windows OPEN 事件及文本诊断缺口，保留原事件。
 - progress.md：追加本轮证据与限制。
 - 回滚：git revert --no-edit <本轮提交SHA>；回滚点 a64c49abad5b180334b765c21e3d580f22b6b81d，不删除失败日志、不改main。
+
+## 2026-09-10 - Task: 接续 A/B 限定批准并实现新 Objective 执行绑定
+### What was done
+- 分别登记 A Objective execution_binding 与 B synthetic 有界批次为 IMPLEMENTING，保留此前新颖性和测试使用资格批准；旧集中审计包保持不变。
+- 新 v2 创建入口在审核预览前验证冻结政策/锁、窗口、实际因子及事件 registry，绑定工作区及来源字节身份，确认复核后复用原 Objective/预算/家族/lineage/回执创建事务。
+- 新目标直接进入真实设计、批准、冻结、物化服务，无事后补字段、补家族或补成功回执；修复物化层对正式禁止标记 recommendation=DISABLED 的误拒绝，其他推荐/绩效内容仍拒绝。
+### Testing
+- objective-binding-stage-final.log/XML：83 passed / 48.69s；含新协议20项、原创建/物化/设计和新颖性回归。原始日志位于 E:/llmwiki/roadmap-engineering-evidence；网络/受保护访问/未授权进程探针均0。
+- 实际子进程：持有政策共享锁时确认退出23；Objective 写入后进程退出73；新进程恢复并重放，预算文件字节不变。原始 stdout/stderr 在 objective-binding-stage-process/objective-binding。
+- objective-materialization-red.log：真实组合1 failed，精确定位 objective.risk_constraints.recommendation；修复后正向通过，ENABLED 和嵌套 performance 仍拒绝。新协议开发早期2项测试字段/检查点误用及能力 fixture 缺口的失败日志保留，不归类业务 red。
+- git diff --check 通过。顺序内部审查覆盖版本混用、来源 freshness、路径/域、共享锁、恢复和旧预算不变；不是独立集中审计或双平台完成。
+### Notes
+- .github/workflows/r1-source-data-certification.yml：加入新协议验收文件，未扩大 skip/超时/隔离白名单。
+- CLAUDE.md：记录正式禁止标记与结果盲化的区别。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：分别登记四项批准及当前实施状态。
+- docs/OBJECTIVE_EXECUTION_BINDING_V2.md：新合同、API、源证据、并发边界、兼容及限制。
+- src/chanlun_trader/research_factory/objective_execution_binding.py：新版本服务及正式事务复用。
+- src/chanlun_trader/research_factory/research_proposal_governance.py：显式 preview/receipt 版本及恢复版本校验；v1 默认值不变。
+- src/chanlun_trader/research_factory/candidate_executable_materialization.py：仅对精确禁止值使用临时盲化投影，原文件/来源 hash 不变。
+- src/chanlun_trader/webapp.py：独立 v2 review/preview/confirm/recover 入口。
+- tests/research_factory/test_objective_execution_binding.py：真实服务正负向、兼容、正式创建至物化与进程边界。
+- tests/research_factory/objective_binding_worker.py：独立进程实际确认、退出、恢复和重放驱动。
+- progress.md：本轮实现、验证与回滚记录。
+- 回滚点 e288746490912ae979dd3643f36eaee063335720；执行 git revert 本模块提交，停用 v2 入口，保留新历史工件并由旧入口拒绝写入；不 reset/revert main。
+- 完整 R2、B 实际批次及最终固定 HEAD 整体/双平台验收仍需继续。工程总体 PARTIAL；真实数据 NOT_VERIFIED，READY_FOR_REAL_TRIAL=false，R1_FULLY_CLOSED=false；所有既有 OPEN 事件保留。
