@@ -71,3 +71,8 @@ B首版仅固定候选集合、并发1、零重试、NONE模型且模型调用/t
 全会话合法合成Trial/engine总数未统一埋点时报告NOT_MEASURED，分段提供实际R2/R3/Paper计数；重复回归不是不同业务Trial。禁止动作探针、被拒绝测试尝试、真实执行及合法合成调用分开。原始日志中的缺失计数不填0。
 
 最终包只包含明确源码/测试/工程文档、差异和允许的合成日志；排除真实数据、真实绩效、凭据、.git和虚拟环境。新manifest和ZIP完成隐私检查后交独立集中审计；若仍有必要工程或认证阻断，如实PARTIAL_WITH_BLOCKERS，不把登记待办当完成。
+
+## 认证分组（不扩大时限或排除用例）
+36d8a2c的R1 PR run34493772051与push34493759369均为Ubuntu通过、Windows取消。PR Windows实际check annotation明确“The job has exceeded the maximum execution time of 20m0s”，不是推定旧L1/L6根因。原始完整日志和annotation保留。新增完整服务测试合并到旧串行job后超出原认证时限，现仍在同一R1工作流中分为原基础回归job与新增R2/R3正式服务job，各平台、原哈希锁、import前隔离和20分钟上限不变。两个分组分别上传原始证据。
+
+ci-partition-validation.json验证原R1的28个测试路径严格分为21+7，交集为空、并集完全相同；原Phase1/2/3B/3C命令和选择器逐项完全不变，没有新增pytest skip或排除项。新的正式服务job另保留实际导入隔离验证。最终本地运行两组全部路径并合并列明独立用例，最终双平台必须同时通过两个job。abb0073的同布局中间结果单独留存，不能作为新分组认证。

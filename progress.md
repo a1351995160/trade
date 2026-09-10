@@ -1752,3 +1752,16 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - CLAUDE.md：记录固定进程入口约定。
 - progress.md：本轮验证和未完成认证记录。
 - 回滚：git revert本轮提交，并停用受影响新入口；检查点abb0073，保留全部原始证据与账本，不改main。
+
+## 2026-09-10 - Task: 在原时限内拆分完整服务认证
+### What was done
+- 同一R1认证工作流增加独立R2/R3正式服务job，原基础回归与新服务测试分组，不重复整套工作流，不增大时限。
+### Testing
+- 36d8a2c PR34493772051与push34493759369：Ubuntu通过、Windows20分钟超时取消；PR annotation明确最大执行时限20m0s，原日志与batch-ui-ci-timeout-annotations.json保存，未将其标记通过。
+- validate-ci-partition.py和ci-partition-validation.json：28个原测试路径=21个基础+7个正式服务，互不重叠、并集精确一致；原Phase1/2/3B/3C完整命令、matrix/env、依赖锁和20分钟时限一致。未扩大skip、超时或隔离白名单。
+- YAML解析与git diff --check通过；最终固定HEAD重新运行全部本地及两个平台，结果待实际完成。
+### Notes
+- .github/workflows/r1-source-data-certification.yml：按依赖范围拆分两组job与原始附件，原平台/版本/隔离保留。
+- docs/ROADMAP_CONTINUOUS_DELIVERY_AUDIT_V2.md：记录实际超时依据、精确覆盖并集和认证要求。
+- progress.md：追加本轮验证与限制。
+- 回滚：git revert本轮提交，检查点08e3146；不能以回滚分组掩盖超时，不改main或运行权限。
