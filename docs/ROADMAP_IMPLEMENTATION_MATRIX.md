@@ -60,3 +60,31 @@ RealFactoryRuntimeV1 已在正式 run 中逐候选复用 canonical caller 的 pr
 测试：新 venv Windows Python3.13.5、原完整哈希锁及 pip check；隔离先验66 passed。第一轮 R1 全矩阵213 passed/251.15s；随后补文件身份，最终受影响矩阵74 passed/48.13s，包括原 caller63、新批次5及政策6。不是两次测试相加计数。新增批次正向通过真实 reader/runner 和两个独立 engine，负向拒绝空时间/缺列/缺日历/冻结文件字节变更；输入与治理文件内容不变。
 
 扩展批次相关回归39 passed/1 failed：旧 policy-pin 测试从 cwd 读取未交付政策，是 fixture 缺口而非业务 red。改为临时生成默认政策/锁后6 passed，未读原研究文件、未扩大 skip。compile及收集成功，1094 collected（新增第五项前的收集，非passed）；原 legacy module skip保留。原始日志/XML见仓库外证据目录。完整 RealFactoryRuntime.run、正式恢复和 R2 全链仍 NOT_VERIFIED；不能把本节子路径验收算作完整服务通过。
+
+## R2 必需的具体批准请求：新 Objective 执行绑定
+
+状态：WAITING_POLICY_APPROVAL；不是已经实施的治理变化。
+
+现状证据：在全新临时根，通过实际 ResearchProposalGovernanceServiceV1.review/confirm 创建 Objective、预算、家族、lineage 和真实服务回执，生成的 Objective 缺少 batch_id、policy_identity、research_period_identity、factor_event_registry_identities 四字段。原始结果为仓库外 r2-objective-binding-gap.log，合成根 r2-objective-service-jaidcwv2。research_evolution_ai_design.py 的完整执行语义审批要求这四项逐项一致，因此生成目标无法直接进入已批准的完整语义设计路径。旧 P3-C/R1 fixture 在首次设计前手工初始化这些字段，并手工创建初始目标/演进状态，不能冒充“正式 Objective 创建 → 全闭环”的认证。
+
+此外，R2 探索测试已用真实 Provider、规范化 PIT 服务、实际分片及下界计算取得 Structural PASS（lower64/upper65/minimum30），之后通过真实人工预测授权；旧 fixture 缺 canonical Multiple Testing Family，正式 start 正确拒绝。不能手写 immutable family 或 success receipt 绕过。探索计数、失败和每个临时根均保留；尚未执行预测/PerformanceAccess。
+
+必要变更（仅请求以下范围）：
+
+1. 在 ResearchProposalGovernanceServiceV1 的新版本 Objective 创建 preview/confirm 中接收明确 execution_binding：冻结 policy_id/version/hash、research_period_identity（id/start/end）、factor_event_registry_identities。为未来实际调用保留同等校验，本次仅 synthetic 测试。
+2. 将该绑定内容纳入新版本 preview_hash / objective_identity_hash；确认时重新核对政策锁、窗口与 registry 身份。成功创建时派生当前新 objective_id、batch_id，并写入设计服务已要求的四个字段。复用现有 Objective、SearchBudget、Multiple Testing Family 和 lineage 创建事务。
+3. 不改变现有预算额度/扣账、统计阈值/家族定义、Final Test、人工确认/冻结步骤，不增加批次自动批准权，不解除 CP 预测禁令。
+
+影响：新增目标的身份计算包含明确执行绑定，因此属于身份/冻结边界扩展，不以普通字段适配掩盖。原 v1 preview、旧目标和既有 receipt 保持原语义；旧目标不得静默补绑或迁移。无 execution_binding 的旧流程继续兼容并保持不能进入完整新语义路径的限制。
+
+兼容/回滚：新增版本明确区分；本次仅在新 synthetic 根验证。单独提交，可 git revert 回到1d461de之后的明确父提交；已生成新版本工件保留且旧代码拒绝继续写，不删除或改写历史。
+
+验证：实际 review→preview→confirmed creation→design→approve→freeze→materialize→Structural→authorize→start；拒绝缺/错/更改绑定、preview陈旧、确认重放身份冲突；原v1/Phase1/P3-A/B/C回归，确认预算及CP禁令不变。
+
+最小批准范围只包含上述新目标创建协议扩展及前后端传递、对应测试。R3批次自动权限、真实数据、真实Trial/Paper/broker均不在批准范围。等待期间暂停此完整R2路径，继续不依赖新治理协议的工程。
+
+## R2 内部自检：结构结果跨服务边界
+
+实际 provider 的零 Prospective 安全计数在原 PerformanceBlindGuard 已允许的两个精确路径内，但持久化层未使用同一合同，造成真实 Structural 结果被拒绝。持久化层现在复用原路径，并拒绝非零 Prospective；未新增隔离白名单。针对性 red 为1 failed/3 passed，修复后4 passed；相关回归88 passed，另2项旧现场测试依赖未交付真实 Objective/报告，失败原样保留（r2-structural-regression.log），不读取真实文件补齐、不增 skip。network/process/protected 探针均0。
+
+五轮独立合成探索保留原日志与根路径，分别定位合约状态、执行约束、PIT资料和下界证明缺口；最终真实 Provider PASS 下界64/上界65/最低30，预测授权由真实服务生成。正式 start 因缺 canonical family 拒绝，预测/engine/PerformanceAccess均0。因此本阶段只关闭结构结果持久化适配，R2 E2E仍未通过。两项现场测试不属于已通过证据；最终全量测试须明确保留此运行条件限制。

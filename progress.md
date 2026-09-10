@@ -1126,3 +1126,30 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - progress.md：仅追加本轮记录。
 - 仓库外E:/llmwiki/roadmap-engineering-evidence：安装、原始失败/成功日志、XML、caller远端证据及后续交接。
 - 回滚：在总集成分支执行git revert --no-edit <本轮提交SHA>；回滚点4f780cf6454c36124f8a9477ca73098551d49f04。保留历史日志，不reset、不修改main或原研究目录。下一步自动继续R2合法合成完整服务验证；真实运行仍未授权。
+
+## 2026-09-10 - Task: R2 真实结构结果持久化与完整服务阻塞定位
+
+### What was done
+
+修复真实 Structural producer 与持久化边界对零安全计数的不一致，复用既有精确路径且拒绝非零 Prospective/收益字段。建立现场合成探索驱动，实际规范化 PIT、遍历分片验证下界依据，正式 Structural 得到 PASS，真实治理服务生成预测授权。正式 start 正确拒绝缺失 canonical family，未伪造回执。
+
+另经真实目标创建服务证明输出缺四项冻结执行绑定；提出新版本目标绑定的精确批准范围，未修改身份/治理协议。等待批准期间按用户授权继续独立 R3 工程，R2完整路径不标通过。
+
+### Testing
+
+- r2-blind-boundary-red.log：1 failed/3 passed；修复后针对性4 passed。
+- r2-structural-regression.log：88 passed/2 failed/46.98s。两项旧现场测试依赖当前工程根不存在的真实Objective/报告；未读原研究根、未新增skip，不能算通过。network/process/protected=0。
+- 五轮探索日志r2-first至r2-fifth及对应root.txt完整保留；每轮针对已定位的fixture/证明缺口修正。最终实际Structural lower64/upper65/minimum30，两个真实build（预核验与服务）；预测、engine、PerformanceAccess均0。start被canonical family缺失阻断。
+- r2-objective-binding-gap.log：真实review/confirm创建目标/预算/家族/lineage/receipt后四个绑定字段缺失，旧fixture不能代替该路径认证。R2完整Trial/恢复未验证。
+- 原Windows L1/L6继续OPEN；最终全路线和双平台认证尚未完成。
+
+### Notes
+
+- src/chanlun_trader/research_factory/structural_reconciliation.py：复用已有盲性合同并拒绝非零安全计数。
+- tests/research_factory/test_r2_structural_result_boundary.py：四项真实序列化边界回归。
+- tests/research_factory/r1_caller_fixture.py：新测试可在首次审批前声明完整语义及合成日历，默认不变。
+- tests/research_factory/r2_service_worker.py：独立临时根探索驱动，显式标明尚非完整验收。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：实际证据、失败、R2阻塞与具体批准范围。
+- CLAUDE.md：追加跨服务盲性与正式Objective fixture边界经验。
+- progress.md：追加本轮记录。
+- 回滚：执行git revert --no-edit <本轮提交SHA>；回滚点1d461de5c2da74906ecab74e70f0cc6eb41eeeda，不reset/main，不删除历史证据。证据位于仓库外E:/llmwiki/roadmap-engineering-evidence。

@@ -16,9 +16,9 @@ from chanlun_trader.research_factory.durability import DurableFrozenCandidateCon
 from chanlun_trader.research_factory.predictive_executor import CanonicalPredictiveExecutorV1
 
 
-def fixture(root, *, structure_exit=False, file_registry_identity=False):
+def fixture(root, *, structure_exit=False, file_registry_identity=False, sessions=None, validation_ready=False):
     scenario = Scenario(root).initialize()
-    sessions = [20250715, 20250716, 20250717, 20250718, 20250721, 20250722,
+    sessions = sessions if sessions is not None else [20250715, 20250716, 20250717, 20250718, 20250721, 20250722,
                 20250723, 20250724, 20250725, 20250728, 20250729, 20250730, 20250731]
     policy_path = root / "data/research/strategy_validation/validation_decision_policy_v2.json"
     policy, _ = load_validation_decision_policy_v2(policy_path)
@@ -52,6 +52,14 @@ def fixture(root, *, structure_exit=False, file_registry_identity=False):
     old = DurableFrozenCandidateContractV1.from_dict(design["durable_contract"])
     seed = old.reconstruct_candidate().candidate.to_dict()
     seed["max_positions"] = policy.max_positions
+    if validation_ready:
+        seed["candidate_status"] = "VALIDATION_READY"
+        seed["risk_filters"] = [{"type": "PIT_UNIVERSE"}]
+        seed["execution_filters"] = [{"type": "TRADABILITY", "price_limit": "FAIL_CLOSED", "suspension": "FAIL_CLOSED"}]
+        seed["ranking_rule"].update(status="DETERMINISTIC", tie_breaker="SYMBOL_ASC")
+        seed["entry_timing"]["execution_time"] = "NEXT_SESSION_OPEN"
+        seed["t_plus_1_contract"]["same_session_sell_forbidden"] = True
+        seed["exit_rule"]["holding_period_trading_sessions"] = seed["holding_period"]
     record = build_semantic_record(StrategyCandidateSpec.create(seed), design["hypothesis"])
     if structure_exit:
         # 新合成设计在首次审批前显式声明零成交活动结构失效，不改已冻结记录。

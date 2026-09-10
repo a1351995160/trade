@@ -142,3 +142,5 @@
 - runner 返回不表示研究通过；结果字段、真实账务和来源必须一致。默认无落盘时 metrics_ref=None，正式裁决只能引用已经写出的 provisional 文件。
 
 - RealFactoryRuntime 的冻结 registry 使用 path/sha256，canonical caller 原格式使用内容 hash；适配须验证各自原始绑定，不能混同文件字节哈希与内容哈希，不能改写旧冻结合同来凑接口。
+
+- Structural producer 的零 Prospective 安全计数使用既有精确路径合同，持久化必须一致且拒绝非零计数及收益字段。手工初始化 Objective 的旧 fixture 不证明正式创建服务可生成执行绑定及 canonical family；完整服务认证必须实际经过目标创建。
