@@ -1676,3 +1676,17 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - progress.md：本轮结果、差异与回滚记录。
 - 回滚：git revert 本模块提交，停用B新入口并保留全部新合成历史/消费；恢复点991adc3。不reset/merge main，不返还已消费预算。
 - 当前总工程仍PARTIAL；B正式操作入口/统一界面、固定新HEAD全路线回归、双平台和新版集中审计包继续。真实数据NOT_VERIFIED、READY_FOR_REAL_TRIAL=false、R1_FULLY_CLOSED=false；既有OPEN事件不关闭。
+
+## 2026-09-10 - Task: 批次合成夹具的临时路径一致性
+### What was done
+- 创建任何正式目标前规范化测试临时根，父进程与真实服务子进程使用同一根身份；保存原临时路径和规范路径诊断。未改变服务来源校验。
+### Testing
+- 320e980 的 PR R1 run 34490995583：Ubuntu通过；Windows 376 passed、9 failed、20 errors，新增批次夹具在NOVELTY_SOURCE_MISSING_OR_LINKED处阻断。原始失败日志及全部附件保存到外部证据目录 batch-ci-pr-34490995583；push run34490990216为cancelled，不记通过。
+- batch-temp-alias-final.log/XML：1 passed，23 deselected（仅定向验证，不代表全套）；真实正式创建、来源确认及批次预览经过非规范临时别名测试，进程探针均0。新的Windows CI尚待验证，不据本地结果关闭历史OPEN事件。
+- batch-temp-alias.log为首次验证失败原件：测试断言字段名写错，且该命令误用保护环境变量名，sitecustomize报告KeyError，不能作为隔离认证证据。修正命令与断言后使用独立final日志，未覆盖原件；没有读取受保护研究数据。
+### Notes
+- tests/research_factory/test_synthetic_batch_contract.py：规范化新夹具根、记录路径、真实服务别名回归。
+- docs/SYNTHETIC_BATCH_AUTHORIZATION_V1.md：记录平台阶段差异及验证范围。
+- CLAUDE.md：记录父子进程临时根身份一致性。
+- progress.md：追加本轮诊断和验证原件说明。
+- 回滚：git revert 本轮提交；检查点320e980，不回退main，不改历史批准或账本。

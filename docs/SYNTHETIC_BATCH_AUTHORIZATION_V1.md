@@ -41,3 +41,6 @@ Objective 创建回执及不可变家族必须匹配原创建事务中的实际�
 仍需版本化操作入口及统一界面接入和相应真实使用流程；固定新 HEAD 的全路线回归、双平台及新版集中审计。不能把这些登记项当作已经交付。旧历史 fixture 的22项失败保持独立记录，兼容性还需既有独立合成 P3 套件验证。
 
 真实数据 NOT_VERIFIED，READY_FOR_REAL_TRIAL=false，R1_FULLY_CLOSED=false。无真实合格策略、真实观察0；合成最终 BLOCKED/REJECTED 可以是工程链正确完成的结果，不要求 RESEARCH_PASSED。所有既有 OPEN 事件及旧集中审计包保持不变。
+
+## 阶段平台差异（320e980）
+PR R1 run34490995583的Ubuntu通过，Windows在新批次夹具准备阶段报NOVELTY_SOURCE_MISSING_OR_LINKED：376 passed、9 failed、20 errors；push run34490990216被取消，不能记通过。原件与附件在batch-ci-pr-34490995583。测试父进程原来直接使用tempfile临时路径，实际创建子进程使用resolve后的路径；现于创建前统一规范路径并保存二者诊断。非规范临时别名的真实服务本地回归通过，新Windows认证尚待验证。服务来源校验、超时、skip和隔离规则未放宽，L1/L6继续OPEN。

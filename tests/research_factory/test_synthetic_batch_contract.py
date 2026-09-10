@@ -22,11 +22,15 @@ def prepared_batch():
 
 
 def prepare_batch(*, multiple=False):
-    root = Path(tempfile.gettempdir()) / ("r3-contract-" + uuid.uuid4().hex)
+    temporary_root = Path(tempfile.gettempdir())
+    root = temporary_root.resolve() / ("r3-contract-" + uuid.uuid4().hex)
     source = Path(__file__).resolve().parents[2]
     environment = dict(os.environ, PYTHONPATH=os.pathsep.join([str(source / "tests/isolation"), str(source / "src")]))
     output = Path(os.environ["CHANLUN_PROCESS_EVIDENCE_DIR"]) / root.name
     output.mkdir(parents=True, exist_ok=True)
+    (output / "workspace-paths.json").write_text(json.dumps({
+        "temporary_root": str(temporary_root), "canonical_root": str(root),
+    }), encoding="utf-8")
     try:
         result = subprocess.run([sys.executable, str(Path(__file__).with_name("r2_service_worker.py")), str(root), "prepare_multiple" if multiple else "prepare"],
             cwd=source, env=environment, capture_output=True, timeout=60)
@@ -58,6 +62,16 @@ def prepare_batch(*, multiple=False):
 
 def approval(preview):
     return {"confirmed": True, "test_confirmation": True, "preview_hash": preview["hash"]}
+
+
+def test_noncanonical_temp_alias_is_resolved_before_formal_creation(monkeypatch):
+    temporary_root = Path(tempfile.gettempdir()).resolve()
+    alias = temporary_root / ".." / temporary_root.name
+    monkeypatch.setattr(tempfile, "gettempdir", lambda: str(alias))
+    root, policy, body = prepare_batch()
+    assert root == root.resolve()
+    preview = SyntheticBatchServiceV1(root, policy).request(body)
+    assert preview["bindings"][0]["candidate"] == body["candidates"][0]
 
 
 def test_relative_workspace_is_not_resolved_into_an_authorized_root():
