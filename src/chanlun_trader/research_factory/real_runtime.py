@@ -23,6 +23,7 @@ from .objective import ResearchObjectiveV1
 from .state_machine import ResearchBatchState, ResearchBatchStateMachineV1
 from .status import ResearchFactoryStatusV1
 from .strategy_adapter import candidate_similarity
+from .execution_evidence import audit_microstructure
 from .novelty import CandidateNoveltyGateV2, design_safe_candidate
 from .diversity import InsufficientDiverseCandidatesError
 from .source_dependencies import SOURCE_ROOT, load_corrected_module
@@ -1042,7 +1043,7 @@ class RealFactoryRuntimeV1:
                 local_classification = validator_classification
                 reason_codes = ("VALIDATOR_INVALID_INVARIANT",) if validator_classification == "INVALID" else (() if validator_classification in {"REJECTED", "WEAK", "RESEARCH_PASSED", "PROMISING"} else ("VALIDATOR_INSUFFICIENT_EVIDENCE",))
                 small_contract = small_capital_contract(policy)
-                microstructure = {"status": "CHECKED", "event_ids": event_ids, "event_availability_contract": "PIT_EVENT_AVAILABLE_AT<=T_CLOSE", "required": record.candidate.candidate_type == "EVENT_SIGNAL"} if record.candidate.candidate_type == "EVENT_SIGNAL" else {"status": "NOT_REQUIRED", "required": False}
+                microstructure = audit_microstructure(base_engine, inputs)
                 engine_integrity = {"certification_status": base_metrics.get("certification_status"), "invariant_errors": base_metrics.get("invariant_errors", [])}
                 v2_gates = {
                     "engine_integrity": {"passed": not engine_integrity.get("invariant_errors") and engine_integrity.get("certification_status") != "INVALID"},
@@ -1056,7 +1057,7 @@ class RealFactoryRuntimeV1:
                     "small_capital_execution_feasibility": {"passed": bool(small_contract.get("fixed_contract")) and not ten_metrics.get("invariant_errors") and ten_metrics.get("certification_status") != "INVALID"},
                     "baseline_preregistration": {"passed": bool(orchestrator.baseline_registry.items())},
                     "intended_holding_contract": {"passed": 2 <= int(record.candidate.holding_period) <= 10},
-                    "microstructure_realism": {"passed": microstructure.get("status") in {"CHECKED", "NOT_REQUIRED"}},
+                    "microstructure_realism": microstructure,
                     "candidate_similarity_control": {"passed": True},
                     "search_budget_reservation": {"passed": True},
                 }

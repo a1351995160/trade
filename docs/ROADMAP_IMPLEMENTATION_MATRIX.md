@@ -184,3 +184,11 @@ engineering_backup只备份workbench.json及其声明的输入/模拟输出树�
 示例20MB是明确合成工件I/O上限，不是研究预算；换路径时仍须全新输出。只在合成根验证，不授权备份真实研究数据。恢复后若需页面，使用新根和demo的resume；是否governed仍在启动时显式选择，页面操作继续逐次确认。
 
 首轮3 passed；与装配/工作台联合15 passed/34.31s；最后补清单字节上限后受影响3 passed。原始workbench-backup-first/final/limit.log和XML保留。实际CLI现场生成两个合成候选，备份90个文件、恢复成功且未执行，备份ZIP及setup/backup/restore原始日志在证据目录；三进程隔离探针0。测试恢复后的Paper从9续至10，原根仍9；内容损坏、清单入口绝对路径、ZIP越界、重复恢复/超限均拒绝。以上不关闭真实备份/恢复或历史来源核验。
+
+## 后续源码修复：微观执行真实性不能写常量通过
+
+冻结ValidationDecisionPolicyV2要求核验实际可得时点、合法入场/成交/退出；canonical原gate直接True，batch原gate将非事件策略标NOT_REQUIRED。新增execution_evidence.audit_microstructure，使用真实EngineResult的signals/orders/trades/lots/calendar、caller因子时点和既有ChinaPriceLimitModel核对：缺时点、未来因子、早于eligible、非开盘事件、同日信号成交、停牌/涨跌停、T+1/归属/超量和账本不变量。两个正式调用点使用实际证据，默认DAILY/RAW以外不宣称已认证。未修改成交模型、政策阈值或预算扣账。
+
+red是将原常量判断提取为helper后，以真实runner结果副本注入5类坏证据，5 failed/1 passed；不是完整canonical execute的red。替换核验后6 passed，后加非开盘时点，最终微观7+batch5+每日12+Paper8+工作台7共39 passed/86.08s，execution-evidence-red/green/final.log/XML，隔离探针0。真实正常成交通过，异常证据不通过；原失败日志保留。
+
+仍未验证完整canonical/RealFactoryRuntime.run，完整R2协议阻塞不因此关闭；candidate_similarity_control与search_budget_reservation的最终证据仍需继续核验，不能以本项代表所有hard gates已完成。

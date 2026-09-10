@@ -1353,3 +1353,26 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - CLAUDE.md：记录清单入口和字节边界。
 - progress.md：追加本轮记录。
 - 回滚：git revert --no-edit <本轮提交SHA>；回滚点de3199a，保留外部ZIP和新旧合成根，不删除或覆盖任何历史目录，不修改main。
+
+## 2026-09-10 - Task: 以真实执行证据替换微观时序常量通过
+
+### What was done
+
+按既有冻结政策核对实际signals/orders/trades/lots/calendar和数据可得时点，复用既有涨跌停规则。单候选与批次正式裁决引用实际核验结果，保留原模型、阈值与预算语义。
+
+### Testing
+
+- 提取原常量逻辑后，真实runner结果副本的同bar/NaT/T+1/未来因子/停牌注入得到5 failed/1 passed；这是gate组件red，不冒充完整执行路径red。execution-evidence-red.log原样保留。
+- 首轮核验6 passed；增加非开盘时点后，相关微观/batch/D1/D2/工作台最终39 passed/86.08s，execution-evidence-final.log/XML，隔离三探针0；警告保留。
+- 完整canonical与批次服务仍待后续；其他hard gate不因本项通过而认证。
+
+### Notes
+
+- src/chanlun_trader/research_factory/execution_evidence.py：真实微观执行证据核验。
+- src/chanlun_trader/research_factory/predictive_executor.py：正式gate使用核验结果。
+- src/chanlun_trader/research_factory/real_runtime.py：批次gate不再按候选类型自动通过。
+- tests/research_factory/test_execution_evidence.py：实际runner正向与6种证据异常。
+- .github/workflows/r1-source-data-certification.yml：加入执行证据验证。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：原缺陷、测试范围及剩余hard gate。
+- progress.md：追加本轮记录。
+- 回滚：git revert --no-edit <本轮提交SHA>；回滚点01addc3，会恢复已知常量gate缺陷，禁止据此启用真实研究。main及真实根不变。
