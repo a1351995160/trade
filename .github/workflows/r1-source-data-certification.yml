@@ -182,6 +182,7 @@ jobs:
           tests/research_factory/test_engineering_backup.py
           tests/research_factory/test_execution_evidence.py
           tests/research_factory/test_budget_registration_evidence.py
+          tests/research_factory/test_r2_structural_result_boundary.py
           tests/research_factory/test_strategy_admission.py
           tests/research_factory/test_synthetic_usage.py
           tests/research_factory/test_paper_replay.py

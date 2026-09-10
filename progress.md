@@ -1502,3 +1502,22 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - docs/ROADMAP_IMPLEMENTATION_MATRIX.md：源码部署命令、证据和wheel范围限制。
 - progress.md：追加本轮记录。
 - 回滚：git revert --no-edit <本轮提交SHA>；回滚点f3ab4fd。停止合成服务，保留配置和全部证据，不改main或真实根。
+
+## 2026-09-10 - Task: 固化全路线集中审计范围及最终验证入口
+
+### What was done
+
+整理当前需求与实际调用链、十五项跨系统场景、部署/恢复和必要阻断；将早期阶段快照与当前已实现范围分开。补齐结构持久边界测试到现有R1双平台工作流。
+
+### Testing
+
+- 文档逐项对照已提交代码、实际原始日志与附件第13—17节；不把片段通过写为完整R2闭环。
+- 最终固定本提交后的HEAD执行原阶段与全部新增套件，结果写外部final清单及PR，不再以回填结果改变HEAD。
+- 本轮git diff --check；工作流仅增加已通过的4项边界用例，未调整原选择器、skip、timeout或白名单。
+
+### Notes
+
+- docs/ROADMAP_CONTINUOUS_DELIVERY_AUDIT_V1.md：当前矩阵、实际调用图、跨系统判定、集中待办及部署/证据导航。
+- .github/workflows/r1-source-data-certification.yml：加入既有新增结构持久边界回归。
+- progress.md：追加本轮记录。
+- 回滚：git revert --no-edit <本轮提交SHA>；回滚点1223664，仅去除本轮文档/测试入口，不删除原始证据或改变main。
