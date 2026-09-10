@@ -48,3 +48,25 @@ def test_performance_access_process_exit_requires_actual_confirmed_same_trial_re
     result = json.loads(recovered.stdout)
     assert result["recovery_completed"] is True and result["same_trial"] is True
     assert result["calls"] == {"engine": 2, "performance": 0}
+
+
+def test_new_formal_intent_never_downgrades_through_legacy_entry(tmp_path):
+    root = tmp_path / "fresh-synthetic"
+    prepared = run_worker(tmp_path, "r2_service_worker", root, "prepare_intent")
+    assert prepared.returncode == 0, prepared.stdout.decode("utf-8") + prepared.stderr.decode("utf-8")
+    checked = run_worker(tmp_path, "novelty_protocol_worker", root)
+    assert checked.returncode == 0, checked.stderr.decode("utf-8")
+    values = json.loads(checked.stdout)
+    assert values["counts"] == {"engine": 0, "performance": 0}
+    assert values["results"]["proper_new_boundary"]["blocked"] is False
+    assert all(item["blocked"] for name, item in values["results"].items() if name != "proper_new_boundary"), values
+    assert all(item == {"used": 0, "reserved": 0} for item in values["budget"])
+
+
+def test_actual_v1_start_protocol_remains_legacy_without_migration(tmp_path):
+    root = tmp_path / "fresh-synthetic"
+    prepared = run_worker(tmp_path, "r2_service_worker", root, "prepare_legacy_intent")
+    assert prepared.returncode == 0, prepared.stdout.decode("utf-8") + prepared.stderr.decode("utf-8")
+    checked = run_worker(tmp_path, "novelty_protocol_worker", root, "legacy")
+    assert checked.returncode == 0, checked.stderr.decode("utf-8")
+    assert json.loads(checked.stdout) == {"legacy_compatible": True, "budget_unchanged": True}

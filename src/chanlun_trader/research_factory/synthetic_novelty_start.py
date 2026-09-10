@@ -7,6 +7,8 @@ from .common import stable_hash
 
 
 class SyntheticNoveltyTrialStartServiceV1(PredictiveTrialStartServiceV1):
+    _supports_synthetic_novelty = True
+
     def __init__(self, root, policy, confirmation_id, **kwargs):
         self.novelty = SyntheticNoveltyBindingServiceV1(root)
         self.novelty._authorize(policy)

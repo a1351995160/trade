@@ -115,7 +115,7 @@ class BatchPredictiveTrialStartServiceV1(SyntheticNoveltyTrialStartServiceV1):
 def batch_performance_boundary(root, objective_id, candidate):
     delegation = candidate.metadata.get("batch_delegation")
     if delegation is None:
-        intents = PredictiveTrialStartServiceV1(root, auto_run=False)._load_intents(objective_id)
+        intents = PredictiveTrialStartServiceV1(root, auto_run=False)._read_intents(objective_id)
         if any(item.get("candidate_id") == candidate.candidate_id and item.get("authorization_origin") == "BATCH_DELEGATED"
                 for item in intents.values()):
             raise PermissionError("BATCH_CANONICAL_DELEGATION_METADATA_REQUIRED")

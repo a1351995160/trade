@@ -15,7 +15,7 @@
 | 顺序 | 范围 | 验收与当前状态 |
 |---|---|---|
 | 1 CA-01 | 新资格提交见证、旧历史只读、消费端 | 实际red后修正；31项使用资格/工作台测试通过，额外真实Paper与撤销锁竞争1项通过；最终新HEAD双平台待验 |
-| 2 CA-02 | canonical新颖性协议及旧入口 | 待实际新意图服务复现/旧入口阻断证据；不移除原检查制造red |
+| 2 CA-02 | canonical新颖性协议及旧入口 | 正式新意图边界/旧confirm与recover接受已复现；修正后27项R2/新颖性、5项执行器/批次/旧治理、1项真实v1兼容通过；最终认证待验 |
 | 3 CA-03 | Paper已提交尾部见证 | 待真实engine、读取/重启/advance及写点退出验收 |
 | 4 CA-04 | 计划内容当前性和运行代码来源 | 待实际计划生成及比较接口red、确定性/只读回归 |
 | 5 整体 | 同一新HEAD本地、CI、UI/API、审计包 | 待四项完成；含base完整差异和ffbff08增量 |
@@ -31,3 +31,15 @@
 旧v1请求不原地改写、不补head、不重算身份。读取显示LEGACY_REVOKED或LEGACY_UNVERIFIED，不能继续提供计划/Paper资格；需要新版本明确请求和实际确认。旧请求不会被静默迁移。兼容夹具为旧交付包中实际服务生成的三份原字节回执，附来源SHA256，且不拿旧记录作为新测试的合法运行授权。
 
 共同边界：原引擎/策略/预算/统计不变；默认只读、无startup recovery、旧CP预测禁令不变；真实数据NOT_VERIFIED、READY_FOR_REAL_TRIAL=false、R1_FULLY_CLOSED=false；Windows L1/L6和其他已登记失败继续OPEN/原状态。
+
+## CA-02 canonical协议路由
+
+原red通过实际v2 Objective、设计审批、冻结/物化、Structural、来源声明/确认、人工预测授权和新版本confirm形成意图。只删除运行时两个标签时，原边界返回passed=True；部分删除被原检查拒绝。来源增加空白造成版本失效后，原新入口拒绝快照stale，旧候选重建边界仍放行，旧confirm返回STARTED幂等回执、recover返回RECOVERED。此次red的engine/绩效访问均0，不能冒称已经运行绩效绕过。
+
+保留原意图记录布局和哈希，不迁移任何历史。将原磁盘读取分离为私有只读`_read_intents`；运行路径`_load_intents`和候选重建检查持久新颖性协议，旧入口遇新版明确NOVELTY_VERSIONED_ENTRY_REQUIRED。新版本及批次适配复用原启动服务，仍执行原全部门禁。
+
+canonical_novelty_boundary先读持久意图，即使两个标签及start_intent_id都丢失，只要当前候选有新协议意图就拒绝降级；有标签时继续核对原意图身份、确认、候选/Trial及实际来源快照，运行原Gate。批次反降级只读查询同一原意图，不引入第二个权威。
+
+green实际调用CanonicalPredictiveExecutor，缺标签在首次性能访问/engine之前以NOVELTY_CANONICAL_PROTOCOL_METADATA_REQUIRED拒绝，三个原预算桶used0/reserved0，预留按原协议释放。旧v1兼容用原正式启动服务新建真正无新版标记的意图，不是从新版删字段伪装旧记录；旧confirm/recover和原边界正常，预算不变。已有R2完成回执重放/中断同Trial恢复及批次删除metadata回归通过。
+
+`.gitattributes`仅将CA-01的原字节JSON夹具标为-text，防止Windows checkout换行转换破坏审计来源哈希；不改变任何生产文件编码策略。

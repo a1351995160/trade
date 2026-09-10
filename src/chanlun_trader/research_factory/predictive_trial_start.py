@@ -214,6 +214,8 @@ def _copy(value: Any) -> Any:
 class PredictiveTrialStartServiceV1:
     """Canonical start-action service with durable intent and exact-once wiring."""
 
+    _supports_synthetic_novelty = False
+
     def __init__(
         self,
         root: str | Path,
@@ -818,6 +820,18 @@ class PredictiveTrialStartServiceV1:
         return self.root / "reports/research_daemon" / objective_id / START_INTENTS_FILENAME
 
     def _load_intents(self, objective_id: str) -> dict[str, dict[str, Any]]:
+        intents = self._read_intents(objective_id)
+        for intent in intents.values():
+            self._require_intent_protocol(intent)
+        return intents
+
+    def _require_intent_protocol(self, intent: Mapping[str, Any]) -> None:
+        if not self._supports_synthetic_novelty and any(
+                intent.get(key) is not None for key in ("synthetic_flow_version", "synthetic_novelty_confirmation")):
+            raise PredictiveTrialStartError("NOVELTY_VERSIONED_ENTRY_REQUIRED", "新版新颖性意图必须使用对应的版本化入口")
+
+    def _read_intents(self, objective_id: str) -> dict[str, dict[str, Any]]:
+        """仅读取canonical记录；不选择运行协议，不提供执行许可。"""
         path = self._intent_path(objective_id)
         if not path.exists():
             return {}
@@ -1116,6 +1130,7 @@ class PredictiveTrialStartServiceV1:
     def _candidate_work(self, snapshot: _StartSnapshot, intent: Mapping[str, Any]) -> Any:
         from ..research_daemon import CandidateWork
 
+        self._require_intent_protocol(intent)
         return CandidateWork(
             candidate_id=snapshot.candidate_id,
             candidate_hash=snapshot.candidate_hash,

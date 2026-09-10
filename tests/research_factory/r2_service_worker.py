@@ -133,6 +133,9 @@ def main():
         novelty_preview = novelty.preview(execution_policy, contract.candidate_id, contract.content_hash)
         novelty.confirm(execution_policy, {"confirmed": True, "preview_id": novelty_preview["preview_id"]})
         service = SyntheticNoveltyTrialStartServiceV1(root, execution_policy, novelty_preview["preview_id"], auto_run=False)
+        if len(sys.argv) > 2 and sys.argv[2] == "prepare_legacy_intent":
+            from chanlun_trader.research_factory.predictive_trial_start import PredictiveTrialStartServiceV1
+            service = PredictiveTrialStartServiceV1(root, auto_run=False)
         before_authorization = service.readiness(caller.objective_id)
         assert before_authorization["available"] is False
         write_json(root / "r2-before-start-authorization.json", before_authorization)
@@ -146,6 +149,8 @@ def main():
         write_json(root / "r2-test-start-request.json", request)
         receipt = service.confirm(caller.objective_id, request)
         write_json(root / "r2-start-receipt-copy.json", receipt)
+        if len(sys.argv) > 2 and sys.argv[2] in {"prepare_intent", "prepare_legacy_intent"}:
+            return
         service._run_intent(caller.objective_id, "R2_SYNTHETIC_START")
         result = service._load_intents(caller.objective_id)["R2_SYNTHETIC_START"]
         print("R2_FINAL=" + json.dumps(result, ensure_ascii=False), flush=True)

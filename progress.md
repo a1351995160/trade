@@ -1788,3 +1788,26 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - docs/ROADMAP_IMPLEMENTATION_MATRIX.md：标明外审CHANGES_REQUESTED及新修正索引。
 - CLAUDE.md：记录撤销历史必须有提交见证的实现教训。
 - progress.md：追加本轮记录。回滚点ffbff0856f95fdd3206ac70de6a82f3fd1164a16；可git revert本模块提交，但须先停用新资格入口并保留v2记录，不允许旧代码继续消费新批准。旧审计包不变；不merge、不auto-merge、不读真实数据。
+
+## 2026-09-11 - Task: CA-02 新颖性canonical协议与旧入口防降级
+### What was done
+- 使用正式创建/设计/冻结/物化/Structural/新颖性确认/预测授权生成新意图，取得旧候选边界丢标签放行、来源stale后旧confirm/recover仍接受的真实服务red；该red未执行engine/绩效，不扩大结论。
+- 原意图读盘与运行协议校验分离；旧运行入口和候选重建拒绝新版意图，性能边界先核canonical身份，不能由缺metadata决定legacy。
+- 保留原Gate/预算和批次协议；真实旧v1启动记录通过原服务生成，兼容正常且无历史迁移。
+### Testing
+- ca02-red.log/xml：1 failed/2 deselected，实际原代码缺标签/旧入口行为复现；原局部探针另存received，不作为本测试。
+- ca02-green.log/xml：27 passed，正式完整R2/同Trial硬退出恢复/完成回放、新意图及原新颖性边界。
+- ca02-integration.log/xml：5 passed，最终实际执行器缺标签拒绝、旧入口拒绝、批次反降级和原治理生命周期。原始worker记录engine0/performance0，拒绝后原预算三桶used0/reserved0。
+- ca02-legacy.log/xml：1 passed/3 deselected，原服务创建真实旧v1启动意图，confirm/recover兼容且预算原字节不变。
+- 禁止访问/网络/进程探针0；各日志和原始worker输出保留于ca-remediation-ffbff08。git diff --check通过。最终新HEAD认证待四项完成。
+### Notes
+- src/chanlun_trader/research_factory/predictive_trial_start.py：canonical仅读取与运行协议检查分离，旧入口/候选构造拒绝新版。
+- src/chanlun_trader/research_factory/synthetic_novelty_start.py：显式声明新版本路由，仍用原领域门禁。
+- src/chanlun_trader/research_factory/synthetic_novelty.py：缺metadata前先核持久协议，保留原比较算法。
+- src/chanlun_trader/research_factory/synthetic_batch_delegation.py：反降级检查使用canonical仅读取，不扩权。
+- tests/research_factory/r2_service_worker.py：原真实服务驱动新增只准备新版/旧版实际意图模式，不运行pytest领域替身。
+- tests/research_factory/novelty_protocol_worker.py：真实边界、旧入口、实际执行器及计数/原预算取证。
+- tests/research_factory/test_r2_formal_services.py：新版反降级与真正旧v1兼容回归。
+- .gitattributes：仅CA-01原审计JSON夹具禁换行转换，保持跨平台来源字节哈希；git check-attr text=unset。
+- docs/CONSOLIDATED_REMEDIATION_CA01_CA04.md：更新CA-02证据、路由和范围；CLAUDE.md追加教训；progress.md追加记录。
+- 回滚点b17914b5e41114deebab00dd9f897da6a45983a1；可git revert本模块提交，但须保持新版启动禁用，不能重新使用旧入口消费新版意图。Git自动gc报告旧不可达对象较多，未执行prune/清理，无用户数据操作。

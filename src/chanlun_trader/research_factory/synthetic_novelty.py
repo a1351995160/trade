@@ -248,12 +248,17 @@ def canonical_novelty_boundary(root, objective_id, candidate, contract):
     """新绑定只能由实际新版启动意图传入；旧路径不冒称已有新颖性证据。"""
     metadata = getattr(candidate, "metadata", {}) or {}
     identifier = metadata.get("synthetic_novelty_confirmation")
+    from .predictive_trial_start import PredictiveTrialStartServiceV1
+    intents = PredictiveTrialStartServiceV1(root, auto_run=False)._read_intents(objective_id)
+    intent = intents.get(metadata.get("start_intent_id"))
+    canonical_new = any(item.get("candidate_id") == candidate.candidate_id and any(
+        item.get(key) is not None for key in ("synthetic_flow_version", "synthetic_novelty_confirmation"))
+        for item in intents.values())
     if identifier is None and metadata.get("synthetic_flow_version") is None:
+        if canonical_new:
+            raise ValueError("NOVELTY_CANONICAL_PROTOCOL_METADATA_REQUIRED")
         yield {"passed": True}  # 保留旧流程原语义；该路径不在新绑定认证范围。
         return
-    from .predictive_trial_start import PredictiveTrialStartServiceV1
-    intents = PredictiveTrialStartServiceV1(root, auto_run=False)._load_intents(objective_id)
-    intent = intents.get(metadata.get("start_intent_id"))
     if not intent or any((intent.get("synthetic_flow_version") != SCHEMA,
         intent.get("intent_hash") != stable_hash({k: v for k, v in intent.items() if k != "intent_hash"}),
         metadata.get("synthetic_flow_version") != SCHEMA,
