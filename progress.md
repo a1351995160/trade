@@ -1551,3 +1551,23 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - docs/ROADMAP_IMPLEMENTATION_MATRIX.md：追加批准及最新范围索引。
 - progress.md：本轮实际实施与验证记录。
 - 回滚：git revert --no-edit <本轮提交SHA>；回滚点 d821d0ab99a181329949c92383a2ab1495009c15。保留所有历史合成证据；不改 main，不移动真实目录。
+
+## 2026-09-10 - Task: 保留新 Windows 拒绝事件并补 P3B 失败流诊断
+
+### What was done
+
+固定 a64c49a 本地 835 项通过，但 R1 PR Windows 在旧 P3C 并发用例出现 cmd.exe 拒绝/exit79。保存失败，新增 OPEN_ROOT_CAUSE_UNCONFIRMED；不关闭原 L1/L6。补齐原 P3B finish 断言前 stderr/stdout 文本留存，标明非原字节，保留超时、退出断言和隔离规则。
+
+### Testing
+
+- novelty-p3b-diagnostic.log/XML：4 passed、14 定向选择器 deselected。真实 P3C/P3B 合成进程拒绝都仍 exit79，完整脱敏诊断留存；两个真实并发场景通过。此通过不是旧 Windows 根因修复证据。
+- a64c49a 原本地完整 835 passed、1224 collected、389 未执行精确清单保留；Linux R1 348 passed，其中新颖性24。失败 run 34461942454 不删除、不重跑。
+- 新固定 HEAD 后完整回归/双平台证据将单列新目录，不覆盖 a64c49a 失败版本；git diff --check 通过。
+
+### Notes
+
+- tests/research_factory/test_restart_recovery_v1.py：原文本 finish 在失败断言前留存诊断，不改变业务调用与退出判断。
+- tests/research_factory/test_process_diagnostics_v1.py：同一真实拒绝场景覆盖原字节/P3B 文本两条路径。
+- docs/R1_WINDOWS_PROCESS_DIAGNOSTICS_V1.md：新增 Windows OPEN 事件及文本诊断缺口，保留原事件。
+- progress.md：追加本轮证据与限制。
+- 回滚：git revert --no-edit <本轮提交SHA>；回滚点 a64c49abad5b180334b765c21e3d580f22b6b81d，不删除失败日志、不改main。
