@@ -8,6 +8,7 @@ from pathlib import Path
 
 from chanlun_trader.execution_policy import ExecutionPolicy
 from chanlun_trader.research_factory.engineering_workbench import EngineeringWorkbenchV1
+from chanlun_trader.research_factory.engineering_workspace import save_engineering_workspace, load_engineering_workspace
 from chanlun_trader.webapp import create_app
 from test_portfolio_plan import setup
 
@@ -22,6 +23,7 @@ def build(root: Path, *, governed: bool = False):
     for index, source in enumerate(sources.values()):
         source["root"] = root / "inputs" / str(index)
     service = EngineeringWorkbenchV1(root / "inputs", sources, ledger, policy, root / "output")
+    save_engineering_workspace(root / "workbench.json", service)
     execution = ExecutionPolicy("GOVERNED" if governed else "READ_ONLY", "SYNTHETIC")
     app = create_app(service.root, execution, engineering_workbench=service)
     print(json.dumps({"synthetic_root": str(root), "mode": execution.mode, "qualified_strategies": 0,
@@ -34,6 +36,14 @@ if __name__ == "__main__":
     parser.add_argument("--root", required=True, type=Path)
     parser.add_argument("--port", required=True, type=int)
     parser.add_argument("--governed", action="store_true", help="明确允许合成工程操作，仍需页面逐次确认")
+    parser.add_argument("--resume", action="store_true", help="显式读取原root/workbench.json重建输入；不自动推进")
     args = parser.parse_args()
     import uvicorn
-    uvicorn.run(build(args.root, governed=args.governed), host="127.0.0.1", port=args.port)
+    if args.resume:
+        if os.environ.get("CHANLUN_TEST_ISOLATION") != "1":
+            raise ValueError("IMPORT_TIME_ISOLATION_REQUIRED")
+        service = load_engineering_workspace(args.root / "workbench.json")
+        app = create_app(service.root, ExecutionPolicy("GOVERNED" if args.governed else "READ_ONLY", "SYNTHETIC"), engineering_workbench=service)
+    else:
+        app = build(args.root, governed=args.governed)
+    uvicorn.run(app, host="127.0.0.1", port=args.port)

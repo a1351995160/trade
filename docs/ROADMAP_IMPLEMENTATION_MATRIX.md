@@ -155,3 +155,17 @@ $demoRoot = Join-Path $env:TEMP ('workbench-' + [guid]::NewGuid().ToString('N'))
 ```
 
 先在frontend执行`npm ci --ignore-scripts`及`npm run build`；打开`http://127.0.0.1:8857/research/workbench`。不加`--governed`则只读；即使加了仍须页面确认当前上下文才能归档/推进。Ctrl+C停止，不创建定时任务。旧根保留证据，当前demo不支持用旧root启动，不能手动删除归档以免费重跑。
+
+### 后续补齐：新进程工作台装配
+
+新增engineering_workspace的显式save/load及demo的`--resume`。新建演示会独占写入`workbench.json`，只记录相对输入/输出路径、正式冻结合同引用与身份、完整组合政策、输入身份及初始计划账户；不保存执行批准。load重新调用正式caller核对原registry合同/政策/PIT/缓存，不使用上个进程的Python对象；输入变更、配置损坏、路径越界及非有限现金拒绝。load不启动或恢复引擎，只有之后真实确认的公共API动作才续跑。
+
+因此上一节“demo不支持旧root启动”仅属当时阶段状态，现可在同一明确根执行：
+
+```powershell
+.\.venv\Scripts\python.exe tests/research_factory/workbench_demo.py --root $demoRoot --port 8857 --resume --governed
+```
+
+环境隔离设置与首次命令相同；不加governed仍只读。仅支持保存时的初始计划账户，不能把真实账户或任意持仓状态塞进配置；Paper持仓仍来自原事件序列。已有无workbench.json的早期浏览器临时根不自动迁移。
+
+首轮4 passed；最终配置5+工作台7共12 passed/31.11s，workbench-restart-first/final.log及XML。独立子进程仅凭配置，经公共Web API从9事件继续完成；原输入字节不变、真实观察0。原始进程stdout/stderr见process/workbench-restart，父子隔离探针均0。完整正式准入及R2批准待办仍未关闭。

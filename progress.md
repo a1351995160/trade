@@ -1308,3 +1308,26 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - docs/ROADMAP_IMPLEMENTATION_MATRIX.md：实际能力、操作说明与必要缺项。
 - progress.md：追加本轮记录。
 - 回滚：git revert --no-edit <本轮提交SHA>；回滚点2cd521b。先Ctrl+C停止临时Web服务，保留独立合成归档，不修改main或真实数据。外部证据E:/llmwiki/roadmap-engineering-evidence。
+
+## 2026-09-10 - Task: 新进程凭显式配置重建工程工作台
+
+### What was done
+
+持久化只绑定输入的工作台装配描述，新进程重新通过正式caller读取原冻结registry/政策/文件并验证身份；公共API确认后从已有事件继续。支持明确旧合成根的resume，配置不携带批准，不自动迁移或删除历史。
+
+### Testing
+
+- 首轮4 passed；最终配置5与工作台7共12 passed/31.11s，workbench-restart-first.log、workbench-restart-final.log/XML。
+- 真子进程仅接配置路径，公共API从9事件继续至完成，输入原字节不变；process/workbench-restart保存原stdout/stderr，隔离三探针0，真实观察0。超时沿用60秒，未扩大白名单。
+- 输入变更、重算hash后的路径越界/NaN、未重算hash的配置损坏均拒绝；load无落盘。原Starlette警告保留。
+
+### Notes
+
+- src/chanlun_trader/research_factory/engineering_workspace.py：显式装配描述保存与正式caller重建。
+- tests/research_factory/test_engineering_workspace.py：只读重建、坏输入/配置与真实子进程5项验证。
+- tests/research_factory/workbench_restart_worker.py：新进程通过实际Web API继续回放。
+- tests/research_factory/workbench_demo.py：新建保存配置与显式resume，不自动恢复执行。
+- .github/workflows/r1-source-data-certification.yml：加入工作台重建测试。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：更新能力和重启命令，旧阶段结论保留为历史。
+- progress.md：追加本轮记录。
+- 回滚：git revert --no-edit <本轮提交SHA>；回滚点8e0c72d。回滚后仅失去此装配入口，原输出和配置留存，不修改main或真实根。
