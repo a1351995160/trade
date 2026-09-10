@@ -457,6 +457,18 @@ def engineering_workbench_advance(request: Request, payload: dict = Body(...)) -
         raise HTTPException(status_code=409, detail={"code": "WORKBENCH_NOT_READY", "reason": str(exc)}) from exc
 
 
+@app.post("/api/research-engineering/workbench/usage/{action}")
+def engineering_workbench_usage(action: str, request: Request, payload: dict = Body(...)) -> dict:
+    from .research_factory.synthetic_usage import SyntheticUsageServiceV1
+    _require_local_console_request(request)
+    try:
+        return SyntheticUsageServiceV1(_engineering_workbench(request)).perform(action, request.app.state.execution_policy, payload)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail={"code": str(exc)}) from exc
+    except (ValueError, OSError) as exc:
+        raise HTTPException(status_code=409, detail={"code": "WORKBENCH_NOT_READY", "reason": str(exc)}) from exc
+
+
 @app.get("/api/research-console/{objective_id}/ai-results")
 def research_console_ai_results(request: Request, objective_id: str, page: int = 1, page_size: int = 20, search: str = "", sort: str = "created_at", direction: str = "desc") -> dict:
     return _console_service(request).list_ai_results(objective_id, page=page, page_size=page_size, search=search, sort=sort, direction=direction)

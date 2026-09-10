@@ -1440,3 +1440,27 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - docs/ROADMAP_IMPLEMENTATION_MATRIX.md：证据与具体批准更新。
 - progress.md：追加本轮记录。
 - 回滚：git revert --no-edit <本轮提交SHA>；回滚点962fe78，保留外部日志与registry历史，不改main。
+
+## 2026-09-10 - Task: 实现用户明确批准的仅合成测试使用资格
+
+### What was done
+
+接通实际请求、人工确认、用途/有效期核验、撤销与持久证据；组合过滤合格测试来源，发布和回放重新核验输入与资格。完成界面两步确认及撤销禁用，真实策略资格仍0，不修改既有Trial/预算/CP权限。
+
+### Testing
+
+- 首轮8、扩展99、最终联合101 passed/95.79s；最后到期边界受影响21 passed/57.52s，synthetic-usage-complete/expiry.log/XML。禁止执行探针0，合法旧模板5，旧治理请求34/确认37；进程隔离三项0。新资格有实际持久请求/确认/撤销证据，未mock权限。
+- 前端最终8 passed/build成功；保留原警告。浏览器双资格组合、实际2笔成交、撤销409、最终新根服务停止/新进程配置恢复9→10事件并撤销禁用全部验证；原始UI日志及根指针保存，未删除开发历史。
+- 新增输入修改、资格用途/过期、校验途中到期、跨根复制、无请求确认、损坏确认、成员移除、幂等及真实两候选资金竞争验证。并未启动真实数据Trial或Paper。
+
+### Notes
+
+- src/chanlun_trader/research_factory/synthetic_usage.py：实际隔离测试资格请求/确认/撤销服务与只读检查。
+- src/chanlun_trader/research_factory/engineering_workbench.py：资格过滤、发布复核、回放门禁及执行证据。
+- src/chanlun_trader/webapp.py：受原本机/策略边界保护的公共资格入口。
+- frontend/src/console/components/EngineeringWorkbench.vue：有效期、两步确认、撤销和失效说明。
+- tests/research_factory/test_synthetic_usage.py：14项实际服务与安全/身份/时间边界。
+- .github/workflows/r1-source-data-certification.yml：加入资格回归。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：精确批准、测试、操作与限制。
+- progress.md：追加本轮记录。
+- 回滚：git revert --no-edit <本轮提交SHA>，回滚点ab41aa4；回滚后停止合成服务，不用旧工程预览模式继续受资格约束的回放。保留所有资格/回放/外部证据，不迁移真实registry、不改main。

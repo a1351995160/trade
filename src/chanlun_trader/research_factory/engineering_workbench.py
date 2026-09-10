@@ -11,6 +11,7 @@ from .paper_replay import PaperReplaySessionV1, read_paper_archive, _immutable
 from .portfolio_plan import preview_portfolio_plan
 from .source_dependencies import SOURCE_ROOT
 from .strategy_admission import inspect_strategy_admission
+from .synthetic_usage import SyntheticUsageServiceV1
 
 
 class EngineeringWorkbenchV1:
@@ -35,6 +36,7 @@ class EngineeringWorkbenchV1:
 
     def inspect(self):
         replays = {key: read_paper_archive(self._replay_root(key)) for key in self.sources}
+        usage = SyntheticUsageServiceV1(self).inspect()
         result = {"status": "SYNTHETIC_ENGINEERING", "source_mode": "SYNTHETIC",
             "frozen_input_count": len(self.sources), "qualified_strategy_count": 0,
             "usage_status": "WAITING_QUALIFIED_STRATEGIES", "real_execution_authorized": False,
@@ -47,6 +49,8 @@ class EngineeringWorkbenchV1:
                 "sessions": value["inputs"]["exec_calendar"]} for key, value in self.sources.items()],
             "paper": replays,
             "strategy_admission": {key: inspect_strategy_admission(value) for key, value in self.sources.items()},
+            "synthetic_usage": usage,
+            "synthetic_qualified_strategy_count": len({item["binding"]["candidate_id"] for item in usage["records"] if item["status"] == "ACTIVE"}),
             "limitations": ["RESEARCH_PREVIEWS_ONLY", "INDEPENDENT_PAPER_ACCOUNTS_NOT_AGGREGATED", "NO_REAL_OBSERVATION"]}
         result["context_hash"] = stable_hash(result)
         return result
@@ -54,8 +58,14 @@ class EngineeringWorkbenchV1:
     def preview(self, plan_at):
         admission = {key: inspect_strategy_admission(value) for key, value in self.sources.items()}
         sources = {key: value for key, value in self.sources.items() if not admission[key]["preview_blocked"]}
+        usage = SyntheticUsageServiceV1(self).inspect()
+        if usage["configured"]:
+            eligible = {item["binding"]["candidate_id"] for item in usage["records"] if item["status"] == "ACTIVE" and "DAILY_PLAN" in item["purposes"]}
+            sources = {key: value for key, value in sources.items() if key in eligible}
         result = preview_portfolio_plan(self.portfolio_policy, sources, self.ledger, plan_at=plan_at)
         result["strategy_admission"] = admission
+        result["synthetic_usage"] = usage
+        result["plan_mode"] = "SYNTHETIC_QUALIFIED_TEST" if usage["configured"] else "FROZEN_INPUT_RESEARCH_PREVIEW"
         result["plan_id"] = "PORTFOLIO_PLAN_" + stable_hash({key: value for key, value in result.items() if key != "plan_id"})
         return result
 
@@ -76,6 +86,10 @@ class EngineeringWorkbenchV1:
         self._confirm(policy, payload)
         with ObjectiveMutationLock.for_resource(self.output_root / "workbench"):
             self._confirm(policy, payload)
+            usage = SyntheticUsageServiceV1(self)
+            for item in usage.inspect()["records"]:
+                if item["status"] == "ACTIVE" and "DAILY_PLAN" in item["purposes"]:
+                    usage._binding(item["binding"]["candidate_id"], refresh=True)
             plan = self.preview(payload.get("plan_at"))
             for item in plan["source_plans"]:
                 DailyPlanArchiveV1(self.output_root / "daily").publish(item)
@@ -92,5 +106,28 @@ class EngineeringWorkbenchV1:
             source = self.sources[candidate_id]
             if inspect_strategy_admission(source)["preview_blocked"]:
                 raise ValueError("WORKBENCH_STRATEGY_RETIRED_INVALIDATED_OR_CHANGED")
+            usage = SyntheticUsageServiceV1(self)
+            approvals = []
+            if usage.inspect()["configured"]:
+                approvals = usage.active(candidate_id, "PAPER_REPLAY")
+                if not approvals:
+                    raise ValueError("WORKBENCH_SYNTHETIC_PAPER_QUALIFICATION_REQUIRED")
+                usage._binding(candidate_id, refresh=True)
+                approvals = usage.active(candidate_id, "PAPER_REPLAY")
+                if not approvals:
+                    raise ValueError("WORKBENCH_SYNTHETIC_PAPER_QUALIFICATION_REQUIRED")
             replay = PaperReplaySessionV1(source["root"], root, source["record"], source["contract"], source["policy"], source["inputs"])
-            return replay.advance(payload.get("event_count"))
+            evidence_root = None
+            if approvals:
+                request = {"schema_version": "synthetic-qualified-replay-request-v1", "candidate_id": candidate_id,
+                    "qualification_ids": sorted(item["request_id"] for item in approvals),
+                    "input_identity": source["inputs"]["input_diagnostics"]["input_identity"],
+                    "context_hash": payload["context_hash"], "event_count": payload.get("event_count"),
+                    "real_execution_authorized": False}
+                evidence_root = self.output_root / "usage-actions" / stable_hash(request)
+                _immutable(evidence_root / "request.json", request)
+            result = replay.advance(payload.get("event_count"))
+            if evidence_root is not None:
+                _immutable(evidence_root / "result.json", result)
+                result = {**result, "usage_evidence_ref": evidence_root.relative_to(self.output_root).as_posix()}
+            return result

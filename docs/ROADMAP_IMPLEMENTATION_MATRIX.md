@@ -216,3 +216,19 @@ search_budget_reservation现读取Trial最早的REGISTERED_BEFORE_PERFORMANCE事
 工作台按既有canonical预算绑定定位源工作区的实际策略registry，读取研究状态、版本/证据失效和原文件SHA256；不写registry、不把研究状态映射成使用授权。退役、INVALIDATED、失效证据或冻结版本冲突会剔除工程预览来源并拒绝后续回放；registry变化改变上下文与组合计划身份。没有登记的冻结输入仍可做已授权工程预览，使用资格仍为false，界面明确给出原因。
 
 首轮3 passed/1 failed是测试错误请求DRAFT直接RETIRED，原服务正确拒绝；改走既有VALIDATION_BLOCKED→RETIRED，未改状态机。最终只读准入/工作台/冷重建/备份19 passed/47.49s，strategy-admission-first/final.log/XML，隔离三探针0。前端8 passed/build成功（原chunk警告保留）；最终资格功能集成后再做浏览器交互验收。本节仍不代表正向使用资格完成。
+
+## 已批准的合成测试资格、计划与回放衔接
+
+用户上述明确批准已落实为SyntheticUsageServiceV1与公共`/api/research-engineering/workbench/usage/{action}`（request/confirm/revoke）。每一步使用实际GOVERNED/SYNTHETIC策略检查、当前上下文、显式人工确认及既有工作台锁。请求本身不授权；确认必须读取该服务实际保存的请求，复核原冻结合同、真实caller输入、策略注册事实和有效期。普通payload中的permission或内容hash不能跳过这些步骤。未改CP、Trial、预算、真实registry或原promotion_state。
+
+测试资格只表示该冻结输入已通过输入核验，并由显式测试操作方允许指定DAILY_PLAN/PAPER_REPLAY用途，不代表研究统计通过或真实策略可用。请求/确认/撤销各自独占保存，具有来源关系、时间与证据hash；候选/合同/输入、输入输出绝对根、registry身份、用途和有效期绑定。到期、撤销、改根/改版/成员移除不继续放行；复制备份到新根后必须重新生成和确认新根测试资格，历史不迁移、不覆盖。
+
+工作台尚无资格请求时保留原“冻结输入工程预览”模式；一旦建立资格请求，就持续按资格过滤，不会在资格全部失效后回退原模式。组合源计划继续使用原D1语义，组合封套绑定实际测试资格；真实execution_ready和真实资格仍为false/0。发布前重新读取核对输入文件，回放前再检查PAPER_REPLAY用途与有效期；执行请求和实际结果保存到usage-actions并引用资格ID，底层Paper账本、成交、真实观察天数定义不变。单次调用仍是显式、有界的事件推进，不创建常驻任务。
+
+界面操作：选择测试候选与有效期→勾选当前上下文确认→生成请求→核对后再次勾选并确认测试资格。随后计算/归档组合或推进事件；撤销按钮同样需要新的显式确认。真实合格策略数始终0，合成测试资格另列数量。无有效回放用途时按钮禁用，后端亦拒绝直接调用。
+
+验证证据（不可相加）：首轮8 passed；扩展99 passed；加入成员移除/发布输入复核后受影响20 passed；加入执行证据13 passed；时间记录和全部关联最终101 passed/95.79s（synthetic-usage-complete.log/XML）；校验期间到期保护最后受影响21 passed/57.52s（synthetic-usage-expiry.log/XML）。原隔离测试保留，最终关联测试中合法synthetic_template_calls=5、治理请求34/确认37，禁止预测/结构/AI探针0；进程网络/子进程违规/受保护访问均0。新增资格动作本身以实际request/confirmation/revocation及usage-actions文件计数，不冒充这些旧探针已覆盖新服务计数。
+
+前端最终8 passed/build成功，synthetic-usage-frontend-final-test/build.log，原chunk警告保留。浏览器第一轮实际生成并确认两个资格，组合只给同股一个资金分配，另一候选NO_TRADE；回放9事件2笔成交，撤销后直接继续请求409且仍9事件。最终新根含时间记录和执行证据：实际确认→9事件→停止服务→新进程resume读取配置、保留资格及9事件→显式推进10→撤销，资格0且勾选确认也不能续跑。原始synthetic-usage-ui-server/final-server/restart-server.log和两个根指针保留；最终根有1请求、1确认、1撤销、2组执行请求/结果。截图在工具会话；Web进程手动停止未导出退出探针，不把此计数宣称0，8857已无监听。早期无时间字段的开发临时根保留，不自动迁移。
+
+本节关闭“合成测试资格正向0/1/多个及撤销入口”工程缺口，不关闭真实使用资格、完整R2、完整批次研究、真实Paper观察或真实组合政策。底层各Paper账户仍独立，组合交付范围是共享现金的组合计划，不能把这些账户相加为组合实盘资产。
