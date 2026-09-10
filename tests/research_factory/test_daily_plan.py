@@ -11,6 +11,7 @@ from chanlun_trader.engine.ledger import PortfolioLedger
 from chanlun_trader.engine.signal import Side
 from chanlun_trader.engine.portfolio_exit import PortfolioExitEvaluatorV1
 from chanlun_trader.research_factory.daily_plan import DailyPlanArchiveV1, account_identity, preview_daily_plan
+from chanlun_trader.research_factory.common import stable_hash
 
 
 def setup(root):
@@ -131,3 +132,56 @@ def test_archive_is_immutable_and_marks_account_changes_stale(tmp_path):
     path.write_text('{"plan_id":"corrupt"}', encoding="utf-8")
     with pytest.raises(ValueError, match="PLAN_ARCHIVE_IDENTITY_CONFLICT"):
         store.publish(plan)
+
+
+@pytest.mark.parametrize("field", ["entries", "holdings", "readiness_reasons", "signal_diagnostics"])
+def test_valid_different_content_is_never_reported_current(tmp_path, field):
+    case, inputs, account = setup(tmp_path / "inputs")
+    store = DailyPlanArchiveV1(tmp_path / "plans")
+    plan = preview(case, inputs, account)
+    archived = store.publish(plan)
+    before = archived.read_bytes()
+    current = deepcopy(plan)
+    # 构造比较接口允许的有效内容身份，不声称策略引擎产生不同收益或信号。
+    if field == "entries":
+        assert current[field]
+        current[field][0]["quantity"] += 100
+    elif field == "holdings":
+        current[field].append({"lot_id": "SYNTHETIC_COMPARISON", "action": "HOLD"})
+    elif field == "readiness_reasons":
+        current[field].append("NEXT_SESSION_NOT_AVAILABLE")
+    else:
+        current[field]["comparison_probe"] = 1
+    current["plan_id"] = "PLAN_" + stable_hash({key: value for key, value in current.items() if key != "plan_id"})
+    result = store.compare(plan["plan_id"], current)
+    assert result["status"] == "STALE", result
+    assert "plan_content" in result["changed"]
+    assert archived.read_bytes() == before
+    assert store.compare(plan["plan_id"], preview(case, inputs, account))["status"] == "CURRENT_RESEARCH_PREVIEW"
+
+
+def test_source_identity_covers_plan_compiler_helpers_and_costs(tmp_path, monkeypatch):
+    import shutil
+    from chanlun_trader.research_factory import daily_plan
+    case, inputs, account = setup(tmp_path / "inputs")
+    old = preview(case, inputs, account)
+    files = old["source_identity"]["files"]
+    assert {"corrected", "helper", "daily_plan", "research/strategy_semantic.py",
+        "engine/portfolio_exit.py", "engine/sizing.py", "engine/fee.py", "engine/slippage.py"} <= files.keys()
+    # 只复制源码以核验部署身份变化；不改运行中的费用算法或合成输入。
+    copy_root = tmp_path / "source-copy"
+    for directory in ("engine", "research"):
+        shutil.copytree(daily_plan.SOURCE_ROOT / f"src/chanlun_trader/{directory}",
+            copy_root / f"src/chanlun_trader/{directory}", ignore=shutil.ignore_patterns("__pycache__"))
+    monkeypatch.setattr(daily_plan, "SOURCE_ROOT", copy_root)
+    assert preview(case, inputs, account)["plan_id"] == old["plan_id"]
+    fee = copy_root / "src/chanlun_trader/engine/fee.py"
+    fee.write_bytes(fee.read_bytes() + b"\n# synthetic source identity probe\n")
+    current = preview(case, inputs, account)
+    assert current["entries"] == old["entries"]
+    assert current["source_identity"]["files"]["engine/fee.py"] != files["engine/fee.py"]
+    archive = DailyPlanArchiveV1(tmp_path / "plans")
+    path = archive.publish(old)
+    before = path.read_bytes()
+    assert archive.compare(old["plan_id"], current)["changed"] == ["source_identity"]
+    assert path.read_bytes() == before

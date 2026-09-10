@@ -18,7 +18,18 @@ from ..engine.slippage import FixedBpsSlippage
 from ..engine.signal import PortfolioTarget, TargetType
 from ..engine.sizing import FixedSlotSizer, LotSizeModel
 from .common import stable_hash, canonical_json
-from .source_dependencies import load_corrected_module
+from .source_dependencies import SOURCE_ROOT, load_corrected_module
+
+
+def _source_identity(corrected):
+    paths = {"corrected": Path(corrected.__file__), "helper": Path(corrected.legacy.__file__),
+        "daily_plan": Path(__file__), "source_dependencies": Path(__file__).with_name("source_dependencies.py"),
+        "common": Path(__file__).with_name("common.py"),
+        **{f"research/{name}.py": SOURCE_ROOT / f"src/chanlun_trader/research/{name}.py"
+           for name in ("strategy_semantic", "strategy_candidate", "strategy_validation", "hypothesis", "unified_factor")},
+        **{f"engine/{path.name}": path for path in (SOURCE_ROOT / "src/chanlun_trader/engine").glob("*.py")}}
+    return {"schema_version": "daily-plan-source-v2",
+        "files": {name: corrected.legacy.sha256(path) for name, path in sorted(paths.items())}}
 
 
 def account_identity(ledger) -> str:
@@ -134,7 +145,7 @@ def preview_daily_plan(record, contract, policy, inputs, ledger, *, plan_at) -> 
     payload = {"schema_version": "daily-plan-preview-v1", "plan_at": str(stamp),
         "candidate_id": record.candidate.candidate_id, "contract_hash": contract.content_hash,
         "policy_hash": stable_hash(policy.to_dict()), "input_identity": inputs["input_diagnostics"]["input_identity"],
-        "account_identity": before, "source_identity": {"corrected_sha256": corrected.legacy.sha256(Path(corrected.__file__))},
+        "account_identity": before, "source_identity": _source_identity(corrected),
         "entries": entries, "holdings": holdings, "signal_diagnostics": dict(stats),
         "status": "NOT_READY" if readiness else "RESEARCH_PREVIEW" if entries or holdings else "NO_TRADE",
         "readiness_reasons": readiness,
@@ -189,6 +200,8 @@ class DailyPlanArchiveV1:
         self._verify(current_preview)
         changed = [key for key in ("candidate_id", "contract_hash", "policy_hash", "input_identity",
                    "account_identity", "source_identity", "plan_at") if old[key] != current_preview[key]]
+        if not changed and old["plan_id"] != current_preview["plan_id"]:
+            changed.append("plan_content")
         return {"plan_id": plan_id, "current_plan_id": current_preview["plan_id"],
                 "status": "STALE" if changed else "CURRENT_RESEARCH_PREVIEW", "changed": changed,
                 "execution_ready": False}

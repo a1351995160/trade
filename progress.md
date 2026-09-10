@@ -1827,3 +1827,17 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - tests/research_factory/fixtures/ca03_legacy_paper/header.json、events/00000000.json至00000008.json、provenance.json：原审计包真实合成归档原字节与来源；.gitattributes限定禁止这些JSON换行转换。
 - docs/CONSOLIDATED_REMEDIATION_CA01_CA04.md：版本/恢复/兼容与证据；CLAUDE.md追加教训；progress.md追加记录。
 - 回滚点72fb21fc5b895c116d26d9413633ddbf3a51291f；可git revert本模块提交，但须停用v2会话推进并保留目录，不能旧代码消费新记录。未读取真实数据；既有OPEN事件不变。
+
+## 2026-09-11 - Task: CA-04 完整计划内容当前性与源码身份
+### What was done
+- 正式预览及真实比较接口复现四类有效内容变化误报CURRENT，增加完整plan_id比较并保留原上下文失效解释。
+- 新source_identity版本覆盖实际计划、compiler/helper和引擎成本/仓位依赖；旧计划只读可比，不迁移身份，不改变策略规则。
+### Testing
+- ca04-red.log/xml：4 failed/12 deselected，条目/持仓/就绪原因/诊断的有效新内容身份误报；这是比较接口反例，不是引擎输出不同的声称。
+- ca04-green.log/xml：54 passed，实际计划确定性、只读存档、源码依赖身份、组合、Paper引擎对账和工作台API；隔离探针0，保留原Starlette警告。
+- git diff --check通过；四项模块闭环完成后固定HEAD运行原选择器整体及双平台CI，结果保存在新审计包，不预写通过。
+### Notes
+- src/chanlun_trader/research_factory/daily_plan.py：完整plan_id当前性检查及显式来源身份v2。
+- tests/research_factory/test_daily_plan.py：四种实际比较接口red/green、依赖源码身份变化但计划条目保持一致的验证。
+- docs/CONSOLIDATED_REMEDIATION_CA01_CA04.md：四项矩阵、CA-04证据、部署/回退及限制；CLAUDE.md追加教训；progress.md追加本轮。
+- 回滚点51834c59c17e16e23a9a1fb6136c60181f0b83c5，可git revert本模块提交；回退后禁止依赖旧CURRENT判定授予用途。旧审计包与原检查不变，无真实数据或运行。
