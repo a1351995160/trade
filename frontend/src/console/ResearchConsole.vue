@@ -6,6 +6,7 @@ import { candidatePresentation, displayClassification, displayExecutionFeasibili
 import CandidateDisplayName from './components/CandidateDisplayName.vue'
 import BatchScopeRequest from './components/BatchScopeRequest.vue'
 import EngineeringWorkbench from './components/EngineeringWorkbench.vue'
+import SyntheticBatchConsole from './components/SyntheticBatchConsole.vue'
 import CandidateId from './components/CandidateId.vue'
 import ClassificationBadge from './components/ClassificationBadge.vue'
 import FactorDisplay from './components/FactorDisplay.vue'
@@ -1073,6 +1074,7 @@ onBeforeUnmount(() => { controller?.abort(); if (pollTimer) window.clearInterval
         <div v-if="pageError" class="error-state" role="alert"><span class="error-symbol">!</span><div><strong>数据读取失败</strong><p>{{ pageError.message }}</p><TechnicalDetails compact :entries="{ 错误代码: pageError.code }" /></div><button type="button" @click="refresh">重试</button></div>
 
         <template v-if="view === 'engineering'">
+          <SyntheticBatchConsole />
           <EngineeringWorkbench />
         </template>
         <template v-else-if="view === 'objectives'">

@@ -414,6 +414,59 @@ def research_batch_scope_request(request: Request, objective_id: str, scope: str
         raise HTTPException(status_code=exc.status_code, detail={"code": exc.code, "message_zh": exc.message_zh}) from exc
 
 
+def _synthetic_batch_service(request: Request):
+    from .research_factory.synthetic_batch import SyntheticBatchServiceV1
+    try:
+        return SyntheticBatchServiceV1(request.app.state.research_root, request.app.state.execution_policy)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except (ValueError, OSError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.get("/api/research-engineering/batches/context")
+def synthetic_batch_context(request: Request) -> dict:
+    from .research_factory.synthetic_batch_console import batch_console_context
+    return batch_console_context(_synthetic_batch_service(request))
+
+
+@app.get("/api/research-engineering/batches/{identifier}")
+def synthetic_batch_read(identifier: str, request: Request) -> dict:
+    try:
+        return _synthetic_batch_service(request).view(identifier)
+    except (ValueError, OSError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.post("/api/research-engineering/batches/request")
+def synthetic_batch_request(request: Request, payload: dict[str, Any] = Body(...)) -> dict:
+    _require_local_console_request(request)
+    try:
+        return _synthetic_batch_service(request).request(payload)
+    except (ValueError, OSError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.post("/api/research-engineering/batches/{identifier}/{action}")
+def synthetic_batch_action(identifier: str, action: str, request: Request, payload: dict[str, Any] = Body(default={})) -> dict:
+    _require_local_console_request(request)
+    service = _synthetic_batch_service(request)
+    try:
+        if action == "confirm":
+            return service.confirm(identifier, payload)
+        if action == "run":
+            return service.run(identifier)
+        if action == "recover":
+            return service.recover(identifier)
+        if action in {"pause", "resume", "stop", "revoke"}:
+            return service.control(identifier, action, payload)
+        raise HTTPException(status_code=404, detail="未知合成批次动作")
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except (ValueError, OSError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
 @app.get("/api/research-console/{objective_id}/ai-tasks")
 def research_console_ai_tasks(request: Request, objective_id: str, page: int = 1, page_size: int = 20, search: str = "", status: str = "ALL", mode: str = "ALL", sort: str = "created_at", direction: str = "desc") -> dict:
     return _console_service(request).list_ai_tasks(objective_id, page=page, page_size=page_size, search=search, status=status, mode=mode, sort=sort, direction=direction)

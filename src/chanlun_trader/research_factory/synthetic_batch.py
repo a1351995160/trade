@@ -56,7 +56,9 @@ class SyntheticBatchServiceV1:
         self.root = Path(root)
         self.policy = policy
         self.clock = clock or (lambda: datetime.now(timezone.utc))
-        self._authorize()
+        if os.environ.get("CHANLUN_TEST_ISOLATION") != "1" or policy.workspace_kind != "SYNTHETIC":
+            raise PermissionError("BATCH_SYNTHETIC_GOVERNANCE_REQUIRED")
+        validate_research_root(self.root, policy)
         self.root = self.root.resolve()
         self.directory = self.root / "reports/synthetic_batches_v1"
 
@@ -270,6 +272,13 @@ class SyntheticBatchServiceV1:
         return {"preview": preview, "receipt": receipt, "state": state, "status": status,
             "execution_authorized": status == "ACTIVE"}
 
+    def view(self, identifier):
+        """只读预览或历史状态；GET 不生成批准、不恢复事件。"""
+        if (self._directory(identifier) / "confirmation.json").exists():
+            return self.inspect(identifier)
+        return {"preview": self._read(self._directory(identifier) / "preview.json"), "receipt": None,
+            "state": None, "status": "REQUESTED", "execution_authorized": False}
+
     def control(self, identifier, action, body):
         self._authorize()
         if body.get("confirmed") is not True or body.get("test_confirmation") is not True:
@@ -279,12 +288,16 @@ class SyntheticBatchServiceV1:
             raise ValueError("BATCH_CONTROL_ACTION_INVALID")
         with ObjectiveMutationLock.for_resource(self._directory(identifier)):
             current = self.inspect(identifier)
-            if current["status"] not in {"ACTIVE", "PAUSED"} or (action == "resume" and current["status"] != "PAUSED"):
+            allowed = {"pause": {"ACTIVE", "NOT_YET_EFFECTIVE"}, "resume": {"PAUSED"},
+                "stop": {"ACTIVE", "PAUSED", "NOT_YET_EFFECTIVE", "EXPIRED", "TIME_LIMIT_REACHED"},
+                "revoke": {"ACTIVE", "PAUSED", "NOT_YET_EFFECTIVE", "EXPIRED", "TIME_LIMIT_REACHED"}}
+            if current["status"] not in allowed[action]:
                 raise ValueError("BATCH_CONTROL_STATE_INVALID")
             self._append(identifier, current["state"], status=targets[action], control_action=action)
             return self.inspect(identifier)
 
     def _claim(self, identifier):
+        self._authorize()
         with ObjectiveMutationLock.for_resource(self._directory(identifier)):
             current = self.inspect(identifier)
             state, preview = current["state"], current["preview"]

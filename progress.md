@@ -1690,3 +1690,27 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - CLAUDE.md：记录父子进程临时根身份一致性。
 - progress.md：追加本轮诊断和验证原件说明。
 - 回滚：git revert 本轮提交；检查点320e980，不回退main，不改历史批准或账本。
+
+## 2026-09-10 - Task: R3正式操作入口与统一工作台
+### What was done
+- 接入真实服务批次清单、预览、确认、连续执行、暂停/停止/撤销与只结算恢复；默认只读查询不改变历史。
+- 统一页面展示完整来源和明确额度，将批次完成与策略研究结论分开；实际多个候选由一次合成测试父批准连续执行。
+- 逐项审阅HTTP本机/策略边界、GET不变性、父批准状态、异步页面更新和历史选择；按仓库约定串行内审，不宣称独立外审完成。
+### Testing
+- batch-web-final.log/XML：4 passed，1既有Starlette弃用警告，进程探针0；含真实worker执行、未确认拒绝、只读不变、非本机写拒绝及未来/到期撤销。
+- batch-ui-build.log：vue-tsc与Vite通过，原bundle体积警告保留。
+- 真实浏览器统一页面：批次625e3ba4e2244d4abdbb556385a7d868，经实际预览/合成测试确认后两个候选四个动作完成，全部BATCH_DELEGATED；原预算耗尽后清单阻断，工作台VALIDATION_BLOCKED、可用策略0、真实观察0，浏览器error/warn为空。原HTTP JSON和服务器日志保存到外部证据目录batch-ui-*。
+- 首次PowerShell读取localhost未禁用环境代理，返回502；改用-NoProxy读取明确本机API后成功，未修改服务网络或权限。浏览器导出不支持，未声称生成页面导出文件。
+### Notes
+- .github/workflows/r1-source-data-certification.yml：加入正式批次API测试。
+- src/chanlun_trader/research_factory/synthetic_batch.py：只读历史和预览、受限claim、未来/到期的暂停撤销状态。
+- src/chanlun_trader/research_factory/synthetic_batch_console.py：仅从已声明来源复核候选、额度及历史。
+- src/chanlun_trader/webapp.py：正式本机批次API，复用原执行策略。
+- frontend/src/console/components/SyntheticBatchConsole.vue：真实预览/确认/运行/控制和历史查询界面。
+- frontend/src/console/ResearchConsole.vue：在统一工作台装配批次组件。
+- tests/research_factory/test_synthetic_batch_web.py：真实服务API正负向、只读和旧入口兼容。
+- tests/research_factory/synthetic_batch_demo.py：正式创建两候选的真实页面验收装配，不自动批准批次/使用资格。
+- docs/SYNTHETIC_BATCH_AUTHORIZATION_V1.md：接口、启动和阶段证据说明。
+- progress.md：本轮结果与限制记录。
+- 回滚：git revert 本模块提交，停用新API页面但保留合成批准、预算和账本历史；检查点d104910。不修改main。
+- 总工程仍PARTIAL，继续固定新HEAD整体回归、双平台认证、新版需求证据矩阵与集中审计；全部旧OPEN事件继续保留。

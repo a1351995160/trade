@@ -44,3 +44,24 @@ Objective 创建回执及不可变家族必须匹配原创建事务中的实际�
 
 ## 阶段平台差异（320e980）
 PR R1 run34490995583的Ubuntu通过，Windows在新批次夹具准备阶段报NOVELTY_SOURCE_MISSING_OR_LINKED：376 passed、9 failed、20 errors；push run34490990216被取消，不能记通过。原件与附件在batch-ci-pr-34490995583。测试父进程原来直接使用tempfile临时路径，实际创建子进程使用resolve后的路径；现于创建前统一规范路径并保存二者诊断。非规范临时别名的真实服务本地回归通过，新Windows认证尚待验证。服务来源校验、超时、skip和隔离规则未放宽，L1/L6继续OPEN。
+
+## 正式操作入口与页面
+`create_app(explicit_synthetic_root, ExecutionPolicy("GOVERNED", "SYNTHETIC"), engineering_workbench=...)` 装配现有应用，启动前必须设置 CHANLUN_TEST_ISOLATION=1 和 CHANLUN_PROTECTED_ROOT；根路径不由 HTTP 请求提供。只监听本机。默认 READ_ONLY 仅可查询历史；旧 CP 预测入口保持原禁令。
+
+页面 `/research/workbench` 增加有界批次区域，和既有计划/Paper对账共用显式根。候选来自已声明的全部比较来源，服务逐个复核绑定；来源异常、缺确认和原预算耗尽均显示阻断原因。用户选择已知候选、动作和明确数值，生成预览后核对完整来源/政策/家族/数据绑定，通过合成测试人工确认才能运行。批次动作完成不表示 RESEARCH_PASSED。轮询只查询状态；暂停/停止/撤销仍可在执行请求未返回时操作。连接中断不表示后台停止，恢复只做审计与原结算。
+
+接口前缀 `/api/research-engineering/batches`：GET `/context` 与 `/{id}`；POST `/request`、`/{id}/confirm`、`/{id}/run`、`/{id}/pause|resume|stop|revoke|recover`。confirm要求confirmed、test_confirmation及原preview_hash；控制要求confirmed和test_confirmation。只读GET不恢复事件、不写批准。未来生效的批准也可暂停或撤销，到期批准可撤销，不可恢复终止批准。
+
+本机真实页面验收驱动（仅工程测试依赖，不是生产研究入口）：
+```powershell
+$env:PYTHONPATH='tests/isolation;src'
+$env:CHANLUN_TEST_ISOLATION='1'
+$env:CHANLUN_PROTECTED_ROOT='E:\llmwiki\chanlun-trading-system'
+$env:CHANLUN_PROCESS_EVIDENCE_DIR='E:\llmwiki\roadmap-engineering-evidence\batch-ui-process'
+.venv\Scripts\python.exe tests/research_factory/synthetic_batch_demo.py --port 8789
+```
+每次生成全新隔离临时根，目标、设计、冻结、物化、新颖性前置均由真实服务形成；批次批准与计划/Paper资格不自动生成。访问页面选择两个候选时，候选/Trial/原批次数都必须明确设为2。墙钟120秒、worker2048MiB、并发1、重试0及业务模型费用0是本次明确测试配置，不是无限默认额度。服务只支持文档资源模块可实际强制的配置。停止示例服务器不会删除历史，不得重启旧回执免费重跑。
+
+`batch-web-final.log/XML`：4项真实API测试通过，包括实际两动作执行、未确认拒绝、只读不写、非本机拒绝、未来/到期撤销、旧CP拒绝。`batch-ui-build.log`构建通过；保留现有bundle体积警告，未调大阈值。实际浏览器批次625e3ba4e2244d4abdbb556385a7d868一次确认后4/4动作完成，四项均BATCH_DELEGATED；页面显示原预算耗尽、VALIDATION_BLOCKED、合格策略0、真实观察0，浏览器error/warn为空。原HTTP状态分别保存在batch-ui-completed.json、batch-ui-context.json、batch-ui-workbench.json，服务器日志batch-ui-server.log。页面导出能力不可用，未伪造导出文件。
+
+操作入口及页面已完成上述本地验收；最终整体固定HEAD与双平台认证仍待完成。本节覆盖前面的“必要剩余验收”中入口/界面开发状态，但不覆盖最终交付要求。

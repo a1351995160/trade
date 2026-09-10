@@ -193,6 +193,7 @@ jobs:
           tests/research_factory/test_synthetic_batch_contract.py
           tests/research_factory/test_synthetic_batch_recovery.py
           tests/research_factory/test_synthetic_batch_races.py
+          tests/research_factory/test_synthetic_batch_web.py
           tests/research_factory/test_paper_replay.py
           tests/engine
           tests/lookahead
