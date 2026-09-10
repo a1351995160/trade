@@ -380,7 +380,9 @@ def test_invalid_available_at_entry(tmp_path, request, engine_call_evidence, val
     setup[3].loc[indices, "available_at"] = value
     _, calendar, _, (engine, metrics, diag) = run_time_case(tmp_path, setup, request, engine_call_evidence)
     if scope == "all":
-        assert not diag["entry_signals"] and not engine.orders.orders and not engine.ledger.valid_trades
+        assert not diag["entry_signals"]
+        assert not engine.orders.orders
+        assert not engine.ledger.valid_trades
     else:
         assert diag["entry_signals"][0]["symbol"] == "000001.SZ"
         assert all(row["symbol"] != "600000.SH" for row in diag["qualified_rows"]
@@ -394,7 +396,8 @@ def test_invalid_available_at_native_dtype(tmp_path, request, engine_call_eviden
     setup = inputs(tmp_path)
     setup[3].loc[:, "available_at"] = value
     _, _, _, (engine, metrics, diag) = run_time_case(tmp_path, setup, request, engine_call_evidence)
-    assert not diag["entry_signals"] and not engine.orders.orders
+    assert not diag["entry_signals"]
+    assert not engine.orders.orders
     assert metrics["signal_diagnostics"]["INVALID_FACTOR_AVAILABLE_AT"] == len(setup[3])
 
 
@@ -416,9 +419,11 @@ def test_invalid_available_at_held_exit(tmp_path, request, engine_call_evidence,
     sells = [t for t in engine.ledger.valid_trades if t.side.value == "SELL"]
     if value == "2025-01-01":
         # 既有未来时间会阻断退出，不能借本轮改动改变它。
-        assert not decisions and not sells
+        assert not decisions
+        assert not sells
     else:
-        assert decisions and sells
+        assert decisions
+        assert sells
         assert int(sells[0].fill_time.strftime("%Y%m%d")) == calendar[7]
         assert decisions[0].payload["reason_code"] == "EXIT_DUE_FIXED_HOLD"
         assert metrics["signal_diagnostics"]["INVALID_FACTOR_AVAILABLE_AT"] > 0
@@ -442,7 +447,8 @@ def test_valid_available_at_controls(tmp_path, request, engine_call_evidence, ti
     _, calendar, _, (engine, metrics, diag) = run_time_case(tmp_path, setup, request, engine_call_evidence, candidate=rec)
     assert metrics["signal_diagnostics"].get("INVALID_FACTOR_AVAILABLE_AT", 0) == 0
     if time_form == "future":
-        assert not diag["entry_signals"] and not engine.orders.orders
+        assert not diag["entry_signals"]
+        assert not engine.orders.orders
     else:
         assert diag["entry_signals"][0]["symbol"] == "600000.SH"
         sells = [t for t in engine.ledger.valid_trades if t.side.value == "SELL"]

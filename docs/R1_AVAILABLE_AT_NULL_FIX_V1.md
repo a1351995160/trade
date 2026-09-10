@@ -36,6 +36,8 @@
 
 本机完整 R1：146 passed（146.65s），engine 63 次，合成审批/确认各 59 次；原 F01–F04、源根毒化、真实 loader 正向及缺依赖负向全部保留通过。Python 3.13.5，源码工作区 E: 为 exFAT，临时 fixture 所在 C: 为 NTFS；不冒充旧 CI 的 Python patch 或文件系统。
 
+首个修正提交 `725eb559727dcc088e8c06c8134b7288a2e4552b` 的 Sonar gate 通过，但新增测试带来 5 条复合断言提示（总计29条）。仅拆开本轮5处断言，未改断言内容、生产逻辑或原24条问题；受影响34项复验通过，engine 34次、禁止计数0。最终认证绑定后续提交，不以725eb55的检查代替。
+
 新增用例逐次记录真实 engine 次数、禁用执行器/网络/进程/保护目录计数、运行期间写打开次数；逐次比较 DataFrame 和合成只读文件哈希。定向运行这些禁止计数及写打开次数为 0。
 
 完整 R1 及最终 HEAD 的原五阶段、双平台分支/PR-context CI 使用真实新结果，原日志不覆盖。提交时远端状态为 PENDING；最终 run_id、event、head_sha、checkout_sha、Python/文件系统、Sonar 和 required checks 留在独立交付证据及 PR，不为状态反复提交。

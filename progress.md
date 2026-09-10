@@ -1040,3 +1040,21 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - E:/llmwiki/r1-dependency-evidence（仓库外）：脱敏安装诊断、官方元数据、原 wheel、全部失败及成功测试日志、XML、逐例比较与后续 CI 证据。
 - 回滚：git revert <本轮修正提交SHA>；回滚点 f4a3681ccf8d44c71bcfa71bf04a0ea2134a5539；不 reset 或覆盖旧日志。
 - HISTORICAL_WINDOWS_L1_INCIDENT=OPEN_ROOT_CAUSE_UNCONFIRMED；HISTORICAL_PROVENANCE=UNVERIFIED；REAL_CANDIDATE_DATA_READINESS=NOT_VERIFIED；READY_FOR_REAL_TRIAL=false；R1_FULLY_CLOSED=false；未merge、未auto-merge、未退出Draft、未开始R2。
+
+## 2026-09-10 - Task: 清理本轮新增测试的五处复合断言提示
+
+### What was done
+
+725eb55 的 Sonar gate 通过，总29条提示中有5条来自本轮新增测试。将这5处复合断言拆成独立断言，使失败位置更明确；保持测试内容、生产代码及原24条问题不变。
+
+### Testing
+
+受影响时间矩阵34 passed/12.95s，engine34次，禁用执行器/网络/进程/保护访问计数0。日志 assertions-green.log 与 XML 保存在仓库外依赖恢复证据目录；git diff --check通过。新最终HEAD重新认证原五阶段与R1分支/PR双平台，不照抄前一HEAD状态。
+
+### Notes
+
+- tests/research_factory/test_r1_snapshot_integration.py：仅拆开本轮新增的5处复合断言。
+- docs/R1_AVAILABLE_AT_NULL_FIX_V1.md：追加实际Sonar提示及验证说明。
+- progress.md：仅追加本轮测试质量修正记录。
+- 回滚：git revert <本次断言提交SHA>；回滚点725eb559727dcc088e8c06c8134b7288a2e4552b。该回滚不撤销时间校验，只恢复复合断言。
+- PR #7仍Draft；旧Windows L1保持OPEN_ROOT_CAUSE_UNCONFIRMED；REAL_CANDIDATE_DATA_READINESS=NOT_VERIFIED；READY_FOR_REAL_TRIAL=false；R1_FULLY_CLOSED=false；未merge、未开始R2。
