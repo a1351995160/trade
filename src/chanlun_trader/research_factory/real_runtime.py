@@ -23,7 +23,7 @@ from .objective import ResearchObjectiveV1
 from .state_machine import ResearchBatchState, ResearchBatchStateMachineV1
 from .status import ResearchFactoryStatusV1
 from .strategy_adapter import candidate_similarity
-from .execution_evidence import audit_microstructure
+from .execution_evidence import audit_microstructure, audit_budget_registration
 from .novelty import CandidateNoveltyGateV2, design_safe_candidate
 from .diversity import InsufficientDiverseCandidatesError
 from .source_dependencies import SOURCE_ROOT, load_corrected_module
@@ -1021,8 +1021,16 @@ class RealFactoryRuntimeV1:
                 validation_policy_hash=policy_hash,
                 engine_hash=engine_hash,
                 seed=plan.generation_seed + index,
+                budget_reservation_identity=reservations[candidate_id],
                 lineage={"source": "AIResearchFactoryOrchestratorV1", "canonical_runner": "BacktestEngineV2+PortfolioExitEvaluatorV1", "final_test_access": {"physical": 0, "analytical": 0, "decision": 0}},
             )
+            budget_registration = audit_budget_registration(orchestrator.trial_ledger, orchestrator.budget,
+                trial_id=trial_id, reservation_id=reservations[candidate_id], candidate_id=candidate_id,
+                candidate_hash=record.preregistration_hash)
+            if not budget_registration["passed"]:
+                if reservations[candidate_id] in orchestrator.budget.snapshot()["active_reservations"]:
+                    orchestrator.budget.release(reservations[candidate_id])
+                raise RuntimeError("BATCH_BUDGET_PREREGISTRATION_NOT_VERIFIED")
             try:
                 orchestrator.trial_ledger.mark_performance_accessed(trial_id)
                 inputs = inputs_by_candidate[candidate_id]
@@ -1059,7 +1067,7 @@ class RealFactoryRuntimeV1:
                     "intended_holding_contract": {"passed": 2 <= int(record.candidate.holding_period) <= 10},
                     "microstructure_realism": microstructure,
                     "candidate_similarity_control": {"passed": True},
-                    "search_budget_reservation": {"passed": True},
+                    "search_budget_reservation": budget_registration,
                 }
                 validation_row = {
                     "trial_id": trial_id,

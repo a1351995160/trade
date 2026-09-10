@@ -423,6 +423,15 @@ class ResearchFactoryTrialLedgerFacadeV1:
             result[record.trial_id] = record
         return result
 
+    def preperformance_registration(self, trial_id: str) -> dict[str, Any] | None:
+        """只返回同Trial最早的完整预登记证据，不把后续事件倒置成事前登记。"""
+        first = next((event for event in self._events if event.get("trial_id") == trial_id), None)
+        if (first is None or first.get("event_type") != "REGISTERED_BEFORE_PERFORMANCE"
+                or first.get("status") != "REGISTERED" or first.get("performance_accessed") is not False
+                or first.get("event_hash") != stable_hash({key: value for key, value in first.items() if key != "event_hash"})):
+            return None
+        return dict(first)
+
     @property
     def head_hash(self) -> str:
         return stable_hash(self._events)

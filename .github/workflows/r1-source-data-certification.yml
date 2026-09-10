@@ -181,6 +181,7 @@ jobs:
           tests/research_factory/test_engineering_workspace.py
           tests/research_factory/test_engineering_backup.py
           tests/research_factory/test_execution_evidence.py
+          tests/research_factory/test_budget_registration_evidence.py
           tests/research_factory/test_paper_replay.py
           tests/engine
           tests/lookahead

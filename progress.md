@@ -1376,3 +1376,27 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - docs/ROADMAP_IMPLEMENTATION_MATRIX.md：原缺陷、测试范围及剩余hard gate。
 - progress.md：追加本轮记录。
 - 回滚：git revert --no-edit <本轮提交SHA>；回滚点01addc3，会恢复已知常量gate缺陷，禁止据此启用真实研究。main及真实根不变。
+
+## 2026-09-10 - Task: 核对真实预算预登记并接入正式裁决
+
+### What was done
+
+以实际Trial首事件、身份与预算状态替换预算gate常量；批次补传已有预留身份字段，事前核验失败不误记性能消费。保持原预算上限、扣账和恢复语义，不修改历史身份。
+
+### Testing
+
+- 首轮6 passed；扩大测试38 passed/22 failed，失败全部为旧启动夹具缺失同一未交付合同，原始budget-registration-final.log/XML保留。
+- 可独立关联37 passed/27.87s；补实际batch引用与错绑负向后12 passed/10.43s，budget-registration-affected及binding日志/XML。隔离三探针0，无新增skip/超时；完整服务尚未认证。
+- git diff --check通过（原CRLF提示保留）。
+
+### Notes
+
+- src/chanlun_trader/research_factory/trial_adapter.py：只读首个预登记事件核验。
+- src/chanlun_trader/research_factory/execution_evidence.py：实际预算状态与身份核验。
+- src/chanlun_trader/research_factory/predictive_executor.py：正常/恢复执行与最终gate引用真实证据。
+- src/chanlun_trader/research_factory/real_runtime.py：传入原预留身份，事前核验与失败释放。
+- tests/research_factory/test_budget_registration_evidence.py：7项真实facade与负向证据测试。
+- .github/workflows/r1-source-data-certification.yml：加入预算证据测试。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：记录结果、失败入口及消费后引用限制。
+- progress.md：追加本轮记录。
+- 回滚：git revert --no-edit <本轮提交SHA>；回滚点e6adc07，会恢复预算gate常量缺陷；保留全部外部日志，不改main或真实根。

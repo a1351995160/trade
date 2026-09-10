@@ -78,3 +78,22 @@ def audit_microstructure(result, inputs):
         "reason_codes": sorted(set(reasons)), "signals_checked": len(result.signals),
         "trades_checked": len(result.ledger.trades), "input_identity": inputs["input_diagnostics"]["input_identity"],
         "event_hash": stable_hash(result.event_log.to_records())}
+
+
+def audit_budget_registration(ledger, budget, *, trial_id, reservation_id, candidate_id, candidate_hash, recovery=False):
+    """读取真实预登记事件及当前预算状态，不写账、不补回执。"""
+    registration = ledger.preperformance_registration(trial_id)
+    snapshot = budget.snapshot()
+    status = "ACTIVE" if reservation_id in snapshot["active_reservations"] else snapshot["settled_reservations"].get(reservation_id, "MISSING")
+    refs = {tuple(ref) for ref in snapshot["active_reservations"].get(reservation_id, ())}
+    expected_refs = {("objective", registration["objective_id"], 1), ("batch", registration["batch_id"], 1),
+        ("family", registration["family_id"], 1)} if registration else set()
+    passed = (registration is not None and registration.get("candidate_id") == candidate_id
+        and registration.get("candidate_hash") == candidate_hash
+        and registration.get("objective_id") == snapshot["objective_id"]
+        and registration.get("budget_reservation_identity") == reservation_id
+        and (recovery or expected_refs.issubset(refs))
+        and status == ("CONSUMED" if recovery else "ACTIVE"))
+    return {"passed": passed, "trial_id": trial_id, "reservation_id": reservation_id,
+        "budget_status": status, "registration_event_hash": registration.get("event_hash") if registration else None,
+        "reason_codes": [] if passed else ["TRIAL_NOT_PREREGISTERED_OR_BUDGET_VIOLATION"]}

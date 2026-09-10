@@ -192,3 +192,9 @@ engineering_backup只备份workbench.json及其声明的输入/模拟输出树�
 red是将原常量判断提取为helper后，以真实runner结果副本注入5类坏证据，5 failed/1 passed；不是完整canonical execute的red。替换核验后6 passed，后加非开盘时点，最终微观7+batch5+每日12+Paper8+工作台7共39 passed/86.08s，execution-evidence-red/green/final.log/XML，隔离探针0。真实正常成交通过，异常证据不通过；原失败日志保留。
 
 仍未验证完整canonical/RealFactoryRuntime.run，完整R2协议阻塞不因此关闭；candidate_similarity_control与search_budget_reservation的最终证据仍需继续核验，不能以本项代表所有hard gates已完成。
+
+### 预算预登记真实证据
+
+search_budget_reservation现读取Trial最早的REGISTERED_BEFORE_PERFORMANCE事件，核对原事件hash、候选/Objective/预留身份与实际预算状态；正常执行要求ACTIVE及原Objective/batch/family占用，恢复要求原预留CONSUMED。批次把已有预算身份字段传入事前登记；未访问性能时核验失败释放当前仍活动预留，不进入原性能失败消费分支。没有扩预算、改扣账规则、补历史事件或生成批准回执。消费后预算v1仅保留预留ID和状态，完整恢复身份仍依赖原canonical恢复门禁，本helper不宣称重建已删除的预算引用。
+
+新增组件首轮6 passed；扩大回归38 passed/22 failed，22项全部在旧test_predictive_trial_start_v1夹具读取未交付AI_HANDOFF_V2_e1ddf合同处FileNotFoundError，尚未进入执行，不从真实根补读。原始budget-registration-final.log/XML保留；可独立关联回归37 passed/27.87s，随后补错batch负向及引用核对后预算7+batch5共12 passed/10.43s，budget-registration-affected与binding日志/XML。隔离三探针0；CI未增加任何skip或排除。完整R2仍未通过，历史夹具依赖列入集中待办。
