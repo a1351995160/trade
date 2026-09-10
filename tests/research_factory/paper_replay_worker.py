@@ -19,6 +19,16 @@ record = contract.reconstruct_candidate()
 inputs = caller._prepare_inputs(policy, record, caller._corrected_module(),
     root / "data/research/strategy_validation/phase4_rerun_v2_factor_values.parquet", contract=contract)
 session = PaperReplaySessionV1(root, output, record, contract, policy, inputs)
+if sys.argv[4] in {"before_head", "after_head"}:
+    original_commit = session._commit_progress
+    def interrupt_commit():
+        if session.completed_events == 9 and sys.argv[4] == "before_head":
+            os._exit(73)
+        original_commit()
+        if session.completed_events == 9:
+            os._exit(73)
+    session._commit_progress = interrupt_commit
+    session.advance(9)
 if sys.argv[4] == "interrupt":
     session.advance(9)
     import sitecustomize

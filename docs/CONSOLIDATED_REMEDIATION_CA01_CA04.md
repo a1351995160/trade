@@ -16,7 +16,7 @@
 |---|---|---|
 | 1 CA-01 | 新资格提交见证、旧历史只读、消费端 | 实际red后修正；31项使用资格/工作台测试通过，额外真实Paper与撤销锁竞争1项通过；最终新HEAD双平台待验 |
 | 2 CA-02 | canonical新颖性协议及旧入口 | 正式新意图边界/旧confirm与recover接受已复现；修正后27项R2/新颖性、5项执行器/批次/旧治理、1项真实v1兼容通过；最终认证待验 |
-| 3 CA-03 | Paper已提交尾部见证 | 待真实engine、读取/重启/advance及写点退出验收 |
+| 3 CA-03 | Paper已提交尾部见证 | 实际尾部丢失red后修正；25项Paper/工作台和2项损坏API测试通过；最终认证待验 |
 | 4 CA-04 | 计划内容当前性和运行代码来源 | 待实际计划生成及比较接口red、确定性/只读回归 |
 | 5 整体 | 同一新HEAD本地、CI、UI/API、审计包 | 待四项完成；含base完整差异和ffbff08增量 |
 
@@ -43,3 +43,11 @@ canonical_novelty_boundary先读持久意图，即使两个标签及start_intent
 green实际调用CanonicalPredictiveExecutor，缺标签在首次性能访问/engine之前以NOVELTY_CANONICAL_PROTOCOL_METADATA_REQUIRED拒绝，三个原预算桶used0/reserved0，预留按原协议释放。旧v1兼容用原正式启动服务新建真正无新版标记的意图，不是从新版删字段伪装旧记录；旧confirm/recover和原边界正常，预算不变。已有R2完成回执重放/中断同Trial恢复及批次删除metadata回归通过。
 
 `.gitattributes`仅将CA-01的原字节JSON夹具标为-text，防止Windows checkout换行转换破坏审计来源哈希；不改变任何生产文件编码策略。
+
+## CA-03 Paper 提交进度见证
+
+新会话header明确使用paper-engineering-replay-v2，每次不可变事件写入后，以原_atomic_write提交head.json（paper-committed-head-v2），绑定header哈希、累计事件数及最后record_hash。读取、冷恢复和advance均先核对完整事件链与提交头。缺头、缺尾、多条尾部缺失、旧提交头或损坏均阻断，不自动补写或回退。沿用ObjectiveMutationLock的资源锁保护同一会话advance；陈旧内存实例不能覆盖新进度。
+
+旧v1归档仍可只读检查原链，明确LEGACY_UNVERIFIED_HISTORY/committed_history_verified=false；禁止原地续跑、补head或静默升级。兼容夹具取自原ffbff08实际UI合成会话的原字节header与9条事件，附SHA256来源。旧格式本来没有尾部见证，不能宣称能够证明其完整性。
+
+真实engine red：提交9条后移走第9条，原新进程read返回8且advance推进至10。修正后保留丢失证据并拒绝。硬退出测试覆盖第9条事件写完/head未提交（阻断）和head提交后（恢复9并继续10）；原完整engine现金、费用、订单、成交及事件哈希对账仍通过。复用原原子替换，不扩大为整机掉电保证；不抵御同时重写全部历史与见证的无限文件权限。

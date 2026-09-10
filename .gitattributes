@@ -1,2 +1,4 @@
 # 审计来源夹具须保留原字节，跨平台checkout不能转换换行。
 tests/research_factory/fixtures/ca01_legacy_usage/*.json -text
+tests/research_factory/fixtures/ca03_legacy_paper/**/*.json -text
+tests/research_factory/fixtures/ca03_legacy_paper/*.json -text

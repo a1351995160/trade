@@ -1811,3 +1811,19 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - .gitattributes：仅CA-01原审计JSON夹具禁换行转换，保持跨平台来源字节哈希；git check-attr text=unset。
 - docs/CONSOLIDATED_REMEDIATION_CA01_CA04.md：更新CA-02证据、路由和范围；CLAUDE.md追加教训；progress.md追加记录。
 - 回滚点b17914b5e41114deebab00dd9f897da6a45983a1；可git revert本模块提交，但须保持新版启动禁用，不能重新使用旧入口消费新版意图。Git自动gc报告旧不可达对象较多，未执行prune/清理，无用户数据操作。
+
+## 2026-09-11 - Task: CA-03 Paper已提交尾部丢失检测
+### What was done
+- 实际引擎提交9条后移走尾部，取得新进程误读8条并推进10条的服务red；新增v2提交头，读盘/恢复/advance先核验提交边界。
+- 沿用共享资源互斥阻止陈旧实例覆盖；旧v1归档只读且明确未验证，不迁移、不补历史。
+### Testing
+- ca03-red.log/xml：1 failed/8 deselected；原始新进程stdout保留。ca03-green.log/xml：9 passed。
+- ca03-contract.log/xml：25 passed，覆盖多条尾部丢失、head缺失/损坏/回退、真实进程提交前后退出、旧实际归档兼容、原engine完整对账及工作台。
+- ca03-api.log/xml：2 passed/6 deselected，内容损坏与尾部丢失均GET/POST 409。隔离探针0；保留原Starlette警告。最终HEAD全套认证待完成CA-04。
+### Notes
+- src/chanlun_trader/research_factory/paper_replay.py：显式v2头、提交见证、完整性复核、旧历史只读、既有资源锁。
+- tests/research_factory/test_paper_replay.py：实际red/green和提交写点/兼容负向；paper_replay_worker.py：实际提交点硬退出；paper_integrity_worker.py：真实新进程读取/advance取证。
+- tests/research_factory/test_engineering_workbench.py：增补尾部丢失API阻断。
+- tests/research_factory/fixtures/ca03_legacy_paper/header.json、events/00000000.json至00000008.json、provenance.json：原审计包真实合成归档原字节与来源；.gitattributes限定禁止这些JSON换行转换。
+- docs/CONSOLIDATED_REMEDIATION_CA01_CA04.md：版本/恢复/兼容与证据；CLAUDE.md追加教训；progress.md追加记录。
+- 回滚点72fb21fc5b895c116d26d9413633ddbf3a51291f；可git revert本模块提交，但须停用v2会话推进并保留目录，不能旧代码消费新记录。未读取真实数据；既有OPEN事件不变。

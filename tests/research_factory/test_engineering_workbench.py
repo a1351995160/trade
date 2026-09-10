@@ -76,18 +76,22 @@ def test_governed_service_still_rejects_wrong_confirmation_or_identity(tmp_path,
     assert not list(service.output_root.rglob("header.json"))
 
 
-def test_damaged_archive_blocks_read_and_further_execution(tmp_path):
+@pytest.mark.parametrize("damage", ["content", "committed_tail"])
+def test_damaged_archive_blocks_read_and_further_execution(tmp_path, damage):
     service = workbench(tmp_path)
     candidate = next(iter(service.sources))
     service.advance(GOVERNED, {"confirmed": True, "context_hash": service.inspect()["context_hash"], "candidate_id": candidate, "event_count": 1})
     path = next(service.output_root.rglob("00000000.json"))
-    value = json.loads(path.read_text(encoding="utf-8"))
-    value["state"]["cash"] += 1
-    path.write_text(json.dumps(value), encoding="utf-8")
+    if damage == "committed_tail":
+        path.rename(path.with_suffix(".preserved"))
+    else:
+        value = json.loads(path.read_text(encoding="utf-8"))
+        value["state"]["cash"] += 1
+        path.write_text(json.dumps(value), encoding="utf-8")
     with TestClient(create_app(service.root, GOVERNED, engineering_workbench=service), base_url="http://127.0.0.1") as client:
         assert client.get(ENDPOINT).status_code == 409
         assert client.post(ENDPOINT + "/advance", json={"confirmed": True}).status_code == 409
-    assert len(list(service.output_root.rglob("000000*.json"))) == 1
+    assert len(list(service.output_root.rglob("000000*.json"))) == (0 if damage == "committed_tail" else 1)
 
 
 def test_missing_workbench_and_wrong_root_never_fall_back(tmp_path):

@@ -9,6 +9,8 @@ from pathlib import Path
 
 from ..engine.time_types import EventKind
 from .common import canonical_json, stable_hash
+from .durability import _atomic_write
+from .mutation_boundary import ObjectiveMutationLock
 from .daily_plan import preview_daily_plan
 from .source_dependencies import SOURCE_ROOT, load_corrected_module
 
@@ -25,13 +27,19 @@ def _immutable(path: Path, value: dict) -> None:
             raise ValueError("PAPER_IMMUTABLE_CONFLICT")
 
 
+def _committed_head(header, completed_events, last_record_hash):
+    value = {"schema_version": "paper-committed-head-v2", "header_hash": stable_hash(header),
+        "completed_events": completed_events, "last_record_hash": last_record_hash}
+    return {**value, "head_hash": stable_hash(value)}
+
+
 def read_paper_archive(output_root: str | Path) -> dict:
     """只读核对持久摘要，供页面使用；不构造引擎或执行恢复。"""
     root = Path(output_root)
     if not root.is_absolute() or root.resolve() != root:
         raise ValueError("PAPER_EXPLICIT_ROOT_REQUIRED")
     if not (root / "header.json").exists():
-        if (root / "events").exists():
+        if (root / "events").exists() or (root / "head.json").exists():
             raise ValueError("PAPER_HEADER_MISSING")
         return {"status": "NO_SESSION", "time_basis": "SIMULATED_TIME", "real_observation_days": 0}
     def read(path):
@@ -39,7 +47,7 @@ def read_paper_archive(output_root: str | Path) -> dict:
             raise ValueError("PAPER_ARCHIVE_LINKED_FILE")
         return json.loads(path.read_text(encoding="utf-8"))
     header = read(root / "header.json")
-    if (header.get("schema_version") != "paper-engineering-replay-v1"
+    if (header.get("schema_version") not in {"paper-engineering-replay-v1", "paper-engineering-replay-v2"}
             or header.get("real_execution_authorized") is not False
             or header.get("time_basis") != "SIMULATED_TIME" or header.get("real_observation_days") != 0):
         raise ValueError("PAPER_HEADER_INVALID")
@@ -57,7 +65,14 @@ def read_paper_archive(output_root: str | Path) -> dict:
         previous, latest = item["record_hash"], item
         if item.get("plan") is not None:
             plan = item["plan"]
-    return {"status": "HISTORICAL_REPLAY", "header": header, "completed_events": len(paths),
+    verified = header["schema_version"] == "paper-engineering-replay-v2"
+    if verified:
+        if not (root / "head.json").exists():
+            raise ValueError("PAPER_COMMITTED_HEAD_MISSING")
+        if read(root / "head.json") != _committed_head(header, len(paths), previous):
+            raise ValueError("PAPER_COMMITTED_HISTORY_CONFLICT")
+    return {"status": "HISTORICAL_REPLAY" if verified else "LEGACY_UNVERIFIED_HISTORY",
+            "committed_history_verified": verified, "header": header, "completed_events": len(paths),
             "total_events": header["total_events"], "last_record_hash": previous,
             "state": latest["state"] if latest else None, "last_plan": plan,
             "time_basis": "SIMULATED_TIME", "real_observation_days": 0, "real_execution_authorized": False}
@@ -84,7 +99,7 @@ class PaperReplaySessionV1:
         self.completed_events = 0
         self.recovery_required = False
         self.last_plan = None
-        self.header = {"schema_version": "paper-engineering-replay-v1", "candidate_id": contract.candidate_id,
+        self.header = {"schema_version": "paper-engineering-replay-v2", "candidate_id": contract.candidate_id,
             "contract_hash": contract.content_hash, "policy_hash": stable_hash(policy.to_dict()),
             "total_events": len(self.engine.clock.events),
             "input_identity": inputs["input_diagnostics"]["input_identity"],
@@ -100,10 +115,13 @@ class PaperReplaySessionV1:
         self.previous_hash = stable_hash(self.header)
         header_path = self.output_root / "header.json"
         if header_path.exists():
-            if json.loads(header_path.read_text(encoding="utf-8")) != self.header:
+            existing_header = json.loads(header_path.read_text(encoding="utf-8"))
+            if existing_header.get("schema_version") == "paper-engineering-replay-v1":
+                raise ValueError("PAPER_LEGACY_HISTORY_READ_ONLY")
+            if existing_header != self.header:
                 raise ValueError("PAPER_INPUT_OR_SOURCE_CHANGED")
             self._recover()
-        elif (self.output_root / "events").exists():
+        elif (self.output_root / "events").exists() or (self.output_root / "head.json").exists():
             raise ValueError("PAPER_HEADER_MISSING")
 
     def _state(self) -> dict:
@@ -138,6 +156,7 @@ class PaperReplaySessionV1:
         return record
 
     def _recover(self) -> None:
+        read_paper_archive(self.output_root)
         paths = sorted((self.output_root / "events").glob("*.json"))
         if len(paths) > len(self.engine.clock.events):
             raise ValueError("PAPER_EVENT_COUNT_CONFLICT")
@@ -151,15 +170,32 @@ class PaperReplaySessionV1:
 
     def advance(self, event_count: int) -> dict:
         """event_count是累计目标，重复请求不重复处理，不按新ID重试。"""
+        with ObjectiveMutationLock.for_resource(self.output_root / "paper-session"):
+            return self._advance_locked(event_count)
+
+    def _commit_progress(self):
+        _atomic_write(self.output_root / "head.json", _committed_head(
+            self.header, self.completed_events, self.previous_hash))
+
+    def _advance_locked(self, event_count: int) -> dict:
         if self.recovery_required:
             raise ValueError("PAPER_RECOVERY_REQUIRED")
         if type(event_count) is not int or not self.completed_events <= event_count <= len(self.engine.clock.events):
             raise ValueError("PAPER_EVENT_RANGE_INVALID")
-        _immutable(self.output_root / "header.json", self.header)
+        archived = read_paper_archive(self.output_root)
+        if archived["status"] == "NO_SESSION":
+            if self.completed_events:
+                raise ValueError("PAPER_COMMITTED_HISTORY_MISSING")
+            _immutable(self.output_root / "header.json", self.header)
+            self._commit_progress()
+        elif (archived["completed_events"] != self.completed_events
+                or archived["last_record_hash"] != self.previous_hash):
+            raise ValueError("PAPER_REPLAY_SESSION_STALE")
         while self.completed_events < event_count:
             try:
                 record = self._step()
                 _immutable(self.output_root / "events" / f"{record['index']:08d}.json", record)
+                self._commit_progress()
             except Exception:
                 self.recovery_required = True
                 raise

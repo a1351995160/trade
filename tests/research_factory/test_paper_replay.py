@@ -70,7 +70,7 @@ def test_corrupt_or_missing_history_blocks_recovery(tmp_path, mode):
         payload = json.loads(path.read_text())
         payload["state_hash"] = "WRONG"
         path.write_text(json.dumps(payload))
-    with pytest.raises(ValueError, match="PAPER_REPLAY_RECONCILIATION_FAILED|PAPER_EVENT_SEQUENCE_GAP"):
+    with pytest.raises(ValueError, match="PAPER_REPLAY_RECONCILIATION_FAILED|PAPER_EVENT_SEQUENCE_GAP|PAPER_ARCHIVE_HASH_CONFLICT"):
         create()
     with pytest.raises(ValueError, match="PAPER_ARCHIVE_HASH_CONFLICT|PAPER_EVENT_SEQUENCE_GAP"):
         read_paper_archive(tmp_path / "paper")
@@ -159,3 +159,101 @@ def test_actual_broker_partial_fill_and_rejection(tmp_path, scenario):
     else:
         assert "REJECTED" in statuses
         assert not result["state"]["trades"]
+
+
+def test_committed_tail_loss_blocks_actual_new_process_and_advance(tmp_path):
+    case, _, create = setup(tmp_path)
+    caller, _, contract, _, _ = case
+    (caller.root / "caller-contract.json").write_text(json.dumps(contract.to_dict()), encoding="utf-8")
+    committed = create().advance(9)
+    assert committed["completed_events"] == 9
+    output = tmp_path / "paper"
+    tail = output / "events/00000008.json"
+    tail.rename(output / "preserved-tail.bin")
+    from chanlun_trader.research_factory.source_dependencies import SOURCE_ROOT
+    environment = dict(os.environ, PYTHONPATH=os.pathsep.join([str(SOURCE_ROOT / "tests/isolation"), str(SOURCE_ROOT / "src")]))
+    result = subprocess.run([sys.executable, str(Path(__file__).with_name("paper_integrity_worker.py")),
+        str(caller.root), str(output), caller.objective_id], cwd=tmp_path, env=environment, capture_output=True, timeout=60)
+    evidence = Path(os.environ["CHANLUN_PROCESS_EVIDENCE_DIR"]) / "ca03-tail-loss"
+    evidence.mkdir(parents=True, exist_ok=True)
+    (evidence / "stdout.bin").write_bytes(result.stdout)
+    (evidence / "stderr.bin").write_bytes(result.stderr)
+    assert result.returncode == 0, result.stderr.decode("utf-8")
+    values = json.loads(result.stdout)
+    assert all(item["blocked"] for item in values.values()), values
+
+
+@pytest.mark.parametrize("loss", ["tail", "suffix", "head", "corrupt_head", "stale_head"])
+def test_committed_archive_damage_never_repairs_history(tmp_path, loss):
+    _, _, create = setup(tmp_path)
+    session = create()
+    session.advance(3)
+    root = tmp_path / "paper"
+    old_head = (root / "head.json").read_bytes()
+    session.advance(9)
+    if loss in {"tail", "suffix"}:
+        for index in range(8 if loss == "tail" else 6, 9):
+            (root / f"events/{index:08d}.json").rename(root / f"preserved-{index}.bin")
+    elif loss == "head":
+        (root / "head.json").rename(root / "preserved-head.bin")
+    else:
+        (root / "head.json").write_bytes(old_head if loss == "stale_head" else b"{}")
+    before = {str(path): path.read_bytes() for path in root.rglob("*") if path.is_file()}
+    for action in (lambda: read_paper_archive(root), create, lambda: session.advance(10)):
+        with pytest.raises(ValueError, match="PAPER_COMMITTED_"):
+            action()
+    assert before == {str(path): path.read_bytes() for path in root.rglob("*") if path.is_file()}
+
+
+@pytest.mark.parametrize("mode", ["before_head", "after_head"])
+def test_process_exit_at_committed_head_boundary(tmp_path, mode):
+    case, _, create = setup(tmp_path)
+    caller, _, contract, _, _ = case
+    (caller.root / "caller-contract.json").write_text(json.dumps(contract.to_dict()), encoding="utf-8")
+    from chanlun_trader.research_factory.source_dependencies import SOURCE_ROOT
+    environment = dict(os.environ, PYTHONPATH=os.pathsep.join([str(SOURCE_ROOT / "tests/isolation"), str(SOURCE_ROOT / "src")]))
+    result = subprocess.run([sys.executable, str(Path(__file__).with_name("paper_replay_worker.py")),
+        str(caller.root), str(tmp_path / "paper"), caller.objective_id, mode],
+        cwd=tmp_path, env=environment, capture_output=True, timeout=60)
+    evidence = Path(os.environ["CHANLUN_PROCESS_EVIDENCE_DIR"]) / "ca03-head-boundary" / mode
+    evidence.mkdir(parents=True, exist_ok=True)
+    (evidence / "stdout.bin").write_bytes(result.stdout)
+    (evidence / "stderr.bin").write_bytes(result.stderr)
+    assert result.returncode == 73, result.stderr.decode("utf-8")
+    assert len(list((tmp_path / "paper/events").glob("*.json"))) == 9
+    if mode == "before_head":
+        with pytest.raises(ValueError, match="PAPER_COMMITTED_HISTORY_CONFLICT"):
+            create()
+    else:
+        assert read_paper_archive(tmp_path / "paper")["completed_events"] == 9
+        assert create().advance(10)["completed_events"] == 10
+
+
+def test_stale_in_memory_session_cannot_replace_committed_head(tmp_path):
+    _, _, create = setup(tmp_path)
+    first, stale = create(), create()
+    first.advance(9)
+    head = (tmp_path / "paper/head.json").read_bytes()
+    with pytest.raises(ValueError, match="PAPER_REPLAY_SESSION_STALE"):
+        stale.advance(10)
+    assert (tmp_path / "paper/head.json").read_bytes() == head
+
+
+def test_actual_legacy_archive_is_readable_but_never_silently_upgraded(tmp_path):
+    import hashlib
+    import shutil
+    source = Path(__file__).parent / "fixtures/ca03_legacy_paper"
+    provenance = json.loads((source / "provenance.json").read_bytes())
+    for item in provenance["records"]:
+        assert hashlib.sha256((source / item["path"]).read_bytes()).hexdigest() == item["sha256"]
+    _, _, create = setup(tmp_path)
+    root = tmp_path / "paper"
+    shutil.copytree(source, root)
+    before = {str(path): path.read_bytes() for path in root.rglob("*") if path.is_file()}
+    archive = read_paper_archive(root)
+    assert archive["status"] == "LEGACY_UNVERIFIED_HISTORY"
+    assert archive["committed_history_verified"] is False
+    assert archive["completed_events"] == 9
+    with pytest.raises(ValueError, match="PAPER_LEGACY_HISTORY_READ_ONLY"):
+        create()
+    assert before == {str(path): path.read_bytes() for path in root.rglob("*") if path.is_file()}
