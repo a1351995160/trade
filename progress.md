@@ -1256,3 +1256,27 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - docs/ROADMAP_IMPLEMENTATION_MATRIX.md：追加CI失败与验证实情。
 - progress.md：追加本轮记录。
 - 回滚：git revert --no-edit <本轮提交SHA>；回滚点4d94b1b，回滚会恢复已定位的旧计数失败，不修改main。
+
+## 2026-09-10 - Task: M1共享资金与策略归属的组合预览
+
+### What was done
+
+实现显式不可变组合政策接口，复用每日策略语义和同一账本投影；共享现金/费用/容量/换手约束、同股优先级及退出冲突、lot归属和失效原因可追溯。版本或成员不完整时阻断新增买入，保持研究预览不授予策略使用资格。
+
+### Testing
+
+- 首轮真实组件7 passed，m1-preview-first.log。
+- 最终组合11、每日计划12、Paper8共31 passed/79.22s，m1-preview-final.log/XML；真实审批与确认各35次，预测/结构/业务AI禁用探针0，网络/进程拒绝/保护目录访问探针0。Paper冷进程证据另存原process目录。
+- 当前f2a759e的Phase1/2/P3A/B/C中间CI成功，R1仍运行；不作为本轮或最终HEAD平台认证。
+- M1策略使用资格/统一入口仍未完成，两个冻结测试候选不宣称合格策略；全路线维持PARTIAL。
+
+### Notes
+
+- src/chanlun_trader/research_factory/portfolio_plan.py：显式政策及共享账本组合预览。
+- tests/research_factory/test_portfolio_plan.py：实际冻结候选、计划与ledger的11项正负向验证。
+- tests/research_factory/r1_caller_fixture.py：允许在初始化/首次审批之前指定不同Objective，沿用原fixture流程。
+- .github/workflows/r1-source-data-certification.yml：加入组合测试，原超时与选择条件保留。
+- CLAUDE.md：记录共享账户投影和资格边界。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：证据与剩余接口范围。
+- progress.md：追加本轮记录。
+- 回滚：git revert --no-edit <本轮提交SHA>；回滚点f2a759e，移除本轮预览不修改main或既有账务。原始证据位于E:/llmwiki/roadmap-engineering-evidence。

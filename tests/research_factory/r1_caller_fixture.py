@@ -16,8 +16,8 @@ from chanlun_trader.research_factory.durability import DurableFrozenCandidateCon
 from chanlun_trader.research_factory.predictive_executor import CanonicalPredictiveExecutorV1
 
 
-def fixture(root, *, structure_exit=False, file_registry_identity=False, sessions=None, validation_ready=False):
-    scenario = Scenario(root).initialize()
+def fixture(root, *, structure_exit=False, file_registry_identity=False, sessions=None, validation_ready=False, objective_id=None):
+    scenario = (Scenario(root) if objective_id is None else Scenario(root, objective_id)).initialize()
     sessions = sessions if sessions is not None else [20250715, 20250716, 20250717, 20250718, 20250721, 20250722,
                 20250723, 20250724, 20250725, 20250728, 20250729, 20250730, 20250731]
     policy_path = root / "data/research/strategy_validation/validation_decision_policy_v2.json"
