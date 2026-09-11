@@ -2256,3 +2256,19 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - progress.md：追加本轮日志。
 - 仓库外execution-data-v1/evidence-necessity-v1：保存事前规则、CA/状态诊断、来源取得记录、PDF、验证与最终REPORT/RESULTS_INDEX。
 - 回滚点d03650e8c5d7bde8c43f3e24dd3a09918d365c27；仅移除本轮新增报告并revert本轮文档提交可回滚展示，不删除旧结果或已发生的访问记录。严格输入/三个正式标志及Windows OPEN保持。
+
+## 2026-09-11 - Task: 事件一致信号与历史成员新合同准备
+### What was done
+- 承接用户对上一条准备工作的批准，形成新信号公式、可见性/条款限制、历史成员及缺源处理合同，不覆盖原RAW身份。
+- 新增未接入runner的纯合成验证helper，证明机械分红转增跳变可被正确处理，缺证据仍不可计算；没有调用真实行情或预算。
+- 形成具体待批确认包：1个固定事件一致候选，建议新主1/修复1、1800秒、原截止与数据窗；仅描述性探索，正式检验与资格不自动成立。
+### Testing
+- tests/research_factory/test_event_signal_proposal_v1.py：10 passed，0.30秒，手算中性事件、真实涨跌、六项不可计算及历史成员缺失/UNKNOWN测试通过。
+- 隔离网络、子进程、保护路径与授权确认探针均0。未运行真实信号/Trial/账户或整套CI。
+- git diff --check通过；仓库外event-aware-proposal-v1/CONFIRMATION_PACKAGE.json绑定实际源码/测试/文档及只读权威预算哈希，Markdown副本一同交付，新增实授额度0。
+### Notes
+- src/chanlun_trader/research_factory/event_signal_proposal_v1.py：独立纯合成语义和成员预检，不接入生产runner。
+- tests/research_factory/test_event_signal_proposal_v1.py：手算和缺证据边界测试。
+- docs/event-aware-research-confirmation-v1.md：新版本合同、明确新增额度建议、资源、方法范围和实际前置条件。
+- progress.md：追加本轮记录。
+- 回滚点f43afe162300ab0e1b005eefe8b0af94b8362dfb；git revert本轮提交回滚新增代码/文档，不影响原数据或预算。原主1/修复1耗尽、V4未准、严格及三个正式标志false保持；未merge/push。122适格缺源与事件覆盖缺证据没有被新合同伪装解决。
