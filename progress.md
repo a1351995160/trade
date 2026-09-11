@@ -2207,3 +2207,21 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - progress.md：追加本轮证据及测试，不改历史。
 - 仓库外两新版本根保存原始公开快照、只读账、事前注册、量纲/布局验证、新语义合同、失败归因、可行性和输入ready。旧degraded-train-v1工件不覆盖。
 - 回滚点f7425f87fb925ee958eb647e3f8f81cba3508d19；对本轮源码提交执行git revert并保留所有外部证据。额度一旦登记/消费不得随源码回滚撤销历史。禁止删除旧失败或重跑V4/OWNER。
+
+## 2026-09-11 - Task: 降级主回测失败的T+1周末时点修复
+### What was done
+- 实际主账户执行已消费1次主曝光，遇SELLABLE_DATE_NOT_IN_CALENDAR而失败，完整部分账户与权威失败结算保留。
+- 定位原Ledger按自然日+1、公司行动适配要求交易日的矛盾。合成周五案例先red再green，只在独立降级接线将非session时点向后投影，原策略和核心严格组件未修改。
+- 增加原治理支持的确证修复入口，要求同一计划、原输入不变、当前干净fix_commit和匹配红绿哈希；不覆盖原ready、可行性或主失败。下一步使用已批准唯一修复曝光重算。
+### Testing
+- test_friday_entry_sellability_projects_to_next_real_session：旧行为失败SELLABLE_DATE_NOT_IN_CALENDAR，修复后通过（周五入场、周一可卖、entry+3退出）。
+- 41项目标回归通过，1.82秒；隔离网络/进程/保护路径探针0。真实主失败不因合成通过而撤销。
+- 实際主消耗1，修复此刻0；原EXPOSURE_STARTED及SETTLED保留。服务原POSSIBLE_CHARGED状态保留，但已知真实账户计算确已发生。
+### Notes
+- src/chanlun_trader/research_factory/degraded_execution_v2.py：添加仅向后交易日投影及逐lot修正审计。
+- scripts/run_degraded_account_v2.py：接入匹配修复证据、同计划与干净提交检查，独立修复摘要。
+- tests/research_factory/test_degraded_execution_v2.py：周五/周末时点与唯一修复额度测试。
+- docs/day-volume-semantics-and-degraded-account-v2.md：记载实际失败、精确根因及受限恢复。
+- progress.md：追加本轮记录。
+- 三份合成JUnit原文件从本轮test_artifacts精确移动到仓库外degraded-account-v2/repair-evidence，保留red、green与完整回归，不公开上传。
+- 回滚点bde98c5（由git rev-parse解析）；执行git revert本轮修复提交可以回滚源码，但不得回滚主消耗或删除失败证据。修复影响全部后续含周末/休市间隔的lot时点，本轮主结果已不完整，必要重算必须从原计划同输入开始且消费修复桶。

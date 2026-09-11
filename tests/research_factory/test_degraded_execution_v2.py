@@ -94,3 +94,40 @@ def test_degraded_expiry_and_repair_proof_remain_required(tmp_path):
     source['approval_record_sha256']=source.pop('attachment_sha256');e['feasibility_passed']=True
     p['expires_at']=(datetime.now(timezone.utc)-timedelta(seconds=1)).isoformat()
     with pytest.raises(PermissionError,match='EXPIRED'):s.confirm(p,source,preflight=lambda:e)
+
+
+def test_friday_entry_sellability_projects_to_next_real_session():
+    b=degraded()
+    for day in [20220811,20220812]:
+        d=b.daily[b.daily.date==20220810].copy();d['date']=day
+        b.daily=pd.concat([b.daily,d],ignore_index=True)
+        s=b.states[b.states.trade_date=='20220810'].copy();s['trade_date']=str(day)
+        b.states=pd.concat([b.states,s],ignore_index=True)
+        b.calendar.append(day)
+    b.ready_factors=b.ready_factors[b.ready_factors.timestamp==20220804]
+    r=run_degraded_account(b,('SYNTHETIC',False))
+    assert r['status']=='COMPLETE'
+    buys=[f for f in r['fills'] if f['side']=='BUY'];sells=[f for f in r['fills'] if f['side']=='SELL']
+    assert buys[0]['fill_time'].strftime('%Y%m%d')=='20220805'
+    assert sells[0]['fill_time'].strftime('%Y%m%d')=='20220811'
+    lots=r['final_account_checkpoint']['state']['lots']
+    assert all(pd.Timestamp(lot['sellable_from']).strftime('%Y%m%d')=='20220808' for lot in lots.values())
+
+
+def test_only_one_proven_repair_is_charged_in_original_registry(tmp_path):
+    import json
+    old,p,source,e,parent=grant(tmp_path)
+    s=DegradedGovernanceV1(tmp_path)
+    p['contracts']={'fixed':CONTRACT};p['result_type']=CONTRACT['result_type']
+    source['approval_record_sha256']=source.pop('attachment_sha256');e['feasibility_passed']=True
+    s.confirm(p,source,preflight=lambda:e)
+    red=tmp_path/'red.json';green=tmp_path/'green.json'
+    red.write_text(json.dumps({'status':'FAIL','case_id':'weekend','affected_contract':'fixed'}))
+    green.write_text(json.dumps({'status':'PASS','case_id':'weekend','fix_commit':'f'*40}))
+    proof={'red_evidence':str(red),'green_evidence':str(green),'fix_commit':'f'*40,'affected_contract':'fixed'}
+    with pytest.raises(PermissionError,match='NO_PRIOR_EXPOSURE'):s.reserve('fixed',proof)
+    main=s.reserve('fixed');s.start_exposure(main['execution_id']);s.settle(main['execution_id'],1,False)
+    repair=s.reserve('fixed',proof);s.start_exposure(repair['execution_id']);s.settle(repair['execution_id'],1,True)
+    assert s.summary()['MAIN_BACKTEST_EXPOSURES_USED']==1
+    assert s.summary()['REPAIR_BACKTEST_EXPOSURES_USED']==1
+    assert s.reserve('fixed',proof)['status']=='ALREADY_ATTEMPTED'

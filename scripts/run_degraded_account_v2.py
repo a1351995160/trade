@@ -37,9 +37,13 @@ def code_identity():
     return {str(p.relative_to(SOURCE)):sha(p) for p in files}
 
 
-def load_ready():
+def load_ready(repair=None):
     r=read(ROOT/'INPUT_READY.json')
-    if r['code_identity']!=code_identity():
+    if repair:
+        green=read(repair['green_evidence'])
+        if green.get('status')!='PASS' or green.get('affects_input') is not False or green.get('code_hashes')!=code_identity():
+            raise PermissionError('REPAIR_CODE_OR_UNCHANGED_INPUT_NOT_PROVEN')
+    elif r['code_identity']!=code_identity():
         raise PermissionError('FROZEN_EXECUTION_CODE_CHANGED')
     if sha(ROOT/'FEASIBILITY.json')!=r['feasibility_sha256'] or not read(ROOT/'FEASIBILITY.json')['passed']:
         raise PermissionError('FROZEN_FEASIBILITY_CONFLICT')
@@ -81,7 +85,9 @@ def worker(mode,execution_id=None):
         print(json.dumps({'passed':result['passed'],'counts':result['counts'],'candidate_paths':result['candidate_paths'],
             'reasons':dict(Counter(p['reason'] for p in result['paths']))}))
         return
-    service=DegradedGovernanceV1(ORIGINAL);receipt=service.active();ready=load_ready()
+    service=DegradedGovernanceV1(ORIGINAL);receipt=service.active()
+    reserved=next(e for e in service.events() if e.get('execution_id')==execution_id and e['event']=='RESERVED')
+    ready=load_ready(reserved.get('repair'))
     context=read(ROOT/'execution'/execution_id/'source_identity.json')
     if resource['execution']!={'execution_id':execution_id,'plan_id':receipt['plan_id'],'source_identity':context}:
         raise PermissionError('RESOURCE_RECEIPT_CONTEXT_CONFLICT')
@@ -120,7 +126,7 @@ def bounded(mode,context=None,seconds=900):
     return result
 
 
-def execute(feasibility_only=False):
+def execute(feasibility_only=False,repair_proof=None):
     if os.environ.get('CHANLUN_TEST_ISOLATION')=='1':
         raise PermissionError('REAL_INPUT_CANNOT_USE_SYNTHETIC_ISOLATION')
     from chanlun_trader.research_factory.degraded_execution_v2 import CONTRACT
@@ -143,7 +149,8 @@ def execute(feasibility_only=False):
         print('INSUFFICIENT_EXECUTABLE_EVIDENCE_NO_ACCOUNT_EXPOSURE');return
     if feasibility_only:
         return
-    ready=load_ready()
+    repair=read(repair_proof) if repair_proof else None
+    ready=load_ready(repair)
     from chanlun_trader.research_factory.degraded_governance_v1 import DegradedGovernanceV1
     service=DegradedGovernanceV1(ORIGINAL)
     approval={'origin':'USER_EXPLICIT_PLAN_APPROVAL_VIA_CODEX','thread_id':os.environ.get('CODEX_THREAD_ID'),
@@ -157,8 +164,15 @@ def execute(feasibility_only=False):
     plan={'contracts':{stable_hash(CONTRACT):CONTRACT},'limit':2,'wall_limit':1800,
         'result_type':CONTRACT['result_type'],'input_identity':ready['input_identity'],
         'objective_id':parent['plan']['objective_id'],'expires_at':expiry.isoformat()}
-    receipt=service.confirm(plan,source,preflight=load_ready)
-    reservation=service.reserve(stable_hash(CONTRACT))
+    if repair:
+        receipt=service.active()
+        current=subprocess.check_output(['git','rev-parse','HEAD'],cwd=SOURCE,text=True).strip()
+        dirty=subprocess.check_output(['git','status','--porcelain'],cwd=SOURCE,text=True).strip()
+        if receipt['plan']!=plan or current!=repair['fix_commit'] or dirty:
+            raise PermissionError('REPAIR_REQUIRES_UNCHANGED_PLAN_AND_CLEAN_FIX_COMMIT')
+    else:
+        receipt=service.confirm(plan,source,preflight=load_ready)
+    reservation=service.reserve(stable_hash(CONTRACT),repair)
     if reservation['status']!='RESERVED':
         raise PermissionError('EXISTING_ATTEMPT_RECONCILE_NO_FREE_REPLAY')
     eid=reservation['execution_id'];started=time.monotonic();completed=False
@@ -170,7 +184,7 @@ def execute(feasibility_only=False):
         completed=result['returncode']==0 and (ROOT/'execution'/eid/'completed.json').exists()
     finally:
         service.settle(eid,time.monotonic()-started,completed)
-    save('EXECUTION_SUMMARY.json',{'execution_id':eid,**service.summary()})
+    save('REPAIR_EXECUTION_SUMMARY.json' if repair else 'EXECUTION_SUMMARY.json',{'execution_id':eid,**service.summary()})
     if not completed:
         raise RuntimeError('ACCOUNT_EXECUTION_NOT_COMPLETED_EVIDENCE_PRESERVED')
 
@@ -178,8 +192,9 @@ def execute(feasibility_only=False):
 if __name__=='__main__':
     parser=argparse.ArgumentParser();parser.add_argument('--worker',choices=['feasibility','execute'])
     parser.add_argument('--execution-id');parser.add_argument('--feasibility-only',action='store_true')
+    parser.add_argument('--repair-proof')
     args=parser.parse_args()
     if args.worker:
         worker(args.worker,args.execution_id)
     else:
-        execute(args.feasibility_only)
+        execute(args.feasibility_only,args.repair_proof)

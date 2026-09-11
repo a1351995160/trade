@@ -39,3 +39,12 @@ H1为股，H2为百股手。事前固定eps=0.001；全部及沪深各市场、�
 同一SearchBudgetRegistry以独立plan_id登记1主+1修复；回执明确新用途和原Objective/父回执。不改旧12次和四次探索记录。原锁、预留、先消费再计算、结算、撤销、到期、重复拒绝和修复证据检查全部复用。旧正式路径继续false。合成测试发现买入/退出组合身份不一致导致迟一session，已在真实曝光前修正并验证，不能扣成真实修复曝光。
 
 实际主回测开始/结束、额度及结果，以同根EXECUTION_SUMMARY.json与execution/<实际id>/completed.json、result.json为准；本文不提前声明成功。资源并发1、数值线程1、每worker900秒/2048MiB，账户累计1800秒，原到期不延长。恢复时先对账，不删除工件重跑。未使用修复余额不变为第二策略。
+
+
+## 实际主执行失败与受限修复
+
+主执行77635c2c61996a75150e7404d85367866ba4cb5eedab0ad37b99373c5043ddf7于2026-09-11实际开始，主额度已消费1并以失败结算。原Ledger的_next_session_open_from按自然日+1；2022-08-26周五买入生成周六可卖日期，CorporateActionBacktestEngineV1的独立日历检查抛SELLABLE_DATE_NOT_IN_CALENDAR。原failed_account、process与结算保留，不将失败改成未曝光。
+
+合成周五案例复现同样错误。仅在独立降级引擎将非session可卖时点向后投影到首个真实session开盘，再交原公司行动检查；记录old_time/new_time，不提前可卖，不改原Ledger或严格引擎。回归证明周五买入、周一可卖、entry+3后下一开盘退出。41项测试通过，包含原严格输入/账户及唯一修复消费。
+
+修复入口增加--repair-proof，复用原回执/预算的匹配red/green证据，要求当前干净fix_commit与green全部代码哈希一致、affects_input=false、原输入与合同相同。原FEASIBILITY及INPUT_READY不覆盖、不重跑；修复执行和摘要进入新execution_id及REPAIR_EXECUTION_SUMMARY.json，保留原EXECUTION_SUMMARY。若修复仍失败，不存在第三次可用额度。

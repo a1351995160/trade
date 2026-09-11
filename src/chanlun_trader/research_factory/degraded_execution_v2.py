@@ -1,5 +1,6 @@
 """已证明DAY数量语义后的降级接线；复用原交易组件，保留严格路径。"""
 from dataclasses import asdict
+from bisect import bisect_left
 import math
 import os
 
@@ -103,6 +104,19 @@ class IntersectionFillV1(DailyBarFillModel):
 
 
 class DegradedAccountEngineV2(CorporateActionBacktestEngineV1):
+    def _sync_lot_contract_fields(self):
+        # 原Ledger按自然日生成T+1；在本显式独立日历上只向后投影，绝不提前可卖。
+        for lot in self.ledger.lots.values():
+            day=int(lot.sellable_from.strftime('%Y%m%d'))
+            if not self.calendar.contains(day):
+                index=bisect_left(self.calendar.trading_days,day)
+                if index<len(self.calendar.trading_days):
+                    before=lot.sellable_from
+                    lot.sellable_from=pd.Timestamp(str(self.calendar.trading_days[index])+' 09:30',tz='Asia/Shanghai')
+                    self.sellability_projections.append({'lot_id':lot.lot_id,'old_time':str(before),
+                        'new_time':str(lot.sellable_from),'reason':'T1_CEILING_TO_INDEPENDENT_SESSION'})
+        super()._sync_lot_contract_fields()
+
     def _process_clock_event(self, ev, pending_signals, strategy_fn=None, exit_fn=None):
         if ev.kind == EventKind.SESSION_OPEN:
             day = int(ev.timestamp.strftime('%Y%m%d'))
@@ -160,6 +174,7 @@ def run_degraded_account(bundle, source_identity, active_check=None):
         security_master=DegradedStateMasterV1(bundle.states),source_identity=source_identity,action_dataset=bundle.actions)
     engine.active_check=active_check;engine.price_limit_factory=DegradedPriceLimitV1
     engine.hazards=bundle.hazards;engine.unsupported_lots={};engine.entry_rejections=[]
+    engine.sellability_projections=[]
     factor_days={int(d):rows for d,rows in bundle.ready_factors.groupby('timestamp')}
     ranks=[];decisions=[];hazard_checks=[]
     evaluator=PortfolioExitEvaluatorV1('RETURN_5D_DEGRADED','FIXED_REFERENCE',{'exit_type':'FIXED_HOLD','fixed_holding_sessions':3})
@@ -249,5 +264,6 @@ def run_degraded_account(bundle, source_identity, active_check=None):
         'trades':[asdict(t) for t in result.trades],'events':result.event_log.to_records(),
         'candidate_rejections':engine.entry_rejections,'capacity_decisions':fill.audit,
         'hazard_decisions':hazard_checks,'unsupported_lots':engine.unsupported_lots,'exit_decisions':decisions,
+        'sellability_projections':engine.sellability_projections,
         'daily_account':[asdict(s) for s in snapshots],'daily_holdings':engine.account_history,
         'final_account_checkpoint':result.ledger.checkpoint(),'input_identity':bundle.input_identity}
