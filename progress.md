@@ -1929,3 +1929,18 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - progress.md：追加本轮闭环记录。
 - 外部blocker-resolution-v2：新增STATISTICAL_METHOD_CONTRACT_V3_PROPOSED.md、RESEARCH_PLAN_CONFIRMATION_PACKET.md、HISTORICAL_AUTHORITY_EXACT_REQUESTS.json、校准两轮原件/日志、final-regression.log及checkpoint-v2.json；不推送真实证据。
 - 回滚：git revert本轮提交；回滚点a21214b。保留外部证据，停止使用该原型；回滚不返还试验额度或重置授权。
+
+## 2026-09-11 - Task: V2单worker资源强制机制实测
+### What was done
+- 从4afb6c0完整SHA与干净工作区恢复，上一轮分类为progress；继续V2已批准的小型合成资源测试，不重新读取真实数据或元数据。
+- 复用已有Windows Job和worker测试，实际核验超限内存、wall超时及建议配置启动，保留原始子进程输出。
+- 未修改资源代码、并发/线程路径、隔离白名单或旧Windows OPEN事件；真实试验仍0。
+### Testing
+- 原test_synthetic_batch_resources.py：9 passed in 1.82s，含96MiB分配失败、1秒阻塞终止和正常完成；隔离拒绝计数均0。
+- 建议2048MiB/900秒配置合成normal载荷实际启动成功、returncode=0、timed_out=false，约0.228秒；未宣称满额度压力/真实负载/数值线程认证。
+- git diff --check通过；原77项回归证据保留，本轮未改实现，不无理由重跑全套。
+### Notes
+- docs/BOUNDED_RESOURCE_ENFORCEMENT_V2.md：新增实际资源证据、测试限度及恢复落点。
+- progress.md：追加本轮记录。
+- 外部resource-enforcement-tests.log及resource-enforcement-v1：新增原始日志/提议配置结果，不覆盖旧交付证据或清零历史。
+- 回滚：git revert本轮文档提交；回滚点4afb6c0ae2ea0c1a30f84a3978285f70fd37238c。保留外部实测原件；无生产行为变更。

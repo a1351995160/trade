@@ -1,0 +1,13 @@
+# 有限研究资源机制实测补充
+
+承接4afb6c0ae2ea0c1a30f84a3978285f70fd37238c，不修改现有资源实现、隔离规则、研究政策或批准。此补充属于用户V2允许的小型合成资源测试，不使用历史数据或真实策略。
+
+实际运行原test_synthetic_batch_resources.py：9 passed in 1.82s。正常worker完成；96MiB Job总内存限制下持续分配失败；1秒wall限制下阻塞worker终止。额外以计划建议的2048MiB、900秒启动原normal合成worker，OS安装限制成功、worker正常退出，耗时约0.228秒。使用已有Windows先挂Job再恢复执行机制；没有增加进程/线程白名单。
+
+逻辑worker为1，Windows Job活动进程上限2用于venv启动器和解释器。设置OMP_NUM_THREADS、OPENBLAS_NUM_THREADS、MKL_NUM_THREADS、NUMEXPR_NUM_THREADS为1，但此次载荷未导入数值库，不能认证库实际线程数。探针process_calls=0指没有被拒绝的非Python子进程调用，不代表没有启动Python worker。
+
+测试限度：超载在96MiB测试，超时在1秒测试；没有为了证明同一机制实际耗尽2GiB或等待900秒。未验证真实研究工作负载峰值、父进程崩溃恢复和累计12小时结算，不能扩大为完整资源认证。历史额度、到期、来源证据及统计方法阻断不变。旧Windows OPEN事件保持。
+
+证据根E:/llmwiki/autonomous-strategy-research-v1/blocker-resolution-v2：resource-enforcement-tests.log、resource-enforcement-v1/batch-resources各原始stdout/stderr、resource-enforcement-v1/PROPOSED_PROFILE_SMOKE.json及proposed-profile原始输出。作为原RESEARCH_PLAN_CONFIRMATION_PACKET.md的资源证据补充，不改写旧DELIVERY_MANIFEST.json。
+
+恢复时先读checkpoint-v2.json和本补充。真实绩效试验0，AUTONOMOUS_STRATEGY_GOAL_COMPLETED、READY_FOR_REAL_TRIAL、R1_FULLY_CLOSED均false。下一项可独立推进工作仍为合成统计适用性研究；真实数据及外部权威回执权限不因本轮测试扩张。
