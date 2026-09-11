@@ -25,3 +25,26 @@
 `evaluation/` 归档完整逐日数值、计数、原因及子进程输出，仅供评估侧；设计侧不读取这些数值。`execution/` 保存非绩效完成、资源和错误码；`summary.json` 只给完成数、曝光及资源消费和正式状态。原盲化检查约束摘要。输出版本 `exploratory-raw-price-relation-v1`，类型 EXPLORATORY_RAW_PRICE_RELATION，带 NOT_TRADABLE / NOT_FOR_QUALIFICATION；没有p/q、排名、费用推断、订单或合格裁决。
 
 本轮工程验证先于真实执行。执行结果随后在本文件追加，不覆盖原失败、政策或锁。回滚代码不能返还已发生曝光；外部账本和证据必须保留。
+
+## 已执行交付：2026-09-11
+
+状态：EXPLORATION_COMPLETED。A_main、A_placebo、B_main、B_placebo 全部完成，四份序列均存在可计算关系；这只是计算/归档完成，不是关系具有预测力或候选通过。
+
+- 冻结代码提交：a6e0440（完整提交由确认回执 plan.code_commit 保存）。
+- 计划身份：8a6da87671d9e7d1a52c2d69d4ec36d518249e47ede14878672b9163ba3fc3b0。
+- 确认回执：e1912600dd1ca8fa4ec378b0c4553ea4be678fc1aed7b5f3dd226778e2f70c33。
+- 实际新增真实价格曝光4、可能未明曝光0、工程重算0；预留/开始/结算各4条，无未结算尝试。增量剩余2仅限确证修复重算。
+- worker累计wall 28.447202899998956秒；正式资格Trial为0，旧正式计划BLOCKED、V4不获准、三个正式标志false。
+- 输入实际核对：获批SHA256、2,370,849行、5,036观测成员与固定来源清单完全一致；训练日历486 session。总体5,182与缺源146保留。
+
+完整本机证据位于 E:/llmwiki/autonomous-strategy-research-v1/revised-exploration-v1/：
+
+- `governance/confirmation.json`：四份合同、代码/输入/证据身份、明确批准及用途增量引用。
+- `governance/search_budget_registry.json`、`governance/exposure_events.jsonl`：原预算组件的实际消费与结算。
+- `summary.json`：设计侧盲化结果。
+- `archive_verification.json`：四份评估结果的精确路径、SHA256及完整性检查；不含均值或曲线。
+- `evaluation/<contract>/<execution_id>/result.json`：完整数值仅供评估侧，不返回设计侧调参。
+- `execution/`：每次Windows资源安装记录、完成回执和退出状态；`frozen_source/`：执行时原始源码字节归档。
+- `archive_verifier.py`：只校验已存结果及账目，不重算价格关系；四份结果的合同/输入/日期/覆盖/哈希及源码归档检查全部通过。
+
+工程70项测试通过，实际入口exit0，评估侧归档核验exit0。设计侧未取得精确均值、p/q或序列；没有收益方向反馈后调参。此次任务到固定四实验结算归档为止，不使用剩余额度另起探索，不触发正式资格、Paper或订单。

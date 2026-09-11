@@ -2016,3 +2016,21 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - docs/BOUNDED_EXPLORATION_EXECUTION_V1.md：新入口使用、权限及结果语义。
 - progress.md：追加本轮工程记录。
 - 回滚：git revert本轮工程提交；恢复点e1fa914ee7f05a3cc2cce6797738ba7c50ee181b。外部批准、失败和消费证据不得删除，回滚不返还额度。
+
+## 2026-09-11 - Task: 四个获批真实价格探索执行、结算与归档
+### What was done
+- 在冻结代码a6e0440下，由真实入口登记计划级批准及原预算组件的6次用途增量；原Objective关联、12次历史消费、8/12争议、历史曝光及原有效期均保留。
+- 固定TRAIN快照身份、五字段、实际成员及486 session日历核验通过；按四份同时冻结合同顺序执行A/B main及placebo，全部完成并结算。
+- 实际新增价格曝光4、工程重算0、未明曝光0，worker累计28.447202899998956秒；剩余2仅供确证修复。正式资格Trial仍0，不能再将本计划真实价格曝光写成0。
+- 数值完整归档给评估侧，设计侧仅收到完成、完整性、可计算关系存在和账目；未获得精确表现或据此更改计算。
+### Testing
+- 实际命令：.venv/Scripts/python.exe scripts/run_bounded_exploration.py --execute-approved-plan，exit0；每worker均exit0，无超时或重试。
+- 评估侧archive_verifier.py核对四份合同/输入/日期/覆盖/结果hash与源码归档，并核对预留、开始、结算各4条及摘要一致，exit0；未重算价格关系。
+- 四份序列均保留所有486日期和5182总体计数，缺源146未剔除；存在可计算关系只表示有描述输出，不判定经济有效性。
+- 原70项工程测试证据及所有旧失败/Windows OPEN事件保留；未改旧交易权限、统计政策/lock、V4、费用或skip/timeout/隔离白名单。
+### Notes
+- docs/BOUNDED_EXPLORATION_EXECUTION_V1.md：追加实际执行身份、资源消费和评估证据索引。
+- progress.md：追加本轮执行日志。
+- 外部revised-exploration-v1：不可变确认回执、原预算注册器增量、事件账目、四份结果、资源/完成记录、冻结源码及盲化核验；未公开上传。
+- 计划8a6da87671d9e7d1a52c2d69d4ec36d518249e47ede14878672b9163ba3fc3b0；回执e1912600dd1ca8fa4ec378b0c4553ea4be678fc1aed7b5f3dd226778e2f70c33。
+- 回滚：git revert本轮文档提交可撤销新增说明；运行代码恢复点a6e0440，原恢复点8cc3ac0仍保留。外部真实曝光及证据不可因回滚清除或退款。旧正式计划BLOCKED，V4不获准，三个正式标志false。
