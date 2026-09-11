@@ -2285,3 +2285,17 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - progress.md：追加本轮记录。
 - 仓库外alternate-source-probe-v1：READ_PLAN、PROBE_RESULTS、VERIFICATION，保留原始样本，不公开上传。
 - 回滚点618a9edf617743a379738246d701c623a1f17477；可git revert本轮文档提交，保留已发生读取及原试验历史。正式标志false，Windows OPEN保持。
+
+## 2026-09-12 - Task: 122只缺源证券完整TRAIN覆盖及事件日期核验
+### What was done
+- 冻结全部122曾适格成员/原TRAIN预热窗口，复用BaoStock Provider，实际取得50,196行。34,174适格证券日和49,464有效生命周期证券日均无缺行，ST/停牌无冲突。
+- 2,565个初筛失败条目通过实际字段定因为明确停牌且量额为空，OHLC有效；原值/初筛保留，不填零。未将额外预热行情称作预热状态证据。
+- 64只既有事件重叠证券，130本地category=1日期在BaoStock140日期中全部对应；10额外日期保留。5个疑似基准未证实，5个无本地记录日期追加2023条款查询未匹配，不制造事件完整性结论。
+### Testing
+- 冻结MANIFEST/状态源哈希、Parquet日期范围、返回日期/证券/去重与字段检查通过；122请求完成102.337秒，64事件请求15.703秒，另5条款请求完成，均无策略执行。
+- 已有可入选及全部有效生命周期日期逐项集合对账通过；停牌量额空值定因2565/2565。真实数据/事件访问记录保留，新绩效曝光0，未改预算或执行CI。
+### Notes
+- docs/alternate-source-full-coverage-v1.md：覆盖结果、停牌字段、事件差异与总目标前置条件。
+- progress.md：追加实际取证记录。
+- 仓库外alternate-source-coverage-v1：冻结计划、122份原响应、读账/进度/覆盖/差异/条款证据，原输入不覆盖。
+- 回滚点cd2cc7da77d9fabb1a9ecd472c1a94d045e5ec5a；git revert本轮文档提交，保留数据访问历史，不复位预算。旧三标志false及Windows OPEN保持。
