@@ -2272,3 +2272,16 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - docs/event-aware-research-confirmation-v1.md：新版本合同、明确新增额度建议、资源、方法范围和实际前置条件。
 - progress.md：追加本轮记录。
 - 回滚点f43afe162300ab0e1b005eefe8b0af94b8362dfb；git revert本轮提交回滚新增代码/文档，不影响原数据或预算。原主1/修复1耗尽、V4未准、严格及三个正式标志false保持；未merge/push。122适格缺源与事件覆盖缺证据没有被新合同伪装解决。
+
+## 2026-09-12 - Task: 免费替代来源小样本实际取证
+### What was done
+- 用户要求实际尝试取得后，先冻结3只缺源证券/5个TRAIN日与1只公司行动2023年样本，复用既有BaoStock Provider session查询。
+- 实际取得15条不复权日线和1条具有实施/登记/除权/派息/股份上市日及现金/转增条款的事件。没有重跑TDX缺源、OWNER或策略，不宣称122只全量恢复。
+### Testing
+- 四请求均error_code=0；日期/证券一致、唯一、OHLC有限正值与高低关系、量额非负、adjustflag=3通过；公司行动七字段非空，operate年2023在TRAIN内。
+- 输入选择依据及原始响应SHA256保存。未跑CI或回测；真实网络和行情读取有审计，新策略曝光0，原预算未改。
+### Notes
+- docs/alternate-source-availability-probe-v1.md：实际可取得性及不能泛化的边界。
+- progress.md：追加本轮记录。
+- 仓库外alternate-source-probe-v1：READ_PLAN、PROBE_RESULTS、VERIFICATION，保留原始样本，不公开上传。
+- 回滚点618a9edf617743a379738246d701c623a1f17477；可git revert本轮文档提交，保留已发生读取及原试验历史。正式标志false，Windows OPEN保持。
