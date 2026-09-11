@@ -1944,3 +1944,21 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - progress.md：追加本轮记录。
 - 外部resource-enforcement-tests.log及resource-enforcement-v1：新增原始日志/提议配置结果，不覆盖旧交付证据或清零历史。
 - 回滚：git revert本轮文档提交；回滚点4afb6c0ae2ea0c1a30f84a3978285f70fd37238c。保留外部实测原件；无生产行为变更。
+
+## 2026-09-11 - Task: V4 studentized提案的合成适用性验证
+### What was done
+- 从78b3aee干净工作区恢复，保留V3失败，新增独立V4提案：共同块重抽样中逐次重估Bartlett HAC标准误。
+- 按相同场景/种子/阈值先预注册4份源码身份，再执行1000次合成模拟、每次10000次重抽样；281.107秒完整结束，逐次账本保留。
+- IID场景raw拒绝18/200、上界0.128985，未通过；相关场景部分改善不能抵消失败。整体不可启用，未改旧政策或真实runner，真实试验0。
+### Testing
+- V3/V4实现13 passed in 0.30s；HAC与独立自协方差公式一致，尺度不变/共同索引/方向/退化输入检查通过；隔离探针均0。
+- 实际校准结束exit0；4份预注册源码SHA一致、1000个逐次编号完整、raw/BY汇总均可从逐次账本独立重算。
+- git diff --check通过；原77项及资源9项证据保留，未修改其实施路径，不扩测试白名单或timeout。
+### Notes
+- src/chanlun_trader/research/statistical_proposal_v4.py：孤立studentized/HAC合成原型，不授予执行权。
+- scripts/calibrate_statistical_proposal_v4.py：绑定源码、冻结场景、逐次记账的合成校准。
+- tests/research/test_statistical_proposal_v4.py：5项独立公式与输入/方向检查。
+- docs/STATISTICAL_PROPOSAL_V4.md：方法差异、官方依据、实测失败与适用性限制。
+- progress.md：追加本轮记录。
+- 外部statistical-calibration-v4及statistical-v4-tests.log/statistical-v4-calibration.log：保留新版本全量合成证据，不覆盖V3或旧manifest。
+- 回滚：git revert本轮提交；回滚点78b3aeef221bd71afa1cf62744a76f993f3ceda2。保留外部失败证据，不返还或新增真实试验额度。
