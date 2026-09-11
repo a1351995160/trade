@@ -2183,3 +2183,27 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - progress.md：追加本次施工及验证记录。
 - 仓库外正式工件：E:/llmwiki/autonomous-strategy-research-v1/execution-data-v1/degraded-train-v1/ 下READ_ALLOWLIST、FROZEN_CONTRACT、VOLUME_MODEL_EVIDENCE、DAILY_COVERAGE、CANDIDATE_PATHS、FIRST_ELIGIBLE_SESSION、FROZEN_UNIVERSE、FEASIBILITY、ACCESS_RECORD、WORKER_STARTED、WORKER_RESULT、RESULTS_INDEX.json和REPORT.md。均保留，不用删除重跑。
 - 回滚点0b799b861e50ade4a263861ba587f72ab3dbe29c；回滚本轮源码使用git revert本轮提交，保留仓库外取证工件，禁止reset历史预算或覆盖原结果。账户执行适配未进入实施，因事前容量适用性门槛已经拒绝，不宣称账户入口就绪。
+
+## 2026-09-11 - Task: DAY字段量纲取证与降级账户接线
+### What was done
+- 在读取真实量纲结果前冻结全部5036源TRAIN、四个原样本、两假设、eps=0.001及联合强判定。实际核验2370849条，排除0，当前DAY与原快照冲突0，证明SHARES，仅为DERIVED_AND_PUBLICLY_CORROBORATED。
+- 保存官方公式层索引摘录/取页失败、pytdx和独立Go格式实现快照及身份，未将社区支持写为厂商当前版本证明。四个原TQ样本1968行全部符合DAY量float32量化，旧1-share失败保留。
+- 以新版本复核原1443路径：911完整路径、438可入场日期、483证券，通过冻结门槛。保留174 hazard、333容量/整手以及其他拒绝与15末端路径。
+- 完成独立账户/输入/原治理组件适配，严格validator与旧账未改；下一步立即登记已批准1主+1修复并执行一次主回测，未提前宣称完成。
+### Testing
+- 39项针对性测试通过（1.82秒）；最后增加账本持仓估值及滑点记录后7项账户/治理/闭环测试通过（0.54秒）。隔离网络、进程、保护路径探针均0。
+- 原资源worker实际全量量纲验证成功；新NO-OUTCOME worker成功，完整工件见degraded-volume-semantics-v1与degraded-account-v2。
+- 合成red：预期8月8日退出却9日，原因买入与退出组合身份不同引发STALE_ORDER_POSITION_CHANGED；最小修复统一为原FIXED_REFERENCE，green符合entry+3规则。发生在任何真实账户曝光前，修复额度0。
+### Notes
+- src/chanlun_trader/research_factory/volume_semantics_v1.py：冻结量纲描述和联合强判定。
+- scripts/prove_day_volume_v1.py：当前精确DAY物理窗口读取、布局/量纲/快照一致性验证。
+- tests/research_factory/test_volume_semantics_v1.py：单位方向、模糊、市场反转和容差测试。
+- src/chanlun_trader/research_factory/degraded_input_v2.py：同身份TRAIN投影与真实开闭路径检查。
+- src/chanlun_trader/research_factory/degraded_execution_v2.py：原账户引擎开盘可见性、容量审计、全hazard与partial输出接线。
+- src/chanlun_trader/research_factory/degraded_governance_v1.py：用途独立确认，复用原SearchBudgetRegistry增量/结算/修复机制。
+- scripts/run_degraded_account_v2.py：冻结、无收益检查、原服务登记与受限账户执行入口。
+- tests/research_factory/test_degraded_execution_v2.py：原引擎持有/T+1、时间、hazard、partial、治理与闭环回归。
+- docs/day-volume-semantics-and-degraded-account-v2.md：新增用途、证据、操作和限制。
+- progress.md：追加本轮证据及测试，不改历史。
+- 仓库外两新版本根保存原始公开快照、只读账、事前注册、量纲/布局验证、新语义合同、失败归因、可行性和输入ready。旧degraded-train-v1工件不覆盖。
+- 回滚点f7425f87fb925ee958eb647e3f8f81cba3508d19；对本轮源码提交执行git revert并保留所有外部证据。额度一旦登记/消费不得随源码回滚撤销历史。禁止删除旧失败或重跑V4/OWNER。
