@@ -104,6 +104,28 @@ class SearchBudgetRegistryV1:
     def register_batch(self, batch_id: str, limit: int) -> None:
         self.register("batch", batch_id, limit)
 
+    def register_train_execution_increment(self, grant_id: str, contract_id: str) -> None:
+        """当前用途固定1主试验+1确证修复；不修改旧Objective或探索桶。"""
+        self.register("train_execution_increment", grant_id, 2)
+        self.register("train_execution_main", grant_id, 1)
+        self.register("train_execution_repair", grant_id, 1)
+        self.register("train_execution_contract", grant_id+":"+contract_id, 1)
+
+    def reserve_train_execution(self, grant_id: str, contract_id: str, *, repair_id: str | None = None) -> str:
+        self._bucket("train_execution_contract", grant_id+":"+contract_id)
+        reservation="TRAIN-"+stable_hash([grant_id,contract_id,repair_id])[:24]
+        if reservation in self._reservations or reservation in self._settled_reservations:
+            return reservation
+        refs=[("train_execution_increment",grant_id,1),
+              ("train_execution_repair" if repair_id else "train_execution_main",grant_id,1)]
+        if not repair_id:refs.append(("train_execution_contract",grant_id+":"+contract_id,1))
+        if any(self._bucket(kind,key).remaining<amount for kind,key,amount in refs):
+            raise BudgetExhaustedError("TRAIN_EXECUTION_INCREMENT_EXHAUSTED")
+        for kind,key,amount in refs:self._bucket(kind,key).reserved+=amount
+        self._reservations[reservation]=refs
+        self._persist()
+        return reservation
+
     def register_family(self, family_id: str, limit: int) -> None:
         self.register("family", family_id, limit)
 

@@ -2093,3 +2093,35 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - 外部execution-data-v1：INPUT_READ_PLAN_V1/V2、materialized-v1/v2/v3（旧失败版本保留）、访问事件、单位/时间/会计决定包、固定非可执行绑定、源码和交付哈希；真实材料不入公共Git。
 - 回滚点2bd2ccbdd4e86a3a9f93fffbf8bbe652e2b8986d；可git revert本轮提交撤销代码/说明，实际读取、跨窗事件、失败、旧消费与数据证据必须保留。旧8cc3ac0仍保留，不重置历史。
 - 本轮PARTIAL：用户用途批准true，服务授权/开始/完成false，新账户曝光0，新2额度未发行消费回执，原预算未修改。三个正式标志false，V4未获准，截止不延长；没有merge/push。
+
+## 2026-09-11 - Task: 固定TRAIN参考账户与公司行动V1工程闭环
+### What was done
+- 从 eba7b861915caab812caa3e83b5a5a6496e26fb1 干净研究分支承接，完整读取本轮用户请求；固定 RETURN_5D<0、Top-3、下一开盘和实际成交 lot index+3 退出，不查找新策略。
+- 完成窗口化所有者 importer、保留原字段的日线/状态补证合并、单位与价格/状态/公司行动输入闭包、分红应收款和送转拆合股V1账本、原引擎/broker/退出接线、可用现金与未到账股份/部分失败留档。
+- 原 SearchBudgetRegistry 增加用途受限1主+1修复接口，复用原锁/预留/消费/结算。真实输入缺失未发回执，原实际预算SHA与开工时一致，不修改旧消费/争议/旧修复余额。
+- 实际入口已运行一次：V3九项哈希通过后，execute 因 OWNER_EXECUTION_DATA_PACKAGE_NOT_DELIVERED 退出。未重复该缺件检查、146来源扫描或不安全TQ接口。交付一个 EXTERNAL_DATA_BLOCKER_PACKET 及逐角色所有者导出要求；已有用户用途批准不再请求同一批准。
+### Testing
+- 最终8个定点测试文件85通过，TEST_RESULTS_FINAL.log记录2.58秒；包括旧探索治理和旧输入适配。network_calls/process_calls/protected_accesses均0；无新skip、timeout或隔离白名单，未跑全CI。
+- 手算对照证明旧账本100股除息后只剩900权益；V1为900股票+100应收=1000，支付前不可用。拆股、合股、送转、FIFO、原持有期、恢复幂等及unsupported拒绝通过。
+- 合成red记录：调用不存在的OrderManager.accept；拆股替换订单丢失eligible_at使卖出错延至8月9日；混合ISO状态时间解析错误。最小修复后回归通过；全部发生于真实账户曝光前，未使用修复曝光。
+- 对输入边界、原时间不覆盖、更晚证据优先、未知布尔值、Parquet窗外数据行读取前拒绝、额外文件角色读取前拒绝、撤销/到期、参数变化、已消费未写STARTED崩溃对账进行验证。没有真实规模2048MiB/900秒基准，不能用合成通过代替。
+- 实际入口错误和无执行回执状态见外部原日志；没有账户真实结果、主/修复新增曝光均0。原三个资格标志false；TRAIN_EXECUTION_INPUT_READY=false，CORPORATE_ACTION_ACCOUNTING_READY=true仅指V1支持范围合成验证，TRAIN_ACCOUNT_BACKTEST_STARTED/COMPLETED=false。
+### Notes
+- src/chanlun_trader/data/tdx/windowed_actions_v1.py：窗口化事件身份、完整性、冲突及独立来源验收。
+- src/chanlun_trader/engine/corporate_accounting_v1.py：显式V1现金/股份会计、失败边界及检查点。
+- src/chanlun_trader/engine/corporate_action_engine_v1.py：原引擎账本接线及待成交退出订单数量/时间处理。
+- src/chanlun_trader/research_factory/train_account_runner_v1.py：固定合同、精确状态、原账户执行和明细/描述性结果。
+- src/chanlun_trader/research_factory/train_input_closure_v1.py：来源证据合并、单位、时点、原因子编译和新输入身份。
+- src/chanlun_trader/research_factory/train_execution_governance_v1.py：当前用户批准的用途回执、增量额度与修复证明。
+- src/chanlun_trader/research_factory/budget.py：原权威账本内增加受限主/修复桶，不改旧桶。
+- src/chanlun_trader/research_factory/exploration_governance.py：抽出预算预留钩子，旧默认路径不变。
+- scripts/run_train_account_v1.py：唯一入口、受限worker、精确包验收、身份冻结、执行/结算和只读恢复状态。
+- tests/research_factory/test_corporate_accounting_v1.py：会计手算、恢复、支持与拒绝边界。
+- tests/research_factory/test_train_account_runner_v1.py：原broker固定持有和行动端到端合成测试。
+- tests/research_factory/test_train_input_closure_v1.py：单位、缺失、来源时间和保留旧证据测试。
+- tests/research_factory/test_windowed_actions_and_train_grant.py：窗口化来源、旧额度隔离与撤销/恢复测试。
+- tests/research_factory/test_train_account_entry_v1.py：文件清单与物理日期读取边界。
+- docs/train-accounting-v1.md：本用途合同、输入、命令、恢复及真实验证限制。
+- CLAUDE.md：追加本轮订单时点/时间语义/状态内存经验；progress.md：仅追加本轮记录。
+- 外部 execution-data-v1/accounting-v1/：原入口日志、审批事实、开工身份、导出请求V1及V1_1、单一外部补件包中英文机器字段/中文报告、状态、85项测试日志、工程失败回顾、访问记录及交付封装脚本；不公开上传。
+- 回滚点 eba7b861915caab812caa3e83b5a5a6496e26fb1；用 git revert 撤销本轮恢复提交，不改历史分支、不删除审计和已发生访问证据。此前Windows OPEN、跨窗incident、失败、消费和原批准时钟保留。未merge/push。

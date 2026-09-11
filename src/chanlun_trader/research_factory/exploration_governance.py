@@ -114,12 +114,15 @@ class ExplorationGovernanceServiceV1:
             budget=SearchBudgetRegistryV1(plan['objective_id'],self.budget_path)
             if budget.snapshot()['active_reservations']:
                 raise PermissionError('ORPHAN_RESERVATION_REQUIRES_RECONCILIATION')
-            reservation=budget.reserve_exploration(receipt['plan_id'],contract_id,repair_id=repair_id)
+            reservation=self._reserve_budget(budget,receipt['plan_id'],contract_id,repair_id)
             self.append({'event':'RESERVED','execution_id':execution_id,'contract_id':contract_id,
                          'reservation_id':reservation,'repair':repair})
             return {'status':'RESERVED','execution_id':execution_id,'reservation_id':reservation,
                     'wall_seconds':min(900,plan['wall_limit']-used,
                         (datetime.fromisoformat(plan['expires_at'])-datetime.now(timezone.utc)).total_seconds())}
+
+    def _reserve_budget(self,budget,plan_id,contract_id,repair_id):
+        return budget.reserve_exploration(plan_id,contract_id,repair_id=repair_id)
 
     def start_exposure(self, execution_id):
         with self.lock():
