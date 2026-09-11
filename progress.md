@@ -2362,3 +2362,18 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - CLAUDE.md：追加实际价格模式陷阱；progress.md追加本轮记录。
 - 外部baostock-account-v1：批准、读清单、原响应、访问、资源、原失败及纠错证据。没有修改原数据、原账本或正式标志，不merge/push。
 - 回滚点5596d90d913bb26baf0a141f977b3783732f0bea；可git revert本轮提交回滚代码和文档，外部已发生访问、错误与消费历史保留。真实全池准备、可行性和账户仍须实际通过，不能由本次测试替代。
+
+## 2026-09-12 - Task: 按用户要求停止等待并交付只读取数进度脚本
+### What was done
+- 保留已有取数进程，结束助手的持续等待；交付一次性只读进度查看入口和中文操作说明。
+- 分开显示双价格响应、批次质量、已结算耗时和未结算worker的PID状态；不读取行情正文，不发起请求、不启动账户执行。
+### Testing
+- 针对性合成测试1 passed（0.24秒），证明优先采用修订质量报告、正确计数并保持输入目录字节及文件集合不变；执行与授权探针全部0。
+- 实际运行显示968/5182只双响应成功、4/4已有质量报告通过、已结算24.0分钟，worker PID20596仍存在；这是检查时快照，不是最终进度。UTF-8中文输出与git diff --check通过。
+### Notes
+- scripts/show_baostock_progress.py：只读元数据和Windows进程查询。
+- tests/research_factory/test_baostock_progress.py：元数据计数、修订报告优先及不写入测试。
+- docs/baostock-progress-viewer.md：用户查看命令及状态解释。
+- progress.md：追加本轮记录。
+- 回滚点9189ace9db6e65b939507ac5d0038bd9d58b7631；可git revert本次提交，仅撤销查看脚本和文档，不终止取数、不改外部证据。
+- 当前后台取数入口不会自动启动回测；新账户额度未因本次查看而登记或消费，正式三个标志继续false。
