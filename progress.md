@@ -2225,3 +2225,18 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - progress.md：追加本轮记录。
 - 三份合成JUnit原文件从本轮test_artifacts精确移动到仓库外degraded-account-v2/repair-evidence，保留red、green与完整回归，不公开上传。
 - 回滚点bde98c5（由git rev-parse解析）；执行git revert本轮修复提交可以回滚源码，但不得回滚主消耗或删除失败证据。修复影响全部后续含周末/休市间隔的lot时点，本轮主结果已不完整，必要重算必须从原计划同输入开始且消费修复桶。
+
+## 2026-09-11 - Task: 固定降级TRAIN账户修复执行、结算与交付
+### What was done
+- 已将实际red/green、同输入和干净修复提交绑定原服务，执行唯一修复重算并完成结算。主曝光1、修复1，剩余0，累计账户墙钟105.4881665秒；旧消费/失败/期限未改。
+- 固定账户COMPLETE，期末4539.2946元、模型净回报-54.607054%、最大回撤63.139987%、关闭277个lot；无末端持仓或未支持事件lot。研究优先级LOW，停止本轮，不据此换策略。
+- 仓库外形成中文最终报告、机器摘要、45项精确身份/哈希索引、实际访问补充以及原结果字段拆分的完整ledger/信号/委托/成交/拒绝/账户/持仓。精确结果已向当前会话及请求用户曝光，不再声称结果盲化。
+### Testing
+- 修复前后JUnit及41项目标回归原件已归档；未重复CI或真实可行性。实际修复worker退出0，COMPLETE结果哈希与完成凭证一致。
+- 10项交付核对通过：结果哈希、主修复结算、无预留、逐笔现金与ledger一致、费用、税、期末无仓、无unsupported lot、100股买入、最多三仓。45项索引最终哈希和7份字段拆分逐项等同性通过，git diff --check通过，原数值结果不改。
+### Notes
+- CLAUDE.md：追加T+1周末与单位证明/跨源数值差异经验。
+- docs/day-volume-semantics-and-degraded-account-v2.md：追加已完成结果、访问补充和停止边界。
+- progress.md：追加本轮真实完成与测试记录。
+- 仓库外degraded-account-v2：增加修复red/green/proof、原服务修复执行证据、FINAL_REPORT.md、FINAL_SUMMARY.json、RESULT_ACCESS.json、RESULTS_INDEX.json及七份原字段拆分文件；不修改原结果、旧失败或旧计划。
+- 回滚点58f9f5334d483351390ee7090a6a79a4f512ff1f；可git revert本轮文档提交，不得回滚已消费曝光、删除失败/原结果或再次执行账户。严格输入和三个正式就绪/完成标志仍false，Windows OPEN仍保留。未merge、push、启用V4或访问Validation/Final Test。

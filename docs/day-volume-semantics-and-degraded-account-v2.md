@@ -48,3 +48,11 @@ H1为股，H2为百股手。事前固定eps=0.001；全部及沪深各市场、�
 合成周五案例复现同样错误。仅在独立降级引擎将非session可卖时点向后投影到首个真实session开盘，再交原公司行动检查；记录old_time/new_time，不提前可卖，不改原Ledger或严格引擎。回归证明周五买入、周一可卖、entry+3后下一开盘退出。41项测试通过，包含原严格输入/账户及唯一修复消费。
 
 修复入口增加--repair-proof，复用原回执/预算的匹配red/green证据，要求当前干净fix_commit与green全部代码哈希一致、affects_input=false、原输入与合同相同。原FEASIBILITY及INPUT_READY不覆盖、不重跑；修复执行和摘要进入新execution_id及REPAIR_EXECUTION_SUMMARY.json，保留原EXECUTION_SUMMARY。若修复仍失败，不存在第三次可用额度。
+
+## 已完成的修复执行与停止
+
+修复执行0a0ccd0c85bb1e40c325b1f7ef1fd00a5ef8994dd553a74228d1548f18399962已由原服务完成结算，状态COMPLETE；主1、修复1，剩余0。修复代码提交58f9f5334d483351390ee7090a6a79a4f512ff1f，65次只向后日历投影有原始审计。期末权益4539.2946元，训练模型净回报-54.607054%，最大回撤63.139987%，关闭277个lot，期末无持仓、未支持事件lot为0。候选优先级LOW，不进行调参或追加搜索。
+
+交付位于同一输出根的FINAL_REPORT.md、FINAL_SUMMARY.json、RESULTS_INDEX.json和RESULT_ACCESS.json；LEDGER、SIGNALS、ORDERS、FILLS、DAILY_ACCOUNT、DAILY_HOLDINGS、REJECTIONS均只是已保存原结果字段的带源哈希拆分。45项索引逐文件校验；现金、费用、税、整手、三仓及结算一致。原主失败仍保留，修复worker输入访问原MAIN标签由补充记录明确为REPAIR，不覆盖原件。精确绩效已在当前会话曝光并只向请求用户交付。
+
+STRICT_TRAIN_INPUT_READY、READY_FOR_REAL_TRIAL、R1_FULLY_CLOSED、AUTONOMOUS_STRATEGY_GOAL_COMPLETED均为false；语义证明、降级可行性与账户完成分别为true，不代表正式资格。原146/27/29990缺口和hazard、批准到期、旧预算消费、Windows OPEN保持。不得再次运行默认入口或修复入口；本用途额度已经耗尽。
