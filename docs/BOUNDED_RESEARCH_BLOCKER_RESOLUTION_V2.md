@@ -15,3 +15,25 @@
 需要进一步取得的精确外部权威路径：从 canonical executor 的 report_dir 规则生成的各 Trial performance_access_gate.json、pre-performance contract，以及原治理确认/预算变更回执。它们位于 reports 等当前A许可之外；最终确认包列出逐项路径和只需的字段，不泛扫或读取这些原件。预计历史关联根无剩余额度，任何新增性能试验均需原服务的明确新增额度，不先写新桶。
 
 测试：test_history_blind_reconciliation.py 3 passed；覆盖嵌套绩效及分类不输出、原reader只读、缺失计数拒绝默认0。隔离探针全部0。该投影是诊断，不认证历史完整性，也不授予任何策略资格。
+
+## B 来源与因子语义
+
+已按事前清单实际读取486个训练PIT分区与5036个TDX文件，形成2370849行诊断快照；146个历史成员缺源，原列表保留。日期键定位与允许范围内价格读取分开审计，未整读/整hash混合.day文件。available_at、公司行动与成交单位缺证据保持UNKNOWN，不认证可执行性。RETURN_5D真实编译器的合成对照证明限定计算等价，不证明公司行动调整等价；旧registry和caller未改。
+
+## C 统计提案与实际失败校准
+
+新增隔离原型statistical_proposal_v3，定义共同stationary时间块、边界居中单侧均值检验、完整家族BY、固定训练内walk-forward、实际标签结束日purge及20session过去信号placebo。没有接入正式runner、旧政策或资格裁决。
+
+5个纯合成场景各200次模拟，每次252session、3成员、10000抽样。IID、AR0.6与10日重叠场景raw拒绝率分别8.5%、9.5%、8.5%，未达到预注册诊断要求；方法不可启用。通过8项实现测试不代表统计适用性通过。首次校准遗漏导入模块的源码绑定，补齐绑定后以相同种子原样复核；逐场景计数一致，两轮原件均保留。
+
+## 持久交付和恢复
+
+外部交付根：E:/llmwiki/autonomous-strategy-research-v1/blocker-resolution-v2。
+
+- RESEARCH_PLAN_CONFIRMATION_PACKET.md：唯一具体计划包，包含资源/原到期/精确缺项/合法取得路径；状态尚不可确认启用。
+- DATA_PROVENANCE_AND_TIME_EVIDENCE.md、FACTOR_PRICE_SEMANTICS_COMPATIBILITY.md：字段证据和版本影响。
+- STATISTICAL_METHOD_CONTRACT_V3_PROPOSED.md：完整方法、原理来源、合成校准与适用性失败。
+- statistical-calibration-v3-bound-source：正式绑定源码的预注册与合成结果；旧输出保留。
+- checkpoint-v2.json：本轮事实检查点，不是授权回执；优先于旧checkpoint中已过时的五份路径未知/未对账描述。
+
+恢复时先核对此处checkpoint与真实预算/到期，不重复同一元数据检查。缺失的外部治理/曝光回执需受控盲化取得，来源缺证据需限定导出；当前没有合法真实试验下一步。不得将新增40次上限当作已入账余额，不实现无治理的真实回测，不以文档完成宣称解阻完成。AUTONOMOUS_STRATEGY_GOAL_COMPLETED、READY_FOR_REAL_TRIAL、R1_FULLY_CLOSED均false。

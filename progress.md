@@ -1909,3 +1909,23 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - tests/research_factory/test_bounded_train_snapshot.py：字节/窗口和结构负向回归。
 - progress.md：追加本轮记录；外部blocker-resolution-v2内保存DATA_PROVENANCE_AND_TIME_EVIDENCE.md、FACTOR_PRICE_SEMANTICS_COMPATIBILITY.md/json、train-source-v1所有计划/审计/快照/验证及日志，不推送。
 - 回滚：git revert本轮提交；回滚点7ad36db。原数据未修改；保留外部证据并停止使用诊断工具。原62项回归与Windows OPEN事件保持。
+
+## 2026-09-11 - Task: V2 C 统计合同合成校准与整合解阻证据
+### What was done
+- 实现未接正式runner的共同时间块均值检验、完整家族BY、固定训练内折、真实标签结束日purge与过去信号placebo原型；旧政策和lock保持。
+- 实际完成5场景各200次合成模拟；IID/AR0.6/重叠10日场景尺寸诊断未通过，明确方法不可启用，不以测试通过伪称统计有效。
+- 补齐校准的导入模块源码绑定后，保持种子/样本/阈值原样复核，结果一致；保留首次输出。整理统一计划包、来源矩阵、语义结论、方法稿及16个Trial的精确权威请求清单。
+- 原授权外的回执与来源证据不越界读取。真实绩效试验0，三个完成/就绪标志false；不生成研究计划确认或成功委托回执。
+### Testing
+- 原62项回归加新增15项共77 passed in 122.04s；日志final-regression.log。network_calls/process_calls/protected_accesses均0；59次approval/confirmation为旧合成回归探针，不是新增研究授权。
+- 单独统计实现8 passed；覆盖共同时间索引、居中方向、BY已知值/完整家族、延迟退出purge、placebo不穿越未来、退化及缺失输入。
+- 两轮合成校准逐场景结果相同；正式预注册脚本SHA和导入模块SHA与当前文件一致。校准失败独立于工程测试成功报告。
+- git diff --check通过。未扩大skip/timeout/隔离白名单，Windows OPEN事件未变，未运行真实Paper/Final Test/订单。
+### Notes
+- src/chanlun_trader/research/statistical_proposal_v3.py：孤立的待批准方法原型，不连接资格裁决。
+- scripts/calibrate_statistical_proposal_v3.py：先预注册源码身份后模拟，无真实数据入口，逐场景保存。
+- tests/research/test_statistical_proposal_v3.py：8项方法实现与失败边界检查。
+- docs/BOUNDED_RESEARCH_BLOCKER_RESOLUTION_V2.md：同步B/C事实、失败与持久恢复落点。
+- progress.md：追加本轮闭环记录。
+- 外部blocker-resolution-v2：新增STATISTICAL_METHOD_CONTRACT_V3_PROPOSED.md、RESEARCH_PLAN_CONFIRMATION_PACKET.md、HISTORICAL_AUTHORITY_EXACT_REQUESTS.json、校准两轮原件/日志、final-regression.log及checkpoint-v2.json；不推送真实证据。
+- 回滚：git revert本轮提交；回滚点a21214b。保留外部证据，停止使用该原型；回滚不返还试验额度或重置授权。
