@@ -2034,3 +2034,62 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - 外部revised-exploration-v1：不可变确认回执、原预算注册器增量、事件账目、四份结果、资源/完成记录、冻结源码及盲化核验；未公开上传。
 - 计划8a6da87671d9e7d1a52c2d69d4ec36d518249e47ede14878672b9163ba3fc3b0；回执e1912600dd1ca8fa4ec378b0c4553ea4be678fc1aed7b5f3dd226778e2f70c33。
 - 回滚：git revert本轮文档提交可撤销新增说明；运行代码恢复点a6e0440，原恢复点8cc3ac0仍保留。外部真实曝光及证据不可因回滚清除或退款。旧正式计划BLOCKED，V4不获准，三个正式标志false。
+
+## 2026-09-11 - Task: 四项既有探索结果的一次性只读评估交付
+### What was done
+- 完整读取用户REVIEW_ONLY批准；从原确认回执、四条结算、完成引用和既有质量索引固定四项结果路径，无目录扫描或原行情读取。
+- 本地评估程序逐项读取已存结果并核验身份/哈希，向用户生成中文报告、原值逐日表、结果索引、实际访问记录和既有非绩效摘要原字节副本；未补算总体或配对统计。
+- 四项均有局部可计算输出及不可计算日期；原结果没有总体摘要或配对成员证明，两组main/placebo均标NOT_COMPARABLE_WITH_EXISTING_EVIDENCE，不做机制优劣或正式资格结论。
+- 明确同一任务内评估进程发生4项结果信息读取；设计模型终端不返回精确表现，但不得再宣称本任务整体没有结果访问。报告唯一指定接收者为用户，是否实际打开未被观察。
+### Testing
+- 只读评估程序exit0：四项结算/消费、原结果SHA256、合同/输入/完整日历对应检查通过；无新的价格统计或试验。
+- 交付清单7项文件哈希核验通过，预算文件仍与读取时原字节SHA256一致；结果读取记录4项，新增实验0、修复使用0。未运行CI或修改生产代码。
+- 实验总曝光仍4、原修复余额2、三个正式标志false，旧失败、V4、预算消费和Windows OPEN均保留。
+### Notes
+- progress.md：追加本轮评估记录，无生产源码改动。
+- 外部revised-exploration-v1/review-only-v1/review_existing.py：一次性本地报告转换程序，无计算器或行情输入。
+- 外部同目录EXISTING_EXPLORATION_REVIEW.md及EXISTING_DAILY_OUTPUTS.md：中文说明与四项已有逐日聚合原值，本机用户交付。
+- 外部同目录RESULTS_INDEX.json、FROZEN_RESULT_READ_LIST.json、RESULT_ACCESS_LOG.jsonl、RESULT_ACCESS_DISCLOSURE.json：身份/哈希/结算/读取与同任务曝光披露。
+- 外部同目录SUMMARY_ORIGINAL_BYTES.json、DELIVERY_MANIFEST.json：原摘要字节副本与交付哈希清单。
+- 回滚点2bd2ccbdd4e86a3a9f93fffbf8bbe652e2b8986d；可仅撤销本次progress追加，外部访问事实及原证据必须保留，不因撤回报告而抹去信息曝光。交付后停止，不恢复策略搜索。
+
+## 2026-09-11 - Task: 明确批准的四项既有输出事后描述汇总
+### What was done
+- 完整读取本轮附件，先保存唯一SUMMARY_SPEC.json，再按原RESULTS_INDEX及附件指定execution/hash核验四份既有结果，单次生成POSTHOC_DESCRIPTIVE_SUMMARY。
+- 各项使用自身全部合法日期且日期等权，保存均值/差值中位数、正零负日期占比、组规模、原因标签日期数、有效日清单及原诊断；未选择配对交集或额外权重。
+- 精确汇总已向当前Codex会话返回以向用户解释，明确记录新派生分析和信息访问；今后不能宣称该会话仍是未曝光设计环境。
+- 新实验0、修复额度使用0；不修改生产引擎、原结果/合同、原预算或V4，三项正式标志保持false。
+### Testing
+- 8项手算合成数组测试通过：日期等权不同于成员加权、空/null、均值/奇偶中位数、正零负分母、极端值保留、原因重叠、矛盾披露和重复日期拒绝。
+- 首次测试导入遇到终端输出字典缺闭合括号的SyntaxError，修复后测试通过；发生在任何原结果读取前，已保留工程检查历史，不使用修复实验额度。
+- 实际汇总脚本exit0，四份原结果hash和身份通过，字段矛盾均0。有效/不可计算日分别478/8、458/28、464/22、444/42；原文件全部486日期保留。
+- 交付分母/有效日清单一致性核验通过，预算原字节SHA256在计算前后及交付时一致。没有重跑分析或CI。
+### Notes
+- progress.md：在上一轮未提交日志后追加本轮记录，保留原未提交更改。
+- 外部posthoc-summary-v1/SUMMARY_SPEC.json：事后唯一规则，非事前验证。
+- 外部同目录summarize_existing.py、test_summary_rules.py、RULE_TEST_RESULTS.json及ENGINEERING_CHECK_HISTORY.json：小型只读脚本和手算测试/首次语法错误记录。
+- 外部同目录POSTHOC_DESCRIPTIVE_SUMMARY.md/json：四行主表及完整机器摘要，无资格或main/placebo优劣结论。
+- 外部同目录DERIVATION_STARTED.json、ACTUAL_ACCESS.jsonl、REPORT_DERIVATION_LOG.json、DELIVERY_VERIFICATION.json：规则/代码/输入身份、实际读取、模型接收和交付核验。
+- 回滚点2bd2ccbdd4e86a3a9f93fffbf8bbe652e2b8986d；可仅撤销本次日志追加，保留派生/访问历史和原证据，不以回滚抹去已发生信息访问。交付后停止，不新增搜索。
+
+## 2026-09-11 - Task: 本机真实TRAIN输入取得及交易级回测前置工程
+### What was done
+- 承接用户新批准和2bd2ccb实际HEAD，保留前两轮未提交报告日志、旧预算与四项曝光。读取附件和TQ两项Skill，用户启动客户端后从本机17709取得独立日历。
+- 版本化DataAdapter保留历史时间未知与收盘后模型时间的区别；保留状态分类，未知量额单位拒绝成交Bar。读取六日预热按日期键定位，只对固定5036路径更新来源身份，不重新搜146缺源。
+- 实际生成materialized-v3：2398365日线（含27516预热）、2696328历史状态、2477712因子格（2370783可计算）。原registry身份、旧政策/lock和源文件未改。
+- 公司行动接口意外返回跨1990—2026事件，含封存期信息，已如实披露、留证并禁止再次调用；未纳入输入或回测，不声称物理访问0。
+- 交付来源/单位/时间矩阵、15项合成校验、来源与运行审计、精确所有者窗口化导出和核心会计决定包。现有Guard只有不支持标志，没有分红/送转账务；未授予执行资格。
+### Testing
+- 日历Date映射red：1失败/8通过；修复后本轮最终两个测试文件15通过，network/process/protected probes均0，原Windows OPEN/旧失败保留，不加skip/timeout/白名单。
+- V1发现5036旧源身份变化而拒绝价格读取；V2新身份下取得预热后object价格列触发isfinite TypeError，保留原件和失败，明确该次晚写审计丢失；V3最小数值类型修复并逐阶段落审计，exit0，178.04秒。V1成功物化156.82秒。V2及前期全部耗时未重建，未伪记0。
+- V3 9项数据manifest哈希通过；实际close为double，factor非空数和COMPUTABLE数量一致，所有不可计算值保留null。交付manifest另绑定15项报告、读取计划、审计索引与源码存档。
+- 文档生成首次因未设置PYTHONPATH导入失败（无文件写入），设置正确项目路径后生成成功。未跑全CI、V4、真实账户回测、Trial、Paper或订单。
+### Notes
+- src/chanlun_trader/data/tdx/execution_input.py：日线时间/状态/单位适配、已知不安全事件接口拒绝、所有者事件验收和六日物理reader。
+- scripts/prepare_execution_input_v1.py：仅按冻结清单物化日线、日历、状态和原因子值，阶段审计与只增版本输出。
+- tests/research_factory/test_execution_input.py：时间、字段、物理范围、来源拒绝与会计反例。
+- tests/research_factory/test_execution_input_accounting.py：沿原引擎Guard测试但明确合成source_identity，不触发git子进程或改变隔离。
+- docs/execution-input-v1.md：实际用法、失败恢复及边界；CLAUDE.md：追加本轮已证实TQ响应/类型/审计经验；progress.md：仅追加本轮，保留原未提交历史。
+- 外部execution-data-v1：INPUT_READ_PLAN_V1/V2、materialized-v1/v2/v3（旧失败版本保留）、访问事件、单位/时间/会计决定包、固定非可执行绑定、源码和交付哈希；真实材料不入公共Git。
+- 回滚点2bd2ccbdd4e86a3a9f93fffbf8bbe652e2b8986d；可git revert本轮提交撤销代码/说明，实际读取、跨窗事件、失败、旧消费与数据证据必须保留。旧8cc3ac0仍保留，不重置历史。
+- 本轮PARTIAL：用户用途批准true，服务授权/开始/完成false，新账户曝光0，新2额度未发行消费回执，原预算未修改。三个正式标志false，V4未获准，截止不延长；没有merge/push。
