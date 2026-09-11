@@ -64,5 +64,5 @@ if __name__=='__main__':
     request=Path('E:/llmwiki/autonomous-strategy-research-v1/execution-data-v1/accounting-v1/OWNER_EXPORT_REQUEST_V1_1.json')
     auth=Path('C:/Users/84219/.codex/attachments/822d4ed4-de89-465c-b177-062c4e63dd49/pasted-text.txt')
     destination=request.parent/'owner-export'
-    result=finalize(root/'staging',json.loads(request.read_text()),auth,destination,run_backtest=True)
+    result=finalize(root/'staging',json.loads(request.read_text(encoding='utf-8')),auth,destination,run_backtest=True)
     print(json.dumps(result,ensure_ascii=False))

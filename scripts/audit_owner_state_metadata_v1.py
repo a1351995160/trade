@@ -21,7 +21,7 @@ def metadata_prefix(path):
 if __name__=='__main__':
     root=Path('E:/llmwiki/owner-execution-export-v1/run-v2')
     state=Path('E:/llmwiki/chanlun-trading-system/data/research/security_state')
-    request=json.loads(Path('E:/llmwiki/autonomous-strategy-research-v1/execution-data-v1/accounting-v1/OWNER_EXPORT_REQUEST_V1_1.json').read_text())
+    request=json.loads(Path('E:/llmwiki/autonomous-strategy-research-v1/execution-data-v1/accounting-v1/OWNER_EXPORT_REQUEST_V1_1.json').read_text(encoding='utf-8'))
     records=[]
     for symbol in request['required_members']:
         path=state/'raw/history'/('symbol='+symbol.replace('.','_')+'.json')

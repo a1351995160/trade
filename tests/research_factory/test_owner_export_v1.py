@@ -97,7 +97,8 @@ def test_complete_synthetic_package_passes_independent_validation_and_atomic_del
         observed_available_at=str(pd.Timestamp(str(day),tz='Asia/Shanghai')+pd.Timedelta(hours=8)),observed_time_source='SYNTHETIC') for day in warm]).to_parquet(stage/'state_supplement.parquet',index=False)
     pd.DataFrame([dict(symbol=symbol,effective_date=20220722,listed=True,delisted=False,source='SYNTHETIC')]).to_parquet(stage/'security_master.parquet',index=False)
     (stage/'unit_source_evidence.json').write_text('{"source":"SYNTHETIC"}')
-    (stage/'units.json').write_text(json.dumps({'volume_unit':'SHARES','amount_unit':'CNY','price_mode':'RAW','evidence_sha256':sha(stage/'unit_source_evidence.json')}))
+    (stage/'units.json').write_text(json.dumps({'volume_unit':'SHARES','amount_unit':'CNY','price_mode':'RAW','note':'合成单位证明',
+        'evidence_sha256':sha(stage/'unit_source_evidence.json')},ensure_ascii=False),encoding='utf-8')
     (stage/'events.jsonl').write_text('')
     (stage/'actions_manifest.json').write_text(json.dumps({'dataset_id':'SYNTHETIC','version':'WindowedCorporateActionDatasetV1',
         'start':20220722,'end':20240731,'source_identity':'SYNTHETIC','events_file':'events.jsonl','events_sha256':sha(stage/'events.jsonl'),

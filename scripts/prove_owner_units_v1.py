@@ -34,7 +34,7 @@ def prove(samples):
 
 if __name__=='__main__':
     if Path.cwd().resolve()!=ROOT.parent.resolve():raise PermissionError('OWNER_WORKSPACE_REQUIRED')
-    freeze=json.loads((ROOT/'FROZEN_EXPORT_RULES.json').read_text())
+    freeze=json.loads((ROOT/'FROZEN_EXPORT_RULES.json').read_text(encoding='utf-8'))
     rule={'version':'ABSOLUTE_UNIT_PROOF_V1','samples':freeze['samples'],'dates':freeze['sample_dates'],
         'source_rule_sha256':sha(ROOT/'FROZEN_EXPORT_RULES.json'),'volume_scale_candidates':[1,100],
         'amount_anchor':'Both local TQ skills specify Amount in TEN_THOUSAND_CNY; require fixed comparison ratio10000 for every sample',
@@ -43,7 +43,7 @@ if __name__=='__main__':
     write_json(ROOT/'ABSOLUTE_UNIT_PROOF_RULES.json',rule)
     samples=[]
     for symbol in freeze['samples']:
-        path=ROOT/(symbol+'.sample.json');samples.append({'symbol':symbol,**json.loads(path.read_text())})
+        path=ROOT/(symbol+'.sample.json');samples.append({'symbol':symbol,**json.loads(path.read_text(encoding='utf-8'))})
     result=prove(samples);result['rule_sha256']=sha(ROOT/'ABSOLUTE_UNIT_PROOF_RULES.json')
     result['source_identity']='OWNER_FROZEN_TDX_TQ_UNIT_PROOF_V1';result['sample_hashes']={s:sha(ROOT/(s+'.sample.json')) for s in freeze['samples']}
     write_json(ROOT/'ABSOLUTE_UNIT_PROOF.json',result)

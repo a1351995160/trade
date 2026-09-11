@@ -2,6 +2,8 @@
 
 本轮从9a4a38ca0eff8e98d9afc84d4eebeae82580199e承接，只实现用户新批准的本机OWNER导出，不更改策略、原账户引擎、V4或预算。owner固定为USER_AUTHORIZED_LOCAL_DATA_OWNER，绑定本次批准文本真实SHA256，不推断个人身份。
 
+所有JSON与中文报告明确使用UTF-8读写；不能依赖Windows当前默认代码页。完整合成包测试包含未经ASCII转义的中文单位说明。
+
 ## 运行路径
 
 在研究代码工作区设置PYTHONPATH为本项目src，使用本项目.venv/Scripts/python.exe：

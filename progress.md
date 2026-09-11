@@ -2151,3 +2151,15 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - docs/owner-execution-export-v1.md：实际用法、失败/恢复、来源与状态边界；CLAUDE.md：追加本轮代理路由/gbbq市场/单位/混合头部经验；progress.md：仅追加。
 - 外部owner-execution-export-v1：run-v1/v2及PROCESS/WORKER记录、冻结样本和TQ响应、限窗行动/部分状态、独立校验、原始状态头部、单位失败证明、97项测试、delivery报告/精确剩余JSON/证据矩阵/访问与审计缺口记录。真实数据不入Git、不公开上传。
 - 回滚点9a4a38ca0eff8e98d9afc84d4eebeae82580199e；可git revert本轮提交撤销代码与说明，必须保留外部访问、失败、曝光与旧证据。旧12消费、四项探索、批准期限、Windows OPEN不变。未merge/push。
+
+## 2026-09-11 - Task: OWNER交付UTF-8读取修复
+### What was done
+- 最终封装命令读取中文访问记录时触发Windows默认GBK的UnicodeDecodeError；此前代码提交f4dab3b和导出结果保留。显式使用UTF-8读取新OWNER请求/单位/manifest/样本，修复同类入口，未重读原始源或重跑导出。
+### Testing
+- 保留封装失败的真实会话输出；完整合成包添加未ASCII转义中文单位说明，OWNER定点12项回归通过，UTF8_REGRESSION.log记录0.41秒。此前97项总回归保留，未重复整套CI。
+- 无新增价格实验或修复曝光，原预算不变。
+### Notes
+- scripts/audit_owner_state_metadata_v1.py、scripts/prove_owner_units_v1.py：显式UTF-8读取请求/样本/规则。
+- scripts/validate_owner_execution_package.py、scripts/finalize_owner_execution_package.py：显式UTF-8读取单位/事件manifest/请求。
+- tests/research_factory/test_owner_export_v1.py：增加未转义中文完整包验证；docs/owner-execution-export-v1.md：明确文件编码合同；CLAUDE.md：追加已证实编码经验；progress.md：追加本次修复。
+- 外部delivery封装命令同样使用UTF-8后重验文件与哈希；未再次执行builder或回测。回滚点f4dab3b，git revert本修复提交即可撤销，原失败与访问记录不删除。

@@ -43,12 +43,12 @@ def validate_components(directory,request):
         if not path.is_file():errors.append(name+':FILE_MISSING');continue
         hashes[name]=digest(path)
     if 'units.json' in hashes:
-        units=json.loads((directory/'units.json').read_text())
+        units=json.loads((directory/'units.json').read_text(encoding='utf-8'))
         if units.get('volume_unit') not in ['SHARES','LOTS_100_SHARES']:errors.append('VOLUME_UNIT_NOT_VERIFIED')
         if units.get('amount_unit') not in ['CNY','TEN_THOUSAND_CNY']:errors.append('AMOUNT_UNIT_NOT_VERIFIED')
         if units.get('evidence_sha256')!=hashes.get('unit_source_evidence.json'):errors.append('UNITS_EVIDENCE_HASH_CONFLICT')
     if 'actions_manifest.json' in hashes:
-        a=json.loads((directory/'actions_manifest.json').read_text())
+        a=json.loads((directory/'actions_manifest.json').read_text(encoding='utf-8'))
         if a['coverage'].get('complete') is not True:errors.append('ACCOUNTING_EVENT_COVERAGE_INCOMPLETE')
         if set(a['coverage']['symbols'])!=members:errors.append('ACTION_MEMBERS_INCOMPLETE')
         if a['events_sha256']!=hashes.get('events.jsonl'):errors.append('EVENTS_HASH_CONFLICT')
