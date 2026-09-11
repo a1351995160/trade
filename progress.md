@@ -2125,3 +2125,29 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - CLAUDE.md：追加本轮订单时点/时间语义/状态内存经验；progress.md：仅追加本轮记录。
 - 外部 execution-data-v1/accounting-v1/：原入口日志、审批事实、开工身份、导出请求V1及V1_1、单一外部补件包中英文机器字段/中文报告、状态、85项测试日志、工程失败回顾、访问记录及交付封装脚本；不公开上传。
 - 回滚点 eba7b861915caab812caa3e83b5a5a6496e26fb1；用 git revert 撤销本轮恢复提交，不改历史分支、不删除审计和已发生访问证据。此前Windows OPEN、跨窗incident、失败、消费和原批准时钟保留。未merge/push。
+
+## 2026-09-11 - Task: 独立OWNER自动导出、真实补源与独立验收
+### What was done
+- 完整读取新批准文本，从9a4a38ca0eff8e98d9afc84d4eebeae82580199e干净工作区恢复。在E:/llmwiki/owner-execution-export-v1建立独立OWNER输出；owner仅使用USER_AUTHORIZED_LOCAL_DATA_OWNER并绑定批准SHA，不推断个人姓名。
+- 实际运行首轮builder及定点修复支路：检查146精确TDX路径、固定四个既有成员全部492日期做TQ对照，处理原2700预热缺格；没有换样本、扩大容差或重新扫描盘符。旧样本源码、原预算和研究输入未覆盖。
+- 定位本机17709被系统代理路由而502，仅OWNER进程NO_PROXY修复；定位gbbq包含其他市场导致旧0/1全文件假设错误，改成按批准沪深身份筛选。未调用get_divid_factors或联网补数。
+- gbbq真实解码192387条，日期内32530条、窗外159857条写出前丢弃，最终成员范围29990条。8248事件保留ACCOUNTING_UNSUPPORTED；22546其他类别尚未绑定会计合同，386成员在此完整源中无记录。窗外具体事件未输出到模型/研究日志或交付。
+- 最终TQ对146缺源成员均返回空；原2700预热缺格2673可由上市日期解释、27仍UNKNOWN。四样本1968行日期/OHLC全部一致、金额10000倍关系通过；成交量比例1超出原1单位容差，保留UNKNOWN，不以近似浮点关系放宽。
+- 对5182个精确raw/history文件仅物理读取rows前元数据头，六个raw/all_stock预热分区均不存在。原状态获取时间晚于历史，未整读混合文件或回填当前ST/停牌。生成31092行部分状态、5182行生命周期子件及逐项剩余清单。
+- 独立validator实际检查子件后NOT_READY：缺源、状态/时点、成交量及事件条款/覆盖仍不满足。未发布最终OWNER_DELIVERY_MANIFEST、未复制未通过子件为研究输入、未启动主回测。原子交付后立即调用原账户入口的路径已接通，不在READY中间态停止。
+### Testing
+- 最终9个定点文件97项通过，TEST_RESULTS_FINAL.log记录2.93秒；包含原85项回归、OWNER日期读取/解析、固定倍率冲突、头部物理停止和完整合成包独立验收/原子交付。合成测试network/process/protected probes均0，未跑整套CI或扩大skip/timeout/隔离白名单。
+- 实际首轮builder exit0但来源子项失败，38.18秒；修复支路exit0。两次均使用原900秒/2048MiB/单数值线程worker限制。V2未单独保存perf_counter耗时，不能沿用V1的38.18秒冒充V2耗时。其他定点诊断未保存统一资源计时，已披露。
+- 原始gbbq初次失败与格式诊断未持久记录完整源身份，保留审计缺口，不以最终哈希倒填前两次。最终成功导出保留源/解析器/输出哈希，代码已补解析前审计，不为补旧日志重读源。
+- 原权威预算SHA256与上轮开工证据一致，真实主/修复曝光均0，三个正式资格标志false，V4未启用。OWNER_EXPORT_BUILDER_READY=true仅指限定流程测试；真实包、输入、账户开始/完成均false。
+### Notes
+- src/chanlun_trader/data/tdx/owner_export_v1.py：原TDX记录合同及TQClient窄适配、冻结对照和OWNER内gbbq限窗；旧引擎/公共TQClient不改。
+- scripts/build_owner_execution_package.py：首轮导出、保留历史的来源修复支路、原资源限制与最终验收入口。
+- scripts/validate_owner_execution_package.py：独立子件/manifest验证，不导入builder、不读取原始源。
+- scripts/finalize_owner_execution_package.py：仅PASS生成最终manifest、独立复验、原子发布并接原账户命令。
+- scripts/prove_owner_units_v1.py：已冻结样本的唯一绝对单位证明，规则先存，实际UNKNOWN保留。
+- scripts/audit_owner_state_metadata_v1.py：无缓冲逐字节只读metadata，在rows前停止，不读窗外状态。
+- tests/research_factory/test_owner_export_v1.py：12项OWNER边界、数值规则与完整合成交付回归。
+- docs/owner-execution-export-v1.md：实际用法、失败/恢复、来源与状态边界；CLAUDE.md：追加本轮代理路由/gbbq市场/单位/混合头部经验；progress.md：仅追加。
+- 外部owner-execution-export-v1：run-v1/v2及PROCESS/WORKER记录、冻结样本和TQ响应、限窗行动/部分状态、独立校验、原始状态头部、单位失败证明、97项测试、delivery报告/精确剩余JSON/证据矩阵/访问与审计缺口记录。真实数据不入Git、不公开上传。
+- 回滚点9a4a38ca0eff8e98d9afc84d4eebeae82580199e；可git revert本轮提交撤销代码与说明，必须保留外部访问、失败、曝光与旧证据。旧12消费、四项探索、批准期限、Windows OPEN不变。未merge/push。
