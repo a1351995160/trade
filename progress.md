@@ -1877,3 +1877,18 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - progress.md：仅追加本轮记录。
 - 外部新目录 E:/llmwiki/autonomous-strategy-research-v1：保留依赖日志、真实元数据报告、合成回归原件及任务 checkpoint；不上传。
 - 回滚：git revert 本轮提交（提交说明为“feat(research): add bounded real metadata preflight”）；基线回滚点 fed519bf8cdee61b6fc0c0ee5fe2483bf9a9fa82。保留外部证据，不删除原始记录，不以回滚恢复授权。
+
+## 2026-09-11 - Task: V2 A 历史身份预算的受限盲化对账
+### What was done
+- 从042364c恢复，完整读取V2附件及五份已指定草稿，按批准路径完成144个历史文件的受控投影。
+- 复用原预算与Trial reader，查得政策关联根12/12已消费、剩余0，Objective上限8与预算12待批准链解释；其余分支不挪额度。
+- 全局余额、训练/Validation曝光完整计数仍UNKNOWN；记录登记与实际曝光的不同含义，不读取精确绩效或原根外引用。
+### Testing
+- test_history_blind_reconciliation.py：3 passed in 12.27s；隔离network/process/protected_accesses均0，原预算字节不变、嵌套结果与分类不输出、缺失计数不默认0。
+- 实际服务成功生成HISTORY_BUDGET_BLIND_RECONCILIATION_FINAL.json，原始首轮投影保留。16个已观察曝光Trial不是总历史上限。
+### Notes
+- src/chanlun_trader/research_factory/history_blind_reconciliation.py：限定模式、原reader、字段白名单与计数交叉检查。
+- tests/research_factory/test_history_blind_reconciliation.py：实际预算reader及盲化负向测试。
+- docs/BOUNDED_RESEARCH_BLOCKER_RESOLUTION_V2.md：A阶段证据、额度冲突和取得路径边界。
+- progress.md：追加本轮记录。外部blocker-resolution-v2目录保留真实投影和history-tests.log，不推送。
+- 回滚：git revert本轮提交；回滚点042364c3c94b69ef5b484b40e5dfd37cdc0e182b。原权威文件无修改，外部证据保留。真实性能试验0。
