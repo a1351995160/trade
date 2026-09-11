@@ -127,13 +127,13 @@ def load_inputs():
         contract_identity=stable_hash(CONTRACT))
 
 
-def check_feasibility(bundle):
+def check_feasibility(bundle, candidate_paths=None):
     """只检查静态候选路径的开闭条件，不创建账本、不计算价格差。"""
     reality=DegradedPriceLimitV1(DegradedStateMasterV1(bundle.states))
     daily=bundle.daily.set_index(['symbol','date'])
     days=bundle.calendar;paths=[]
     # 延续原1443条事前候选，包含最后15条；不按容量/hazard另选替补。
-    originals=read(OLD/'CANDIDATE_PATHS.json')
+    originals=read(OLD/'CANDIDATE_PATHS.json') if candidate_paths is None else candidate_paths
     for old in originals:
         symbol=old['symbol'];signal=old['signal_session'];entry=old['entry_date'];exit_day=old['exit_date']
         row={k:old[k] for k in ['symbol','signal_session','rank','entry_date','exit_date']}

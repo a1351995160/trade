@@ -13,7 +13,7 @@ def rows():
         raw.append(dict(code='sh.600000', date=str(pd.Timestamp(str(d)).date()),adjustflag='3',
             open=price,high=price,low=price,close=price,preclose=price,volume=100000,amount=price*100000,
             tradestatus='1',isST='0'))
-        hfq.append(dict(code='sh.600000',date=raw[-1]['date'],adjustflag='2',close=70))
+        hfq.append(dict(code='sh.600000',date=raw[-1]['date'],adjustflag='1',close=70))
     return raw,hfq
 
 
@@ -79,7 +79,7 @@ def test_adapter_features_feed_original_engine_while_fills_use_raw():
             raw.append(dict(code=code,date=str(pd.Timestamp(str(row['date'])).date()),adjustflag='3',
                 **{k:row[k] for k in ['open','high','low','close','volume','amount']},
                 preclose=row['prev_close'],tradestatus='1',isST='0'))
-            hfq.append(dict(code=code,date=raw[-1]['date'],adjustflag='2',close=row['close']*7))
+            hfq.append(dict(code=code,date=raw[-1]['date'],adjustflag='1',close=row['close']*7))
         views=prepare_symbol(symbol,raw,hfq,pre+b.calendar)
         frames.append(views.features.dropna(subset=['value']))
         actual.append(views.raw[views.raw.date.isin(b.calendar)])

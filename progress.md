@@ -2336,3 +2336,29 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - progress.md：追加本轮记录。
 - 仓库外execution-data-v1/baostock-account-preparation-v2/CONFIRMATION_PACKAGE.json：机器可读合同、代码证据绑定及实际验证，SHA256为4a2aafeb7f07811ae7cac1ec7ce7413f055c4ec06bfe2f43e44b1e8fb8aed448。
 - 回滚点b08f0c4964872dd189cf649b39a7e22323468afd；可git revert本轮提交回滚代码与文档，保留外部访问及历史证据。完整真实输入、真实新颖性和可行性仍待实际执行，不能将合成通过标记为输入就绪。正式标志false、Windows OPEN保留，不merge/push。
+
+## 2026-09-12 - Task: 执行已批准BaoStock固定计划并解除实际价格模式接线错误
+### What was done
+- 绑定用户具体批准、原包哈希、任务身份、5182固定成员及日期，实际顺序取得双价格输入并保存每次请求和访问。
+- 确证后复权参数误用2的工程错误，先red再修正为1；61份错误模式响应及中断请求保留，62份成功RAW复用。没有收益或修复曝光。
+- 处理3只证券4个上市初始行的模式冲突，定点取得同源因子并按官方算法和历史上市状态证明数值恒等。原flag3和失败保留，新增严格的前缀恒等适配与版本化质量证据。
+- 接通文件准备、新路径可行性及原权威额度/账户执行入口；真实输入获取尚在继续，未声明真实账户已经启动。
+### Testing
+- 七个针对性文件共38 passed（1.86秒）；禁用执行探针0，三个新入口py_compile及git diff --check通过。
+- 初次模式映射2项red（0.58秒）证明1被拒、2被误接收；修正后通过。一次新测试因夹具缺少coverage属性失败，补齐夹具后通过，生产保护未放宽。
+- 首600只真实响应已取得并经原质量或IPO恒等版本核验；原第三批失败另存，两个定点质量worker返回0。具体获取进度以外部回执为准，不对尚未取得的4582只作完成声明。
+### Notes
+- scripts/run_baostock_account_v1.py：受限Provider获取、哈希复用、质量核验、定点因子补证及恢复。
+- scripts/prepare_baostock_account_v1.py：全输入通过后的独立日历信号、文件物化和新路径可行性。
+- scripts/execute_baostock_account_v1.py：原资源、确认、增量、预留、消费、结算及账户入口接线。
+- src/chanlun_trader/research_factory/baostock_input_v1.py：输入质量与可证明IPO前缀恒等规则。
+- src/chanlun_trader/research_factory/baostock_price_views_v1.py：修正HFQ参数，仅在有上市恒等证据时兼容原flag3前缀。
+- src/chanlun_trader/research_factory/degraded_input_v2.py：允许显式传入新候选路径，旧入口默认行为不变。
+- tests/research_factory/test_baostock_price_views_v1.py：修正提供者模式夹具。
+- tests/research_factory/test_baostock_hfq_encoding.py：独立映射及有证据/无证据初始行测试。
+- tests/research_factory/test_baostock_input_v1.py：缺失、状态、恒等证明及禁止读取旧路径测试。
+- tests/research_factory/test_baostock_preparation.py：合成文件准备到新路径的集成测试。
+- docs/baostock-account-execution-v1.md：具体执行和工程定因记录，不重写已批准确认包。
+- CLAUDE.md：追加实际价格模式陷阱；progress.md追加本轮记录。
+- 外部baostock-account-v1：批准、读清单、原响应、访问、资源、原失败及纠错证据。没有修改原数据、原账本或正式标志，不merge/push。
+- 回滚点5596d90d913bb26baf0a141f977b3783732f0bea；可git revert本轮提交回滚代码和文档，外部已发生访问、错误与消费历史保留。真实全池准备、可行性和账户仍须实际通过，不能由本次测试替代。
