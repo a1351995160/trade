@@ -1962,3 +1962,23 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - progress.md：追加本轮记录。
 - 外部statistical-calibration-v4及statistical-v4-tests.log/statistical-v4-calibration.log：保留新版本全量合成证据，不覆盖V3或旧manifest。
 - 回滚：git revert本轮提交；回滚点78b3aeef221bd71afa1cf62744a76f993f3ceda2。保留外部失败证据，不返还或新增真实试验额度。
+
+## 2026-09-11 - Task: 精确历史取证、来源补证与V4失败分支诊断
+### What was done
+- 完整读取本轮附件，从cc7a4ed完整SHA和干净工作区恢复；先合成验证投影，再冻结36路径并实际取证，9读取/27缺失。
+- 对已观察字段差异冻结同9文件补投影，未扩读；新19曝光Trial ID与旧16交集0，不能换算为总访问。根治理回执缺失，8/12差异未解决、预算余额0保持。
+- 对固定146缺源路径stat，全部缺失；纯日历没有6预热session；gbbq存在但现有整读解析不符窗口授权，内容0字节。逐项所有者导出要求交付。
+- 预登记V4定位假设，原replicate52直接公式与原p完全一致；Wilson/中心化/右尾/退化处理核对。未证明实现错误，原失败及ROOT_CAUSE_UNCONFIRMED保持，不升级方法或启动真实试验。
+### Testing
+- 17 passed in 1.93s，原统计13项加4项投影/路径/错误分类测试；隔离探针均0。首次读取前2项纯合成混合字段及异常测试已通过。
+- 初始读取清单hash、初始执行源码重建hash、补充源码和诊断源码身份校验通过；旧V4绑定的4份源码hash仍一致。
+- 原始历史文件成功读取9项每轮410192字节，共3轮受控读取1230576字节；设计侧未获精确绩效，真实绩效试验0。不将合成诊断计为真实Trial。
+- git diff --check通过。无预算写入、原根改动、网络补数、Paper/Final Test/订单或Windows OPEN关闭；源补证与诊断命令工具wall约2.91秒，CPU耗用未独立计量。
+### Notes
+- scripts/acquire_exact_research_evidence.py：封闭身份派生读取集合、字段白名单、原件hash和缺失/拒绝/损坏/冲突分类。
+- scripts/triage_v4_and_source_gaps.py：固定146源核对、纯日历/gbbq元数据和单次已知失败分支诊断。
+- tests/research_factory/test_exact_evidence_acquisition.py：4项盲化、精确路径及失败分类检查。
+- docs/EXACT_EVIDENCE_AND_V4_TRIAGE_V1.md：本轮事实与恢复入口。
+- progress.md：追加本轮记录。
+- 外部exact-evidence-v1：本轮唯一版本目录内保存所有计划/投影/来源请求/诊断/新确认包/执行源码快照，不覆盖旧政策和日志，不公开上传。
+- 回滚：git revert本轮提交；回滚点cc7a4edcb1f775d0a2fc5658a12c3d4a5f6ec56e。外部证据保留，回滚不生成历史原件、预算或批准。
