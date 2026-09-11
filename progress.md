@@ -1892,3 +1892,20 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - docs/BOUNDED_RESEARCH_BLOCKER_RESOLUTION_V2.md：A阶段证据、额度冲突和取得路径边界。
 - progress.md：追加本轮记录。外部blocker-resolution-v2目录保留真实投影和history-tests.log，不推送。
 - 回滚：git revert本轮提交；回滚点042364c3c94b69ef5b484b40e5dfd37cdc0e182b。原权威文件无修改，外部证据保留。真实性能试验0。
+
+## 2026-09-11 - Task: V2 B 训练来源快照与RETURN_ONLY语义核验
+### What was done
+- 先冻结读取清单和提取源码身份，再读取486个训练PIT分区及5036个指定TDX文件，形成2370849行诊断快照；146只历史成员缺源，未删除缺项或改股票池。
+- 明确保留available_at和公司行动UNKNOWN；日历缺训练前6个session，PIT声明时点晚于交易日，存在UNKNOWN/ST/停牌，不能认证caller就绪。
+- 以真实RETURN_5D定义调用原FactorCompiler对合成双证券序列作公式/标签对照；证明限定计算等价及公司行动不变性不成立，不改原registry或caller。
+### Testing
+- test_bounded_train_snapshot.py：4 passed in 1.82s，训练前/Validation范围拒绝、允许价格字节范围、原件不变、错位/重复日期拒绝；隔离探针0。
+- check_return5d_price_semantics.py：真实定义的独立shift参考及内存RAW标签对照均逐行一致。生成日期键不等于历史available_at证据。
+- 实际快照metadata行数与逐文件审计行数一致，5036个row groups；训练价格字节75867168，日期定位读取9902880字节。未安装全局OS读探针，不伪报其计数0。
+- 派生训练快照SHA256 741690ba3b068610908e49465b8731ef45a6638391e3db1d3b84ebe1b645ad72；不是混合原.day全文hash。未读取Validation/Final Test价格行，真实绩效试验0。
+### Notes
+- scripts/prepare_bounded_train_snapshot.py：受限日期索引/价格记录读取，先清单后内容，原状态和UNKNOWN保持，流式诊断快照。
+- scripts/check_return5d_price_semantics.py：exact定义解释与合成编译器对照，不授予执行权。
+- tests/research_factory/test_bounded_train_snapshot.py：字节/窗口和结构负向回归。
+- progress.md：追加本轮记录；外部blocker-resolution-v2内保存DATA_PROVENANCE_AND_TIME_EVIDENCE.md、FACTOR_PRICE_SEMANTICS_COMPATIBILITY.md/json、train-source-v1所有计划/审计/快照/验证及日志，不推送。
+- 回滚：git revert本轮提交；回滚点7ad36db。原数据未修改；保留外部证据并停止使用诊断工具。原62项回归与Windows OPEN事件保持。
