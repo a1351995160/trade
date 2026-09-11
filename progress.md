@@ -2163,3 +2163,23 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - scripts/validate_owner_execution_package.py、scripts/finalize_owner_execution_package.py：显式UTF-8读取单位/事件manifest/请求。
 - tests/research_factory/test_owner_export_v1.py：增加未转义中文完整包验证；docs/owner-execution-export-v1.md：明确文件编码合同；CLAUDE.md：追加已证实编码经验；progress.md：追加本次修复。
 - 外部delivery封装命令同样使用UTF-8后重验文件与哈希；未再次执行builder或回测。回滚点f4dab3b，git revert本修复提交即可撤销，原失败与访问记录不删除。
+
+## 2026-09-11 - Task: 独立降级TRAIN无收益可行性扫描
+### What was done
+- 从0b799b861e50ade4a263861ba587f72ab3dbe29c恢复，在独立版本冻结当前批准、输入清单、策略、30/20/非单一证券门槛、双假设容量和全部hazard规则。
+- 实际扫描486个TRAIN日，保留5182身份、146缺源和原预热缺格；生成1443条Top-3候选路径，其中1428条容量模型适用性未成立、15条无末端退出session，174条与hazard重叠。29990条全部参与。
+- 现有证据证明DAY非负整数数量，但TQ股/手说明不证明原DAY单位全集，依本次授权第六节拒绝放行；无合法可关闭路径，按门槛停止，不计算账户表现、不登记或消费增量预算。
+- 向用户交付实际覆盖、逐候选容量/hazard、首次资格、状态、访问记录、哈希索引与中文报告。STRICT及三个正式标志继续false，原历史和Windows OPEN保留。
+### Testing
+- tests/research_factory/test_degraded_train_v1.py、test_train_account_runner_v1.py、test_train_input_closure_v1.py：16 passed in 0.96s；隔离网络/进程/保护路径探针0。
+- .venv/Scripts/python.exe scripts/run_degraded_train_v1.py（PYTHONPATH=当前worktree/src）：真实NO-OUTCOME worker exit 0，16.516秒；并发1、900秒、2048MiB、数值线程1。输入与原manifest匹配，预算SHA256保持4588ba256432540638b64dff907b1de3f45b7da5df480e40f5a1e9c9ffdc2dfe。
+- 顺序自审：没有engine运行、收益计算、数据源重新搜索、严格validator或预算写入；检查空容量不回退全量、hazard闭区间、联合门槛和完整身份保留。没有启动子代理、PR或整套CI。
+- 中文报告首次生成因父shell未设置PYTHONPATH而ModuleNotFoundError，设置后生成；未重跑预检、未消耗修复曝光。
+### Notes
+- src/chanlun_trader/research_factory/degraded_train_v1.py：独立冻结合同、容量交集、hazard和联合门槛纯规则。
+- scripts/run_degraded_train_v1.py：限源限窗口的NO-OUTCOME扫描，固定清单/哈希、受限worker、不可覆盖输出和禁止重复运行。
+- tests/research_factory/test_degraded_train_v1.py：容量、适用性、hazard及30/20/多证券门槛测试。
+- docs/degraded-train-v1.md：版本语义、实际缺证、结果解释、精确补证对象与恢复限制。
+- progress.md：追加本次施工及验证记录。
+- 仓库外正式工件：E:/llmwiki/autonomous-strategy-research-v1/execution-data-v1/degraded-train-v1/ 下READ_ALLOWLIST、FROZEN_CONTRACT、VOLUME_MODEL_EVIDENCE、DAILY_COVERAGE、CANDIDATE_PATHS、FIRST_ELIGIBLE_SESSION、FROZEN_UNIVERSE、FEASIBILITY、ACCESS_RECORD、WORKER_STARTED、WORKER_RESULT、RESULTS_INDEX.json和REPORT.md。均保留，不用删除重跑。
+- 回滚点0b799b861e50ade4a263861ba587f72ab3dbe29c；回滚本轮源码使用git revert本轮提交，保留仓库外取证工件，禁止reset历史预算或覆盖原结果。账户执行适配未进入实施，因事前容量适用性门槛已经拒绝，不宣称账户入口就绪。
