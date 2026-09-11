@@ -22,7 +22,8 @@ def test_risk_universe_gate_rejects_non_member():
     u.set_universe(CAL[0], {"000001.SZ"})
     store = make_store()
     cfg = EngineConfig(initial_cash=1_000_000.0, max_positions=10, mode="DAILY")
-    eng = BacktestEngineV2(store, CAL, config=cfg, universe=u)
+    cfg.persist_run_manifest = False
+    eng = BacktestEngineV2(store, CAL, config=cfg, universe=u, source_identity=("UNKNOWN", True))
     eng.add_signal(Signal(strategy_id="S", signal_id="s1", symbol="600000.SH",
                           generated_at=tz_aware(2025, 1, 2, 15, 0), direction=Side.BUY,
                           execution_policy=ExecutionPolicy.NEXT_SESSION_OPEN))

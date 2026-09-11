@@ -9,7 +9,7 @@ from pathlib import Path
 import re
 from typing import Any, Mapping
 
-from ..research_daemon import CandidateWork, CanonicalResearchRuntime, ResearchDaemon, StructuralResult
+from ..research_daemon import CandidateWork, CanonicalResearchRuntime, ResearchDaemon, StructuralResult, STRUCTURAL_SAFETY_STATISTIC_ALLOWED_PATHS
 from ..research_daemon_state import DaemonCheckpointStoreV1, DaemonInstanceLockV1, ResearchDaemonState
 from .artifact_graph import ResearchArtifactGraphV1
 from .common import now_timestamp, stable_hash
@@ -145,7 +145,13 @@ def _assert_structural_blind(result: StructuralResult) -> None:
     try:
         from .context import PerformanceBlindGuard
 
-        PerformanceBlindGuard.assert_blind(details)
+        for check in details.get("lower_bound_integrity", {}).get("checks", ()):
+            evidence = check.get("evidence", {})
+            for key in ("architecture_safety", "safety"):
+                safety = evidence.get(key, {})
+                if "prospective" in safety and safety["prospective"] != 0:
+                    raise RuntimeError("nonzero prospective activity in structural evidence")
+        PerformanceBlindGuard.assert_blind(details, allowed_paths=STRUCTURAL_SAFETY_STATISTIC_ALLOWED_PATHS)
     except Exception as exc:
         raise RuntimeError("structural result crossed the outcome-blind boundary") from exc
 

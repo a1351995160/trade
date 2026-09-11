@@ -6,6 +6,7 @@ import os
 import subprocess
 import sys
 import threading
+import tempfile
 
 import pytest
 
@@ -38,6 +39,19 @@ def launch(root, operation, objective=OBJECTIVE_ID):
 
 def finish(process, expected=0, command=None):
     stdout, stderr = process.communicate(command, timeout=30)
+    evidence_root = os.environ.get("CHANLUN_PROCESS_EVIDENCE_DIR")
+    if evidence_root:
+        root = Path(evidence_root)
+        root.mkdir(parents=True, exist_ok=True)
+        evidence = Path(tempfile.mkdtemp(prefix=f"p3b-child-{process.pid}-", dir=root))
+        (evidence / "stdout.bin").write_bytes(stdout.encode("utf-8"))
+        (evidence / "stderr.bin").write_bytes(stderr.encode("utf-8"))
+        (evidence / "result.json").write_text(json.dumps({
+            "pid": process.pid, "returncode": process.returncode, "expected": expected,
+            "test": os.environ.get("PYTEST_CURRENT_TEST"),
+            "operation": process.args[-1] if "-c" not in process.args else "<INLINE_SYNTHETIC_PROBE>",
+            "stream_capture": "P3B_DECODED_TEXT_UTF8",
+        }), encoding="utf-8")
     assert process.returncode == expected, (stdout, stderr)
     if expected == 0:
         assert '"protected_accesses": 0' in stderr

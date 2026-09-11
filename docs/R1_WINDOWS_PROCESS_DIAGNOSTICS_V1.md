@@ -52,3 +52,11 @@ REAL_CANDIDATE_DATA_READINESS=NOT_VERIFIED；READY_FOR_REAL_TRIAL=false；R1_FUL
 ## 本轮工作流配置失败与修正
 
 488d204 的 P3-C 34324090959 与 R1 34324091851 在创建 job 前失败，注释为 job.env 中 runner.temp 上下文不可用。依据 https://docs.github.com/en/actions/reference/workflows-and-actions/contexts 的 Context availability，将证据目录移到现有配置步骤，通过 RUNNER_TEMP/GITHUB_ENV 设置。保留失败，最终新 SHA 的实际 CI 单独记录；此问题不是旧 L1 隔离根因。
+
+## 2026-09-10：P3B 文本管道诊断缺口与新增 OPEN 事件
+
+固定 a64c49abad5b180334b765c21e3d580f22b6b81d 的综合 R1 PR run 34461942454，Windows job 102821569669，在原 P3C test_automatic_and_manual_proposal_share_process_lock[hold_domain] 中失败。竞争者 tick 子进程 exit=79，RESEARCH_PROCESS_DENIED 指向 C:\Windows\system32\cmd.exe，process_calls=1；进程被隔离拒绝，不能解释为已成功执行。该 job 尚未进入新增 R1 测试步骤。相同 HEAD 的 Linux R1 348 项通过、独立双平台 P3C 通过，不抵销本次失败。
+
+原 P3B finish 未保存文本 stderr，pytest 断言/JUnit 截断了调用栈，无法据此确认调用来源。新增事件保持 OPEN_ROOT_CAUSE_UNCONFIRMED；L1/L6 状态不变。原始失败 run/job/log/JUnit 位于外部 final-novelty/ci/34461942454。没有通过重跑同 HEAD、扩大超时或白名单制造通过。
+
+本轮仅为 P3B finish 在断言前追加独立证据落盘，使用原 CHANLUN_PROCESS_EVIDENCE_DIR，明确 stream_capture=P3B_DECODED_TEXT_UTF8，不冒充原始字节；原 30 秒 communicate、退出检查、保护探针检查和锁协议不变。已有合成进程拒绝测试同时覆盖 P3C 原字节和 P3B 文本，确认非零退出、完整脱敏调用栈与失败前留存。定向 4 passed/14 原选择器 deselected，novelty-p3b-diagnostic.log/XML。未复现不表示根因关闭；新固定 HEAD 后重新做整体认证。

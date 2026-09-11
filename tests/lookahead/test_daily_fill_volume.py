@@ -30,7 +30,8 @@ def test_daily_open_fill_does_not_depend_on_future_daily_volume():
     results = []
     for t_vol in (1_000_000.0, 10.0):
         store = _store(t_vol)
-        eng = BacktestEngineV2(store, [CAL[0], CAL[1]], config=cfg)
+        cfg.persist_run_manifest = False
+        eng = BacktestEngineV2(store, [CAL[0], CAL[1]], config=cfg, source_identity=("UNKNOWN", True))
         eng.add_signal(Signal(strategy_id="S", signal_id="s1", symbol="600000.SH",
                               generated_at=tz_aware(2025, 1, 2, 15, 0), direction=Side.BUY,
                               execution_policy=ExecutionPolicy.NEXT_SESSION_OPEN))

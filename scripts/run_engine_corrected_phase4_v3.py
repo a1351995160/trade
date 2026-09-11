@@ -333,15 +333,106 @@ def recompute_cost_stress_metrics(base_engine: Any, base_metrics: Mapping[str, A
     return metrics
 
 
-def run_corrected_candidate(root: Path, record: Any, trial_id: str, factor_values: pd.DataFrame,
-                            store: Any, exec_calendar: list[int], universe: Mapping[int, set[str]],
-                            status_map: Any, regimes: Mapping[int, str], events: Mapping[tuple[int, str], Mapping[str, dict[str, Any]]],
-                            index_close: Mapping[int, float], policy: Any, *, portfolio_name: str,
-                            initial_cash: float | None = None, fee_mult: float = 1.0,
-                            stamp_mult: float = 1.0, slip_mult: float = 1.0,
-                            evidence_run_id: str | None = None,
-                            write_evidence: bool = False,
-                            evidence_root: Path | None = None) -> tuple[Any, dict[str, Any], dict[str, Any]]:
+def build_corrected_day(record: Any, inputs: Mapping[str, Any], ledger: Any, d: int,
+                        ts: pd.Timestamp, stats: Any) -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]]]:
+    """正式回测与每日计划共享的当日信号/PIT/持仓因子输入。"""
+    factor_view = inputs["factor_view"]
+    universe, status_map = inputs["universe"], inputs["status_map"]
+    events, regimes = inputs["events"], inputs["regimes"]
+    date_to_next, calendar_pos = inputs["date_to_next"], inputs["calendar_pos"]
+    factor_ids = [str(item["factor_id"]) for item in record.candidate.factor_bindings]
+    event_condition = record.signal_predicate.event_conditions[0] if record.signal_predicate.event_conditions else None
+    event_id_required = str(event_condition["event_id"]) if event_condition else None
+    try:
+        day = factor_view.xs(d, level="date", drop_level=False)
+    except KeyError:
+        return [], {}
+    next_open = legacy.ts_for_date(date_to_next[d], 9, 30) if d in date_to_next else ts
+    positions = {p.symbol: p for p in ledger.positions.values() if p.quantity > 0}
+    active_symbols = set(universe.get(d, set()))
+    if event_id_required:
+        event_symbols = {symbol for (event_date, symbol), bucket in events.items()
+                         if event_date == d and event_id_required in bucket}
+        candidate_symbols = event_symbols | set(positions)
+    else:
+        candidate_symbols = active_symbols | set(positions)
+    day = day[day["symbol"].isin(candidate_symbols)]
+    entry_mask = pd.Series(True, index=day.index, dtype=bool)
+    rank_only = (
+        str(record.signal_predicate.predicate_type).upper() == "RANK_ONLY"
+        or str(record.signal_predicate.logic).upper() == "RANK_ONLY"
+    )
+    if not rank_only:
+        for condition in (*record.signal_predicate.factor_conditions, *record.signal_predicate.interaction_conditions):
+            value = pd.to_numeric(day[str(condition["factor_id"])], errors="coerce")
+            target = float(condition["value"])
+            operator = str(condition["operator"])
+            if operator == "GT":
+                entry_mask &= value > target
+            elif operator == "GE":
+                entry_mask &= value >= target
+            elif operator == "LT":
+                entry_mask &= value < target
+            elif operator == "LE":
+                entry_mask &= value <= target
+            elif operator == "EQ":
+                entry_mask &= value == target
+            elif operator == "NE":
+                entry_mask &= value != target
+    day = day[entry_mask | day["symbol"].isin(set(positions))]
+    rows: list[dict[str, Any]] = []
+    factor_state: dict[str, dict[str, Any]] = {}
+    for row in day.itertuples(index=False):
+        try:
+            if pd.isna(row.available_at):
+                raise ValueError("MISSING_FACTOR_AVAILABLE_AT")
+            factor_available_at = ensure_aware(row.available_at)
+            if pd.isna(factor_available_at):
+                raise ValueError("INVALID_FACTOR_AVAILABLE_AT")
+        except (TypeError, ValueError, OverflowError):
+            # 同时拒绝入场与结构退出证据；固定持有仍按原日历执行。
+            stats["INVALID_FACTOR_AVAILABLE_AT"] += 1
+            continue
+        symbol = str(row.symbol)
+        tradable, status_reason = status_map.tradable(symbol, d)
+        volume = float(row.volume) if pd.notna(row.volume) else 0.0
+        position = positions.get(symbol)
+        position_open = bool(position and position.quantity > 0)
+        event_bucket = events.get((d, symbol), {})
+        event = event_bucket.get(event_id_required) if event_id_required else None
+        values = legacy.factor_row_values(row, factor_ids)
+        row_payload = {
+            "symbol": symbol,
+            "generated_at": ensure_aware(ts),
+            "available_at": ensure_aware(ts),
+            "next_session_open": next_open,
+            "universe_as_of": ensure_aware(ts),
+            "universe_eligible": symbol in universe.get(d, set()),
+            "tradable": bool(tradable and volume > 0),
+            "affordable": True,
+            "factor_values": values,
+            "factor_available_at": {factor_id: row.available_at for factor_id in factor_ids},
+            "position_open": position_open,
+            "entry_session_index": (calendar_pos.get(int(position.opened_at.strftime("%Y%m%d"))) if position_open and position.opened_at is not None else None),
+            "current_session_index": calendar_pos[d],
+            "regime_label": regimes.get(d, "UNKNOWN"),
+            "event_id": str(event["event_id"]) if event else "",
+            "event_available_at": event["available_at_ts"] if event else None,
+            "event_trade_date": legacy.ts_for_date(d, 15, 0) if event else None,
+        }
+        rows.append(row_payload)
+        factor_state[symbol] = {"values": values, "available_at": factor_available_at}
+        if status_reason != "PIT_STATUS_EXPLICIT_NORMAL_TRADING":
+            stats[status_reason] += 1
+    stats["rows_seen"] += len(rows)
+    return rows, factor_state
+
+
+
+def validate_corrected_inputs(record: Any, policy: Any, store: Any, exec_calendar: list[int],
+                              regimes: Mapping[int, str], factor_values: pd.DataFrame,
+                              initial_cash: float | None = None) -> None:
+    """共享正式执行支持范围，预览不得扩大合同能力。"""
     candidate = record.candidate
     if candidate.price_mode.upper() != "RAW" or set(candidate.required_frequency) != {"DAILY"} or store.feature_price_mode != "raw":
         raise ValueError("R1_UNSUPPORTED_PRICE_OR_FREQUENCY")
@@ -362,20 +453,24 @@ def run_corrected_candidate(root: Path, record: Any, trial_id: str, factor_value
         raise ValueError("R1_BENCHMARK_REQUIRED_NOT_AVAILABLE")
     if "available_at" not in factor_values:
         raise ValueError("R1_FACTOR_AVAILABLE_AT_EVIDENCE_MISSING")
-    if write_evidence and (evidence_root is None or not evidence_root.is_absolute()
-            or evidence_root.resolve().is_relative_to(root.resolve())
-            or evidence_root.resolve().is_relative_to(Path(__file__).resolve().parents[1])):
-        raise ValueError("R1_SEPARATE_EVIDENCE_ROOT_REQUIRED")
+
+
+def prepare_corrected_run(record: Any, inputs: Mapping[str, Any], policy: Any, *,
+                          initial_cash: float | None = None, fee_mult: float = 1.0,
+                          stamp_mult: float = 1.0, slip_mult: float = 1.0):
+    """装配同一个真实执行内核和回调，供完整回测及有界合成回放。"""
+    candidate = record.candidate
+    factor_values, store, exec_calendar = inputs["factor_values"], inputs["store"], inputs["exec_calendar"]
+    universe, status_map, regimes = inputs["universe"], inputs["status_map"], inputs["regimes"]
+    events, index_close = inputs["events"], inputs["index_close"]
+    validate_corrected_inputs(record, policy, store, exec_calendar, regimes, factor_values, initial_cash)
     compiler = legacy.StrategyCandidateCompilerV2().compile(record)
-    factor_ids = [str(item["factor_id"]) for item in candidate.factor_bindings]
     factor_view = factor_values.set_index(["date", "symbol"], drop=False)
     engine = legacy.make_engine(store, exec_calendar, universe, index_close, policy,
                                 record.preregistration_hash, initial_cash=initial_cash,
                                 fee_mult=fee_mult, stamp_mult=stamp_mult, slip_mult=slip_mult)
     calendar_pos = session_index(exec_calendar)
     date_to_next = {day: exec_calendar[i + 1] for i, day in enumerate(exec_calendar[:-1])}
-    event_condition = record.signal_predicate.event_conditions[0] if record.signal_predicate.event_conditions else None
-    event_id_required = str(event_condition["event_id"]) if event_condition else None
     is_event = candidate.candidate_type == "EVENT_SIGNAL"
     signal_minute = 30 if is_event else 0
     emitted_records: list[dict[str, Any]] = []
@@ -383,94 +478,13 @@ def run_corrected_candidate(root: Path, record: Any, trial_id: str, factor_value
     day_cache: dict[int, tuple[list[dict[str, Any]], dict[str, dict[str, Any]]]] = {}
     stats = Counter()
 
+    day_inputs = {"factor_view": factor_view, "universe": universe, "status_map": status_map,
+                  "events": events, "regimes": regimes, "date_to_next": date_to_next, "calendar_pos": calendar_pos}
+
     def build_day(d: int, ts: pd.Timestamp) -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]]]:
-        if d in day_cache:
-            return day_cache[d]
-        try:
-            day = factor_view.xs(d, level="date", drop_level=False)
-        except KeyError:
-            day_cache[d] = ([], {})
-            return day_cache[d]
-        next_open = legacy.ts_for_date(date_to_next[d], 9, 30) if d in date_to_next else ts
-        positions = {p.symbol: p for p in engine.ledger.positions.values() if p.quantity > 0}
-        active_symbols = set(universe.get(d, set()))
-        if event_id_required:
-            event_symbols = {symbol for (event_date, symbol), bucket in events.items()
-                             if event_date == d and event_id_required in bucket}
-            candidate_symbols = event_symbols | set(positions)
-        else:
-            candidate_symbols = active_symbols | set(positions)
-        day = day[day["symbol"].isin(candidate_symbols)]
-        entry_mask = pd.Series(True, index=day.index, dtype=bool)
-        rank_only = (
-            str(record.signal_predicate.predicate_type).upper() == "RANK_ONLY"
-            or str(record.signal_predicate.logic).upper() == "RANK_ONLY"
-        )
-        if not rank_only:
-            for condition in (*record.signal_predicate.factor_conditions, *record.signal_predicate.interaction_conditions):
-                value = pd.to_numeric(day[str(condition["factor_id"])], errors="coerce")
-                target = float(condition["value"])
-                operator = str(condition["operator"])
-                if operator == "GT":
-                    entry_mask &= value > target
-                elif operator == "GE":
-                    entry_mask &= value >= target
-                elif operator == "LT":
-                    entry_mask &= value < target
-                elif operator == "LE":
-                    entry_mask &= value <= target
-                elif operator == "EQ":
-                    entry_mask &= value == target
-                elif operator == "NE":
-                    entry_mask &= value != target
-        day = day[entry_mask | day["symbol"].isin(set(positions))]
-        rows: list[dict[str, Any]] = []
-        factor_state: dict[str, dict[str, Any]] = {}
-        for row in day.itertuples(index=False):
-            try:
-                if pd.isna(row.available_at):
-                    raise ValueError("MISSING_FACTOR_AVAILABLE_AT")
-                factor_available_at = ensure_aware(row.available_at)
-                if pd.isna(factor_available_at):
-                    raise ValueError("INVALID_FACTOR_AVAILABLE_AT")
-            except (TypeError, ValueError, OverflowError):
-                # 同时拒绝入场与结构退出证据；固定持有仍按原日历执行。
-                stats["INVALID_FACTOR_AVAILABLE_AT"] += 1
-                continue
-            symbol = str(row.symbol)
-            tradable, status_reason = status_map.tradable(symbol, d)
-            volume = float(row.volume) if pd.notna(row.volume) else 0.0
-            position = positions.get(symbol)
-            position_open = bool(position and position.quantity > 0)
-            event_bucket = events.get((d, symbol), {})
-            event = event_bucket.get(event_id_required) if event_id_required else None
-            values = legacy.factor_row_values(row, factor_ids)
-            row_payload = {
-                "symbol": symbol,
-                "generated_at": ensure_aware(ts),
-                "available_at": ensure_aware(ts),
-                "next_session_open": next_open,
-                "universe_as_of": ensure_aware(ts),
-                "universe_eligible": symbol in universe.get(d, set()),
-                "tradable": bool(tradable and volume > 0),
-                "affordable": True,
-                "factor_values": values,
-                "factor_available_at": {factor_id: row.available_at for factor_id in factor_ids},
-                "position_open": position_open,
-                "entry_session_index": (calendar_pos.get(int(position.opened_at.strftime("%Y%m%d"))) if position_open and position.opened_at is not None else None),
-                "current_session_index": calendar_pos[d],
-                "regime_label": regimes.get(d, "UNKNOWN"),
-                "event_id": str(event["event_id"]) if event else "",
-                "event_available_at": event["available_at_ts"] if event else None,
-                "event_trade_date": legacy.ts_for_date(d, 15, 0) if event else None,
-            }
-            qualified_records.append(row_payload)
-            rows.append(row_payload)
-            factor_state[symbol] = {"values": values, "available_at": factor_available_at}
-            if status_reason != "PIT_STATUS_EXPLICIT_NORMAL_TRADING":
-                stats[status_reason] += 1
-        stats["rows_seen"] += len(rows)
-        day_cache[d] = (rows, factor_state)
+        if d not in day_cache:
+            day_cache[d] = build_corrected_day(record, day_inputs, engine.ledger, d, ts, stats)
+            qualified_records.extend(day_cache[d][0])
         return day_cache[d]
 
     def strategy_fn(_view: Any, ts: pd.Timestamp, d: int) -> list[Any]:
@@ -509,6 +523,29 @@ def run_corrected_candidate(root: Path, record: Any, trial_id: str, factor_value
             return []
         _, factor_state = build_day(d, ensure_aware(ts))
         return exit_evaluator.evaluate(ledger.lots.values(), d, calendar_pos[d], factor_state, ensure_aware(ts))
+    return engine, strategy_fn, exit_fn, stats, emitted_records, qualified_records
+
+
+def run_corrected_candidate(root: Path, record: Any, trial_id: str, factor_values: pd.DataFrame,
+                            store: Any, exec_calendar: list[int], universe: Mapping[int, set[str]],
+                            status_map: Any, regimes: Mapping[int, str], events: Mapping[tuple[int, str], Mapping[str, dict[str, Any]]],
+                            index_close: Mapping[int, float], policy: Any, *, portfolio_name: str,
+                            initial_cash: float | None = None, fee_mult: float = 1.0,
+                            stamp_mult: float = 1.0, slip_mult: float = 1.0,
+                            evidence_run_id: str | None = None,
+                            write_evidence: bool = False,
+                            evidence_root: Path | None = None) -> tuple[Any, dict[str, Any], dict[str, Any]]:
+    candidate = record.candidate
+    validate_corrected_inputs(record, policy, store, exec_calendar, regimes, factor_values, initial_cash)
+    if write_evidence and (evidence_root is None or not evidence_root.is_absolute()
+            or evidence_root.resolve().is_relative_to(root.resolve())
+            or evidence_root.resolve().is_relative_to(Path(__file__).resolve().parents[1])):
+        raise ValueError("R1_SEPARATE_EVIDENCE_ROOT_REQUIRED")
+    inputs = {"factor_values": factor_values, "store": store, "exec_calendar": exec_calendar,
+              "universe": universe, "status_map": status_map, "regimes": regimes,
+              "events": events, "index_close": index_close}
+    engine, strategy_fn, exit_fn, stats, emitted_records, qualified_records = prepare_corrected_run(
+        record, inputs, policy, initial_cash=initial_cash, fee_mult=fee_mult, stamp_mult=stamp_mult, slip_mult=slip_mult)
 
     result = engine.run(strategy_fn=strategy_fn, exit_fn=exit_fn)
     engine._sync_lot_contract_fields()

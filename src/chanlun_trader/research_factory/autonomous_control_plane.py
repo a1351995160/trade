@@ -1821,8 +1821,8 @@ class AutonomousResearchControlPlaneV1:
             "objective_id": str(objective_id),
             "max_ticks": limit,
             "ticks_executed": len(results),
-            "stopped": len(results) < limit or not results[-1].get("continue_loop", False),
-            "stop_reason": results[-1].get("stop_reason") if results else "NO_TICK",
+            "stopped": True,
+            "stop_reason": "MAX_TICKS_REACHED" if results[-1].get("continue_loop", False) else results[-1].get("stop_reason"),
             "results": results,
             "outcome_blind": True,
         }

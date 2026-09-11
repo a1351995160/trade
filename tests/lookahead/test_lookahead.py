@@ -16,7 +16,7 @@ def test_index_filter_no_same_day_close_leakage():
         store.add_daily_qfq(sym, make_daily_df(days=CAL))
     # 构造：T-1 close=10（高），T close=1（低）
     index_closes = {CAL[0]: 10.0, CAL[1]: 1.0}
-    eng = BacktestEngineV2(store, CAL, config=EngineConfig(mode="DAILY"), index_closes=index_closes)
+    eng = BacktestEngineV2(store, CAL, config=EngineConfig(mode="DAILY", persist_run_manifest=False), index_closes=index_closes, source_identity=("UNKNOWN", True))
     eng._build()
     # V2 在 T (CAL[1]) 只能看到 CAL[0] close=10 -> 均线 10 -> allowed
     assert eng._index_ok(CAL[1]) is True

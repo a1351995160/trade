@@ -4,6 +4,9 @@ import { ConsoleApiError, consoleApi, DEFAULT_OBJECTIVE_ID } from './api'
 import type { AIInvocationModeView, AIResearchTaskListResponse, AIStatusView, AutonomousControlPlaneView, CandidateDetailView, CandidateListResponse, CandidateProposalView, CandidateSummaryView, CloseoutView, ContractCorrectionPreview, DaemonHealthView, DaemonStatusView, DashboardView, DataHealthView, GovernanceActionChoice, GovernanceChoice, GovernanceDecisionView, GovernanceExecutionPreview, GovernanceExecutionReceipt, GovernancePreviewCatalog, ManualAIHandoffView, NoOutcomeHandoffView, OperationResult, OperationsView, OrchestratorEventView, OrchestratorEventsView, OrchestratorStatusView, ParentCandidateIdentityRef, PredictiveAuthorizationPreview, PredictiveTrialResumePreview, PredictiveTrialStartPreview, ResearchEvolutionAIDesignView, ResearchEvolutionProposalView, ResearchEvolutionView, ResearchObjectiveListView, ResearchObjectiveSummaryView, ResearchPipelineView, ReportIndexView, SearchBudgetView, ShadowDailyView, StructuralPreflightView, TrialDetailView, TrialReconciliationPreview, TrialSummaryView } from './types'
 import { candidatePresentation, displayClassification, displayExecutionFeasibility, displayFactor, displayMechanism, displayPIT, displayReason, displayState, formatBytes, formatCoverage, formatDate, freshnessLabel, humanReportCategory, humanReportTitle, objectivePresentation, sourceLabel, stageLabel, termHelp, timingLabel } from './presentation'
 import CandidateDisplayName from './components/CandidateDisplayName.vue'
+import BatchScopeRequest from './components/BatchScopeRequest.vue'
+import EngineeringWorkbench from './components/EngineeringWorkbench.vue'
+import SyntheticBatchConsole from './components/SyntheticBatchConsole.vue'
 import CandidateId from './components/CandidateId.vue'
 import ClassificationBadge from './components/ClassificationBadge.vue'
 import FactorDisplay from './components/FactorDisplay.vue'
@@ -159,6 +162,7 @@ const view = computed(() => {
   if (path.startsWith('/research/trials/')) return 'trial-detail'
   if (path === '/daemon') return 'daemon'
   if (path === '/shadow') return 'shadow'
+  if (path === '/research/workbench') return 'engineering'
   if (path === '/data-health') return 'data-health'
   if (path === '/reports') return 'reports'
   return 'dashboard'
@@ -591,6 +595,7 @@ const pageMeta = computed(() => ({
   'trial-detail': { eyebrow: '预测试验详情', title: '预测试验详情', description: '以中文结论为主，原始技术数据按需展开。' },
   daemon: { eyebrow: '研究守护进程', title: '研究守护进程', description: '只读查看后台研究进程的状态、保存记录、资源与人工处理事项。' },
   shadow: { eyebrow: '每日研究观察', title: '每日研究观察', description: '这是研究观察结果，不是买入推荐，也不会产生真实订单。' },
+  engineering: { eyebrow: '合成工程', title: '计划与模拟工作台', description: '核对冻结合成输入的计划、模拟执行和账务；不会启动真实研究。' },
   'data-health': { eyebrow: '数据健康', title: '数据健康', description: '查看每个数据来源能够证明什么，以及仍缺少什么。' },
   reports: { eyebrow: '报告中心', title: '报告中心', description: '只打开已登记的研究报告，不直接浏览项目文件系统。' },
   evolution: { eyebrow: '研究演进分析', title: '研究演进分析', description: '从已完成的研究结果提取失败原因，形成下一轮研究设计可参考的上下文；不会自动创建候选或启动试验。' },
@@ -799,13 +804,14 @@ async function loadView(silent = false) {
   controller = currentController
   const signal = currentController.signal
   const issues: string[] = []
-  const canonicalContextNeeded = !['objectives', 'autonomous', 'ai-researcher', 'ai-tasks', 'operations', 'closeout', 'governance', 'evolution', 'evolution-proposals', 'evolution-ai-design', 'candidate-proposals'].includes(view.value)
+  const canonicalContextNeeded = !['engineering', 'objectives', 'autonomous', 'ai-researcher', 'ai-tasks', 'operations', 'closeout', 'governance', 'evolution', 'evolution-proposals', 'evolution-ai-design', 'candidate-proposals'].includes(view.value)
   const canonicalContext = canonicalContextNeeded ? read(() => consoleApi.orchestrator(objectiveId.value, signal), issues) : Promise.resolve(null)
   const aiProgressContext = view.value === 'pipeline' ? read(() => consoleApi.aiStatus(objectiveId.value, signal), issues) : Promise.resolve(null)
   if (silent) refreshing.value = true
   else { loading.value = true; pageError.value = null }
   try {
     switch (view.value) {
+      case 'engineering': break
       case 'objectives': {
         const next = await read(() => consoleApi.objectives(signal), issues)
         if (next) objectiveList.value = next
@@ -1051,6 +1057,7 @@ onBeforeUnmount(() => { controller?.abort(); if (pollTimer) window.clearInterval
          <button v-for="item in [{ path: '/research/objectives', label: '研究目标', icon: '▣' }, { path: '/research', label: '自主研究中心', icon: '◈' }, { path: '/research/ai-researcher', label: 'AI研究员', icon: '✦' }, { path: '/research/ai-tasks', label: 'AI研究任务', icon: '↗' }, { path: '/research/operations', label: '研究运行控制', icon: '◌' }, { path: '/research/closeout', label: '自动收官', icon: '✓' }, { path: '/research/evolution', label: '研究演进分析', icon: '⌁' }, { path: '/research/evolution/proposals', label: '研究演进建议', icon: '◇' }, { path: '/research/evolution/ai-design', label: 'AI研究设计', icon: '✦' }, { path: '/research/candidates/proposals', label: '候选策略建议', icon: '◇' }, { path: '/research/governance', label: '治理决策', icon: '◇' }, { path: '/research/dashboard', label: '研究总览', icon: '▦' }, { path: '/research/pipeline', label: '研究进度', icon: '⌁' }, { path: '/research/candidates', label: '候选策略', icon: '◇' }, { path: '/research/trials', label: '预测试验', icon: '⊙' }, { path: '/daemon', label: '研究守护进程', icon: '◌' }]" :key="item.path" type="button" :class="['nav-link', { active: isNavActive(item.path) }]" @click="navigate(item.path)"><span class="nav-icon">{{ item.icon }}</span><span>{{ item.label }}</span></button>
       </nav>
       <div class="nav-label secondary-label">观察与资料</div>
+      <button type="button" :class="['nav-link', { active: view === 'engineering' }]" @click="navigate('/research/workbench')"><span class="nav-icon">▦</span><span>计划与模拟工作台</span></button>
       <nav class="console-nav">
         <button v-for="item in [{ path: '/shadow', label: '每日研究观察', icon: '◎' }, { path: '/data-health', label: '数据健康', icon: '⌘' }, { path: '/reports', label: '报告中心', icon: '▤' }]" :key="item.path" type="button" :class="['nav-link', { active: props.path === item.path }]" @click="navigate(item.path)"><span class="nav-icon">{{ item.icon }}</span><span>{{ item.label }}</span></button>
       </nav>
@@ -1061,12 +1068,16 @@ onBeforeUnmount(() => { controller?.abort(); if (pollTimer) window.clearInterval
     </aside>
 
     <div class="console-main">
-       <header class="console-topbar"><div class="breadcrumb"><span>量化研究</span><b>/</b><strong>{{ pageMeta.title }}</strong></div><div class="topbar-actions"><span class="global-state" :class="statusTone(objectiveIdExplicit ? canonicalState : 'UNKNOWN')">{{ objectiveIdExplicit ? canonicalStateZh : '尚未选择研究目标' }}</span><span class="global-state" :class="statusTone(objectiveIdExplicit ? orchestrator?.ai_status : 'UNKNOWN')">AI · {{ objectiveIdExplicit ? stateLabel(orchestrator?.ai_status) : '等待选择目标' }}</span><span class="objective-chip" :title="objectiveId">当前研究目标：{{ objectiveDisplay.name }}</span><TechnicalDetails v-if="objectiveIdExplicit" compact :entries="{ 研究目标技术编号: objectiveDisplay.id }" /><span class="sync-dot" :class="{ refreshing }"></span><span class="sync-copy">{{ refreshing ? '正在刷新' : '只读监控' }}</span><button class="refresh-button" type="button" aria-label="刷新当前页面" @click="refresh">↻</button></div></header>
+       <header v-if="view !== 'engineering'" class="console-topbar"><div class="breadcrumb"><span>量化研究</span><b>/</b><strong>{{ pageMeta.title }}</strong></div><div class="topbar-actions"><span class="global-state" :class="statusTone(objectiveIdExplicit ? canonicalState : 'UNKNOWN')">{{ objectiveIdExplicit ? canonicalStateZh : '尚未选择研究目标' }}</span><span class="global-state" :class="statusTone(objectiveIdExplicit ? orchestrator?.ai_status : 'UNKNOWN')">AI · {{ objectiveIdExplicit ? stateLabel(orchestrator?.ai_status) : '等待选择目标' }}</span><span class="objective-chip" :title="objectiveId">当前研究目标：{{ objectiveDisplay.name }}</span><TechnicalDetails v-if="objectiveIdExplicit" compact :entries="{ 研究目标技术编号: objectiveDisplay.id }" /><span class="sync-dot" :class="{ refreshing }"></span><span class="sync-copy">{{ refreshing ? '正在刷新' : '只读监控' }}</span><button class="refresh-button" type="button" aria-label="刷新当前页面" @click="refresh">↻</button></div></header>
       <main class="console-content">
         <div v-if="loading && !objectiveList && !dashboard && !daemon && !candidateDetail && !shadow && !dataHealth && !reports && !evolution && !evolutionProposals && !evolutionAIDesign && !candidateProposals && !orchestrator && !aiStatus && !closeout && !governance && !operations" class="loading-state"><span class="loading-orbit"></span><strong>正在读取研究数据</strong><small>页面不会直接读取已登记报告或守护进程检查点。</small></div>
         <div v-if="pageError" class="error-state" role="alert"><span class="error-symbol">!</span><div><strong>数据读取失败</strong><p>{{ pageError.message }}</p><TechnicalDetails compact :entries="{ 错误代码: pageError.code }" /></div><button type="button" @click="refresh">重试</button></div>
 
-        <template v-if="view === 'objectives'">
+        <template v-if="view === 'engineering'">
+          <SyntheticBatchConsole />
+          <EngineeringWorkbench />
+        </template>
+        <template v-else-if="view === 'objectives'">
           <div class="page-heading"><div><span class="eyebrow">{{ pageMeta.eyebrow }}</span><h1>{{ pageMeta.title }}</h1><p>{{ pageMeta.description }}</p></div><FreshnessBadge v-if="objectiveList" :state="objectiveList.freshness_state" source="研究目标登记目录" :generated-at="objectiveList.source_generated_at" /></div>
           <section class="surface padded objective-list-surface"><div class="section-heading"><div><span class="eyebrow">已登记目标</span><h2>选择一个研究目标</h2><p>每一行都来自目标登记文件，并优先显示自主研究编排器的实时状态。治理决定、研究进度和运行控制都必须从这里进入具体目标。</p></div><span class="status-chip tone-muted">共 {{ sortedObjectives.length }} 个匹配目标</span></div><section class="filter-bar"><label class="search-box"><span>⌕</span><input v-model="objectiveSearch" aria-label="搜索研究目标" placeholder="搜索研究目标名称、状态或编号" /></label><select v-model="objectiveFilter" aria-label="研究目标状态筛选"><option value="ALL">全部状态</option><option value="ACTIVE">进行中</option><option value="GOVERNANCE">等待治理决定</option><option value="TERMINAL">已安全结束</option></select><select v-model="objectiveSort" aria-label="研究目标排序"><option value="created_at">按创建时间</option><option value="name">按研究目标名称</option><option value="state">按当前状态</option></select><button class="filter-button" type="button" @click="objectiveDirection = objectiveDirection === 'asc' ? 'desc' : 'asc'">{{ objectiveDirection === 'asc' ? '正序' : '倒序' }}</button></section><div v-if="sortedObjectives.length" class="objective-list"><article v-for="item in objectivePageItems" :key="item.objective_id" class="objective-card"><div class="objective-card-top"><div><strong>{{ objectiveName(item) }}</strong><TechnicalDetails compact :entries="{ 研究目标技术编号: item.objective_id }" /></div><span class="status-chip" :class="item.governance_pending ? 'tone-governance' : statusTone(item.orchestrator_state)">{{ item.governance_pending ? '等待治理决定' : item.orchestrator_state_zh }}</span></div><dl class="detail-list"><div><dt>编排器状态</dt><dd>{{ item.orchestrator_state_zh }}<small class="objective-source">来源：{{ humanSourceLabel(item.state_source) }}</small></dd></div><div><dt>生命周期登记</dt><dd>{{ item.lifecycle_state_zh }}</dd></div><div><dt>创建时间</dt><dd>{{ formatDate(item.created_at) }}</dd></div><div><dt>预测预算</dt><dd>{{ item.max_total_trials ?? '暂无数据' }} 次</dd></div></dl><p v-if="item.orchestrator_error_message_zh" class="plain-note">状态暂时无法从自主研究编排器读取：{{ item.orchestrator_error_message_zh }}；页面不会把登记状态冒充运行状态。</p><div class="page-actions"><button class="button-secondary" type="button" @click="navigate(objectivePath('/research/dashboard', item.objective_id))">打开研究总览</button><button v-if="item.governance_pending" class="button-primary" type="button" @click="navigate(objectivePath('/research/governance', item.objective_id))">进入治理决策</button></div><TechnicalDetails compact :entries="{ 研究目标技术编号: item.objective_id, 编排器状态: item.orchestrator_state, 状态来源: item.state_source, 是否等待治理: item.governance_pending }" /></article></div><div v-else class="empty-state">当前没有匹配的研究目标</div><div v-if="sortedObjectives.length" class="pagination-bar"><span>第 {{ objectivePage }} / {{ objectivePageCount }} 页</span><button class="button-secondary" type="button" :disabled="objectivePage <= 1" @click="objectivePage--">上一页</button><button class="button-secondary" type="button" :disabled="objectivePage >= objectivePageCount" @click="objectivePage++">下一页</button></div></section>
         </template>
@@ -1143,6 +1154,7 @@ onBeforeUnmount(() => { controller?.abort(); if (pollTimer) window.clearInterval
           <section v-if="governanceReceipt" class="surface padded governance-receipt"><div class="section-heading"><div><span class="eyebrow">第三步 · 执行回执</span><h2>治理决定已安全执行</h2><p>{{ governanceReceipt.message_zh || '执行结果已写入受保护回执。重复提交不会创建重复目标。' }}</p></div><span class="status-chip tone-success">{{ governanceReceipt.idempotent ? '重复提交已防重复处理' : '执行完成' }}</span></div><dl class="detail-list"><div><dt>执行编号</dt><dd><code>{{ governanceReceipt.execution_id }}</code></dd></div><div><dt>新研究目标</dt><dd><code>{{ governanceReceipt.new_objective_id || '不会创建' }}</code></dd></div><div><dt>新预算</dt><dd><code>{{ governanceReceipt.new_budget_id || '不会创建' }}</code></dd></div><div><dt>研究编排器</dt><dd>{{ governanceReceipt.orchestrator_activation?.status === 'STARTED' || governanceReceipt.orchestrator_activation?.status === 'ALREADY_RUNNING' ? '已启动，后续会进入 AI 研究设计边界' : governanceReceipt.new_objective_id ? '已具备观察与接管条件' : '保持终止' }}</dd></div></dl></section>
           <section class="surface padded"><div class="section-heading"><div><span class="eyebrow">安全边界</span><h2>本页面不会执行的动作</h2></div></div><div class="tag-row"><span>不会修改旧研究目标</span><span>不会重置旧预算</span><span>不会打开最终测试集</span><span>不会启动前瞻验证</span><span>不会启用真实订单</span><span>不会人工直接调用 Codex</span></div><TechnicalDetails label="查看治理来源与技术字段" :raw="technicalEntries({ decision_id: governanceCatalog?.decision_id, objective_id: governanceCatalog?.objective_id, source_state: governanceCatalog?.source_state, receipt: governanceReceipt })" /></section>
           </template>
+          <BatchScopeRequest :key="objectiveId" :objective-id="objectiveId" />
         </template>
 
         <template v-else-if="view === 'dashboard'">

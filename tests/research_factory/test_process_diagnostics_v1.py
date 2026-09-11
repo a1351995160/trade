@@ -8,9 +8,11 @@ import sys
 import pytest
 
 from test_phase3c_restart_v1 import finish
+from test_restart_recovery_v1 import finish as p3b_finish
 
 
-def test_denied_process_keeps_raw_evidence_and_nonzero_exit(tmp_path, monkeypatch):
+@pytest.mark.parametrize("text_stream", [False, True], ids=["P3C_RAW", "P3B_TEXT"])
+def test_denied_process_keeps_raw_evidence_and_nonzero_exit(tmp_path, monkeypatch, text_stream):
     source = Path(__file__).resolve().parents[2]
     evidence = tmp_path / "evidence"
     workspace = tmp_path / "synthetic"
@@ -22,9 +24,10 @@ def test_denied_process_keeps_raw_evidence_and_nonzero_exit(tmp_path, monkeypatc
     # 审计事件发生在系统进程创建前；故意不存在的程序不会被执行。
     code = "import subprocess; print('synthetic-output', flush=True); subprocess.Popen(['r1-denied-synthetic.exe', 'SECRET_SENTINEL'])"
     process = subprocess.Popen([sys.executable, "-c", code], cwd=workspace, env=environment,
-                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                               text=text_stream, **({"encoding": "utf-8"} if text_stream else {}))
     with pytest.raises(AssertionError):
-        finish(process)
+        (p3b_finish if text_stream else finish)(process)
     assert process.returncode == 79
     saved = list(evidence.iterdir())
     assert len(saved) == 1
@@ -38,5 +41,5 @@ def test_denied_process_keeps_raw_evidence_and_nonzero_exit(tmp_path, monkeypatc
     assert any(frame["function"] == "_execute_child" and frame["line"] > 0 for frame in denied["stack"])
     assert '"process_calls": 1' in stderr
     assert "RESEARCH_PROCESS_DISABLED" in stderr
-    assert json.loads((saved[0] / "result.json").read_text())["stream_capture"] == "RAW_BYTES"
+    assert json.loads((saved[0] / "result.json").read_text())["stream_capture"] == ("P3B_DECODED_TEXT_UTF8" if text_stream else "RAW_BYTES")
     assert list(workspace.iterdir()) == []

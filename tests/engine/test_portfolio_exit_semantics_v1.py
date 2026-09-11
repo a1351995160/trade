@@ -78,7 +78,8 @@ def _engine(store: MarketDataStore, *, max_positions: int = 2) -> BacktestEngine
         enable_index_filter=False,
         index_filter_enabled=False,
         max_holding_days=0,
-    ))
+        persist_run_manifest=False,
+    ), source_identity=("UNKNOWN", True))
 
 
 def test_fixed_hold_due_does_not_require_future_alpha_signal():

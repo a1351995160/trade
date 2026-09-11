@@ -149,3 +149,6 @@ REAL_WORKSPACE_RUNTIME_INDEPENDENTLY_VERIFIED=NO
 GitHub 与 Git 父子关系均确认 PR #6 已普通 merge：main=d3dcb68934ea8fb058c98039181d29894b6425df，认证部分交付 HEAD=404561c8867fdb27b01879ce553bac5e9079428f。此前未合并、失败和 PENDING 记录保留为历史。
 
 本轮从合并 main 创建独立克隆/分支 codex/r1-trusted-source-recovery-v1。用户新批准的原项目固定提交及精确路径历史调查未找到 corrected Git blob，未恢复源码或改写算法。来源证据、文件级恢复计划、未知依赖及最小资料需求见 [R1 可信源码恢复调查](R1_TRUSTED_SOURCE_RECOVERY_V1.md)。FORMAL_SOURCE_DEPENDENCY_CLOSURE=BLOCKED_MISSING_SOURCE；REAL_CANDIDATE_DATA_READINESS=NOT_VERIFIED；READY_FOR_REAL_TRIAL=false；R1_FULLY_CLOSED=false。不开始 R2。
+## 2026-09-10 当前支持范围补充
+
+PR #7 已合并，两个部署脚本现可加载，不能继续把它们标为当前 BLOCKED_MISSING_SOURCE；上述旧状态作为历史保留。本轮仅在 canonical caller 的 V2/DAILY/RAW/单缓存因子/完整正常双源 PIT 范围补文件至 engine 的适配，详见 [输入输出适配矩阵](R1_CALLER_INPUT_OUTPUT_PARITY_V1.md)。只读 inspect_dataset 的独立诊断范围没有扩大，CORRECTED_EXECUTION_INPUT_PARITY 的通用未验证标记保留，不能外推为全部调用方或真实候选就绪。

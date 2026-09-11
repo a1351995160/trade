@@ -173,11 +173,107 @@ jobs:
           tests/research_factory/test_r1_source_closure.py
           tests/research_factory/test_r1_data_readiness.py
           tests/research_factory/test_r1_snapshot_integration.py
+          tests/research_factory/test_r1_caller_io_parity.py
+          tests/research_factory/test_r1_batch_caller_inputs.py
+          tests/research_factory/test_daily_plan.py
+          tests/research_factory/test_portfolio_plan.py
+          tests/research_factory/test_engineering_workbench.py
+          tests/research_factory/test_engineering_workspace.py
+          tests/research_factory/test_engineering_backup.py
+          tests/research_factory/test_execution_evidence.py
+          tests/research_factory/test_budget_registration_evidence.py
+          tests/research_factory/test_r2_structural_result_boundary.py
+          tests/research_factory/test_strategy_admission.py
+          tests/research_factory/test_synthetic_usage.py
+          tests/research_factory/test_synthetic_novelty.py
+          tests/research_factory/test_pit_window_projection.py
+          tests/research_factory/test_paper_replay.py
+          tests/engine
+          tests/lookahead
+          tests/research/test_predictive_executor_policy_pin.py
 
       - name: Upload R1 diagnostic evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: r1-${{ matrix.os }}-${{ github.sha }}
-          path: tmp/r1-results.xml
+          path: |
+            tmp/r1-results.xml
+            ${{ runner.temp }}/p3c-process-evidence/r1-caller
+          if-no-files-found: warn
+
+  formal-services:
+    name: R2 and R3 formal services (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python: "3.11"
+            pythonpath: tests/isolation:src
+          - os: windows-latest
+            python: "3.13"
+            pythonpath: tests/isolation;src
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    env:
+      PYTHONPATH: ${{ matrix.pythonpath }}
+      CHANLUN_TEST_ISOLATION: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUTF8: "1"
+    steps:
+      - name: Configure protected reference before Python starts
+        shell: bash
+        run: |
+          echo "CHANLUN_PROTECTED_ROOT=$RUNNER_TEMP/p3c-protected-reference" >> "$GITHUB_ENV"
+          echo "CHANLUN_PROCESS_EVIDENCE_DIR=$RUNNER_TEMP/p3c-process-evidence" >> "$GITHUB_ENV"
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install deterministic test dependencies
+        env:
+          CHANLUN_TEST_ISOLATION: "0"
+        run: python -m pip install --disable-pip-version-check --require-hashes -r .github/workflows/requirements-p3b.txt
+      - name: Record Windows platform evidence
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python -c "import sys, tempfile; print(sys.platform); print(sys.version); print(tempfile.gettempdir())"
+          Get-CimInstance Win32_OperatingSystem | Select-Object Caption, Version
+          $fixtureDrive = [System.IO.Path]::GetPathRoot([System.IO.Path]::GetTempPath()).TrimEnd('\').TrimEnd(':')
+          Get-Volume -DriveLetter $fixtureDrive | Select-Object DriveLetter, FileSystemType | ConvertTo-Json -Compress
+      - name: Record Linux platform evidence
+        if: runner.os == 'Linux'
+        run: |
+          python -c "import sys, tempfile; print(sys.platform); print(sys.version); print(tempfile.gettempdir())"
+          uname -a
+          df -T /tmp
+      - name: Prove fresh import and startup isolation before collection
+        run: python -m pytest -q tests/research_factory/test_execution_isolation_v1.py
+      - name: Run R2 and R3 formal service certification
+        run: >-
+          python -m pytest -q -s --tb=short --junitxml=tmp/formal-services-results.xml
+          tests/research_factory/test_objective_execution_binding.py
+          tests/research_factory/test_r2_formal_services.py
+          tests/research_factory/test_synthetic_batch_resources.py
+          tests/research_factory/test_synthetic_batch_contract.py
+          tests/research_factory/test_synthetic_batch_recovery.py
+          tests/research_factory/test_synthetic_batch_races.py
+          tests/research_factory/test_synthetic_batch_web.py
+      - name: Upload formal service evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: formal-services-${{ matrix.os }}-${{ github.sha }}
+          path: |
+            tmp/formal-services-results.xml
+            ${{ runner.temp }}/p3c-process-evidence/objective-binding
+            ${{ runner.temp }}/p3c-process-evidence/r2-formal
+            ${{ runner.temp }}/p3c-process-evidence/batch-resources
+            ${{ runner.temp }}/p3c-process-evidence/r3-contract-*
           if-no-files-found: warn

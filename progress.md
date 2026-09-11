@@ -1058,3 +1058,803 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - progress.md：仅追加本轮测试质量修正记录。
 - 回滚：git revert <本次断言提交SHA>；回滚点725eb559727dcc088e8c06c8134b7288a2e4552b。该回滚不撤销时间校验，只恢复复合断言。
 - PR #7仍Draft；旧Windows L1保持OPEN_ROOT_CAUSE_UNCONFIRMED；REAL_CANDIDATE_DATA_READINESS=NOT_VERIFIED；READY_FOR_REAL_TRIAL=false；R1_FULLY_CLOSED=false；未merge、未开始R2。
+
+## 2026-09-10 - Task: R1 正式调用方输入输出适配与真实合成链路验证
+
+### What was done
+
+从已核验的 PR #7 合并 main e72fa6ae0ace0dbff6eeac87ae0e09082431d89a 创建独立 worktree/分支 codex/r1-caller-io-parity-v1，保留原工作区改动。接通 canonical caller 的实际文件准备、部署 runner 调用与结果适配；冻结身份、显式日历/预热、时间、双来源 PIT 和结果证据均明确校验。正式 execute 在原治理位置复用同一子路径，本轮未调用完整正式链。real_runtime、其他合同及真实研究仍 NOT_VERIFIED。
+
+### Testing
+
+- 基线真实丢列 red：1 failed，缓存 available_at 经原 _prepare_inputs 被丢弃；原始 red.log 保留。该最初 fixture 在首次设计前重建了合成政策起点；最终 fixture 完整保留原 V2 政策/锁，仅在候选首次审批前声明政策内子窗口，差别未隐藏。
+- 中间装配失败独立记录：非法 ExitPredicate 对象、结构语义指纹遗漏、负向合同缺 hypothesis lineage/第二因子 roles，均为实际领域校验提前拒绝，不冒充业务 red；未放宽治理验证。
+- 新 venv：Python 3.13.5，Pandas3.0.5/NumPy2.4.6/PyArrow25.0.1/pytest9.1.1；原完整 hash 锁经官方 Simple API 安装，pip check通过。源码 E: exFAT，临时 fixture C: NTFS。
+- 原五阶段：隔离先验66 passed；Phase1 235 passed/原12 deselected；Phase2 24 passed；P3-B 35 passed；P3-C 106 passed（311.81s）。既有弃用 warning保留；未新增skip/xfail/选择器排除。
+- 源码编译通过；全量收集1090项（既有收集skip保留，收集不计通过）。Node24.15.0前端构建通过，8项前端测试通过；原大chunk警告未扩展处理。
+- 完整 R1 209 passed（239.54s）：旧146项在新工作树实跑，新caller矩阵63项；不是抄旧数字。主进程原runner矩阵engine63次、caller22次，独立cold worker另1次。新进程无pytest替身，writes/forbidden=0；所有最终主进程禁用预测/Structural/AI、网络/进程/保护目录探针均0。R1真实合成审批/确认各62次，未冒充零治理动作。
+- 合法文件链正向与独立参考输入的信号/排序、订单、成交、lot、退出、metrics/来源精确一致，有BUY/SELL；BASE/10K独立引擎。输入/治理目录内容与mtime不变；默认UNMATERIALIZED、metrics_ref=None，独立显式证据文件与返回内容一致。
+- 首次精确比较输入身份35e97ff3aa42435fa16f4b38e29ab444c7e4f9bbef8f6c37d8154260eb328b59、合同ccdf7ffdea31a370197d3a881ae211f2d9e1652f935beeb170875001976b71db，详见suite-7.log。源码原始字节哈希按实际平台记录，不混同LF部署哈希。
+- git diff --check通过。两个已合并脚本、engine、原依赖锁与基线无差异；最终按数据/输出边界、范围和禁止路径顺序复核，无新增授权开关或测试替身。既有预算/最终裁决规则不改；仅将真实输入诊断和已写出的provisional引用交接给原流程。
+- 提交时双平台分支/PR CI=PENDING；提交后所有run/head/platform证据写仓库外记录和Draft PR，不为状态变化追加提交、不使用PR #7旧CI。
+
+### Notes
+
+- src/chanlun_trader/research_factory/predictive_executor.py：正式复用prepare/invoke/result，保留治理顺序；无证据不猜路径，无执行不交统计裁决。
+- src/chanlun_trader/research_factory/caller_inputs.py：新增单缓存因子DAILY/RAW/V2窄准备，显式日历/预热/时间/PIT及输入内容身份。
+- src/chanlun_trader/research_factory/data_readiness.py：提取原日线数值/包络/单位校验供双方复用，既有检查/错误码不变。
+- tests/research_factory/r1_caller_fixture.py：真实治理服务首次审批前形成自包含合成合同和文件。
+- tests/research_factory/test_r1_caller_io_parity.py：63项文件链、独立参考、负向和治理无副作用验证。
+- tests/research_factory/r1_caller_cold_worker.py：独立新进程实际准备/engine/适配及禁止写/完整执行探针。
+- .github/workflows/r1-source-data-certification.yml：加入本轮测试和原字节cold证据上传，原选择器不变。
+- docs/R1_CALLER_INPUT_OUTPUT_PARITY_V1.md：输入输出矩阵、短审计、支持边界、真实验证及失败分层。
+- docs/R1_SNAPSHOT_INTEGRATION_V1.md：追加PR #7合并事实和本轮窄适配链接，旧历史保留。
+- docs/R1_SOURCE_CLOSURE_AND_DATA_READINESS_V1.md：追加当前部署可加载与其他调用方仍未验证的范围说明。
+- CLAUDE.md：追加时间保留、显式日历和真实证据引用约束。
+- progress.md：仅追加本轮任务闭环记录。
+- 仓库外 E:/llmwiki/r1-caller-io-evidence：保存安装、所有red/装配失败/green、原五阶段/R1日志、XML、冷进程原字节及后续新HEAD CI证据；不推送研究数据或环境。
+- 回滚：本轮单提交可执行 `git revert --no-edit codex/r1-caller-io-parity-v1`；回滚点 e72fa6ae0ace0dbff6eeac87ae0e09082431d89a。无需reset或触碰原工作区，历史记录保留并追加撤销说明。
+- WINDOWS_L1与WINDOWS_L6继续OPEN_ROOT_CAUSE_UNCONFIRMED；HISTORICAL_PROVENANCE=UNVERIFIED；REAL_CANDIDATE_DATA_READINESS=NOT_VERIFIED；READY_FOR_REAL_TRIAL=false；R1_FULLY_CLOSED=false。完成分支推送后交独立差异复核；不merge/auto-merge、不开始R2。
+
+## 2026-09-10 - Task: 连续交付接续与 R1 批次调用方输入输出适配
+
+### What was done
+
+完整读取用户批准的连续交付文件，核对caller本地/远端HEAD 4f780cf6454c36124f8a9477ca73098551d49f04、实际main e72fa6ae0ace0dbff6eeac87ae0e09082431d89a、12份文件与19份日志哈希。PR #8仍OPEN/Draft/未合并；查询时19项push/PR检查SUCCESS。由caller创建独立总集成分支codex/roadmap-engineering-completion-v1，未改原dirty研究区，未回退main。新增全路线剩余需求及集中真实授权待办矩阵。
+
+批次正式run复用canonical输入/runner/结果适配；冻结日历/时点保留，BASE/10K独立，裁决只引用已落盘provisional。按原合同分别验证registry内容hash或路径/字节sha256，不修改冻结含义。缺输入不伪报零信号。旧policy-pin测试改为临时生成默认政策和锁，消除cwd真实文件依赖。
+
+### Testing
+
+- 新venv Windows Python3.13.5，原requirements-p3b递归哈希锁经官方Simple安装；pip check成功。隔离先验66 passed，network/process/protected探针0。
+- 新批次初版4 passed；R1第一轮完整213 passed/251.15s；补原批次文件身份后5 passed/14.71s；最终受影响caller63+批次5+policy6共74 passed/48.13s。不同轮次不合计。真实reader/runner、双独立engine正向及时间/日历/列/文件hash负向通过。
+- 扩展回归39 passed/1 failed，失败为旧政策测试读取未交付cwd政策；原日志batch-regression.log保留，不算业务red。临时默认政策fixture修正后6 passed/0.26s，最终74项包含该6项。
+- 第一轮R1主进程caller engine22次、原snapshot矩阵63次，cold独立计数保留；批次正向真实运行BASE/10K两次。合成审批/确认与禁止端探针分别记录原日志，不当真实业务动作。未调用完整execute、Trial/PerformanceAccess、真实行情/AI/Paper/broker。
+- 源码compile、git diff --check成功；初次全量1094 collected（第五项新增前），非passed。最终固定HEAD整体和双平台认证尚未进行，旧callerCI不认证本次代码。
+- 限制：完整RealFactoryRuntime.run及恢复、R2全服务尚未验收；当前不能声明全路线完成。原Windows L1/L6仍OPEN_ROOT_CAUSE_UNCONFIRMED。
+
+### Notes
+
+- src/chanlun_trader/research_factory/real_runtime.py：移除重复准备，复用正式caller、真实诊断及provisional引用；预性能准备失败释放尚活动预留。
+- src/chanlun_trader/research_factory/caller_inputs.py：兼容并严格验证已有registry文件身份。
+- tests/research_factory/r1_caller_fixture.py：首次审批前可按批次既有格式生成合成registry身份，默认旧fixture不变。
+- tests/research_factory/test_r1_batch_caller_inputs.py：新增5项实际批次准备/双组合/错误拒绝验证。
+- tests/research/test_predictive_executor_policy_pin.py：政策与锁改为临时现场生成，不读cwd运行工件。
+- .github/workflows/r1-source-data-certification.yml：原R1认证增加上述测试，原隔离/选择器/timeout保留。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：接续基线、剩余需求、阶段证据、真实授权待办与限制。
+- CLAUDE.md：追加文件与内容registry身份不可混用的经验。
+- progress.md：仅追加本轮记录。
+- 仓库外E:/llmwiki/roadmap-engineering-evidence：安装、原始失败/成功日志、XML、caller远端证据及后续交接。
+- 回滚：在总集成分支执行git revert --no-edit <本轮提交SHA>；回滚点4f780cf6454c36124f8a9477ca73098551d49f04。保留历史日志，不reset、不修改main或原研究目录。下一步自动继续R2合法合成完整服务验证；真实运行仍未授权。
+
+## 2026-09-10 - Task: R2 真实结构结果持久化与完整服务阻塞定位
+
+### What was done
+
+修复真实 Structural producer 与持久化边界对零安全计数的不一致，复用既有精确路径且拒绝非零 Prospective/收益字段。建立现场合成探索驱动，实际规范化 PIT、遍历分片验证下界依据，正式 Structural 得到 PASS，真实治理服务生成预测授权。正式 start 正确拒绝缺失 canonical family，未伪造回执。
+
+另经真实目标创建服务证明输出缺四项冻结执行绑定；提出新版本目标绑定的精确批准范围，未修改身份/治理协议。等待批准期间按用户授权继续独立 R3 工程，R2完整路径不标通过。
+
+### Testing
+
+- r2-blind-boundary-red.log：1 failed/3 passed；修复后针对性4 passed。
+- r2-structural-regression.log：88 passed/2 failed/46.98s。两项旧现场测试依赖当前工程根不存在的真实Objective/报告；未读原研究根、未新增skip，不能算通过。network/process/protected=0。
+- 五轮探索日志r2-first至r2-fifth及对应root.txt完整保留；每轮针对已定位的fixture/证明缺口修正。最终实际Structural lower64/upper65/minimum30，两个真实build（预核验与服务）；预测、engine、PerformanceAccess均0。start被canonical family缺失阻断。
+- r2-objective-binding-gap.log：真实review/confirm创建目标/预算/家族/lineage/receipt后四个绑定字段缺失，旧fixture不能代替该路径认证。R2完整Trial/恢复未验证。
+- 原Windows L1/L6继续OPEN；最终全路线和双平台认证尚未完成。
+
+### Notes
+
+- src/chanlun_trader/research_factory/structural_reconciliation.py：复用已有盲性合同并拒绝非零安全计数。
+- tests/research_factory/test_r2_structural_result_boundary.py：四项真实序列化边界回归。
+- tests/research_factory/r1_caller_fixture.py：新测试可在首次审批前声明完整语义及合成日历，默认不变。
+- tests/research_factory/r2_service_worker.py：独立临时根探索驱动，显式标明尚非完整验收。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：实际证据、失败、R2阻塞与具体批准范围。
+- CLAUDE.md：追加跨服务盲性与正式Objective fixture边界经验。
+- progress.md：追加本轮记录。
+- 回滚：执行git revert --no-edit <本轮提交SHA>；回滚点1d461de5c2da74906ecab74e70f0cc6eb41eeeda，不reset/main，不删除历史证据。证据位于仓库外E:/llmwiki/roadmap-engineering-evidence。
+
+## 2026-09-10 - Task: R3 只读批次范围申请与有限循环停止报告
+
+### What was done
+
+在R2身份协议待批准期间继续独立R3工程。复用安全上下文、数据能力、预算和能力注册表，完成批次范围申请服务/API/治理页表单；校验输入、版本、日期、额度、到期和撤回，始终不授予执行权限。表单修改/切目标后旧结果失效，实际调用领域服务。修复有限循环实际停下却报告未停止的问题，不改变执行动作和人工门禁。
+
+### Testing
+
+- r3-request-first.log：17 passed；r3-request-regression.log/XML：105 passed，含原控制平面合法推进/人工等待/权限与隔离。
+- r3-loop-limit-red.log：真实Proposal完成后stopped=false复现，1 failed/17 deselected；修复后r3-final-affected.log/XML共106 passed/19.86s，network/process/protected=0。真实下一次loop在人工Freeze前停下，无重复执行。
+- npm ci --ignore-scripts使用既有package-lock；原前端8 passed；vue-tsc/Vite最终build成功。原大chunk警告不改阈值，未新增依赖。
+- 临时synthetic root、默认READ_ONLY、原import-time isolation下启动一次localhost测试Web，无后台研究恢复。浏览器实际校验成功、编辑后失效、撤回拒绝，截图在任务工具记录；无mock接口。旧fixture缺orchestrator资料的503如实显示/记录，不冒充完整研究运行。测试页关闭，临时服务终止。
+- diff --check、单模块compile通过；最终固定HEAD双平台认证未完成。R2完整路径仍待批准；R3其余整合及D1/D2/M1继续实施。
+
+### Notes
+
+- src/chanlun_trader/research_factory/batch_scope_request.py：明确范围契约和只读检查，非授权权威。
+- src/chanlun_trader/research_factory/autonomous_control_plane.py：有限循环停止状态与原因纠正。
+- src/chanlun_trader/webapp.py：新增只读请求查询/校验入口，现有执行策略中间件不改。
+- frontend/src/console/components/BatchScopeRequest.vue：真实API表单、输入更新失效、状态与限制提示。
+- frontend/src/console/ResearchConsole.vue：在既有治理页接入申请表。
+- tests/research_factory/test_batch_scope_request.py：18项申请/隔离/版本/资源及真实循环停止验证。
+- .github/workflows/phase2-control-plane-certification.yml：原矩阵增加新测试，选择器/超时不变。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：追加本阶段实测、操作入口和工程缺项。
+- progress.md：追加本轮闭环。
+- 回滚：git revert --no-edit <本轮提交SHA>；回滚点86c1403，保留历史与外部证据，不修改main。外部原始日志在E:/llmwiki/roadmap-engineering-evidence，浏览器测试输入全部synthetic。
+
+## 2026-09-10 - Task: D1 共享每日语义、资金持仓预览与不可覆盖归档
+
+### What was done
+
+正式runner提取当日信号/PIT输入与执行支持范围校验，共享给每日预览，不另写评分规则。预览复用真实ledger持仓、退出评估器、lot/sizer/fee/slippage，输出买入预览、持有/退出及NOT_READY；副本计算不改原账户。新增合同/数据/账户/代码/时点绑定和不可覆盖归档，变化生成新身份，旧计划可查且标STALE。未授予策略资格或真实执行许可。
+
+### Testing
+
+- d1-preview-first.log：新预览/批次14 passed/28.39s。
+- d1-shared-regression.log/XML：原R1快照/caller/批次及每日共160 passed/136.26s；真实runner信号对照、原F01–F04和available_at所处套件保留。
+- 增加归档后d1-archive.log：每日12 passed/24.42s；实际ledger Fill产生持仓/T+1、同退出评估器对照、现金改变身份、缺PIT/因子、未来时间/NaT、不可覆盖及损坏归档拒绝。所有轮次network/process/protected=0，重叠测试不合计。
+- 本阶段仅每日计算与归档，D1正式资格/API/UI尚未验收，D2/M1未完成。整体固定HEAD/双平台认证仍待最终阶段。不得把研究预览当可用策略或真实观察。
+
+### Notes
+
+- scripts/run_engine_corrected_phase4_v3.py：共享原执行范围校验和当日输入逻辑，runner继续原缓存与执行语义。
+- src/chanlun_trader/research_factory/daily_plan.py：账户副本每日预览、资金费用/T+1、版本身份及不可覆盖归档。
+- tests/research_factory/test_daily_plan.py：12项真实组件对照、错误输入、身份与归档检查。
+- .github/workflows/r1-source-data-certification.yml：原双平台R1矩阵增加每日回归，原skip/超时不改。
+- CLAUDE.md：追加共享语义与预览非授权经验。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：本阶段实际完成、证据与必要工程缺项。
+- progress.md：追加本轮记录。
+- 回滚：git revert --no-edit <本轮提交SHA>；回滚点54838ac，保留历史归档和日志，不reset/main。原始证据位于E:/llmwiki/roadmap-engineering-evidence。
+
+## 2026-09-10 - Task: D2 共享引擎逐事件回放、持久恢复与账务对照
+
+### What was done
+
+从现有引擎/runner提取同一事件处理和装配入口，完成真实broker/ledger支持的有界Paper工程回放。逐事件持久历史与源码/合同/输入身份绑定；恢复重放后逐项核对，重复累计请求幂等，写失败必须重新打开。增加页面可读取的历史账务摘要，读取不构造引擎。全程只用隔离合成输入，真实观察天数0。
+
+### Testing
+
+- d2-engine-extraction.log：13 passed/12 failed；12次Git探测被原进程隔离拒绝。修正相关旧合成fixture显式源码身份和禁清单落盘，不放宽隔离。该失败不算业务red，原始拒绝栈保留。
+- d2-replay-first.log：5 passed/14.46s；d2-replay-process.log：26 passed/18.06s，含真实子进程落盘后退出73及恢复。
+- d2-final-core.log/XML：183 passed/1 failed/151.24s，失败是BUY缩量后FILLED与测试假设不同。d2-partial-diagnostic.log保留1 failed/1 passed；不改既有BUY合同，用真实SELL余量验证部分成交后d2-corrected-core.log/XML：28 passed/22.30s。
+- 最终d2-final-affected.log/XML：40 passed，含回放8、每日12及原engine/lookahead20；现金/费用/交易/lot/order/event_hash与完整真实runner一致；历史缺失/损坏、数据变更、写失败与恢复、部分卖出和涨停拒绝。主进程及冷进程实际隔离探针0；中断前计数专门写stdout，非猜测。
+- 原始冷进程字节位于process/paper-replay。相同输入目录在冷恢复前后内容不变。最终双平台认证仍待固定HEAD；当前D2公开操作/资格整合未完成，不能宣称D2工程完成。
+
+### Notes
+
+- src/chanlun_trader/engine/engine.py：提取原逐事件处理及结束清算，原run使用同一逻辑。
+- scripts/run_engine_corrected_phase4_v3.py：抽出正式engine与回调装配供回放复用。
+- src/chanlun_trader/research_factory/paper_replay.py：隔离根逐事件持久回放/恢复、账务哈希及只读历史。
+- tests/research_factory/test_paper_replay.py：8项真实回测对照、持久故障、子进程和成交验证。
+- tests/research_factory/paper_replay_worker.py：现场合同加载与真实落盘后中断/恢复。
+- tests/engine/test_engine_strategy_api.py：合成fixture传UNKNOWN源码身份并禁止清单落盘。
+- tests/engine/test_order_broker.py：两处合成fixture采用上述显式身份。
+- tests/engine/test_portfolio_exit_semantics_v1.py：合成引擎fixture采用上述显式身份。
+- tests/engine/test_universe.py：合成引擎fixture采用上述显式身份。
+- tests/lookahead/test_daily_fill_volume.py：未来成交量对照fixture采用上述显式身份。
+- tests/lookahead/test_lookahead.py：指数时点对照fixture采用上述显式身份。
+- .github/workflows/r1-source-data-certification.yml：原矩阵追加Paper及engine/lookahead测试，不改skip/超时。
+- CLAUDE.md：追加逐事件对账和BUY缩量语义经验。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：本阶段实测、原失败与尚未实现项。
+- progress.md：追加本轮记录。
+- 回滚：git revert --no-edit <本轮提交SHA>；回滚点ee58df3，历史模拟归档保留且因源码身份变化拒绝续写，不修改main。证据位于E:/llmwiki/roadmap-engineering-evidence。
+
+## 2026-09-10 - Task: 修复中间CI遗漏的只读路由清单
+
+### What was done
+
+定位54838ac远端Phase1/Phase2失败：新增批次范围GET后精确路由数测试未同步。改为47并显式断言该接口是GET；原25条POST及权限检查不变。
+
+### Testing
+
+- 远端原始失败ci-phase1-54838ac-failure.log、ci-phase2-54838ac-failure.log保存；均为47!=46，无权限探针触发。
+- 本地整文件及请求套件42 passed/2 failed，失败为原CI已排除的两项真实现场依赖，未新增排除或读取真实目录；误名r3-route-catalog-green.log实际失败仍原样保留。
+- 精确受影响测试及请求18项最终19 passed，见r3-route-catalog-final.log。隔离探针0，最终CI留待新HEAD；原Windows事件状态不变。
+
+### Notes
+
+- tests/research_console/test_research_console_read_boundary_v1.py：同步精确GET数量并断言新路由。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：追加CI失败与验证实情。
+- progress.md：追加本轮记录。
+- 回滚：git revert --no-edit <本轮提交SHA>；回滚点4d94b1b，回滚会恢复已定位的旧计数失败，不修改main。
+
+## 2026-09-10 - Task: M1共享资金与策略归属的组合预览
+
+### What was done
+
+实现显式不可变组合政策接口，复用每日策略语义和同一账本投影；共享现金/费用/容量/换手约束、同股优先级及退出冲突、lot归属和失效原因可追溯。版本或成员不完整时阻断新增买入，保持研究预览不授予策略使用资格。
+
+### Testing
+
+- 首轮真实组件7 passed，m1-preview-first.log。
+- 最终组合11、每日计划12、Paper8共31 passed/79.22s，m1-preview-final.log/XML；真实审批与确认各35次，预测/结构/业务AI禁用探针0，网络/进程拒绝/保护目录访问探针0。Paper冷进程证据另存原process目录。
+- 当前f2a759e的Phase1/2/P3A/B/C中间CI成功，R1仍运行；不作为本轮或最终HEAD平台认证。
+- M1策略使用资格/统一入口仍未完成，两个冻结测试候选不宣称合格策略；全路线维持PARTIAL。
+
+### Notes
+
+- src/chanlun_trader/research_factory/portfolio_plan.py：显式政策及共享账本组合预览。
+- tests/research_factory/test_portfolio_plan.py：实际冻结候选、计划与ledger的11项正负向验证。
+- tests/research_factory/r1_caller_fixture.py：允许在初始化/首次审批之前指定不同Objective，沿用原fixture流程。
+- .github/workflows/r1-source-data-certification.yml：加入组合测试，原超时与选择条件保留。
+- CLAUDE.md：记录共享账户投影和资格边界。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：证据与剩余接口范围。
+- progress.md：追加本轮记录。
+- 回滚：git revert --no-edit <本轮提交SHA>；回滚点f2a759e，移除本轮预览不修改main或既有账务。原始证据位于E:/llmwiki/roadmap-engineering-evidence。
+
+## 2026-09-10 - Task: 接通合成计划、组合与Paper操作工作台
+
+### What was done
+
+同一控制台内提供真实服务支持的研究预览/归档/有界回放和账务证据入口。显式服务装配绑定输入根，沿用执行策略与资源锁，领域层核对确认和当前上下文；默认只读不恢复，候选账户和真实资格明确区分。提供新临时根合成演示命令。
+
+### Testing
+
+- 首轮工作台API7 passed；联合原启动隔离、D1/D2/M1共106 passed/107.35s，workbench-final.log/XML。网络/进程拒绝/保护根探针0；原业务执行禁用计数0。Starlette弃用警告保留。
+- 补齐已有输出树链接检查后，工作台最终受影响7 passed/18.45s，workbench-output-check.log；未扩大隔离白名单。
+- frontend既有8项测试通过，workbench-frontend-tests.log；最终build成功，workbench-frontend-fixed.log，大chunk警告未调整阈值。
+- 浏览器真实预览、归档、9事件2成交、44事件6成交；现金333175.17、费用830.83，重载仍44且推进禁用。第二候选NO_SESSION，资格/真实观察天数0。完成目标控件曾显示45，已修为44并重载确认。临时服务停止、8857无监听，原HTTP日志保留；没有凭空填写UI进程退出探针。
+- 2cd521b中间六套CI成功；本轮及最终固定HEAD仍需认证。正式准入与完整服务缺项见矩阵，未宣布工程全部完成。
+
+### Notes
+
+- src/chanlun_trader/research_factory/engineering_workbench.py：实际预览/归档/逐事件服务与确认边界。
+- src/chanlun_trader/webapp.py：显式装配与只读/操作API，保留原middleware语义。
+- frontend/src/console/components/EngineeringWorkbench.vue：真实API表单、资金/成交/证据、确认失效与只读状态。
+- frontend/src/console/ResearchConsole.vue：统一导航入口，工程页不加载无关默认Objective。
+- tests/research_factory/test_engineering_workbench.py：实际服务与API7项，含只读、确认、上下文、损坏和新应用继续。
+- tests/research_factory/workbench_demo.py：新合成根的显式本机演示启动。
+- .github/workflows/r1-source-data-certification.yml：加入工作台测试，原边界/超时不扩大。
+- CLAUDE.md：记录显式输入与独立账户边界。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：实际能力、操作说明与必要缺项。
+- progress.md：追加本轮记录。
+- 回滚：git revert --no-edit <本轮提交SHA>；回滚点2cd521b。先Ctrl+C停止临时Web服务，保留独立合成归档，不修改main或真实数据。外部证据E:/llmwiki/roadmap-engineering-evidence。
+
+## 2026-09-10 - Task: 新进程凭显式配置重建工程工作台
+
+### What was done
+
+持久化只绑定输入的工作台装配描述，新进程重新通过正式caller读取原冻结registry/政策/文件并验证身份；公共API确认后从已有事件继续。支持明确旧合成根的resume，配置不携带批准，不自动迁移或删除历史。
+
+### Testing
+
+- 首轮4 passed；最终配置5与工作台7共12 passed/31.11s，workbench-restart-first.log、workbench-restart-final.log/XML。
+- 真子进程仅接配置路径，公共API从9事件继续至完成，输入原字节不变；process/workbench-restart保存原stdout/stderr，隔离三探针0，真实观察0。超时沿用60秒，未扩大白名单。
+- 输入变更、重算hash后的路径越界/NaN、未重算hash的配置损坏均拒绝；load无落盘。原Starlette警告保留。
+
+### Notes
+
+- src/chanlun_trader/research_factory/engineering_workspace.py：显式装配描述保存与正式caller重建。
+- tests/research_factory/test_engineering_workspace.py：只读重建、坏输入/配置与真实子进程5项验证。
+- tests/research_factory/workbench_restart_worker.py：新进程通过实际Web API继续回放。
+- tests/research_factory/workbench_demo.py：新建保存配置与显式resume，不自动恢复执行。
+- .github/workflows/r1-source-data-certification.yml：加入工作台重建测试。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：更新能力和重启命令，旧阶段结论保留为历史。
+- progress.md：追加本轮记录。
+- 回滚：git revert --no-edit <本轮提交SHA>；回滚点8e0c72d。回滚后仅失去此装配入口，原输出和配置留存，不修改main或真实根。
+
+## 2026-09-10 - Task: 合成工作区备份与新根恢复验证
+
+### What was done
+
+实现显式配置输入/输出树的受控备份、逐文件清单及新目录恢复CLI；复用工作台锁，拒绝覆盖/越界/损坏/超限，恢复后正式caller重新核验但不启动事件。补充操作与保留失败证据说明。
+
+### Testing
+
+- 首轮3 passed；备份/重建/工作台联合15 passed/34.31s，workbench-backup-first.log、workbench-backup-final.log/XML；清单字节计入上限后的受影响3 passed，workbench-backup-limit.log。
+- 真实CLI备份90个合成文件到synthetic-workbench-backup.zip，恢复至新根返回RESTORED_WITHOUT_EXECUTION；setup/backup/restore各进程日志与根指针保留，隔离探针均0。
+- 恢复账务与原9事件一致，新根续至10不改变原根；损坏内容、清单入口绝对路径、ZIP越界、已有恢复目录和超限拒绝。无真实数据备份/恢复，无新增skip/超时。
+
+### Notes
+
+- src/chanlun_trader/research_factory/engineering_backup.py：限定树的备份/恢复与命令行。
+- tests/research_factory/test_engineering_backup.py：恢复后实际续跑及路径/完整性/资源约束3项。
+- .github/workflows/r1-source-data-certification.yml：加入备份测试。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：实际证据及备份恢复说明。
+- CLAUDE.md：记录清单入口和字节边界。
+- progress.md：追加本轮记录。
+- 回滚：git revert --no-edit <本轮提交SHA>；回滚点de3199a，保留外部ZIP和新旧合成根，不删除或覆盖任何历史目录，不修改main。
+
+## 2026-09-10 - Task: 以真实执行证据替换微观时序常量通过
+
+### What was done
+
+按既有冻结政策核对实际signals/orders/trades/lots/calendar和数据可得时点，复用既有涨跌停规则。单候选与批次正式裁决引用实际核验结果，保留原模型、阈值与预算语义。
+
+### Testing
+
+- 提取原常量逻辑后，真实runner结果副本的同bar/NaT/T+1/未来因子/停牌注入得到5 failed/1 passed；这是gate组件red，不冒充完整执行路径red。execution-evidence-red.log原样保留。
+- 首轮核验6 passed；增加非开盘时点后，相关微观/batch/D1/D2/工作台最终39 passed/86.08s，execution-evidence-final.log/XML，隔离三探针0；警告保留。
+- 完整canonical与批次服务仍待后续；其他hard gate不因本项通过而认证。
+
+### Notes
+
+- src/chanlun_trader/research_factory/execution_evidence.py：真实微观执行证据核验。
+- src/chanlun_trader/research_factory/predictive_executor.py：正式gate使用核验结果。
+- src/chanlun_trader/research_factory/real_runtime.py：批次gate不再按候选类型自动通过。
+- tests/research_factory/test_execution_evidence.py：实际runner正向与6种证据异常。
+- .github/workflows/r1-source-data-certification.yml：加入执行证据验证。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：原缺陷、测试范围及剩余hard gate。
+- progress.md：追加本轮记录。
+- 回滚：git revert --no-edit <本轮提交SHA>；回滚点01addc3，会恢复已知常量gate缺陷，禁止据此启用真实研究。main及真实根不变。
+
+## 2026-09-10 - Task: 核对真实预算预登记并接入正式裁决
+
+### What was done
+
+以实际Trial首事件、身份与预算状态替换预算gate常量；批次补传已有预留身份字段，事前核验失败不误记性能消费。保持原预算上限、扣账和恢复语义，不修改历史身份。
+
+### Testing
+
+- 首轮6 passed；扩大测试38 passed/22 failed，失败全部为旧启动夹具缺失同一未交付合同，原始budget-registration-final.log/XML保留。
+- 可独立关联37 passed/27.87s；补实际batch引用与错绑负向后12 passed/10.43s，budget-registration-affected及binding日志/XML。隔离三探针0，无新增skip/超时；完整服务尚未认证。
+- git diff --check通过（原CRLF提示保留）。
+
+### Notes
+
+- src/chanlun_trader/research_factory/trial_adapter.py：只读首个预登记事件核验。
+- src/chanlun_trader/research_factory/execution_evidence.py：实际预算状态与身份核验。
+- src/chanlun_trader/research_factory/predictive_executor.py：正常/恢复执行与最终gate引用真实证据。
+- src/chanlun_trader/research_factory/real_runtime.py：传入原预留身份，事前核验与失败释放。
+- tests/research_factory/test_budget_registration_evidence.py：7项真实facade与负向证据测试。
+- .github/workflows/r1-source-data-certification.yml：加入预算证据测试。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：记录结果、失败入口及消费后引用限制。
+- progress.md：追加本轮记录。
+- 回滚：git revert --no-edit <本轮提交SHA>；回滚点e6adc07，会恢复预算gate常量缺陷；保留全部外部日志，不改main或真实根。
+
+## 2026-09-10 - Task: 批次最终裁决绑定实际事前新颖性结果
+
+### What was done
+
+最终相似性gate引用原实际新颖性决策及比较集身份，删除批次常量通过。记录策略使用资格新人工入口所需的具体批准范围，未实施该权限协议。
+
+### Testing
+
+- 批次及既有新颖性/编排36 passed/20.73s，batch-novelty-evidence.log/XML，隔离三探针0；无新增skip/超时。
+- canonical相似性证据与完整服务仍未认证。
+
+### Notes
+
+- src/chanlun_trader/research_factory/real_runtime.py：直接传递事前新颖性决策。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：结果与新增资格批准待办。
+- progress.md：追加本轮记录。
+- 回滚：git revert --no-edit <本轮提交SHA>；回滚点3a49d06，保留外部证据，不改main或真实根。
+
+## 2026-09-10 - Task: 策略注册事实接入工作台与失效检查
+
+### What was done
+
+只读显示实际研究状态和未准入原因；退役、证据失效与合同冲突剔除预览并阻止继续回放，绑定状态变化到上下文和计划身份。记录用户已批准仅合成测试资格服务，后续继续正向实现。
+
+### Testing
+
+- 首轮3 passed/1 failed为测试请求非法DRAFT→RETIRED；改用既有合法路径后联合19 passed/47.49s，strategy-admission-first/final.log/XML，隔离三探针0。
+- 前端8 passed、build成功；原chunk/Starlette警告保留；浏览器待完整资格功能一起验证。
+
+### Notes
+
+- src/chanlun_trader/research_factory/strategy_admission.py：只读canonical registry投影。
+- src/chanlun_trader/research_factory/engineering_workbench.py：状态、计划身份和失效阻断。
+- frontend/src/console/components/EngineeringWorkbench.vue：当前研究状态与原因。
+- tests/research_factory/test_strategy_admission.py：实际登记/退役/失效/错版4项。
+- .github/workflows/r1-source-data-certification.yml：纳入只读准入测试。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：证据与具体批准更新。
+- progress.md：追加本轮记录。
+- 回滚：git revert --no-edit <本轮提交SHA>；回滚点962fe78，保留外部日志与registry历史，不改main。
+
+## 2026-09-10 - Task: 实现用户明确批准的仅合成测试使用资格
+
+### What was done
+
+接通实际请求、人工确认、用途/有效期核验、撤销与持久证据；组合过滤合格测试来源，发布和回放重新核验输入与资格。完成界面两步确认及撤销禁用，真实策略资格仍0，不修改既有Trial/预算/CP权限。
+
+### Testing
+
+- 首轮8、扩展99、最终联合101 passed/95.79s；最后到期边界受影响21 passed/57.52s，synthetic-usage-complete/expiry.log/XML。禁止执行探针0，合法旧模板5，旧治理请求34/确认37；进程隔离三项0。新资格有实际持久请求/确认/撤销证据，未mock权限。
+- 前端最终8 passed/build成功；保留原警告。浏览器双资格组合、实际2笔成交、撤销409、最终新根服务停止/新进程配置恢复9→10事件并撤销禁用全部验证；原始UI日志及根指针保存，未删除开发历史。
+- 新增输入修改、资格用途/过期、校验途中到期、跨根复制、无请求确认、损坏确认、成员移除、幂等及真实两候选资金竞争验证。并未启动真实数据Trial或Paper。
+
+### Notes
+
+- src/chanlun_trader/research_factory/synthetic_usage.py：实际隔离测试资格请求/确认/撤销服务与只读检查。
+- src/chanlun_trader/research_factory/engineering_workbench.py：资格过滤、发布复核、回放门禁及执行证据。
+- src/chanlun_trader/webapp.py：受原本机/策略边界保护的公共资格入口。
+- frontend/src/console/components/EngineeringWorkbench.vue：有效期、两步确认、撤销和失效说明。
+- tests/research_factory/test_synthetic_usage.py：14项实际服务与安全/身份/时间边界。
+- .github/workflows/r1-source-data-certification.yml：加入资格回归。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：精确批准、测试、操作与限制。
+- progress.md：追加本轮记录。
+- 回滚：git revert --no-edit <本轮提交SHA>，回滚点ab41aa4；回滚后停止合成服务，不用旧工程预览模式继续受资格约束的回放。保留所有资格/回放/外部证据，不迁移真实registry、不改main。
+
+## 2026-09-10 - Task: 修复资格历史丢失后的错误回退
+
+### What was done
+
+结构化自检发现并修复资格模式依赖当前记录数的问题。首次实际请求保存持续收紧标记，历史丢失不恢复无资格回放；保留旧记录和失败证据。
+
+### Testing
+
+- 实际服务登记/确认后移走历史目录，原实现第1事件未拒绝，red 1 failed/4.62s；synthetic-usage-history-red.log保留。
+- 修复后资格15+备份3共18 passed/50.68s，synthetic-usage-history-green.log/XML；隔离三探针0，无新增skip、超时或权限白名单。
+
+### Notes
+
+- src/chanlun_trader/research_factory/synthetic_usage.py：持续收紧标记及只读验证。
+- tests/research_factory/test_synthetic_usage.py：实际目录丢失场景，使用同根保留目录而非删除。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：自检缺陷、证据和旧开发根限制。
+- progress.md：追加本轮记录。
+- 回滚：git revert --no-edit <本轮提交SHA>；回滚点f2541c0，会恢复已知回退缺陷，须停止合成服务并保留历史。main及真实根不变。
+
+## 2026-09-10 - Task: 提供显式配置的源码工作台启动入口
+
+### What was done
+
+从正式源码模块提供只读检查和本机工作台服务，支持不同cwd和既有配置恢复；不依赖演示夹具生成，不自动推进事件。
+
+### Testing
+
+- 冷重建及实际子进程检查6 passed/19.91s，workbench-package-cli.log/XML，进程/网络/受保护访问探针0。
+- 实际源码服务浏览器只读显示10/44事件、2成交，写入控件禁用，真实资格/观察天数0；workbench-package-server.log。已停止并核对端口关闭。
+
+### Notes
+
+- src/chanlun_trader/research_factory/engineering_workspace.py：inspect/serve、显式端口、固定本机与默认只读入口。
+- tests/research_factory/test_engineering_workspace.py：不同cwd实际子进程无写检查。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：源码部署命令、证据和wheel范围限制。
+- progress.md：追加本轮记录。
+- 回滚：git revert --no-edit <本轮提交SHA>；回滚点f3ab4fd。停止合成服务，保留配置和全部证据，不改main或真实根。
+
+## 2026-09-10 - Task: 固化全路线集中审计范围及最终验证入口
+
+### What was done
+
+整理当前需求与实际调用链、十五项跨系统场景、部署/恢复和必要阻断；将早期阶段快照与当前已实现范围分开。补齐结构持久边界测试到现有R1双平台工作流。
+
+### Testing
+
+- 文档逐项对照已提交代码、实际原始日志与附件第13—17节；不把片段通过写为完整R2闭环。
+- 最终固定本提交后的HEAD执行原阶段与全部新增套件，结果写外部final清单及PR，不再以回填结果改变HEAD。
+- 本轮git diff --check；工作流仅增加已通过的4项边界用例，未调整原选择器、skip、timeout或白名单。
+
+### Notes
+
+- docs/ROADMAP_CONTINUOUS_DELIVERY_AUDIT_V1.md：当前矩阵、实际调用图、跨系统判定、集中待办及部署/证据导航。
+- .github/workflows/r1-source-data-certification.yml：加入既有新增结构持久边界回归。
+- progress.md：追加本轮记录。
+- 回滚：git revert --no-edit <本轮提交SHA>；回滚点1223664，仅去除本轮文档/测试入口，不删除原始证据或改变main。
+
+## 2026-09-10 - Task: 按明确批准实施隔离 synthetic 事前新颖性比较集绑定
+
+### What was done
+
+记录本次用户“选择 1”的批准：仅限隔离 synthetic 新流程的来源解析、快照、启动预览与实际人工测试确认、性能访问前复核及原 CandidateNoveltyGateV2。Objective execution_binding 继续独立待批；不扩展预算、统计、CP、真实研究、Trial、Paper 或订单权限。
+
+实现实际 registry 全成员收集、设计 allowlist、精确自身排除、冲突阻断、完整来源映射、版本链/当前版本/工作区身份、不可覆盖预览与测试确认。新版启动合同携带绑定，canonical 短准入边界复用原资源锁和 Gate；旧流程不迁移且不冒称新绑定。补充正式 CLI 和整体认证入口。
+
+### Testing
+
+- novelty-cli.log/XML：24 passed，实际服务确认、空/非空、换名重复、参数邻居、来源异常/变更/缩小/丢失、跨根、CLI、其他门禁、兼容通过；执行/网络/受保护访问探针均 0。真实子进程锁内 writer 拒绝、锁外成功、重启确认复核保留原始 stdout/stderr。
+- novelty-scope-head.log/XML：22 passed；早期两次新增夹具断言失败完整保留，不作为旧业务缺陷 red。
+- 顺序自检：确认后来源变化不刷新授权；损坏当前范围不退旧版本；原确认不替代启动 intent；新 intent 内容 hash 复核且不迁移旧 intent；长期计算在共享资源锁外。I/O 拒绝是异常注入，不称 OS ACL 验收。
+- git diff --check 通过。完整固定 HEAD 回归/双平台结果将写仓库外 final-novelty，原 d821d0a final 证据不覆盖。完整 R2 服务启动与恢复仍未认证。
+
+### Notes
+
+- src/chanlun_trader/research_factory/synthetic_novelty.py：实际来源范围、盲化快照、确认与共享锁复核。
+- src/chanlun_trader/research_factory/synthetic_novelty_start.py：版本化预览/实际 intent 绑定，旧 intent 拒绝。
+- src/chanlun_trader/research_factory/synthetic_novelty_cli.py：正式声明、预览、测试确认、历史及只读启动预览命令。
+- src/chanlun_trader/research_factory/predictive_executor.py：新绑定复核与原性能准入共用短临界区、真实 Gate 证据。
+- tests/research_factory/test_synthetic_novelty.py：实际服务与原算法正负向、兼容及身份/范围测试。
+- tests/research_factory/novelty_worker.py：真实进程重启和 registry 写锁竞争。
+- .github/workflows/r1-source-data-certification.yml：原双平台选择器加入新测试，不改 skip/超时/白名单。
+- docs/SYNTHETIC_NOVELTY_BINDING_V1.md：授权、来源信任边界、部署、需求/证据/限制。
+- docs/ROADMAP_CONTINUOUS_DELIVERY_AUDIT_V1.md：新版本增量与旧版本缺口区分，保留整体 PARTIAL。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：追加批准及最新范围索引。
+- progress.md：本轮实际实施与验证记录。
+- 回滚：git revert --no-edit <本轮提交SHA>；回滚点 d821d0ab99a181329949c92383a2ab1495009c15。保留所有历史合成证据；不改 main，不移动真实目录。
+
+## 2026-09-10 - Task: 保留新 Windows 拒绝事件并补 P3B 失败流诊断
+
+### What was done
+
+固定 a64c49a 本地 835 项通过，但 R1 PR Windows 在旧 P3C 并发用例出现 cmd.exe 拒绝/exit79。保存失败，新增 OPEN_ROOT_CAUSE_UNCONFIRMED；不关闭原 L1/L6。补齐原 P3B finish 断言前 stderr/stdout 文本留存，标明非原字节，保留超时、退出断言和隔离规则。
+
+### Testing
+
+- novelty-p3b-diagnostic.log/XML：4 passed、14 定向选择器 deselected。真实 P3C/P3B 合成进程拒绝都仍 exit79，完整脱敏诊断留存；两个真实并发场景通过。此通过不是旧 Windows 根因修复证据。
+- a64c49a 原本地完整 835 passed、1224 collected、389 未执行精确清单保留；Linux R1 348 passed，其中新颖性24。失败 run 34461942454 不删除、不重跑。
+- 新固定 HEAD 后完整回归/双平台证据将单列新目录，不覆盖 a64c49a 失败版本；git diff --check 通过。
+
+### Notes
+
+- tests/research_factory/test_restart_recovery_v1.py：原文本 finish 在失败断言前留存诊断，不改变业务调用与退出判断。
+- tests/research_factory/test_process_diagnostics_v1.py：同一真实拒绝场景覆盖原字节/P3B 文本两条路径。
+- docs/R1_WINDOWS_PROCESS_DIAGNOSTICS_V1.md：新增 Windows OPEN 事件及文本诊断缺口，保留原事件。
+- progress.md：追加本轮证据与限制。
+- 回滚：git revert --no-edit <本轮提交SHA>；回滚点 a64c49abad5b180334b765c21e3d580f22b6b81d，不删除失败日志、不改main。
+
+## 2026-09-10 - Task: 接续 A/B 限定批准并实现新 Objective 执行绑定
+### What was done
+- 分别登记 A Objective execution_binding 与 B synthetic 有界批次为 IMPLEMENTING，保留此前新颖性和测试使用资格批准；旧集中审计包保持不变。
+- 新 v2 创建入口在审核预览前验证冻结政策/锁、窗口、实际因子及事件 registry，绑定工作区及来源字节身份，确认复核后复用原 Objective/预算/家族/lineage/回执创建事务。
+- 新目标直接进入真实设计、批准、冻结、物化服务，无事后补字段、补家族或补成功回执；修复物化层对正式禁止标记 recommendation=DISABLED 的误拒绝，其他推荐/绩效内容仍拒绝。
+### Testing
+- objective-binding-stage-final.log/XML：83 passed / 48.69s；含新协议20项、原创建/物化/设计和新颖性回归。原始日志位于 E:/llmwiki/roadmap-engineering-evidence；网络/受保护访问/未授权进程探针均0。
+- 实际子进程：持有政策共享锁时确认退出23；Objective 写入后进程退出73；新进程恢复并重放，预算文件字节不变。原始 stdout/stderr 在 objective-binding-stage-process/objective-binding。
+- objective-materialization-red.log：真实组合1 failed，精确定位 objective.risk_constraints.recommendation；修复后正向通过，ENABLED 和嵌套 performance 仍拒绝。新协议开发早期2项测试字段/检查点误用及能力 fixture 缺口的失败日志保留，不归类业务 red。
+- git diff --check 通过。顺序内部审查覆盖版本混用、来源 freshness、路径/域、共享锁、恢复和旧预算不变；不是独立集中审计或双平台完成。
+### Notes
+- .github/workflows/r1-source-data-certification.yml：加入新协议验收文件，未扩大 skip/超时/隔离白名单。
+- CLAUDE.md：记录正式禁止标记与结果盲化的区别。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：分别登记四项批准及当前实施状态。
+- docs/OBJECTIVE_EXECUTION_BINDING_V2.md：新合同、API、源证据、并发边界、兼容及限制。
+- src/chanlun_trader/research_factory/objective_execution_binding.py：新版本服务及正式事务复用。
+- src/chanlun_trader/research_factory/research_proposal_governance.py：显式 preview/receipt 版本及恢复版本校验；v1 默认值不变。
+- src/chanlun_trader/research_factory/candidate_executable_materialization.py：仅对精确禁止值使用临时盲化投影，原文件/来源 hash 不变。
+- src/chanlun_trader/webapp.py：独立 v2 review/preview/confirm/recover 入口。
+- tests/research_factory/test_objective_execution_binding.py：真实服务正负向、兼容、正式创建至物化与进程边界。
+- tests/research_factory/objective_binding_worker.py：独立进程实际确认、退出、恢复和重放驱动。
+- progress.md：本轮实现、验证与回滚记录。
+- 回滚点 e288746490912ae979dd3643f36eaee063335720；执行 git revert 本模块提交，停用 v2 入口，保留新历史工件并由旧入口拒绝写入；不 reset/revert main。
+- 完整 R2、B 实际批次及最终固定 HEAD 整体/双平台验收仍需继续。工程总体 PARTIAL；真实数据 NOT_VERIFIED，READY_FOR_REAL_TRIAL=false，R1_FULLY_CLOSED=false；所有既有 OPEN 事件保留。
+
+## 2026-09-10 - Task: 完成正式服务 R2 合成链及同 Trial 中断恢复
+### What was done
+- 新建合成目标从实际 v2 创建事务开始，直接完成设计/批准/冻结/物化、实际 PIT 规范化与 Structural、实际新颖性及预测确认、Trial/预算/家族、两个 engine、统计裁决、registry 和盲化失败回流。
+- 复用 R1 测试的数据/候选生成段，明确拆出不写 Objective/预算/家族的入口；新目标及创建工件在物化后字节不变。
+- 修复实际 PIT reader 对较长源历史的误拒绝：只投影明确执行日历，窗口内缺任一路仍拒绝。
+- 正常完成的新进程确认/恢复重放不重复 engine 或性能准入；另一根实际性能准入后进程退出73，经原协议结算及真实恢复预览/确认完成同一 Trial，消费仍1、预留0。
+### Testing
+- r2-formal-stage.log/XML：148 passed / 149.82s，包含2条独立进程完整服务组合、2项 PIT 窗口正负向及原 F01–F04/available_at/caller 回归，三项隔离探针0。
+- r2-pit-window-red.log：1 failed/1 passed；r2-pit-window-green.log/XML：146 passed。原始真实组合第二轮同样复现窗口误拒绝，未运行 engine，但性能准入已记账；该失败根与日志保留。
+- 每条完整正常链实际 Structural build2、engine2、predictive_execute1、performance_access1、外部AI0；最终BLOCKED（RAW_BOOTSTRAP_NOT_SUPPORTED），registry正确VALIDATION_BLOCKED并产生失败条目，不要求RESEARCH_PASSED。
+- 子进程原始流位于 E:/llmwiki/roadmap-engineering-evidence/r2-formal-stage-process/r2-formal，正常与中断测试分目录，单次60秒边界未扩张。恢复完成后仍同一Trial、原预算消费1，正常重放账本字节不变。
+- 首轮缺universe policy的合成输入失败、第二轮PIT失败、第三轮首次完整完成、后续自动化验收与中断探索均保留原始根/日志，不合并计数，不把 fixture 缺输入当作业务red。git diff --check通过；内部顺序检查通过，不是独立审计完成。
+### Notes
+- .github/workflows/r1-source-data-certification.yml：加入PIT窗口及正式R2组合测试。
+- CLAUDE.md：记录较长PIT历史与执行窗口投影规则。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：更新A/R2当前本地工程验收状态，B继续IMPLEMENTING。
+- docs/R2_FORMAL_SYNTHETIC_SERVICES.md：完整服务、恢复、计数、失败证据与限制矩阵。
+- scripts/run_automated_strategy_validation_v1_rerun_v2.py：窗口外状态不参与窗口覆盖判定。
+- tests/research_factory/r1_caller_fixture.py：提取可复用因子和正式已创建目标的候选/行情生成段，旧fixture默认行为保持。
+- tests/research_factory/r2_formal_fixture.py：实际创建目标至真实物化；创建后不补字段/预算/家族。
+- tests/research_factory/r2_service_worker.py：从旧探索驱动升级正式新流程，增加真实新颖性、账本/registry/失败断言与退出点。
+- tests/research_factory/r2_recovery_worker.py：真实新进程重放及实际人工确认恢复驱动。
+- tests/research_factory/test_pit_window_projection.py：覆盖窗口内完整/缺失及窗口外拒绝。
+- tests/research_factory/test_r2_formal_services.py：正常完整链和性能后退出/恢复两个真实进程验收。
+- progress.md：本轮证据和回滚记录。
+- 回滚：git revert 本阶段提交，恢复点991281a；已创建目标与Trial历史保留、不返还消费、不删失败工件，不merge/reset main。
+- 总工程仍PARTIAL。B实际有界批次、最终固定HEAD回归/双平台/新版审计包待完成。真实数据NOT_VERIFIED、READY_FOR_REAL_TRIAL=false、R1_FULLY_CLOSED=false，真实策略0、真实观察0，旧OPEN事件不关闭。
+
+## 2026-09-10 - Task: B 合成批次实际资源执行组件
+### What was done
+- 实现 Windows 挂起启动、同一 Job 总内存、父进程退出清理和 Linux 地址空间/时间/父进程生命期限制；领域组件必须在资源握手后导入。
+- Windows venv 启动器及解释器共享已声明总内存，进程上限2；不把配置打印当作限制生效。
+### Testing
+- batch-resources-suspended.log/XML：3 passed；正常、实际内存分配失败、实际超时终止均有独立原始 stdout/stderr。首轮失败和中间通过日志全部保留。
+- 尚未完成最终固定 HEAD 双平台，批次调度、撤销竞争和恢复验收继续；本提交不标 B 完成。
+### Notes
+- src/chanlun_trader/synthetic_batch_resources.py：实际 OS 资源及进程生命期约束。
+- tests/research_factory/batch_resource_worker.py：资源握手后执行正常、内存和超时动作。
+- tests/research_factory/test_synthetic_batch_resources.py：真实子进程正负向断言及原始流保存。
+- docs/SYNTHETIC_BATCH_RESOURCES_V1.md：执行指标、适用平台和当前证据限制。
+- progress.md：本轮结果、失败证据和回滚记录。
+- 回滚：git revert 本资源模块提交；恢复点90f5f0c，停用新批次入口并保留合成历史和失败工件，不重置 main。
+
+## 2026-09-10 - Task: B 明确候选合成批次授权与实际有界服务组合
+### What was done
+- 形成独立版本的预览、实际测试人工确认、委托派生、单进程实际调度、暂停/停止/到期/撤销及审计恢复。每个明确候选保留自己的正式 Objective、原预算和统计家族；没有新建可重置消费的预算账本。
+- 启动与首次性能访问核验父批准、候选、完整来源、原创建事务和不可变家族；批次锁与原共享来源锁保持至内存输入快照完成，两个 engine 在锁外运行。
+- 实際委托标记 BATCH_DELEGATED，旧启动入口拒绝消费它；删除 metadata 不能绕过 canonical 意图，委托不能改成未授权收尾类型或调用重试入口。旧 CP 预测禁令不变。
+- 实际 worker 性能准入后退出按原协议消费；控制者退出恢复只结算不自动重跑。撤销事件先于 head 落盘时只能前滚该完整事件，不回退旧 ACTIVE。
+### Testing
+- batch-admission-review.log/XML：27 passed，包括正式创建工件、单/多候选完整链、原额度、实际进程退出/恢复、来源变化和性能前撤销；受拒绝的竞争场景 engine0/performance0。
+- batch-snapshot-boundary.log/XML：5 passed；源锁在真实 caller 快照读取期间拒绝并发替换，随后实际 engine2/performance1；原两个 R2 完整服务/恢复场景通过。
+- batch-quota-final.log/XML：2 passed；Trial数不足拒绝，原实际消费后不能通过另一批次重置预算。batch-root-check：2 passed，相对输入根拒绝、真实合同确认通过。
+- batch-recovery-final：4 passed；实际控制者退出73、新进程结算、到期、8MiB阻断，以及撤销事件落盘/head更新前退出73。batch-core-final：24 passed，含实际OS资源与原完整R2组合。
+- batch-stage：77 passed/22 failed；旧启动测试依赖缺失历史合同，在fixture第40行失败，未进入启动服务。测试源码与e288746相同，Git blob均9459bbc20ec42c971df634250375739fef8216b3。没有读取真实目录补合同，没有改变旧测试、skip或隔离名单；失败保持独立，不以其他集合通过覆盖。
+- batch-synthetic-stage：78 passed/1 failed；96MiB负向假设错误，实际Structural成功。改用明确8MiB负向输入后阻断；原96MiB成功与失败断言证据保留，不算业务缺陷red，不扩大资源或超时。
+- 新测试原始流按各自r3-contract临时根分目录保存，实际父子进程、退出码、预算和域状态均留证；新增CI入口及原始流上传路径。git diff --check通过；本轮顺序内部自检不冒充独立集中审计或最终双平台。
+### Notes
+- .github/workflows/r1-source-data-certification.yml：加入批次资源/合同/恢复/竞争测试，并上传正式A/R2/B原始进程证据。
+- CLAUDE.md：记录Windows启动器和资源握手，以及历史委托结算范围。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：统一B当前IMPLEMENTING状态，启动时矩阵明确为历史。
+- docs/SYNTHETIC_BATCH_AUTHORIZATION_V1.md：协议职责、实现边界、正负向和失败证据、剩余必要工程。
+- src/chanlun_trader/research_factory/synthetic_batch.py：父批准、实际边界、原领域结算、重启和事件恢复。
+- src/chanlun_trader/research_factory/synthetic_batch_delegation.py：明确版本的领域授权解析、重试拒绝及性能准入。
+- src/chanlun_trader/research_factory/predictive_trial_start.py：旧入口拒绝批次委托授权记录。
+- src/chanlun_trader/research_factory/predictive_executor.py：性能准入与输入快照在原共享来源边界内完成。
+- src/chanlun_trader/synthetic_batch_worker.py：实际受限进程调用既有Structural/预测领域服务。
+- tests/research_factory/r1_caller_fixture.py：在首次设计前支持明确持有周期，默认不变。
+- tests/research_factory/r2_formal_fixture.py：第二个已知候选仍经过正式v2创建，原目标和额度不改。
+- tests/research_factory/r2_service_worker.py：生成单/多候选正式测试前置，未预填PASS或授权回执。
+- tests/research_factory/batch_interruption_worker.py：真实engine边界退出注入。
+- tests/research_factory/batch_controller_worker.py：真实控制者退出、恢复和head写入中断。
+- tests/research_factory/batch_boundary_race_worker.py：暂停真实边界供另一操作方并发变更，保存实际计数。
+- tests/research_factory/test_synthetic_batch_contract.py：正式合同、正负向、单/多候选、原预算与兼容。
+- tests/research_factory/test_synthetic_batch_recovery.py：控制者重启、到期、实际资源不足与撤销事件恢复。
+- tests/research_factory/test_synthetic_batch_races.py：性能前撤销/来源变化及实际快照共享锁。
+- progress.md：本轮结果、差异与回滚记录。
+- 回滚：git revert 本模块提交，停用B新入口并保留全部新合成历史/消费；恢复点991adc3。不reset/merge main，不返还已消费预算。
+- 当前总工程仍PARTIAL；B正式操作入口/统一界面、固定新HEAD全路线回归、双平台和新版集中审计包继续。真实数据NOT_VERIFIED、READY_FOR_REAL_TRIAL=false、R1_FULLY_CLOSED=false；既有OPEN事件不关闭。
+
+## 2026-09-10 - Task: 批次合成夹具的临时路径一致性
+### What was done
+- 创建任何正式目标前规范化测试临时根，父进程与真实服务子进程使用同一根身份；保存原临时路径和规范路径诊断。未改变服务来源校验。
+### Testing
+- 320e980 的 PR R1 run 34490995583：Ubuntu通过；Windows 376 passed、9 failed、20 errors，新增批次夹具在NOVELTY_SOURCE_MISSING_OR_LINKED处阻断。原始失败日志及全部附件保存到外部证据目录 batch-ci-pr-34490995583；push run34490990216为cancelled，不记通过。
+- batch-temp-alias-final.log/XML：1 passed，23 deselected（仅定向验证，不代表全套）；真实正式创建、来源确认及批次预览经过非规范临时别名测试，进程探针均0。新的Windows CI尚待验证，不据本地结果关闭历史OPEN事件。
+- batch-temp-alias.log为首次验证失败原件：测试断言字段名写错，且该命令误用保护环境变量名，sitecustomize报告KeyError，不能作为隔离认证证据。修正命令与断言后使用独立final日志，未覆盖原件；没有读取受保护研究数据。
+### Notes
+- tests/research_factory/test_synthetic_batch_contract.py：规范化新夹具根、记录路径、真实服务别名回归。
+- docs/SYNTHETIC_BATCH_AUTHORIZATION_V1.md：记录平台阶段差异及验证范围。
+- CLAUDE.md：记录父子进程临时根身份一致性。
+- progress.md：追加本轮诊断和验证原件说明。
+- 回滚：git revert 本轮提交；检查点320e980，不回退main，不改历史批准或账本。
+
+## 2026-09-10 - Task: R3正式操作入口与统一工作台
+### What was done
+- 接入真实服务批次清单、预览、确认、连续执行、暂停/停止/撤销与只结算恢复；默认只读查询不改变历史。
+- 统一页面展示完整来源和明确额度，将批次完成与策略研究结论分开；实际多个候选由一次合成测试父批准连续执行。
+- 逐项审阅HTTP本机/策略边界、GET不变性、父批准状态、异步页面更新和历史选择；按仓库约定串行内审，不宣称独立外审完成。
+### Testing
+- batch-web-final.log/XML：4 passed，1既有Starlette弃用警告，进程探针0；含真实worker执行、未确认拒绝、只读不变、非本机写拒绝及未来/到期撤销。
+- batch-ui-build.log：vue-tsc与Vite通过，原bundle体积警告保留。
+- 真实浏览器统一页面：批次625e3ba4e2244d4abdbb556385a7d868，经实际预览/合成测试确认后两个候选四个动作完成，全部BATCH_DELEGATED；原预算耗尽后清单阻断，工作台VALIDATION_BLOCKED、可用策略0、真实观察0，浏览器error/warn为空。原HTTP JSON和服务器日志保存到外部证据目录batch-ui-*。
+- 首次PowerShell读取localhost未禁用环境代理，返回502；改用-NoProxy读取明确本机API后成功，未修改服务网络或权限。浏览器导出不支持，未声称生成页面导出文件。
+### Notes
+- .github/workflows/r1-source-data-certification.yml：加入正式批次API测试。
+- src/chanlun_trader/research_factory/synthetic_batch.py：只读历史和预览、受限claim、未来/到期的暂停撤销状态。
+- src/chanlun_trader/research_factory/synthetic_batch_console.py：仅从已声明来源复核候选、额度及历史。
+- src/chanlun_trader/webapp.py：正式本机批次API，复用原执行策略。
+- frontend/src/console/components/SyntheticBatchConsole.vue：真实预览/确认/运行/控制和历史查询界面。
+- frontend/src/console/ResearchConsole.vue：在统一工作台装配批次组件。
+- tests/research_factory/test_synthetic_batch_web.py：真实服务API正负向、只读和旧入口兼容。
+- tests/research_factory/synthetic_batch_demo.py：正式创建两候选的真实页面验收装配，不自动批准批次/使用资格。
+- docs/SYNTHETIC_BATCH_AUTHORIZATION_V1.md：接口、启动和阶段证据说明。
+- progress.md：本轮结果与限制记录。
+- 回滚：git revert 本模块提交，停用新API页面但保留合成批准、预算和账本历史；检查点d104910。不修改main。
+- 总工程仍PARTIAL，继续固定新HEAD整体回归、双平台认证、新版需求证据矩阵与集中审计；全部旧OPEN事件继续保留。
+
+## 2026-09-10 - Task: 新版本全路线矩阵与集中审计导航
+### What was done
+- 汇总A/B及原新颖性/测试使用资格四项独立批准后的当前全路线矩阵，旧待批段落明确作为历史；新增V2审计导航、实际调用图、部署/恢复和限制。
+- 同一正式创建的两候选批次链继续经独立用途确认、组合归档和Paper回放，未以研究BLOCKED结果冒充真实合格策略。
+### Testing
+- 真实页面同根贯通：批次4/4完成→两个独立用途资格确认→组合计划同股只分配一个策略（另一个NO_TRADE）→归档→所选候选9/600模拟事件、2笔实际合成成交→撤销后仍9事件且勾选确认也不能继续。真实策略0、观察0。batch-ui-paper.json与batch-ui-revoked.json保留原HTTP完整结果，服务器日志保留实际调用。
+- 前端原presentation 8 passed，batch-ui-presentation.log；页面控件选择器两次定位失败后依据实际DOM精确定位，不将自动化定位错误视为业务缺陷。
+- 文档链接与代码/测试路径核对、git diff --check。固定HEAD的整体回归与双平台下一步执行，未预填结果。
+### Notes
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：新增当前全路线矩阵，更新四项批准实施状态。
+- docs/ROADMAP_CONTINUOUS_DELIVERY_AUDIT_V2.md：新证据版本、实际调用、审阅分组、部署/恢复和未认证范围；旧V1及ZIP不改写。
+- progress.md：追加贯通验收及固定版本前状态。
+- 回滚：git revert本轮文档提交；代码检查点36d8a2c，不改主线或任何合成批准/账本。
+- 最终认证和打包未完成前仍PARTIAL；最终状态放外部final-bounded-execution，不为状态回填修改固定HEAD。
+
+## 2026-09-10 - Task: 批次worker固定命令与数据传输
+### What was done
+- 根据Sonar S6350实际污点链，将生产worker命令固定，身份经资源握手JSON传入并严格验证；原父批准、进程关系、资源、预算和历史语义不变。
+- 未证明旧shell=False且标识已验入口可被利用，不伪造业务漏洞red；未改变Sonar规则、问题状态或添加抑制。
+### Testing
+- batch-stdin.log/XML：18 passed、22 deselected定向验证，1既有Starlette警告；真实OS上限、API两动作、两候选、中断及三类并发边界均通过，禁止进程/网络/受保护访问探针0。新增6个数据上下文合同负向。
+- abb0073的Sonar原检查、问题流、annotations已保存；本地固定HEAD候选验证前7步通过（P3C107），第8步因本项必要收紧主动停止，未生成最终JUnit，不宣称整体通过。停止该测试进程后才修改源码，没有混用新旧代码证据。
+### Notes
+- src/chanlun_trader/research_factory/synthetic_batch.py：固定生产启动命令，身份进入数据通道。
+- src/chanlun_trader/synthetic_batch_resources.py：原资源握手携带execution数据。
+- src/chanlun_trader/synthetic_batch_worker.py：严格校验执行数据，保留原服务授权核验。
+- tests/research_factory/batch_interruption_worker.py：退出注入使用实际握手身份。
+- tests/research_factory/batch_boundary_race_worker.py：并发注入使用实际握手身份。
+- tests/research_factory/test_synthetic_batch_contract.py：真实退出替换入口沿用数据握手。
+- tests/research_factory/test_synthetic_batch_races.py：真实边界替换入口不接受身份命令参数。
+- tests/research_factory/test_synthetic_batch_resources.py：6类无效数据合同拒绝。
+- tests/research_factory/test_synthetic_batch_web.py：观察真实启动，断言命令固定及身份经数据传输。
+- docs/SYNTHETIC_BATCH_AUTHORIZATION_V1.md：收紧依据及定向证据。
+- docs/SYNTHETIC_BATCH_RESOURCES_V1.md：数据握手说明。
+- CLAUDE.md：记录固定进程入口约定。
+- progress.md：本轮验证和未完成认证记录。
+- 回滚：git revert本轮提交，并停用受影响新入口；检查点abb0073，保留全部原始证据与账本，不改main。
+
+## 2026-09-10 - Task: 在原时限内拆分完整服务认证
+### What was done
+- 同一R1认证工作流增加独立R2/R3正式服务job，原基础回归与新服务测试分组，不重复整套工作流，不增大时限。
+### Testing
+- 36d8a2c PR34493772051与push34493759369：Ubuntu通过、Windows20分钟超时取消；PR annotation明确最大执行时限20m0s，原日志与batch-ui-ci-timeout-annotations.json保存，未将其标记通过。
+- validate-ci-partition.py和ci-partition-validation.json：28个原测试路径=21个基础+7个正式服务，互不重叠、并集精确一致；原Phase1/2/3B/3C完整命令、matrix/env、依赖锁和20分钟时限一致。未扩大skip、超时或隔离白名单。
+- YAML解析与git diff --check通过；最终固定HEAD重新运行全部本地及两个平台，结果待实际完成。
+### Notes
+- .github/workflows/r1-source-data-certification.yml：按依赖范围拆分两组job与原始附件，原平台/版本/隔离保留。
+- docs/ROADMAP_CONTINUOUS_DELIVERY_AUDIT_V2.md：记录实际超时依据、精确覆盖并集和认证要求。
+- progress.md：追加本轮验证与限制。
+- 回滚：git revert本轮提交，检查点08e3146；不能以回滚分组掩盖超时，不改main或运行权限。
+
+## 2026-09-11 - Task: CA-01 使用资格提交状态完整性
+### What was done
+- 接收并核验ffbff08集中审计包，按用户统一修正CA-01至CA-04的范围继续原分支及Draft PR9。
+- 真实服务请求、确认、撤销后移走单个撤销文件，独立新进程实际恢复ACTIVE并把Paper9事件推进至10，取得项目red；外审AST探针单列，不冒充E2E。
+- 新v2请求增加每请求提交头，绑定不可变请求/确认/撤销证据序列；缺事件、缺/坏头、旧头回退、写点中断均阻断。不补历史、不改引擎或权限边界。
+- 旧v1回执只读，实际原审计合成回执作为兼容夹具，附来源和原字节哈希；新的合法v2请求仍可正常使用。
+### Testing
+- ca01-red.log/xml：1项真实服务冷进程复现失败，inspect/active/preview放行，实际advance至10；原子进程输出保留。
+- ca01-green.log/xml：原使用资格及新增冷进程复现16 passed。
+- ca01-contract.log/xml：使用资格/工作台31 passed，包括缺/坏head、缺确认/撤销、旧head、API拒绝不修复、真实os._exit(73)确认/撤销写点与新进程拒绝、原回执兼容。
+- ca01-race.log/xml：1 passed/24 deselected，仅新增真实Paper与撤销共享互斥竞争；不是全量重复计数。进程保护访问/网络/禁止进程探针均0，原Starlette警告保留。
+- 证据根E:/llmwiki/roadmap-engineering-evidence/ca-remediation-ffbff08；最终HEAD整体验证及双平台尚待四项完成。
+### Notes
+- src/chanlun_trader/research_factory/synthetic_usage.py：v2提交头、完整性核验和旧格式只读。
+- tests/research_factory/test_synthetic_usage.py：实际服务red/green、缺文件、硬退出、API及锁竞争兼容测试。
+- tests/research_factory/usage_integrity_worker.py：实际新进程消费与真实写点退出驱动，无假权限/领域替身。
+- tests/research_factory/fixtures/ca01_legacy_usage/request.json、confirmation.json、revocation.json：原审计包中的实际合成旧回执原字节，仅历史兼容。
+- tests/research_factory/fixtures/ca01_legacy_usage/provenance.json：旧回执来源与SHA256。
+- docs/CONSOLIDATED_REMEDIATION_CA01_CA04.md：统一范围、执行矩阵、v2写点/兼容/故障策略。
+- docs/ROADMAP_IMPLEMENTATION_MATRIX.md：标明外审CHANGES_REQUESTED及新修正索引。
+- CLAUDE.md：记录撤销历史必须有提交见证的实现教训。
+- progress.md：追加本轮记录。回滚点ffbff0856f95fdd3206ac70de6a82f3fd1164a16；可git revert本模块提交，但须先停用新资格入口并保留v2记录，不允许旧代码继续消费新批准。旧审计包不变；不merge、不auto-merge、不读真实数据。
+
+## 2026-09-11 - Task: CA-02 新颖性canonical协议与旧入口防降级
+### What was done
+- 使用正式创建/设计/冻结/物化/Structural/新颖性确认/预测授权生成新意图，取得旧候选边界丢标签放行、来源stale后旧confirm/recover仍接受的真实服务red；该red未执行engine/绩效，不扩大结论。
+- 原意图读盘与运行协议校验分离；旧运行入口和候选重建拒绝新版意图，性能边界先核canonical身份，不能由缺metadata决定legacy。
+- 保留原Gate/预算和批次协议；真实旧v1启动记录通过原服务生成，兼容正常且无历史迁移。
+### Testing
+- ca02-red.log/xml：1 failed/2 deselected，实际原代码缺标签/旧入口行为复现；原局部探针另存received，不作为本测试。
+- ca02-green.log/xml：27 passed，正式完整R2/同Trial硬退出恢复/完成回放、新意图及原新颖性边界。
+- ca02-integration.log/xml：5 passed，最终实际执行器缺标签拒绝、旧入口拒绝、批次反降级和原治理生命周期。原始worker记录engine0/performance0，拒绝后原预算三桶used0/reserved0。
+- ca02-legacy.log/xml：1 passed/3 deselected，原服务创建真实旧v1启动意图，confirm/recover兼容且预算原字节不变。
+- 禁止访问/网络/进程探针0；各日志和原始worker输出保留于ca-remediation-ffbff08。git diff --check通过。最终新HEAD认证待四项完成。
+### Notes
+- src/chanlun_trader/research_factory/predictive_trial_start.py：canonical仅读取与运行协议检查分离，旧入口/候选构造拒绝新版。
+- src/chanlun_trader/research_factory/synthetic_novelty_start.py：显式声明新版本路由，仍用原领域门禁。
+- src/chanlun_trader/research_factory/synthetic_novelty.py：缺metadata前先核持久协议，保留原比较算法。
+- src/chanlun_trader/research_factory/synthetic_batch_delegation.py：反降级检查使用canonical仅读取，不扩权。
+- tests/research_factory/r2_service_worker.py：原真实服务驱动新增只准备新版/旧版实际意图模式，不运行pytest领域替身。
+- tests/research_factory/novelty_protocol_worker.py：真实边界、旧入口、实际执行器及计数/原预算取证。
+- tests/research_factory/test_r2_formal_services.py：新版反降级与真正旧v1兼容回归。
+- .gitattributes：仅CA-01原审计JSON夹具禁换行转换，保持跨平台来源字节哈希；git check-attr text=unset。
+- docs/CONSOLIDATED_REMEDIATION_CA01_CA04.md：更新CA-02证据、路由和范围；CLAUDE.md追加教训；progress.md追加记录。
+- 回滚点b17914b5e41114deebab00dd9f897da6a45983a1；可git revert本模块提交，但须保持新版启动禁用，不能重新使用旧入口消费新版意图。Git自动gc报告旧不可达对象较多，未执行prune/清理，无用户数据操作。
+
+## 2026-09-11 - Task: CA-03 Paper已提交尾部丢失检测
+### What was done
+- 实际引擎提交9条后移走尾部，取得新进程误读8条并推进10条的服务red；新增v2提交头，读盘/恢复/advance先核验提交边界。
+- 沿用共享资源互斥阻止陈旧实例覆盖；旧v1归档只读且明确未验证，不迁移、不补历史。
+### Testing
+- ca03-red.log/xml：1 failed/8 deselected；原始新进程stdout保留。ca03-green.log/xml：9 passed。
+- ca03-contract.log/xml：25 passed，覆盖多条尾部丢失、head缺失/损坏/回退、真实进程提交前后退出、旧实际归档兼容、原engine完整对账及工作台。
+- ca03-api.log/xml：2 passed/6 deselected，内容损坏与尾部丢失均GET/POST 409。隔离探针0；保留原Starlette警告。最终HEAD全套认证待完成CA-04。
+### Notes
+- src/chanlun_trader/research_factory/paper_replay.py：显式v2头、提交见证、完整性复核、旧历史只读、既有资源锁。
+- tests/research_factory/test_paper_replay.py：实际red/green和提交写点/兼容负向；paper_replay_worker.py：实际提交点硬退出；paper_integrity_worker.py：真实新进程读取/advance取证。
+- tests/research_factory/test_engineering_workbench.py：增补尾部丢失API阻断。
+- tests/research_factory/fixtures/ca03_legacy_paper/header.json、events/00000000.json至00000008.json、provenance.json：原审计包真实合成归档原字节与来源；.gitattributes限定禁止这些JSON换行转换。
+- docs/CONSOLIDATED_REMEDIATION_CA01_CA04.md：版本/恢复/兼容与证据；CLAUDE.md追加教训；progress.md追加记录。
+- 回滚点72fb21fc5b895c116d26d9413633ddbf3a51291f；可git revert本模块提交，但须停用v2会话推进并保留目录，不能旧代码消费新记录。未读取真实数据；既有OPEN事件不变。
+
+## 2026-09-11 - Task: CA-04 完整计划内容当前性与源码身份
+### What was done
+- 正式预览及真实比较接口复现四类有效内容变化误报CURRENT，增加完整plan_id比较并保留原上下文失效解释。
+- 新source_identity版本覆盖实际计划、compiler/helper和引擎成本/仓位依赖；旧计划只读可比，不迁移身份，不改变策略规则。
+### Testing
+- ca04-red.log/xml：4 failed/12 deselected，条目/持仓/就绪原因/诊断的有效新内容身份误报；这是比较接口反例，不是引擎输出不同的声称。
+- ca04-green.log/xml：54 passed，实际计划确定性、只读存档、源码依赖身份、组合、Paper引擎对账和工作台API；隔离探针0，保留原Starlette警告。
+- git diff --check通过；四项模块闭环完成后固定HEAD运行原选择器整体及双平台CI，结果保存在新审计包，不预写通过。
+### Notes
+- src/chanlun_trader/research_factory/daily_plan.py：完整plan_id当前性检查及显式来源身份v2。
+- tests/research_factory/test_daily_plan.py：四种实际比较接口red/green、依赖源码身份变化但计划条目保持一致的验证。
+- docs/CONSOLIDATED_REMEDIATION_CA01_CA04.md：四项矩阵、CA-04证据、部署/回退及限制；CLAUDE.md追加教训；progress.md追加本轮。
+- 回滚点51834c59c17e16e23a9a1fb6136c60181f0b83c5，可git revert本模块提交；回退后禁止依赖旧CURRENT判定授予用途。旧审计包与原检查不变，无真实数据或运行。
+
+## 2026-09-11 - Task: CA-03旧原字节夹具跨平台封装
+### What was done
+- 修复候选4fdc841在PR Linux空白门禁中的夹具封装失败；原10份旧JSON原字节装入archive.zip，原来源哈希不变，provenance新增容器哈希。
+- 不转码旧批准/事件、不添加空白豁免，移除CA-03 -text规则；旧格式兼容测试解包后校验全部原字节。
+### Testing
+- ca03-container.log/xml：1 passed/17 deselected，旧归档完整性与只读兼容通过。
+- final-4fdc841保存原push/PR日志与失败；本地6阶段完成、P3C主动中断并记interruption.json，不作为最终认证。因实际CI失败而重建认证HEAD，不无理由重跑。
+- 按Linux默认空白规则检查完整base差异；最终新HEAD重新运行全部认证，不扩大skip/timeout或隔离白名单。
+### Notes
+- tests/research_factory/fixtures/ca03_legacy_paper/archive.zip：包含原header与9事件原字节；移除10个展开JSON，provenance.json保留各来源哈希并记录容器。
+- tests/research_factory/test_paper_replay.py：显式读容器和全部成员hash再写隔离夹具；.gitattributes移除CA-03特殊text规则。
+- docs/CONSOLIDATED_REMEDIATION_CA01_CA04.md记录真实CI失败/封装变更；CLAUDE.md追加教训；progress.md追加日志。
+- 回滚点4fdc8418de87de50e350510d05198560e5ba2c75，可git revert本提交恢复展开夹具；将恢复原Linux空白门禁失败，不得据此绕过检查。生产代码无变化。
+
+- 同轮显式Linux规则检查进一步检出CA-01旧回执CRLF，原失败输出保留linux-whitespace-green.log（文件名不代表通过）。CA-01也改为archive.zip保存原三回执，provenance原来源哈希不变；test_synthetic_usage.py逐项验证后使用；本轮新增.gitattributes全部移除，无空白豁免。
+- legacy-containers.log/xml：2 passed/41 deselected，两种原字节容器兼容均通过；最终空白复核写入新的linux-whitespace-final.log，不覆盖前次失败。

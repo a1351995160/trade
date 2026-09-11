@@ -616,7 +616,8 @@ def test_fastapi_console_routes_keep_reads_separate_from_protected_writes(tmp_pa
     console_routes = [route for route in application.routes if getattr(route, "path", "").startswith("/api/research-console/")]
     read_routes = [route for route in console_routes if getattr(route, "methods", set()) <= {"GET"}]
     write_routes = [route for route in console_routes if "POST" in getattr(route, "methods", set())]
-    assert len(read_routes) == 46
+    assert len(read_routes) == 47
+    assert any(route.path == "/api/research-console/{objective_id}/batch-scope-request" for route in read_routes)
     assert len(write_routes) == 25
     assert all(getattr(route, "methods", set()) <= {"GET"} for route in read_routes)
     assert all(getattr(route, "methods", set()) <= {"POST"} for route in write_routes)

@@ -9,6 +9,8 @@
 
 ## Forward Data Contract pitfalls
 
+- PITStateMap 必须先把较长原始历史投影到显式执行日历，再判断双路状态是否完整；预热或窗口外记录不能使窗口内完整数据变成 ROW_MISSING。窗口内缺任一路仍 fail closed，窗口外不可交易。
+
 - Prospective observation 的起点必须由 Policy Freeze 之后的显式 host trading calendar 确认；工作日推断和历史回填都不能替代交易日历。
 - 现有 Paper host 的 `E_CONSEC_LIMIT` runtime 不能冒充当前 `E_LIMITUP_SENT` event-reversal candidate 的 prospective evidence；候选运行适配器未就绪时必须 fail closed。
 - Validation Policy 的声明契约 hash 与文档文件 SHA-256 是两个不同字段；冻结 lineage 必须分别记录并比较。
@@ -20,6 +22,8 @@
 - `RESEARCH_PASSED` 和 `PROMISING` 不进入 Failure Knowledge；工程异常必须保持 `ENGINE_FAILURE`，不能 fall-through 到 `GOVERNANCE_FAILURE`。
 
 ## Frozen contract identity pitfalls
+
+- 正式 Objective 的 `risk_constraints.recommendation=DISABLED` 是禁止标记；物化服务盲化投影只可消去该精确禁止值，保留原文件与来源哈希。其他值和嵌套绩效仍须拒绝，不能为接通正式创建链而修改冻结目标或放宽全局结果字段政策。
 
 - 守护进程修复冻结合同身份冲突时，跨报告/合同扫描必须按 `candidate_id` 缓存；不得在逐历史记录加载路径中重复扫描全量报告。
 - 已接入但 Provider 不兼容的冻结合同不能原地改写或删除；只能在确认无 TrialLedger、无 PerformanceAccess、无候选预算预留后追加哈希链纠错事件。`ONE_SHOT` 已接受调用对应的唯一候选被失效后，恢复逻辑必须进入 `GOVERNANCE_DECISION_REQUIRED`，不得生成第二份 AI 交接。
@@ -134,3 +138,40 @@
 - 隔离合成 engine 通过显式 source_identity 传递 UNKNOWN，不启动 git 来猜测 cwd 身份；不能把快照哈希伪装成 code_commit，也不能为通过测试放宽进程白名单。
 - 因子 available_at 列存在仍可能包含 NaT；限定 runner 必须在共享入场/持仓因子行入口拒绝原始缺失及解析后 NaT，保留拒绝计数，不补造时间。复现须记录 pandas 实际 dtype，不能将解析异常或 fixture 合同拒绝当作信号放行 red。
 - pip 的官方索引地址为 https://pypi.org/simple；遗漏 /simple 可导致包路径 404 和 No matching distribution，不能据此断言发行版不存在。恢复依赖仍须按原完整锁和哈希安装，再恢复业务测试隔离。
+
+## R1 正式调用方输入输出约束
+
+- 缓存读取必须保留原 available_at；缺时点或非法时间在 caller 准备层阻断，不补收盘、不修旧缓存。单缓存因子的合成接通不认证多因子共享行时间、真实公式或历史来源。
+- 显式冻结日历与 registry 预热是读取窗口依据，不能从行情反推缺失 session。输入/源码/证据根分离，准备审计进入内存诊断，由已授权正式输出路径持久化。
+- runner 返回不表示研究通过；结果字段、真实账务和来源必须一致。默认无落盘时 metrics_ref=None，正式裁决只能引用已经写出的 provisional 文件。
+
+- RealFactoryRuntime 的冻结 registry 使用 path/sha256，canonical caller 原格式使用内容 hash；适配须验证各自原始绑定，不能混同文件字节哈希与内容哈希，不能改写旧冻结合同来凑接口。
+
+- Structural producer 的零 Prospective 安全计数使用既有精确路径合同，持久化必须一致且拒绝非零计数及收益字段。手工初始化 Objective 的旧 fixture 不证明正式创建服务可生成执行绑定及 canonical family；完整服务认证必须实际经过目标创建。
+
+- 每日计划与正式runner共用执行范围校验及当日信号/PIT/持仓输入；退出复用PortfolioExitEvaluatorV1。现金、持仓、数据、代码或时点变化产生新预览身份，归档不得覆盖。研究预览和内容哈希不授予策略使用资格，缺数据不能表现为正常零信号。
+
+- Paper工程回放复用引擎逐事件处理与正式回调，恢复必须按同输入/源码重放并核对持久账务/事件哈希，写入失败的内存会话必须重新打开。历史GET只读归档，不触发恢复。既有BUY按成交可用量重设订单量，不能把该FILLED当作支持买入余量重试；SELL部分成交须用实际持仓核验。
+
+- 组合预览的子账户只能从同一真实ledger投影，先验证原始现金/预留，不能用投影覆盖掩盖NaN或过额预留。先收齐所有成员退出再分配买入；成员缺失时保留持仓归属且阻断新增买入。冻结候选数量不是可用策略数量，内容哈希不是组合使用批准。
+
+- 合成工作台通过create_app显式注入，不能从HTTP指定输入根或回退默认真实研究目录。默认只读、GET不恢复；显式操作先检查原ExecutionPolicy、本机请求、确认/上下文，再在既有资源锁内重验。候选Paper账户独立，不能把独立初始资金之和展示为可用组合资产；新工作台不绑定旧页默认Objective来伪装研究状态。
+
+- 备份清单的config入口本身也必须是已验证ZIP成员的根级文件，不能只验证条目路径后按任意config绝对路径读取。解压字节上限必须同时覆盖数据和清单；恢复只写新目录，哈希完整性不授予运行权限。
+
+- Windows venv 的启动器与实际解释器需要共享 Job 总内存，不能误设为仅一个进程。实际 worker 先挂起创建、加入 Job 再恢复；资源握手模块必须保持轻量，不能在限额安装前经 research_factory 包初始化导入数值或领域组件。
+- synthetic 批次的内容身份、父确认、委托执行身份及原 Trial 结算各有职责。撤销后不能为结算重新开放启动检查；只能在独立历史读取范围内调用原失败结算，不能自动重跑已消费的 Trial。
+
+- 合成测试父子进程必须在首次创建前使用同一规范临时根；Windows临时目录可能采用别名，子进程resolve后不能让父进程继续以另一字符串绑定来源。应修夹具根并保存路径诊断，不放宽服务路径或来源校验。
+
+- 即使已验证HTTP标识且shell=False，批次身份也应作为标准输入数据传入固定worker入口；不要让通用进程启动器承载来自HTTP的命令参数。worker数据校验不替代父批准/进程关系/动作核验，不能仅为清Sonar抑制规则或自动标误报。
+
+- 使用资格的不可变确认与可缺失撤销文件不能证明最终状态；新请求须绑定提交头与完整证据序列。缺尾部/缺头或事件与头不一致应阻断，不回退ACTIVE；无见证的旧记录只读，不能自动补头或迁移批准。
+
+- 新颖性协议必须按canonical意图识别，不能因CandidateWork丢失metadata而走旧passed分支；泛型旧启动/恢复入口须拒绝新版意图。只读意图查询与运行协议路由分离，真正旧v1记录保留原语义。
+
+- Paper事件链只能证明现存前缀，不能证明提交尾部未丢；新会话必须独立绑定提交计数与尾哈希，写点不一致阻断，旧无见证历史只读且不静默升级。
+
+- 计划上下文相同不等于内容相同；CURRENT必须核对完整plan_id，源码身份须覆盖实际计划、语义helper和成本/仓位依赖，旧存档只读不回算。
+
+- 审计原字节CRLF JSON夹具与Linux diff空白门禁冲突时，用二进制容器保存原件并逐项hash验证；不要转码回执或放宽空白检查。新增说明文件使用标准文本换行。

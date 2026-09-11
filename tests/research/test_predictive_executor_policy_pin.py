@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from chanlun_trader.research.validation_policy_v2 import load_validation_decision_policy_v2
+from chanlun_trader.research.validation_policy_v2 import default_validation_decision_policy_v2, load_validation_decision_policy_v2, lock_payload
 from chanlun_trader.research_factory.predictive_executor import CanonicalPredictiveExecutorV1
 from chanlun_trader.research_factory.real_runtime import _dataset_hash
 
@@ -13,10 +13,9 @@ def test_objective_only_handoff_contract_uses_preperformance_structural_policy_p
     source = Path("data/research/strategy_validation/validation_decision_policy_v2.json")
     target = tmp_path / source
     target.parent.mkdir(parents=True)
-    target.write_bytes(source.read_bytes())
-    target.with_name("validation_decision_policy_v2.lock.json").write_bytes(
-        source.with_name("validation_decision_policy_v2.lock.json").read_bytes()
-    )
+    initial_policy = default_validation_decision_policy_v2()
+    target.write_text(json.dumps(initial_policy.to_dict()), encoding="utf-8")
+    target.with_suffix(".lock.json").write_text(json.dumps(lock_payload(initial_policy, target)), encoding="utf-8")
     policy, policy_hash = load_validation_decision_policy_v2(target)
     report = tmp_path / "reports/research_daemon/OBJ_1/structural_preflight_reconciliation.json"
     report.parent.mkdir(parents=True)
