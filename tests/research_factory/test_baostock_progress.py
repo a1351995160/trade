@@ -31,3 +31,22 @@ def test_progress_metadata_only_and_revised_quality(tmp_path):
     assert result['settled_seconds'] == 10
     assert result['pending'] == [('fetch-hfq1-1.started.json', 123)]
     assert before == {p.relative_to(tmp_path): p.read_bytes() for p in tmp_path.rglob('*') if p.is_file()}
+
+
+def test_watch_repeats_and_interrupt_only_exits_viewer(monkeypatch, capsys):
+    source = Path(__file__).resolve().parents[2]/'scripts/show_baostock_progress.py'
+    spec = importlib.util.spec_from_file_location('progress_watch', source)
+    viewer = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(viewer)
+    calls = []
+    monkeypatch.setattr(viewer, 'show_once', lambda: calls.append('check'))
+
+    def sleep(seconds):
+        assert seconds == 60
+        if len(calls) == 2:
+            raise KeyboardInterrupt
+
+    monkeypatch.setattr(viewer.time, 'sleep', sleep)
+    viewer.run(watch=True)
+    assert calls == ['check', 'check']
+    assert '未向取数进程发送停止指令' in capsys.readouterr().out

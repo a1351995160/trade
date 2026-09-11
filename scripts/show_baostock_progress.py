@@ -1,10 +1,13 @@
 """只读查看本次固定取数进度；不导入研究执行器，不读取行情正文。"""
+import argparse
 import ctypes
 from ctypes import wintypes
+from datetime import datetime
 import json
 import os
 from pathlib import Path
 import sys
+import time
 
 ROOT = Path('E:/llmwiki/autonomous-strategy-research-v1/execution-data-v1/baostock-account-v1')
 
@@ -78,8 +81,8 @@ def snapshot(root):
                 pending=pending, checked=checked, passed=passed, latest=latest)
 
 
-def main():
-    sys.stdout.reconfigure(encoding='utf-8')
+def show_once():
+    print(f'\n检查时间：{datetime.now().astimezone().isoformat(timespec="seconds")}')
     try:
         result = snapshot(ROOT)
     except ValueError as exc:
@@ -103,6 +106,25 @@ def main():
     print('成功响应不等于输入就绪；文件并发写入时可能暂时少计，请稍后再次查看。')
     print('当前取数程序不会自动启动回测。无自动重试、补额度或执行功能。')
     print(f'证据目录：{ROOT}')
+
+
+def run(watch=False):
+    try:
+        while True:
+            show_once()
+            if not watch:
+                return
+            print('60秒后再次检查；Ctrl+C仅退出查看。', flush=True)
+            time.sleep(60)
+    except KeyboardInterrupt:
+        print('\n已退出进度查看；未向取数进程发送停止指令。')
+
+
+def main():
+    sys.stdout.reconfigure(encoding='utf-8')
+    parser = argparse.ArgumentParser(description='只读查看BaoStock取数进度')
+    parser.add_argument('--watch', action='store_true', help='每轮检查后等待60秒，循环查看')
+    run(parser.parse_args().watch)
 
 
 if __name__ == '__main__':

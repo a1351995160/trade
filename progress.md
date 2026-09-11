@@ -2377,3 +2377,16 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - progress.md：追加本轮记录。
 - 回滚点9189ace9db6e65b939507ac5d0038bd9d58b7631；可git revert本次提交，仅撤销查看脚本和文档，不终止取数、不改外部证据。
 - 当前后台取数入口不会自动启动回测；新账户额度未因本次查看而登记或消费，正式三个标志继续false。
+
+## 2026-09-12 - Task: 为只读进度脚本增加循环检查
+### What was done
+- 按用户要求增加--watch；每轮显示检查时间，检查结束后等待60秒再次读取元数据，Ctrl+C仅结束查看。
+### Testing
+- 进度脚本针对性测试2 passed（0.35秒），覆盖既有只读计数、连续两轮刷新和中断退出；执行及授权探针全部0。
+- CLI --help及git diff --check通过。测试替代等待，不启动长期观察或重新启动取数。
+### Notes
+- scripts/show_baostock_progress.py：增加循环模式、时间戳和查看器中断处理。
+- tests/research_factory/test_baostock_progress.py：增加循环与中断验证。
+- docs/baostock-progress-viewer.md：更新循环查看命令和退出说明。
+- progress.md：追加本轮记录。
+- 回滚点af3b221；可git revert本次提交撤销循环模式，不影响后台取数和外部证据。未改预算或启动实验。

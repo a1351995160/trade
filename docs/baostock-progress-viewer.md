@@ -4,10 +4,10 @@
 
 ```powershell
 cd E:\llmwiki\bounded-offline-strategy-research-v1
-.\.venv\Scripts\python.exe .\scripts\show_baostock_progress.py
+.\.venv\Scripts\python.exe .\scripts\show_baostock_progress.py --watch
 ```
 
-每次执行查看一次，需要更新时重复运行。脚本只读取当前计划、访问回执、质量和资源元数据，不读取行情正文，不发起网络请求、不启动回测、不修改额度。检查5182个成员可能需要数秒。
+每轮显示检查时间和进度，检查结束后等待60秒再刷新，保留先前输出便于对比。按Ctrl+C退出查看，不会停止取数。去掉`--watch`则只查看一次。脚本只读取当前计划、访问回执、质量和资源元数据，不读取行情正文，不发起网络请求、不启动回测、不修改额度。检查5182个成员可能需要数秒。
 
 “双价格响应成功”表示原始价格和后复权价格的接口响应均成功，不等于全部质量检查通过。质量计数优先使用既有修订报告，原失败不删除。“已结算耗时”不含正在运行但尚未结算的worker，不能当成精确剩余时间。
 
