@@ -1858,3 +1858,22 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 
 - 同轮显式Linux规则检查进一步检出CA-01旧回执CRLF，原失败输出保留linux-whitespace-green.log（文件名不代表通过）。CA-01也改为archive.zip保存原三回执，provenance原来源哈希不变；test_synthetic_usage.py逐项验证后使用；本轮新增.gitattributes全部移除，无空白豁免。
 - legacy-containers.log/xml：2 passed/41 deselected，两种原字节容器兼容均通过；最终空白复核写入新的linux-whitespace-final.log，不覆盖前次失败。
+
+## 2026-09-11 - Task: 有限自主策略研究的真实元数据核验与阻断定位
+### What was done
+- 从实际远端 main fed519bf8cdee61b6fc0c0ee5fe2483bf9a9fa82 建立独立源码分支与输出根；完整读取用户授权附件。
+- 通过原政策 loader 验证真实冻结政策/锁；核对真实 RETURN_5D 定义和两个指定 Parquet schema，确证行情与因子时点证据缺失，未读数据行或绩效。
+- 新增限定元数据诊断与事前边界测试；归档同一任务的事实、最小确认清单和恢复入口。当前 BLOCKED_DATA_OR_POLICY，总目标未完成；未创建 programme/许可/Trial，未修改旧域检查、政策、预算或原输入。
+### Testing
+- 独立 .venv 使用原 requirements-p3b.txt 及递归哈希锁安装；pip check: No broken requirements found。
+- 实际 scripts/inspect_bounded_research_metadata.py 成功；冻结政策/锁真实校验通过，缺失字段如实报告。原始输出：E:/llmwiki/autonomous-strategy-research-v1/metadata-inspection-v1.json。
+- import 前启用 tests/isolation，CHANLUN_TEST_ISOLATION=1，保护原输入根；新增元数据测试与原 test_r1_data_readiness.py 合计 62 passed in 120.77s。network_calls/process_calls/protected_accesses 均 0；59 次治理审批/确认尝试属于原合成测试，不能算真实研究批准。日志：E:/llmwiki/autonomous-strategy-research-v1/metadata-regression.log。
+- git diff --check 通过。此次未改交易/统计/运行路径，不宣称重新认证 Phase3/F01–F04/CA 全套；Windows 历史 OPEN 事件保持。
+- 本轮真实绩效试验 0，验证访问 0；canonical 预算/家族尚未获安全投影，剩余额度 UNKNOWN。源码/配置检查不作为统计验证。
+### Notes
+- scripts/inspect_bounded_research_metadata.py：固定许可文件的元数据诊断，复用原政策验证，不读数据行或生成许可。
+- tests/research_factory/test_bounded_research_metadata.py：验证缺证据拒绝就绪、封存行不返回、政策篡改与路径逃逸拒绝。
+- docs/BOUNDED_OFFLINE_RESEARCH_V1.md：绑定已核验事实、来源/政策缺口与最小确认清单，记录同一任务恢复步骤。
+- progress.md：仅追加本轮记录。
+- 外部新目录 E:/llmwiki/autonomous-strategy-research-v1：保留依赖日志、真实元数据报告、合成回归原件及任务 checkpoint；不上传。
+- 回滚：git revert 本轮提交（提交说明为“feat(research): add bounded real metadata preflight”）；基线回滚点 fed519bf8cdee61b6fc0c0ee5fe2483bf9a9fa82。保留外部证据，不删除原始记录，不以回滚恢复授权。
