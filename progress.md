@@ -1996,3 +1996,23 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - docs/REVISED_RESEARCH_DECISION_PROPOSAL_V1.md：新增单一待批研究修订决定及其必要条件，不作为执行授权。
 - progress.md：追加本轮文档交付记录。
 - 回滚：git revert本轮文档提交；研究代码恢复点仍为8cc3ac0ba79158263995c6f5e14418f8b023cd59。保留旧证据与失败记录。
+
+## 2026-09-11 - Task: 明确批准的两协议探索入口与增量治理
+### What was done
+- 从e1fa914ee7f05a3cc2cce6797738ba7c50ee181b承接，保留8cc3ac0ba79158263995c6f5e14418f8b023cd59代码恢复点；完整读取新批准和原提案。
+- 实现固定TRAIN输入、四合同、用途增量预算、明确计划级批准回执、日历计算、资源worker及评估/设计盲化输出；未改正式交易入口或旧预算。
+- 本提交冻结待执行源码；紧接实际执行已批准探索，无额外审批步骤。此时真实曝光尚为0。
+### Testing
+- 新合成边界、原预算登记、新颖性及OS资源测试70 passed in 28.42s；网络/进程/保护根隔离探针均0，原合成治理测试2次批准/确认探针为既有测试预期。
+- 首轮33通过/1失败是测试整数列不能写入inf；改为显式浮点合成列后通过，没有真实结果反馈或重算。
+- 核对成员集合、五字段映射、日历缺口、t-20方向、末端、空组、零分母、撤销/到期、预算4+2、重复和失败结算。原Windows内存及超时强制终止测试通过，未扩skip/timeout/隔离白名单。
+- 最终测试日志位于E:/llmwiki/autonomous-strategy-research-v1/exploration-engineering-tests-v1/final-tests.log；原62项、V3/V4及历史取证证据不覆盖。
+### Notes
+- src/chanlun_trader/research_factory/budget.py：原注册器新增用途增量预留，不修改旧方法。
+- src/chanlun_trader/research_factory/exploration_governance.py：计划确认、增量引用、执行事件、结算和盲化摘要。
+- src/chanlun_trader/research_factory/exploration_relation.py：两个固定原始价格关系和日历placebo。
+- scripts/run_bounded_exploration.py：封闭真实入口、冻结、受限资源执行及归档。
+- tests/research_factory/test_bounded_exploration.py：30项合成边界测试。
+- docs/BOUNDED_EXPLORATION_EXECUTION_V1.md：新入口使用、权限及结果语义。
+- progress.md：追加本轮工程记录。
+- 回滚：git revert本轮工程提交；恢复点e1fa914ee7f05a3cc2cce6797738ba7c50ee181b。外部批准、失败和消费证据不得删除，回滚不返还额度。
