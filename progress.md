@@ -2240,3 +2240,19 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - progress.md：追加本轮真实完成与测试记录。
 - 仓库外degraded-account-v2：增加修复red/green/proof、原服务修复执行证据、FINAL_REPORT.md、FINAL_SUMMARY.json、RESULT_ACCESS.json、RESULTS_INDEX.json及七份原字段拆分文件；不修改原结果、旧失败或旧计划。
 - 回滚点58f9f5334d483351390ee7090a6a79a4f512ff1f；可git revert本轮文档提交，不得回滚已消费曝光、删除失败/原结果或再次执行账户。严格输入和三个正式就绪/完成标志仍false，Windows OPEN仍保留。未merge、push、启用V4或访问Validation/Final Test。
+
+## 2026-09-11 - Task: 公司行动回看期与历史股票池证据定点验证
+### What was done
+- 按当前用户要求定位可取得数据，并先冻结诊断规则/精确输入哈希，再复用已有事件、排名/成交身份及历史状态列进行无收益分析。
+- 1440条原排名中546条回看期跨category=1事件，277个已有买入中65个重叠；不据此归因亏损、不改RAW合同。取得605398公司半年报并核实真实分红转增日期/比例。
+- 历史表88012条UNKNOWN全部属于生命周期外，有效上市期UNKNOWN为0；146缺源中122只曾可入选、74只有退市期记录。取得000004原始ST/停牌公告，三日状态切换与既有表一致。不将单个样本提升为全量独立证明。
+- 交付必要性/来源/验证报告及机器诊断、两份原始公告与哈希索引。无购买、行情下载、TQ查询、OWNER重导、生产代码/预算/策略改动或新回测。
+### Testing
+- 原输入/结果MANIFEST及索引哈希核验，状态Parquet日期范围预检；独立日历(t-5,t]边界手算断言通过。
+- 1440/546/65从完整明细重对、UNKNOWN分解等式、000004三日ST状态断言与11个交付文件哈希通过。PDF原件分别第1页、第30页条款提取成功。
+- 未运行CI或引擎测试；本轮没有生产代码修改。实际新增账户曝光0，原主1/修复1不变。公告下载为实际新增信息访问，失败来源记录保留。
+### Notes
+- docs/existing-evidence-necessity-verification-v1.md：新增两问题的实际验证、可取得来源、最小解决路径和未成立条件。
+- progress.md：追加本轮日志。
+- 仓库外execution-data-v1/evidence-necessity-v1：保存事前规则、CA/状态诊断、来源取得记录、PDF、验证与最终REPORT/RESULTS_INDEX。
+- 回滚点d03650e8c5d7bde8c43f3e24dd3a09918d365c27；仅移除本轮新增报告并revert本轮文档提交可回滚展示，不删除旧结果或已发生的访问记录。严格输入/三个正式标志及Windows OPEN保持。
