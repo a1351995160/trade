@@ -2299,3 +2299,18 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - progress.md：追加实际取证记录。
 - 仓库外alternate-source-coverage-v1：冻结计划、122份原响应、读账/进度/覆盖/差异/条款证据，原输入不覆盖。
 - 回滚点cd2cc7da77d9fabb1a9ecd472c1a94d045e5ec5a；git revert本轮文档提交，保留数据访问历史，不复位预算。旧三标志false及Windows OPEN保持。
+
+## 2026-09-12 - Task: 公司行动10个额外日期定点核验及按用户指示停止全量补证
+### What was done
+- 10个额外因子行完成限定解释：5个上市基准、5个真实事件下一session的相同前后复权累计状态；不推断提供者内部成因，不删除原行。
+- 取得五份对应实施公告、五项上市元数据及上市资料交叉证据；区分公告条款与引擎固定净税/零碎股/到账时点支持。
+- 打通巨潮公告接口后开始固定64证券取证；用户随后要求不再追求个人研究的全量公司行动精度，已终止专用获取进程。55份公告完成，1份在确认前中断，未自动续传。
+### Testing
+- 原EXTRA_ACTION_DATES/ACTION_DATE_RESPONSES/ACTION_DISCREPANCY_TERMS与原索引哈希一致；独立CALENDAR与冻结MANIFEST哈希一致。
+- verify_dates.py实际通过10项分类断言，五个IPO元数据日期一致，五组前后复权因子Decimal精确相等，上一交易session存在真实事件条款和公告PDF。
+- 停止后55份已确认PDF逐份SHA256匹配；中断项300926.SZ/1219740583明确保留。未执行行情读取、策略、CI或绩效计算，生产代码及预算未改。
+### Notes
+- docs/corporate-action-date-resolution-v1.md：日期解释、条款支持边界、接口获取和用户停止结论。
+- progress.md：追加本轮实际记录。
+- 仓库外corporate-action-resolution-v1：定点获取脚本/回执、原件、日期核验及用户停止证据；不是生产适配或已批准的新执行合同。
+- 回滚点bb22973a6d84b76dce7c99e01e82fb6dd15b6063；可git revert本轮文档提交，不删除已发生数据访问/失败/消费证据。三个正式标志false，Windows OPEN保持；不merge/push。
