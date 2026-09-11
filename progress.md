@@ -2314,3 +2314,25 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - progress.md：追加本轮实际记录。
 - 仓库外corporate-action-resolution-v1：定点获取脚本/回执、原件、日期核验及用户停止证据；不是生产适配或已批准的新执行合同。
 - 回滚点bb22973a6d84b76dce7c99e01e82fb6dd15b6063；可git revert本轮文档提交，不删除已发生数据访问/失败/消费证据。三个正式标志false，Windows OPEN保持；不merge/push。
+
+## 2026-09-12 - Task: BaoStock双价格账户适配与具体执行确认包
+### What was done
+- 完成后复权信号与RAW成交价格分离，复用原账户引擎、退出、费用、公司行动hazard和权威增量预算组件；旧合同身份不能用于新入口。
+- 核对官方涨跌幅复权算法，将新信号明确为价格变化指标而非分红再投入总回报，保留回溯版本与模型时间限制。
+- 形成固定候选、完整历史池双价格输入、主1/确证修复1建议及原期限的具体待批包；未取得新真实价格行、未计算真实信号、未执行回测或登记额度。
+### Testing
+- CHANLUN_TEST_ISOLATION=1下，双价格、新治理、旧执行与事件提案四个针对性测试文件共29 passed（1.29秒）；禁用预测/结构/AI及确认探针均0，git diff --check通过。
+- 首次未设置测试隔离变量产生5项权限拒绝，未放宽保护；设置既有测试隔离后通过，原失败如实保留在确认包。
+- 权威预算只读前后SHA256均ded49a08f56bf422808a99876ce2d5779c962744401f1022889f7874fcea13b1，旧主1/修复1已使用；新授予和新使用均0。
+### Notes
+- src/chanlun_trader/research_factory/baostock_price_views_v1.py：双价格、独立日历、可见时间与缺失适配。
+- src/chanlun_trader/research_factory/baostock_account_v1.py：新版本合同及原始价格账户入口。
+- src/chanlun_trader/research_factory/baostock_governance_v1.py：同Objective原预算内的用途增量接口与真实前检要求。
+- src/chanlun_trader/research_factory/degraded_execution_v2.py：提取最小合同参数化复用点，旧入口默认不变。
+- src/chanlun_trader/research_factory/degraded_governance_v1.py：允许子版本合同与用途绑定，原授权保护保留。
+- tests/research_factory/test_baostock_price_views_v1.py：价格分离、时间、边界及账户合成验证。
+- tests/research_factory/test_baostock_governance_v1.py：新颖性、输入、撤销、幂等与同预算验证。
+- docs/baostock-account-confirmation-v2.md：一次具体计划确认范围、额度、期限和未就绪输入。
+- progress.md：追加本轮记录。
+- 仓库外execution-data-v1/baostock-account-preparation-v2/CONFIRMATION_PACKAGE.json：机器可读合同、代码证据绑定及实际验证，SHA256为4a2aafeb7f07811ae7cac1ec7ce7413f055c4ec06bfe2f43e44b1e8fb8aed448。
+- 回滚点b08f0c4964872dd189cf649b39a7e22323468afd；可git revert本轮提交回滚代码与文档，保留外部访问及历史证据。完整真实输入、真实新颖性和可行性仍待实际执行，不能将合成通过标记为输入就绪。正式标志false、Windows OPEN保留，不merge/push。

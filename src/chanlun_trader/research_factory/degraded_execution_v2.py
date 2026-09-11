@@ -152,13 +152,17 @@ class DegradedAccountEngineV2(CorporateActionBacktestEngineV1):
 
 
 def run_degraded_account(bundle, source_identity, active_check=None):
+    return _run_account(bundle, source_identity, active_check, CONTRACT)
+
+
+def _run_account(bundle, source_identity, active_check, contract):
     synthetic = os.environ.get('CHANLUN_TEST_ISOLATION')=='1' and source_identity[0].startswith('SYNTHETIC')
     if active_check is None and not synthetic:
         raise PermissionError('GOVERNED_DEGRADED_EXECUTION_REQUIRED')
     active_check = active_check or (lambda: None)
     if not synthetic:
         receipt = active_check()
-        if receipt['plan']['input_identity']!=bundle.input_identity or list(receipt['plan']['contracts'].values())!=[CONTRACT]:
+        if receipt['plan']['input_identity']!=bundle.input_identity or list(receipt['plan']['contracts'].values())!=[contract]:
             raise PermissionError('DEGRADED_RECEIPT_INPUT_OR_CONTRACT_CONFLICT')
     store = MarketDataStore()
     for symbol, rows in bundle.daily.groupby('symbol',sort=True):
@@ -177,7 +181,8 @@ def run_degraded_account(bundle, source_identity, active_check=None):
     engine.sellability_projections=[]
     factor_days={int(d):rows for d,rows in bundle.ready_factors.groupby('timestamp')}
     ranks=[];decisions=[];hazard_checks=[]
-    evaluator=PortfolioExitEvaluatorV1('RETURN_5D_DEGRADED','FIXED_REFERENCE',{'exit_type':'FIXED_HOLD','fixed_holding_sessions':3})
+    strategy_id=contract.get('signal_version','FIXED_REFERENCE')
+    evaluator=PortfolioExitEvaluatorV1(contract.get('signal_version','RETURN_5D_DEGRADED'),strategy_id,{'exit_type':'FIXED_HOLD','fixed_holding_sessions':3})
 
     def signals(view, ts, day):
         if engine.unsupported_lots:
@@ -209,7 +214,7 @@ def run_degraded_account(bundle, source_identity, active_check=None):
             if reason!='OK':
                 engine.entry_rejections.append(record)
                 continue
-            found.append(Signal('FIXED_REFERENCE',f'DEGRADED:{prior}:{row.symbol}',row.symbol,ts,
+            found.append(Signal(strategy_id,f'DEGRADED:{prior}:{row.symbol}',row.symbol,ts,
                 Side.BUY,score=-row.value,execution_policy=ExecutionPolicy.NEXT_SESSION_OPEN,
                 metadata={'source_session':prior,'rank':rank,'availability':'MODELED_NEXT_SESSION_OPEN'}))
         return found
@@ -258,8 +263,8 @@ def run_degraded_account(bundle, source_identity, active_check=None):
         'maximum_single_symbol_equity_weight':max((p['market_value']/h['equity'] for h in engine.account_history
             if h['equity']>0 for p in h['marked_positions']),default=0),
         'unique_bought_symbols':len({f['symbol'] for f in fills if f['side']==Side.BUY})}
-    return {'type':CONTRACT['result_type'],'status':'PARTIAL_UNSUPPORTED_EVENT' if partial else 'COMPLETE',
-        'contract':CONTRACT,'metrics':metrics,'rankings':ranks,'signals':[asdict(s) for s in result.signals],
+    return {'type':contract['result_type'],'status':'PARTIAL_UNSUPPORTED_EVENT' if partial else 'COMPLETE',
+        'contract':contract,'metrics':metrics,'rankings':ranks,'signals':[asdict(s) for s in result.signals],
         'orders':[asdict(o) for o in result.orders.orders.values()],'fills':fills,
         'trades':[asdict(t) for t in result.trades],'events':result.event_log.to_records(),
         'candidate_rejections':engine.entry_rejections,'capacity_decisions':fill.audit,
