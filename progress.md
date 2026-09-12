@@ -2466,3 +2466,12 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - tests/research_factory/test_baostock_alias.py：映射和冲突回归。
 - docs/baostock-progress-viewer.md：来源成员与执行身份的区别；progress.md追加。
 - 回滚点a7dd23e；可在worker停止后git revert本轮提交，保留外部原件/批准/失败证据。正式三个标志仍false。
+
+## 2026-09-12 - Task: 验证第15批映射修复后恢复真实取数
+### What was done
+- 已从3000起点恢复后续固定成员获取，确认600138.SH的RAW/HFQ均实际返回492行并归档；按用户要求交还循环监控。
+### Testing
+- 两份新响应error_code=0，实际文件SHA256分别与访问回执一致；新worker PID24296启动回执保持900秒/2048MiB/单线程。
+### Notes
+- progress.md：追加恢复后的真实读数证据；外部responses/600138.SH及resources/resume-fetch-3000.started.json由原入口保存。
+- 回滚点5d132c0；可git revert本次日志提交，实际访问和原失败不删除。后台仅取数，不自动启动回测。
