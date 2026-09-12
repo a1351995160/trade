@@ -32,7 +32,7 @@ def save(path,value):
 def code_identity():
     files=[Path(__file__),*sorted((SOURCE/'src/chanlun_trader/engine').glob('*.py')),
         *[SOURCE/'src/chanlun_trader/research_factory'/n for n in ['budget.py','exploration_governance.py',
-            'train_execution_governance_v1.py','train_input_closure_v1.py','train_account_runner_v1.py','novelty.py']],
+            'train_execution_governance_v1.py','train_input_closure_v1.py','train_account_runner_v1.py','novelty.py','evidence_paths.py']],
         SOURCE/'src/chanlun_trader/research/unified_factor.py',SOURCE/'src/chanlun_trader/research/io_safety.py',
         SOURCE/'src/chanlun_trader/research/pit_tradability.py',
         SOURCE/'src/chanlun_trader/data/tdx/windowed_actions_v1.py',SOURCE/'src/chanlun_trader/data/tdx/execution_input.py',

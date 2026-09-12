@@ -1886,3 +1886,13 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - tests/research_factory/test_evidence_paths.py、test_baostock_price_views_v1.py：拒绝边界和明确NaN断言。
 - docs/BOUNDED_RESEARCH_CODE.md、progress.md：公开使用说明及本条记录。
 - 回滚点dab691d；可git revert本次安全修复，不影响本地研究分支或外部证据。
+
+## 2026-09-12 - Task: 保持修复回执身份与源码依赖完整
+### What was done
+- 路径安全检查仅使用局部解析结果，保留原repair载荷及其身份哈希；旧训练入口同时绑定新增路径模块。
+### Testing
+- 目录边界和受限探索治理回归通过，未改变原幂等载荷。
+### Notes
+- src/chanlun_trader/research_factory/exploration_governance.py：分离检查路径和原回执身份。
+- scripts/run_train_account_v1.py：补入源码依赖；progress.md追加。
+- 回滚点3e3d86a；可git revert本提交。

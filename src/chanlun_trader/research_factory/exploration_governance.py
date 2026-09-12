@@ -98,8 +98,8 @@ class ExplorationGovernanceServiceV1:
                 if set(repair)!={'fix_commit','red_evidence','green_evidence','affected_contract'} or repair['affected_contract']!=contract_id:
                     raise PermissionError('CONFIRMED_REPAIR_EVIDENCE_REQUIRED')
                 from .evidence_paths import within_root
-                repair = {**repair, **{k:str(within_root(repair[k],self.root.parent)) for k in ('red_evidence','green_evidence')}}
-                if not all(Path(repair[k]).is_file() for k in ('red_evidence','green_evidence')) or len(repair['fix_commit'])!=40:
+                evidence_files = [within_root(repair[k],self.root.parent) for k in ('red_evidence','green_evidence')]
+                if not all(path.is_file() for path in evidence_files) or len(repair['fix_commit'])!=40:
                     raise PermissionError('CONFIRMED_REPAIR_EVIDENCE_REQUIRED')
                 if not any(e.get('contract_id')==contract_id and e['event']=='EXPOSURE_STARTED' for e in events):
                     raise PermissionError('NO_PRIOR_EXPOSURE_TO_RECOMPUTE')
