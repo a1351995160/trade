@@ -207,7 +207,9 @@ def _run_account(bundle, source_identity, active_check, contract):
             'exception_type':type(exc).__name__,'message':str(exc),'account_checkpoint':engine.ledger.checkpoint(),
             'orders':[asdict(o) for o in engine.order_manager.orders.values()],
             'events':engine.event_log.to_records(),'daily_holdings':engine.account_history}) from exc
-    snapshots=[s for s in result.ledger.snapshots if s.timestamp.hour==15 and s.timestamp.minute==30 and int(s.timestamp.strftime('%Y%m%d'))>=20220801]
+    from .monthly_window_v1 import signal_window
+    window_start,window_end=signal_window(contract)
+    snapshots=[s for s in result.ledger.snapshots if s.timestamp.hour==15 and s.timestamp.minute==30 and window_start<=int(s.timestamp.strftime('%Y%m%d'))<=window_end]
     partial=bool(engine.unsupported_lots)
     fills=result.ledger.executed_fills
     daily_index=bundle.daily.set_index(['symbol','date'])

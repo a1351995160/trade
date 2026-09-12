@@ -49,6 +49,8 @@ class FixedAccountRules:
         if any(contract.get(key) != value for key, value in supported.items()):
             raise ValueError('FIXED_SIGNAL_CONTRACT_UNSUPPORTED')
         self.contract = deepcopy(dict(contract))
+        from .monthly_window_v1 import signal_window
+        self.signal_window = signal_window(self.contract)
         self.strategy_id = str(contract.get('signal_version', 'FIXED_REFERENCE'))
         self.exit_evaluator = PortfolioExitEvaluatorV1(
             str(contract.get('signal_version', 'RETURN_5D_DEGRADED')), self.strategy_id,
@@ -78,7 +80,7 @@ class FixedAccountRules:
         prior = calendar.prev_day(day)
         if unsupported_lots:
             return FixedAccountEntryDecision('NOT_READY', 'ACCOUNTING_UNSUPPORTED_CORPORATE_ACTION', None, [], [])
-        if prior is None or not 20220801 <= prior <= 20240731:
+        if prior is None or not self.signal_window[0] <= prior <= self.signal_window[1]:
             return FixedAccountEntryDecision('NO_SIGNAL', 'OUTSIDE_TRAIN_SIGNAL_WINDOW', None, [], [])
         if rows is None:
             return FixedAccountEntryDecision('NOT_READY', 'FACTOR_SLICE_MISSING', None, [], [])

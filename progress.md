@@ -2696,3 +2696,42 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - scripts/review_monthly_robustness_v1.py：固定只读报告与独立访问记录，输出版本v2；tests/research_factory/test_monthly_robustness_review_v1.py：手算及重复快照red/green。
 - docs/MONTHLY_ROBUSTNESS_AND_INDEPENDENCE_REVIEW_V1.md：实际结论、报告链接、精确封存边界与窗口决定；progress.md追加。私有外部目录monthly-robustness-review-v1/v2保留原件和派生证据。
 - 回滚点a53749c；可git revert本轮本地提交回滚报告代码，结果访问/失败与原绩效不可撤销。新增核验报告和私有日志不推送公开仓库。
+
+## 2026-09-12 - Task: 登记限定外窗释放并完成实际接口与门槛适用性核验
+### What was done
+- 用户“允许”已绑定精确窗口、月末候选、父回执、原方案和实际任务身份；通过原Provider及资源worker取得独立日历和固定样本RAW/HFQ各263条，验证期各242条。真实信息访问已记录，没有计算策略表现。
+- 仅日历证明一年窗口至多11个正常开仓日（更宽松预热边界也至多12日），原20日门槛必然不通过；保留原裁决，不假造数据缺失，不继续必然无法过门槛的全量下载。交付仅针对此外窗的10日、30路径、2证券规则待决定，尚未应用。
+### Testing
+- tests/research_factory/test_monthly_window_release_v1.py：11项通过，0.24秒，覆盖默认封存、范围、身份、撤销、到期及日历理论上限。实际受限探针worker退出0，原查询/响应/访问/资源回执保存在monthly-independent-window-v1。
+- 账户主/修复曝光均0，原预算未修改；默认日期守卫未改，未调整skip、timeout、Windows OPEN或运行整套CI。
+### Notes
+- scripts/acquire_monthly_independent_v1.py：新增限定释放回执、源码冻结、原Provider固定探针与资源/访问归档。
+- scripts/check_monthly_window_capacity_v1.py：新增只读独立日历上限证明，调用原可行性裁决，无真实价格计算。
+- tests/research_factory/test_monthly_window_release_v1.py：新增11项授权及日历规则测试。
+- docs/MONTHLY_WINDOW_EXECUTION_DECISION_V1.md：实际结果、遗漏的门槛冲突及精确最小决定；progress.md仅末尾追加。
+- 回滚点3f034f69bab380391da502d5d64b54f6b012f0e6；可git revert本轮后续提交回滚新增代码，真实访问回执不可删除或回滚。未公开推送研究数据，未merge、Paper或真实订单。
+
+## 2026-09-12 - Task: 落实批准的外窗10日门槛并启动取数到固定账户的顺序流程
+### What was done
+- 本次“批准”登记为WINDOW_GATE_APPROVAL，绑定原窗口释放及精确决定稿；新外窗门槛30路径/10开仓日/2证券，旧TRAIN及默认封存不变。版本化日期、双价格输入、固定账户及原权威增量接线完成，没有修改原交易参数或旧预算。
+- 原BaoStock 0.9.3实际按日获取历史成员，50证券批次取得RAW/HFQ与调整日期；已启动顺序取数进程18740/6760。17:58实际历史成员响应49/263日；行情批次尚未开始，不能声称输入/账户完成。
+- 完整顺序接续已启动：取数成功后输入校验和物化，门槛通过后才由原服务登记并执行1次主账户。原失败、预算、曝光和Windows OPEN保留；无自动修复重跑。三个正式标志false，当前主/修复曝光0。
+- 修正两个实际准备工程问题：整段metadata单worker难以容纳，保存旧源码和FETCH_SOURCE_CHANGED停止回执，改10日批次并按哈希复用；初始等待器提前返回被输入门控拒绝，保存旧管线回执，V2按实际进程存在状态等待。均未到绩效执行，不消耗账户修复额度。
+### Testing
+- 71项相关合成回归通过，7.87秒；包含新窗口完整输入物化到可行性、原账户9月1日开仓/固定session退出/手续费、旧预算不变与重复主执行拒绝，以及原预览、双价格、技术信号回归。
+- 实际源码冻结V2核验通过；等待进程4644与取数18740并存，stderr空且无V2完成回执，证明未再提前进入账户。初版等待具体OS错误未保存，未将推测写成事实。
+- watch_monthly_window_v1.ps1在Windows PowerShell实际-Once通过；初始UTF-8无BOM解析失败仅对本轮新脚本修为UTF-8 BOM。未重跑整套CI、未扩大skip/timeout/隔离。
+### Notes
+- src/chanlun_trader/research_factory/monthly_window_v1.py：完整固定外窗合同、显式日期和新门槛，旧裁决附存。
+- src/chanlun_trader/research_factory/monthly_window_governance_v1.py：原预算组件的独立用途及候选血缘检查。
+- src/chanlun_trader/research_factory/fixed_account_rules.py：仅已识别完整合同允许外窗日期。
+- src/chanlun_trader/research_factory/baostock_price_views_v1.py：可选显式外窗合同，原TRAIN默认不变。
+- src/chanlun_trader/research_factory/degraded_execution_v2.py：账户指标快照按固定合同窗口取值。
+- scripts/fetch_monthly_window_v1.py：实际批准、分批Provider取得、不可覆盖响应与原资源回执。
+- scripts/prepare_monthly_window_v1.py：历史身份/状态/双价格/事件核验、物化、原固定信号及NO-OUTCOME可行性。
+- scripts/execute_monthly_window_v1.py：代码冻结V2、原额度/预留/曝光/结算和用户报告。
+- scripts/continue_monthly_window_v1.ps1：等待已存在取数进程，单次接续；旧失败版本归档到私有证据根。
+- scripts/watch_monthly_window_v1.ps1：只读循环状态，不读取绩效或发起执行。
+- tests/research_factory/test_monthly_window_adapter_v1.py：新增7项外窗、原引擎、预算、未知状态及物化合成测试。
+- docs/MONTHLY_WINDOW_EXECUTION_V1.md：实际执行、修订/失败、查看命令及预定交付与限制；progress.md仅追加。上轮未提交的批准读取脚本、门槛说明及11项测试均保留。
+- 回滚点3f034f69bab380391da502d5d64b54f6b012f0e6；代码可git revert本轮提交，实际授权/访问/消费回执不得回滚。运行中源码已冻结，修改会使后续步骤拒绝；不公开推送研究数据。
