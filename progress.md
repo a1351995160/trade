@@ -1905,3 +1905,12 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 ### Notes
 - scripts/build_owner_execution_package.py、scripts/run_train_account_v1.py、src/chanlun_trader/research_factory/evidence_paths.py、train_execution_governance_v1.py：补齐读取前检查；progress.md追加。
 - 回滚点893f9a6；可git revert本次修复。
+
+## 2026-09-12 - Task: 完整覆盖OWNER日线读取路径
+### What was done
+- OWNER所有初次、预热及恢复读取共用同一目录边界；词法检查使用带目录分隔符的规范化前缀，解析符号链接后继续检查真实归属。
+### Testing
+- 路径穿越、相似前缀拒绝及OWNER回归通过；不扩大许可目录或跳过窗口检查。
+### Notes
+- scripts/build_owner_execution_package.py、src/chanlun_trader/research_factory/evidence_paths.py：完整读取边界；progress.md追加。
+- 回滚点5dbe986；可git revert本次修改。

@@ -5,10 +5,11 @@ import os
 
 def within_root(path, root):
     root = Path(root).resolve()
-    target = Path(os.path.abspath(path))
-    if not target.is_relative_to(root):
+    target_name = os.path.normcase(os.path.abspath(path))
+    root_name = os.path.normcase(str(root))
+    if not target_name.startswith(root_name + os.sep):
         raise PermissionError('EVIDENCE_PATH_OUTSIDE_APPROVED_ROOT')
-    target = target.resolve()
+    target = Path(target_name).resolve()
     if not target.is_relative_to(root):
         raise PermissionError('EVIDENCE_PATH_OUTSIDE_APPROVED_ROOT')
     return target

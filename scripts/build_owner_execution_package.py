@@ -14,6 +14,7 @@ if __name__=='__main__' and '--owner-worker' in sys.argv:
 
 from chanlun_trader.data.tdx.owner_export_v1 import START,END,OWNER,sha,write_json,read_day_window,OwnerDailyProviderV1,compare_sources,parse_gbbq_window
 from chanlun_trader.data.tdx.tq_client import TQClient
+from chanlun_trader.research_factory.evidence_paths import within_root
 
 WORK=Path('E:/llmwiki/owner-execution-export-v1')
 RESEARCH=Path('E:/llmwiki/autonomous-strategy-research-v1/execution-data-v1')
@@ -61,7 +62,6 @@ def main():
     write_json(out/'TQ_HEALTH.json',{'window':request['warmup_dates'],'ready':health_ok})
     comparisons=[]
     for symbol in samples:
-        from chanlun_trader.research_factory.evidence_paths import within_root
         local,identity=read_day_window(within_root(existing[symbol]['path'],TDX/'vipdoc'),sessions);audit.append(identity)
         try:
             if not health_ok:raise ValueError('TQ_SERVICE_NOT_READY')
@@ -92,7 +92,7 @@ def main():
         market=symbol.split('.')[1].lower();path=TDX/'vipdoc'/market/'lday'/(market+symbol[:6]+'.day')
         rows=[]
         if path.is_file():
-            try:rows,identity=read_day_window(path,sessions);audit.append(identity)
+            try:rows,identity=read_day_window(within_root(path,TDX/'vipdoc'),sessions);audit.append(identity)
             except Exception as exc:problems.append(issue(symbol,sessions,'daily','OHLCVA',path,type(exc).__name__))
             if rows:counts['TDX_supplied_count']+=1
         else:
@@ -134,7 +134,7 @@ def main():
                 rows[r['symbol']]=r
         warm_partitions[day]=rows
     for symbol,day in gaps:
-        path=Path(existing[symbol]['path']);local,identity=read_day_window(path,[day]);audit.append(identity)
+        path=within_root(existing[symbol]['path'],TDX/'vipdoc');local,identity=read_day_window(path,[day]);audit.append(identity)
         if local:
             supplement.extend(dict(r,symbol=symbol,source='TDX_LOCAL_OWNER_EXPORT',available_at=None,source_published_at=None) for r in local)
             continue
@@ -203,7 +203,6 @@ def resume_sources():
         'repair':'LOCALHOST_PROXY_ROUTING_AND_NON_TARGET_GBBQ_MARKET_CHECK','sample_and_tolerances_unchanged':True})
     tq=OwnerDailyProviderV1(TQClient(use_cache=False,retries=1,timeout=10));existing=dict(plan['warmup_sources']);comparisons=[]
     for symbol in freeze['samples']:
-        from chanlun_trader.research_factory.evidence_paths import within_root
         local,identity=read_day_window(within_root(existing[symbol]['path'],TDX/'vipdoc'),freeze['sample_dates'])
         old=next(a for a in read(prior/'DAILY_READ_AUDIT.json') if a.get('path')==identity['path'] and a.get('rows')==identity['rows'])
         if old['window_sha256']!=identity['window_sha256']:raise ValueError('FROZEN_SAMPLE_SOURCE_CHANGED')
