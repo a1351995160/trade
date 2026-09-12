@@ -79,6 +79,8 @@ def snapshot(root):
     passed = checked = 0
     for batch in range((len(plan['symbols']) + plan['batch_symbols'] - 1)//plan['batch_symbols']):
         revised = root/'quality-ipo-v1'/f'batch-{batch}.json'
+        if batch == 14 and (root/'quality-alias-v1/batch-14.json').exists():
+            revised = root/'quality-alias-v1/batch-14.json'
         item = read(revised if revised.exists() else root/'quality'/f'batch-{batch}.json')
         if item is not None:
             checked += 1

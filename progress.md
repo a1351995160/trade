@@ -2446,3 +2446,23 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - progress.md：追加记录。
 - 外部BATCH14_SECURITY_IDENTITY_TRIAGE_V1.json：定点读取身份、哈希、比较结果、用途及公开身份依据。
 - 回滚点f048675；可git revert本次文档提交，实际读取与原失败记录不可删除。正式标志仍false。
+
+## 2026-09-12 - Task: 执行已批准的单对证券身份映射并准备恢复取数
+### What was done
+- 保留5182来源成员和原失败，将302132.SZ仅在TRAIN执行身份层映射为300114.SZ，规范化后5181个身份；复用旧代码已通过质量检查的RAW/HFQ。
+- 精确核对486条历史状态一致，源文件SHA256绑定于独立批准映射；第15批生成新版本质量报告，原HFQ失败不改写。
+- 信号、行情、状态和hazard输入统一身份，合并保留两代码风险记录，防止重复排名和持仓。恢复只接受该精确失败回执与映射证据，不扩大错误白名单。
+- 账户入口承接已批准资源修订并把映射代码纳入代码冻结；当前不调用账户执行。
+### Testing
+- 10项针对性测试通过：单对去重、其他成员不变、hazard条目保留、状态冲突拒绝及既有恢复/准备/进度回归。
+- 真实独立映射worker退出0、未超时、耗时3.2279375秒记入原资源目录，生成SECURITY_ALIAS_V1及quality-alias-v1/batch-14.json。实际486条状态完全一致。
+- git diff --check通过，未重试任何行情接口、未计算信号或收益。
+### Notes
+- scripts/baostock_alias_v1.py：单对映射证据、状态验证、唯一执行成员及风险事件合并。
+- scripts/run_baostock_account_v1.py：新质量版本与精确失败对账恢复。
+- scripts/prepare_baostock_account_v1.py：实际账户输入统一身份及身份哈希绑定。
+- scripts/execute_baostock_account_v1.py：代码冻结和资源修订接线。
+- scripts/show_baostock_progress.py：识别新质量版本。
+- tests/research_factory/test_baostock_alias.py：映射和冲突回归。
+- docs/baostock-progress-viewer.md：来源成员与执行身份的区别；progress.md追加。
+- 回滚点a7dd23e；可在worker停止后git revert本轮提交，保留外部原件/批准/失败证据。正式三个标志仍false。

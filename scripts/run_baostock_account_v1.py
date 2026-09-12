@@ -32,6 +32,13 @@ def save(path, value):
 
 
 def quality_path(batch):
+    alias = ROOT/'quality-alias-v1'/f'batch-{batch}.json'
+    if batch == 14 and alias.exists():
+        from baostock_alias_v1 import evidence
+        item = evidence(ROOT)
+        if not item or read(alias)['alias_identity'] != item['identity']:
+            raise PermissionError('ALIAS_QUALITY_IDENTITY_CHANGED')
+        return alias
     revised = ROOT/'quality-ipo-v1'/f'batch-{batch}.json'
     return revised if revised.exists() else ROOT/'quality'/f'batch-{batch}.json'
 
@@ -319,7 +326,11 @@ def resume_acquire():
         started_path = ROOT/'resources'/f'{label}.started.json'
         if receipt.exists():
             if read(receipt)['returncode'] != 0:
-                raise PermissionError('RESUME_FAILED_NO_AUTOMATIC_RETRY')
+                from baostock_alias_v1 import evidence
+                item = evidence(ROOT) if start_index == 2950 else None
+                if (not item or item['files'].get(str(receipt)) != sha(receipt)
+                        or not read(quality_path(14))['passed']):
+                    raise PermissionError('RESUME_FAILED_NO_AUTOMATIC_RETRY')
             continue
         if started_path.exists():
             raise PermissionError('UNSETTLED_RESUME_WORKER_REQUIRES_RECONCILIATION')

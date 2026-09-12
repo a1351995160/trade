@@ -18,12 +18,19 @@ def prepare():
     from chanlun_trader.research_factory.degraded_input_v2 import check_feasibility
     active()
     plan = read(ROOT/'READ_PLAN.json')
+    from baostock_alias_v1 import evidence, execution_symbols, verify_states
+    alias = evidence(ROOT)
+    symbols = execution_symbols(plan['symbols'],alias)
     decision = read(ROOT/'NOVELTY.json')['decision']
     if not decision['allowed']:
         raise PermissionError('NOVELTY_REJECTED')
     for batch in range((len(plan['symbols'])+199)//200):
         revised = ROOT/'quality-ipo-v1'/f'batch-{batch}.json'
         quality = revised if revised.exists() else ROOT/'quality'/f'batch-{batch}.json'
+        if batch == 14 and alias:
+            quality = ROOT/'quality-alias-v1/batch-14.json'
+            if read(quality)['alias_identity'] != alias['identity']:
+                raise PermissionError('ALIAS_QUALITY_IDENTITY_CHANGED')
         if not read(quality)['passed']:
             raise PermissionError('INPUT_QUALITY_NOT_READY')
     for path, expected in plan['files'].items():
@@ -35,6 +42,9 @@ def prepare():
         columns=['symbol','trade_date','listed','delisted','universe_member','eligibility_status',
                  'st_status','suspension_status','board'], use_threads=False).to_pandas(use_threads=False)
     states['trade_date'] = states.trade_date.astype(str).str.replace('-','').astype(int)
+    if alias:
+        verify_states(states)
+        states = states.loc[states.symbol != '302132.SZ'].copy()
     for key in ['symbol','eligibility_status','st_status','suspension_status','board']:
         states[key] = states[key].astype('category')
     state_groups = states.groupby('symbol',observed=True).indices
@@ -43,7 +53,7 @@ def prepare():
         'reader_pid':os.getpid(),'recipient':'EVALUATION_SIDE_ONLY','contract':CONTRACT,
         'novelty_sha256':sha(ROOT/'NOVELTY.json'),'real_signal_information_access':True,
         'no_pnl_or_future_return':True})
-    for symbol in plan['symbols']:
+    for symbol in symbols:
         active()
         pair = []
         for flag in ['3','1']:
@@ -83,7 +93,7 @@ def prepare():
             frame[key] = frame[key].astype('category')
     rule_hash = sha(ROOT/'HFQ_IPO_PREFIX_RULE_V1.json')
     identity = stable_hash({'inputs':inputs,'historical':plan['files'],'contract':CONTRACT,
-        'hfq_identity_rule':rule_hash,
+        'hfq_identity_rule':rule_hash,'security_alias_identity':alias['identity'] if alias else None,
         'hazard_identity':'f2bc6064f9ab495fc854efdc6a4942dd4a87dc7be263de6e13da9be65e8a1927'})
     for name, frame in [('DAILY.parquet',daily),('FEATURES.parquet',factors),('STATES.parquet',states)]:
         path = ROOT/name
@@ -92,6 +102,7 @@ def prepare():
         frame.to_parquet(path,index=False)
     save(ROOT/'INPUT_MANIFEST.json', {'input_identity':identity,'contract_identity':stable_hash(CONTRACT),
         'inputs':inputs,'historical':plan['files'],'coverage':coverage,'hfq_identity_rule':rule_hash,
+        'security_alias_identity':alias['identity'] if alias else None,'execution_symbols':symbols,
         'files':{name:sha(ROOT/name) for name in ['DAILY.parquet','FEATURES.parquet','STATES.parquet']}})
     bundle = load_bundle()
     paths = []
@@ -140,7 +151,12 @@ def load_bundle():
             hazards.setdefault(row['symbol'],[]).append(int(row['datetime']))
     if sum(map(len,hazards.values())) != 29990:
         raise ValueError('HAZARD_COUNT_CHANGED')
-    symbols = read(ROOT/'READ_PLAN.json')['symbols']
+    from baostock_alias_v1 import evidence, execution_symbols, canonical_hazards
+    alias = evidence(ROOT)
+    if manifest.get('security_alias_identity') != (alias['identity'] if alias else None):
+        raise ValueError('ALIAS_MANIFEST_IDENTITY_CHANGED')
+    hazards = canonical_hazards(hazards,alias)
+    symbols = execution_symbols(read(ROOT/'READ_PLAN.json')['symbols'],alias)
     actions = WindowedCorporateActionDatasetV1('DEGRADED_HAZARD_GUARDED_NO_EVENT_ACCOUNTING',
         'WindowedCorporateActionDatasetV1',20220722,20240731,(),sha(hazard_path),tuple(symbols),
         'LOCAL_HAZARDS_NOT_COMPLETE_ACTION_ACCOUNTING')

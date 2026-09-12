@@ -18,7 +18,7 @@ def code_identity():
         'degraded_governance_v1.py','train_execution_governance_v1.py','exploration_governance.py',
         'budget.py','novelty.py','degraded_train_v1.py','train_account_runner_v1.py']]
     files += [SOURCE/'scripts'/n for n in ['run_baostock_account_v1.py',
-        'prepare_baostock_account_v1.py','execute_baostock_account_v1.py']]
+        'prepare_baostock_account_v1.py','execute_baostock_account_v1.py','baostock_alias_v1.py']]
     files += [SOURCE/'src/chanlun_trader/synthetic_batch_resources.py']
     return {str(p.relative_to(SOURCE)):sha(p) for p in files}
 
@@ -28,11 +28,16 @@ def resource_used():
     return sum(read(p).get('elapsed_seconds',0) for p in (ROOT/'resources').glob('*.json'))
 
 
+def total_resource_limit():
+    from run_baostock_account_v1 import resume_revision
+    return resume_revision()['total_seconds'] if (ROOT/'ACQUISITION_RESUME_V1.json').exists() else 5400
+
+
 def bounded(script, label, execution, arguments=(), maximum=900):
     from datetime import datetime, timezone
     from chanlun_trader.synthetic_batch_resources import run_bounded_worker
     _,expiry = active()
-    limit = min(maximum,5400-resource_used(),(expiry-datetime.now(timezone.utc)).total_seconds())
+    limit = min(maximum,total_resource_limit()-resource_used(),(expiry-datetime.now(timezone.utc)).total_seconds())
     if limit <= 0:
         raise PermissionError('TOTAL_PLAN_RESOURCE_LIMIT_REACHED')
     env = {**os.environ,'PYTHONPATH':str(SOURCE/'src'),'PYTHONIOENCODING':'utf-8',
@@ -94,7 +99,11 @@ def execute():
     approved = read(BASE/'baostock-account-preparation-v2/CONFIRMATION_PACKAGE.json')
     if approved['contract'] != CONTRACT:
         raise PermissionError('APPROVED_FIXED_CONTRACT_CHANGED')
-    acquire()
+    if (ROOT/'ACQUISITION_RESUME_V1.json').exists():
+        from run_baostock_account_v1 import resume_acquire
+        resume_acquire()
+    else:
+        acquire()
     parent,expiry = active()
     save(ROOT/'CODE_FREEZE.json',{'code':code_identity(),'contract':CONTRACT})
     if not (ROOT/'INPUT_READY.json').exists():
@@ -106,7 +115,7 @@ def execute():
     if not ready['feasibility_passed']:
         raise PermissionError('FEASIBILITY_NOT_PASSED_NO_ACCOUNT_EXPOSURE')
     # 没有足够的剩余资源时，不创建一个无法启动的执行预留。
-    if resource_used() >= 5400:
+    if resource_used() >= total_resource_limit():
         raise PermissionError('TOTAL_PLAN_RESOURCE_LIMIT_REACHED')
     plan = {'contracts':{stable_hash(CONTRACT):CONTRACT},'limit':2,'wall_limit':1800,
         'result_type':CONTRACT['result_type'],'input_identity':ready['input_identity'],
