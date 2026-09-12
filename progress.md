@@ -1858,3 +1858,17 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 
 - 同轮显式Linux规则检查进一步检出CA-01旧回执CRLF，原失败输出保留linux-whitespace-green.log（文件名不代表通过）。CA-01也改为archive.zip保存原三回执，provenance原来源哈希不变；test_synthetic_usage.py逐项验证后使用；本轮新增.gitattributes全部移除，无空白豁免。
 - legacy-containers.log/xml：2 passed/41 deselected，两种原字节容器兼容均通过；最终空白复核写入新的linux-whitespace-final.log，不覆盖前次失败。
+
+## 2026-09-12 - Task: 发布受限研究及固定账户代码
+### What was done
+- 在main基线上建立代码发布分支，仅移入研究适配、受限执行、共享固定账户规则、只读预览及合成测试。
+- 本地研究历史、真实数据、绩效、批准及消费回执保留在原工作区，不纳入公开Git历史。
+### Testing
+- 全部77个移入代码/测试文件与原已提交Git blob逐字节一致。
+- 新增及修改测试201 passed in 12.72s；隔离模式，NTFS临时目录；禁止执行和授权探针全部0。git diff --check通过。
+### Notes
+- scripts/：受限数据准备、证据核验、执行及进度工具。
+- src/chanlun_trader/data/tdx/、engine/、research/、research_factory/：数据适配、原账户/治理接线及共享规则。
+- tests/research/、tests/research_factory/：对应合成回归。
+- docs/BOUNDED_RESEARCH_CODE.md：公开使用范围和权限约束；progress.md追加本条发布记录。
+- 回滚点fed519b；可git revert本次发布提交，不能以代码回滚删除或重置本机实际研究回执。Windows OPEN保留。
