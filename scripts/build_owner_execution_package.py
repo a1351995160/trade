@@ -61,7 +61,8 @@ def main():
     write_json(out/'TQ_HEALTH.json',{'window':request['warmup_dates'],'ready':health_ok})
     comparisons=[]
     for symbol in samples:
-        local,identity=read_day_window(existing[symbol]['path'],sessions);audit.append(identity)
+        from chanlun_trader.research_factory.evidence_paths import within_root
+        local,identity=read_day_window(within_root(existing[symbol]['path'],TDX/'vipdoc'),sessions);audit.append(identity)
         try:
             if not health_ok:raise ValueError('TQ_SERVICE_NOT_READY')
             remote=tq.get_daily(symbol)

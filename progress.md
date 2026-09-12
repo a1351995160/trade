@@ -1896,3 +1896,12 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - src/chanlun_trader/research_factory/exploration_governance.py：分离检查路径和原回执身份。
 - scripts/run_train_account_v1.py：补入源码依赖；progress.md追加。
 - 回滚点3e3d86a；可git revert本提交。
+
+## 2026-09-12 - Task: 补齐首次来源与派生证明的路径检查
+### What was done
+- 在任何解析符号链接的文件系统操作前先作词法目录检查，然后再校验解析结果；补齐初次OWNER来源、因子registry及训练修复红绿证明读取边界。
+### Testing
+- 路径、探索治理、训练增量和OWNER回归通过，保留全部原断言。
+### Notes
+- scripts/build_owner_execution_package.py、scripts/run_train_account_v1.py、src/chanlun_trader/research_factory/evidence_paths.py、train_execution_governance_v1.py：补齐读取前检查；progress.md追加。
+- 回滚点893f9a6；可git revert本次修复。

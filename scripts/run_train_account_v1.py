@@ -121,8 +121,10 @@ def prepare_input():
     master=bounded_frame(files['security_master'],'effective_date')
     if not members<=set(master.symbol) or master[['listed','delisted','source']].isna().any().any():
         raise ValueError('SECURITY_MASTER_COVERAGE_UNKNOWN')
-    definition=UnifiedFactorRegistry.read(Path(plan['factor_registry'])).get('RETURN_5D')
-    if sha(plan['factor_registry'])!=read(BASE/'FACTOR_BINDING.json')['registry_sha256']:
+    from chanlun_trader.research_factory.evidence_paths import within_root
+    registry_path=within_root(plan['factor_registry'],SOURCE.parent)
+    definition=UnifiedFactorRegistry.read(registry_path).get('RETURN_5D')
+    if sha(registry_path)!=read(BASE/'FACTOR_BINDING.json')['registry_sha256']:
         raise ValueError('ORIGINAL_FACTOR_REGISTRY_CHANGED')
     calendar=read(BASE/'CALENDAR.json')['sessions']
     source_id=stable_hash({'base':sha(BASE/'MANIFEST.json'),'owner':sha(OWNER),'code':code_identity()})

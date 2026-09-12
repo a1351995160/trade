@@ -66,7 +66,9 @@ class TrainExecutionGovernanceV1(ExplorationGovernanceServiceV1):
 
     def reserve(self,contract_id,repair=None):
         if repair:
-            red=read_json(repair['red_evidence']);green=read_json(repair['green_evidence'])
+            from .evidence_paths import within_root
+            red=read_json(within_root(repair['red_evidence'],self.root.parent))
+            green=read_json(within_root(repair['green_evidence'],self.root.parent))
             if (red.get('status')!='FAIL' or green.get('status')!='PASS' or not red.get('case_id')
                     or red['case_id']!=green.get('case_id') or red.get('affected_contract')!=contract_id
                     or green.get('fix_commit')!=repair['fix_commit']):
