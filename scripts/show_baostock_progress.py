@@ -45,8 +45,13 @@ def snapshot(root):
     if not plan or not isinstance(plan.get('symbols'), list):
         raise ValueError('读取清单缺失或暂不可解析，不能把总量当作0。')
     complete = partial = errors = 0
+    revision_path = root/'ACQUISITION_RESUME_V1.json'
+    revision = read(revision_path)
+    if revision_path.exists() and revision is None:
+        raise ValueError('恢复修订暂不可解析，请稍后重查。')
     for symbol in plan['symbols']:
-        receipts = [read(root/'responses'/symbol/f'{flag}.access.json') for flag in ('3', '1')]
+        receipts = [read(root/'responses'/symbol/('attempt-2' if revision and symbol == '002853.SZ'
+                    and flag == '1' else '')/f'{flag}.access.json') for flag in ('3', '1')]
         successes = sum(r is not None and str(r.get('error_code')) == '0' for r in receipts)
         complete += successes == 2
         partial += successes == 1
@@ -65,8 +70,10 @@ def snapshot(root):
         item = read(path)
         if item:
             settled_seconds += item.get('elapsed_seconds', 0)
-            if path.name.startswith('fetch-hfq1-'):
+            if path.name.startswith(('fetch-hfq1-', 'resume-fetch-')):
                 number = int(path.stem.rsplit('-', 1)[1])
+                if path.name.startswith('resume-fetch-'):
+                    number += 10000
                 if latest is None or number > latest[0]:
                     latest = (number, item)
     passed = checked = 0
@@ -77,7 +84,7 @@ def snapshot(root):
             checked += 1
             passed += item.get('passed') is True
     return dict(total=len(plan['symbols']), complete=complete, partial=partial, errors=errors,
-                settled_seconds=settled_seconds, limit=plan['total_seconds'],
+                settled_seconds=settled_seconds, limit=revision['total_seconds'] if revision else plan['total_seconds'],
                 pending=pending, checked=checked, passed=passed, latest=latest)
 
 
@@ -99,7 +106,8 @@ def show_once():
         print('没有未结算worker；这不代表全部完成，请结合数量与最后回执。')
     if result['latest']:
         batch, item = result['latest']
-        print(f"最近取数回执：批次{batch}，退出码={item.get('returncode', '未知')}")
+        label = f'恢复分片起点{batch-10000}' if batch >= 10000 else f'批次{batch}'
+        print(f"最近取数回执：{label}，退出码={item.get('returncode', '未知')}，超时={item.get('timed_out', '未知')}")
         if item.get('returncode') != 0:
             print('该回执错误（可能已有后续质量修订，保留原失败）：')
             print(str(item.get('stderr', '未保存stderr'))[-1800:])

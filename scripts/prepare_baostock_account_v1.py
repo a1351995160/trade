@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 from types import SimpleNamespace
 
-from run_baostock_account_v1 import ROOT, BASE, active, read, sha, save
+from run_baostock_account_v1 import ROOT, BASE, active, read, sha, save, response_directory
 
 
 def prepare():
@@ -47,7 +47,7 @@ def prepare():
         active()
         pair = []
         for flag in ['3','1']:
-            path = ROOT/'responses'/symbol/(flag+'.json')
+            path = response_directory(symbol, flag, ROOT)/(flag+'.json')
             expected = read(path.with_name(flag+'.access.json'))['sha256']
             if sha(path) != expected:
                 raise ValueError('PRICE_RESPONSE_CHANGED')

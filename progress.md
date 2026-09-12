@@ -2402,3 +2402,20 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - docs/baostock-acquisition-resume-decision-v1.md：事实、推荐修订与执行前条件。
 - progress.md：追加本轮记录。
 - 回滚点545d03e；可git revert本次文档提交，外部数据和原失败不变。未恢复下载，未启动回测。
+
+## 2026-09-12 - Task: 执行已批准的50成员分片及单对象取数恢复
+### What was done
+- 通过登记入口生成独立恢复修订，绑定用户批准、原清单、原批准、原中断和超时证据真实哈希；累计360分钟包含旧消费，不改旧数据/账本。
+- 增加50只分片恢复入口，复用一致缓存，仅002853.SZ HFQ可另存attempt-2；再次中断或失败停止。原200只质量分组、900秒/2048MiB及期限保持。
+- 进度查看兼容恢复资源和attempt-2；准备入口可解析独立补取路径，不自动运行账户。
+### Testing
+- 三个针对性测试文件8 passed（1.24秒）；验证缓存不重请求、原中断不覆盖、禁止再次重试、累计/到期/撤销/未结算保护以及既有合成准备链。
+- 执行和授权探针0，登记入口真实执行成功，git diff --check通过。实际读数另行记录，未把合成通过当作取数成功。
+### Notes
+- scripts/run_baostock_account_v1.py：受限修订登记、读取路径及恢复调度。
+- scripts/prepare_baostock_account_v1.py：解析补取路径。
+- scripts/show_baostock_progress.py：显示恢复回执、上限和超时。
+- tests/research_factory/test_baostock_acquisition_resume.py：五项恢复保护测试。
+- docs/baostock-progress-viewer.md：更新恢复说明；progress.md追加。
+- 外部ACQUISITION_RESUME_V1.json：独立输入恢复批准事实，不是账户曝光预算。
+- 回滚点c2ee338；可git revert本次提交，但须先确认恢复worker结束，不在运行中切换源码；外部原件和失败不得删除。

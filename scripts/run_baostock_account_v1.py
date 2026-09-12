@@ -36,6 +36,58 @@ def quality_path(batch):
     return revised if revised.exists() else ROOT/'quality'/f'batch-{batch}.json'
 
 
+def resume_revision(root=None):
+    from chanlun_trader.research_factory.common import stable_hash
+    root = ROOT if root is None else root
+    value = read(root/'ACQUISITION_RESUME_V1.json')
+    if value['identity'] != stable_hash({k:v for k,v in value.items() if k != 'identity'}):
+        raise PermissionError('RESUME_REVISION_IDENTITY_CHANGED')
+    for path, expected in value['evidence'].items():
+        if sha(path) != expected:
+            raise PermissionError('RESUME_EVIDENCE_CHANGED')
+    if (value['total_seconds'] != 21600 or value['retry'] != ['002853.SZ','1']
+            or value['worker_symbols'] != 50):
+        raise PermissionError('RESUME_SCOPE_CHANGED')
+    return value
+
+
+def response_directory(symbol, flag, root=None):
+    root = ROOT if root is None else root
+    directory = root/'responses'/symbol
+    if symbol == '002853.SZ' and flag == '1' and (root/'ACQUISITION_RESUME_V1.json').exists():
+        resume_revision(root)
+        return directory/'attempt-2'
+    return directory
+
+
+def register_resume():
+    from chanlun_trader.research_factory.common import stable_hash
+    active()
+    if (ROOT/'ACQUISITION_RESUME_V1.json').exists():
+        return resume_revision()
+    thread = os.environ.get('CODEX_THREAD_ID')
+    if not thread:
+        raise PermissionError('ACTUAL_THREAD_ID_REQUIRED')
+    original = ROOT/'responses/002853.SZ'
+    if (original/'1.json').exists() or (original/'1.access.json').exists():
+        raise PermissionError('INTERRUPTED_RESPONSE_STATE_CHANGED')
+    failed = ROOT/'resources/fetch-hfq1-6.json'
+    if not read(failed)['timed_out']:
+        raise PermissionError('EXPECTED_TIMEOUT_MISSING')
+    paths = [SOURCE/'docs/baostock-acquisition-resume-decision-v1.md',
+             ROOT/'READ_PLAN.json', ROOT/'APPROVAL_FACT.json',
+             original/'1.started.json', failed]
+    value = {'purpose':'INPUT_ACQUISITION_ONLY_NO_AUTOMATIC_BACKTEST',
+        'origin':'USER_EXPLICIT_APPROVAL', 'reader':thread,
+        'approval_statement':'批准，能成功读数之后不需要你持续监控，告诉我循环监控的脚本就好了',
+        'registered_at':datetime.now(timezone.utc).isoformat(),
+        'total_seconds':21600,'worker_symbols':50,'retry':['002853.SZ','1'],
+        'evidence':{str(p):sha(p) for p in paths}}
+    value['identity'] = stable_hash(value)
+    save(ROOT/'ACQUISITION_RESUME_V1.json', value)
+    return value
+
+
 def active():
     from chanlun_trader.research_factory.common import stable_hash
     if os.environ.get('CHANLUN_TEST_ISOLATION') == '1':
@@ -90,22 +142,25 @@ def freeze():
         'reader':thread,'recipient':'REQUESTING_USER','no_new_budget_registered':True})
 
 
-def fetch(batch):
+def fetch(batch, resume_start=None):
     from chanlun_trader.synthetic_batch_resources import worker_resource_handshake
     worker_resource_handshake()
     from importlib.metadata import version
     from chanlun_trader.data.minute.baostock_provider import BaoStock5MinProvider
     active()
-    for previous in range(batch):
-        if not quality_path(previous).exists():
-            validate_batch(previous)
+    if resume_start is None:
+        for previous in range(batch):
+            if not quality_path(previous).exists():
+                validate_batch(previous)
     plan = read(ROOT/'READ_PLAN.json')
     provider = BaoStock5MinProvider()
     with provider.session():
-        for symbol in plan['symbols'][batch*200:(batch+1)*200]:
+        start = batch*200 if resume_start is None else resume_start
+        end = (batch+1)*200 if resume_start is None else min(start+50,len(plan['symbols']))
+        for symbol in plan['symbols'][start:end]:
             for flag, fields in FIELDS.items():
                 active()
-                directory = ROOT/'responses'/symbol
+                directory = response_directory(symbol, flag)
                 target = directory/(flag+'.json')
                 started = directory/(flag+'.started.json')
                 query = {'code':symbol[-2:].lower()+'.'+symbol[:6], 'fields':fields,
@@ -113,7 +168,8 @@ def fetch(batch):
                 if started.exists():
                     access = directory/(flag+'.access.json')
                     if (target.exists() and access.exists() and sha(target) == read(access)['sha256']
-                            and read(started)['query'] == query and read(target)['query'] == query):
+                            and read(started)['query'] == query and read(target)['query'] == query
+                            and read(access)['error_code'] == '0'):
                         continue
                     raise PermissionError('REQUEST_ALREADY_ATTEMPTED_NO_AUTOMATIC_RETRY:'+symbol+':'+flag)
                 save(started, {'query':query,'started_at':datetime.now(timezone.utc).isoformat(),
@@ -129,8 +185,11 @@ def fetch(batch):
                 save(directory/(flag+'.access.json'), {'path':str(target),'sha256':sha(target),
                     'row_count':len(rows),'error_code':response.error_code,
                     'purpose':plan['purpose'],'reader_pid':os.getpid(),'recipient':'REQUESTING_USER'})
+                if response.error_code != '0':
+                    raise RuntimeError('PROVIDER_RESPONSE_FAILED_NO_RETRY')
             print(json.dumps({'symbol':symbol,'status':'RESPONSES_ARCHIVED'}),flush=True)
-    validate_batch(batch)
+    if resume_start is None or end % 200 == 0 or end == len(plan['symbols']):
+        validate_batch(batch)
 
 
 def validate_batch(batch):
@@ -159,7 +218,7 @@ def validate_batch(batch):
     for symbol in symbols:
         values = []
         for flag in ['3','1']:
-            p = ROOT/'responses'/symbol/(flag+'.json')
+            p = response_directory(symbol, flag)/(flag+'.json')
             access = read(p.with_name(flag+'.access.json'))
             if sha(p) != access['sha256']:
                 raise ValueError('RESPONSE_HASH_CHANGED')
@@ -245,13 +304,63 @@ def acquire():
             raise RuntimeError('FETCH_FAILED_EVIDENCE_PRESERVED')
 
 
+def resume_acquire():
+    from chanlun_trader.synthetic_batch_resources import run_bounded_worker
+    revision = resume_revision()
+    plan = read(ROOT/'READ_PLAN.json')
+    # 原成功六批必须有通过证据；第七批失败由修订中的精确哈希保留。
+    for batch in range(6):
+        if not read(quality_path(batch))['passed']:
+            raise PermissionError('PRIOR_QUALITY_NOT_PASSED')
+    for start_index in range(1200,len(plan['symbols']),50):
+        _, expiry = active()
+        label = f'resume-fetch-{start_index}'
+        receipt = ROOT/'resources'/f'{label}.json'
+        started_path = ROOT/'resources'/f'{label}.started.json'
+        if receipt.exists():
+            if read(receipt)['returncode'] != 0:
+                raise PermissionError('RESUME_FAILED_NO_AUTOMATIC_RETRY')
+            continue
+        if started_path.exists():
+            raise PermissionError('UNSETTLED_RESUME_WORKER_REQUIRES_RECONCILIATION')
+        used = sum(read(p).get('elapsed_seconds',0) for p in (ROOT/'resources').glob('*.json'))
+        seconds = min(900,revision['total_seconds']-used,(expiry-datetime.now(timezone.utc)).total_seconds())
+        if seconds <= 0:
+            raise PermissionError('TOTAL_PLAN_RESOURCE_LIMIT_REACHED')
+        env = {**os.environ,'PYTHONPATH':str(SOURCE/'src'),'PYTHONIOENCODING':'utf-8',
+            **{k:'1' for k in ['OMP_NUM_THREADS','OPENBLAS_NUM_THREADS','MKL_NUM_THREADS','NUMEXPR_NUM_THREADS']}}
+        started = time.monotonic()
+        result = run_bounded_worker([sys.executable,str(Path(__file__)),'--resume-worker',str(start_index)],
+            root=SOURCE,memory_mib=2048,wall_seconds=seconds,environment=env,
+            execution={'purpose':revision['purpose'],'revision_identity':revision['identity']},
+            on_started=lambda pid:save(started_path,{'pid':pid,'wall_seconds':seconds,
+                'memory_mib':2048,'numeric_threads':1}))
+        save(receipt,{'elapsed_seconds':time.monotonic()-started,
+            **{k:v.decode('utf-8',errors='replace') if isinstance(v,bytes) else v for k,v in result.items()}})
+        print(json.dumps({'start_index':start_index,'returncode':result['returncode']}),flush=True)
+        if result['returncode'] != 0:
+            raise RuntimeError('RESUME_FETCH_FAILED_EVIDENCE_PRESERVED')
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--fetch-worker',type=int)
     parser.add_argument('--factor-worker',action='store_true')
     parser.add_argument('--validate-worker',type=int)
+    parser.add_argument('--register-resume',action='store_true')
+    parser.add_argument('--resume',action='store_true')
+    parser.add_argument('--resume-worker',type=int)
     args = parser.parse_args()
-    if args.factor_worker:
+    if args.register_resume:
+        register_resume()
+    elif args.resume:
+        resume_acquire()
+    elif args.resume_worker is not None:
+        resume_revision()
+        if args.resume_worker < 1200 or args.resume_worker % 50:
+            raise PermissionError('RESUME_WORKER_RANGE_INVALID')
+        fetch(args.resume_worker//200,args.resume_worker)
+    elif args.factor_worker:
         factor_probe()
     elif args.validate_worker is not None:
         from chanlun_trader.synthetic_batch_resources import worker_resource_handshake
