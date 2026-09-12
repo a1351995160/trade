@@ -2538,3 +2538,29 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - docs/FIXED_ACCOUNT_SIGNAL_PARITY_V1.md、docs/BAOSTOCK_FIXED_TRAIN_EXECUTION_DELIVERY_V1.md：提交接口说明与执行结果交付。
 - progress.md：保留全部历史并追加本次提交记录。
 - 回滚点27d6a861cd34f113c2b02d678c5734ca9a1a686f；可git revert本次提交撤销代码集成，外部真实结果、批准、消费和失败记录不回滚。
+
+## 2026-09-12 - Task: 承接用户持续研究委托并接通两机制批次
+### What was done
+- 保留原固定策略和旧账，新增事前固定的趋势延续、五session价格变化稳定性两个候选；沿用原账户执行与费用，未修改旧引擎。
+- 新入口复用既有输入、新颖性服务、授权/预算/撤销/结算及资源限制器；新批准记录为计划委托，未伪装逐候选人工批准。
+### Testing
+- 31项针对性合成测试通过，3.42秒；包括手算公式、未来值不影响过去、独立日历缺口、较晚可见时间、同预算旧桶不变、幂等和撤销以及原共享账户规则回归。
+- 禁止predictive/structural/AI探针全部0；当前尚未启动新批真实绩效。
+### Notes
+- src/chanlun_trader/research_factory/train_search_batch_v1.py：固定两机制转换和版本化治理。
+- scripts/run_train_search_batch_v1.py：事前冻结、输入/可行性、原账户worker、记账及盲化反馈。
+- tests/research_factory/test_train_search_batch_v1.py：公式与治理测试。
+- docs/TRAIN_SEARCH_BATCH_V1.md：委托解释和固定研究合同；progress.md追加。
+- 回滚点764e1c11b94a68969191b14f7346613ac7bf8535；可反向撤销本轮新增文件并追加回滚日志，不删除任何真实访问/回执/消费。
+
+## 2026-09-12 - Task: 完成首个委托研究批次的真实执行与结算
+### What was done
+- MOMENTUM_5和STABILITY_20均通过输入/无收益可行性、完成原账户执行并结算；两项事前训练筛选均false，未找到合格或训练筛选通过候选。
+- 每项同权威预算MAIN=1、REPAIR=0；新颖性比较保留旧语义缺项。本会话只接收本批二值反馈，未读取精确结果。
+### Testing
+- 实际四个准备/账户worker均完成，本批累计234.6525541秒；两份RESULT哈希与FEEDBACK一致，原服务summary与结算一致。
+- 真实结果不覆盖，旧12次等全部历史保持。未启动正式Trial、V4、Validation、Final Test或订单。
+### Notes
+- progress.md：追加实际执行证据；代码与31项测试保持上一记录状态。
+- 外部train-search-batch-v1：PREREGISTRATION、APPROVAL_SOURCE、两份FEATURES/COMPUTABILITY/FEASIBILITY/READY/RESULT/FEEDBACK/SETTLEMENT及资源回执。
+- 回滚点764e1c11b94a68969191b14f7346613ac7bf8535；撤销代码不能撤销真实消费和曝光。下一批不会修改本批规则重算。
