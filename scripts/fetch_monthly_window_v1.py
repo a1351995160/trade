@@ -9,6 +9,7 @@ import time
 from acquire_monthly_independent_v1 import ROOT, SOURCE, guard, read, save, sha
 from run_baostock_account_v1 import FIELDS
 from chanlun_trader.research_factory.common import stable_hash
+from monthly_window_resource_extension_v1 import limit as data_limit
 
 
 def approved():
@@ -33,7 +34,7 @@ def approved():
 
 def check():
     grant=approved()
-    expected=read(ROOT/'FETCH_CODE_V2.json')
+    expected=read(ROOT/'FETCH_CODE_V3.json')
     for path,digest in expected.items():
         if sha(path)!=digest:
             raise PermissionError('FETCH_SOURCE_CHANGED')
@@ -129,7 +130,14 @@ def worker(stage, batch):
 def bounded(stage,batch):
     from chanlun_trader.synthetic_batch_resources import run_bounded_worker
     grant=check()
-    label=f'{stage}-v2-{batch}'
+    previous=ROOT/'resources'/f'{stage}-v2-{batch}.completed.json'
+    if previous.exists():
+        if read(previous)['returncode']==0:
+            return
+        handoff=read(ROOT/'FETCH_V3_HANDOFF.json')
+        if handoff['failed_workers'].get(str(previous))!=sha(previous):
+            raise PermissionError('PREVIOUS_FAILURE_NOT_RECONCILED')
+    label=f'{stage}-v3-{batch}'
     started=ROOT/'resources'/f'{label}.started.json'
     completed=ROOT/'resources'/f'{label}.completed.json'
     if completed.exists():
@@ -139,7 +147,7 @@ def bounded(stage,batch):
     if started.exists():
         raise PermissionError('UNSETTLED_WORKER_REQUIRES_RECONCILIATION')
     used=sum(read(p)['elapsed_seconds'] for p in (ROOT/'resources').glob('*.completed.json'))
-    limit=min(900,10800-used,(datetime.fromisoformat(grant['expires_at'])-datetime.now(timezone.utc)).total_seconds())
+    limit=min(900,data_limit()-used,(datetime.fromisoformat(grant['expires_at'])-datetime.now(timezone.utc)).total_seconds())
     if limit<=0:
         raise PermissionError('INPUT_RESOURCE_EXHAUSTED')
     env={**os.environ,'PYTHONPATH':str(SOURCE/'src'),'PYTHONDONTWRITEBYTECODE':'1',
@@ -157,7 +165,9 @@ def bounded(stage,batch):
 
 def run(metadata_only=False):
     approved()
-    save(ROOT/'FETCH_CODE_V2.json',{str(p):sha(p) for p in [Path(__file__),SOURCE/'scripts/acquire_monthly_independent_v1.py']})
+    data_limit()
+    save(ROOT/'FETCH_CODE_V3.json',{str(p):sha(p) for p in [Path(__file__),SOURCE/'scripts/acquire_monthly_independent_v1.py',
+        SOURCE/'scripts/monthly_window_resource_extension_v1.py']})
     for batch in range((len(read(ROOT/'CALENDAR_WINDOW.json')['sessions'])+9)//10):
         bounded('metadata',batch)
     if not metadata_only:

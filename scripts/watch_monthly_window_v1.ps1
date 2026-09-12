@@ -15,9 +15,14 @@ do {
         [pscustomobject]@{name=$_.Name; seconds=$record.elapsed_seconds; code=$record.returncode}
     })
     $seconds=($receipts | Measure-Object -Property seconds -Sum).Sum
-    Write-Host "已结算worker累计：$([math]::Round($seconds/60,1))分钟（不含正在运行的worker）"
+    $dataLimitMinutes=180
+    if (Test-Path -LiteralPath "$evidenceRoot/DATA_TIME_EXTENSION_V1.json") {
+        $extension=Get-Content -LiteralPath "$evidenceRoot/DATA_TIME_EXTENSION_V1.json" -Raw | ConvertFrom-Json
+        $dataLimitMinutes=$extension.total_data_seconds/60
+    }
+    Write-Host "已结算worker累计：$([math]::Round($seconds/60,1))分钟；数据准备上限${dataLimitMinutes}分钟（不含正在运行的worker；账户另计）"
     $failed=@($receipts | Where-Object {$_.code -ne 0})
-    Write-Host "保留失败回执数：$($failed.Count)；metadata-0旧失败已由分批修订承接，未删除。"
+    Write-Host "保留失败回执数：$($failed.Count)；包括分批及加时切换回执，不删除旧记录。"
     if (Test-Path -LiteralPath "$evidenceRoot/READY.json") {
         $ready=Get-Content -LiteralPath "$evidenceRoot/READY.json" -Raw | ConvertFrom-Json
         Write-Host "输入状态：$($ready.status)；可行性通过：$($ready.feasibility_passed)"
@@ -28,6 +33,7 @@ do {
     } else { Write-Host '账户尚未结算，不代表已经完成或成功。' }
     $pipelineReceipt="$evidenceRoot/PIPELINE_COMPLETED.json"
     if (Test-Path -LiteralPath "$evidenceRoot/PIPELINE_STARTED_V2.json") { $pipelineReceipt="$evidenceRoot/PIPELINE_COMPLETED_V2.json" }
+    if (Test-Path -LiteralPath "$evidenceRoot/PIPELINE_STARTED_V3.json") { $pipelineReceipt="$evidenceRoot/PIPELINE_COMPLETED_V3.json" }
     if (Test-Path -LiteralPath $pipelineReceipt) {
         $pipeline=Get-Content -LiteralPath $pipelineReceipt -Raw | ConvertFrom-Json
         Write-Host "流程已退出：$($pipeline.exit_code)；具体限制查看pipeline.stderr.log与原回执。"

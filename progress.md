@@ -2735,3 +2735,20 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - tests/research_factory/test_monthly_window_adapter_v1.py：新增7项外窗、原引擎、预算、未知状态及物化合成测试。
 - docs/MONTHLY_WINDOW_EXECUTION_V1.md：实际执行、修订/失败、查看命令及预定交付与限制；progress.md仅追加。上轮未提交的批准读取脚本、门槛说明及11项测试均保留。
 - 回滚点3f034f69bab380391da502d5d64b54f6b012f0e6；代码可git revert本轮提交，实际授权/访问/消费回执不得回滚。运行中源码已冻结，修改会使后续步骤拒绝；不公开推送研究数据。
+
+## 2026-09-12 - Task: 按用户批准增加本次数据准备时间并恢复同一流程
+### What was done
+- 用户明确要求加时后，依据近期批次速度选定总360分钟（原180+新增180），通过DATA_TIME_EXTENSION_V1追加登记，保留原授权和已消费时间；账户90分钟、1主/1确证修复、worker900秒/2048MiB/单线程单并发及原截止均不变。
+- 先停止等待器，利用源码冻结检查在完整响应之间交接原取数；保留prices-v2-11退出1/FETCH_SOURCE_CHANGED及16.8585秒，核对1937份完整响应、未结清请求0，确切映射写入FETCH_V3_HANDOFF。成功批次跳过，部分批次按原请求/哈希复用，无新绩效曝光。
+- 新取数2936/23736、等待器25344已实际运行。19:51:32股票池263/263日，价格1170/10470份、调整日期585/5235份；结算数据126.8分钟，原引擎回测尚未开始。V3代码冻结及接续重新绑定，不公开推送。
+### Testing
+- 新时间修订及外窗相关27项测试通过，4.12秒：拒绝扩大账户次数/时间、变更父身份、延长到期、账目归零或损坏回执；原账户与物化测试仍通过。
+- 1937份响应实际hash核验通过、未结清请求0；V3冻结实际校验通过；两个新进程存活、stderr空；Windows PowerShell循环脚本-Once显示360分钟并退出0。
+### Notes
+- scripts/monthly_window_resource_extension_v1.py：新增用户用途受限的时间增量登记及校验，旧授权不改。
+- scripts/fetch_monthly_window_v1.py：V3冻结与数据时间读取、已对账V2批次复用。
+- scripts/execute_monthly_window_v1.py：物化使用新增数据时间，账户额度不变，绑定V3冻结并核对新旧价格批次。
+- scripts/continue_monthly_window_v1.ps1：V3独立结束回执；scripts/watch_monthly_window_v1.ps1：展示实际时间增量及当前V3状态。
+- tests/research_factory/test_monthly_window_resource_extension_v1.py：9项资源边界验证。
+- docs/MONTHLY_WINDOW_EXECUTION_V1.md：追加当前时间额度、交接、进程及证据；progress.md仅追加。
+- 回滚点511a0de；可git revert本轮提交回滚代码，真实读取、资源消费、原失败及用户批准证据不得回滚。运行中源码被冻结，未经重新绑定的修改会导致后续拒绝。

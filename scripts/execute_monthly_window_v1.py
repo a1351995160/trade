@@ -13,11 +13,13 @@ from run_baostock_account_v1 import PARENT, active
 from chanlun_trader.research_factory.monthly_window_v1 import contract
 from chanlun_trader.research_factory.common import stable_hash
 from chanlun_trader.research_factory.monthly_window_governance_v1 import MonthlyWindowGovernanceV1
+from monthly_window_resource_extension_v1 import limit as data_limit
 
 
 def code():
     from execute_baostock_account_v1 import code_identity
-    paths=[Path(__file__),SOURCE/'scripts/prepare_monthly_window_v1.py',SOURCE/'scripts/continue_monthly_window_v1.ps1']
+    paths=[Path(__file__),SOURCE/'scripts/prepare_monthly_window_v1.py',SOURCE/'scripts/continue_monthly_window_v1.ps1',
+           SOURCE/'scripts/monthly_window_resource_extension_v1.py']
     paths += [SOURCE/'src/chanlun_trader/research_factory'/n for n in [
         'monthly_window_v1.py','monthly_window_governance_v1.py','technical_train_signals_v1.py','train_search_batch_v1.py']]
     return {**code_identity(),**{str(p.relative_to(SOURCE)):sha(p) for p in paths}}
@@ -25,7 +27,7 @@ def code():
 
 def frozen():
     grant=check()
-    value=read(ROOT/'EXECUTION_FREEZE_V2.json')
+    value=read(ROOT/'EXECUTION_FREEZE_V3.json')
     if value['code']!=code() or value['contract']!=contract() or value['release_identity']!=grant['identity']:
         raise PermissionError('WINDOW_EXECUTION_FREEZE_CHANGED')
     return grant
@@ -40,7 +42,7 @@ def bounded(stage,execution_id=None):
         raise PermissionError('EXISTING_EXECUTION_REQUIRES_RECONCILIATION_NO_REPLAY')
     used=sum(read(p)['elapsed_seconds'] for p in (ROOT/'resources').glob('*.completed.json'))
     # 物化属于数据资源，账户另有90分钟；本入口仅一次900秒主执行。
-    left=10800-used if stage=='prepare-window' else 5400
+    left=data_limit()-used if stage=='prepare-window' else 5400
     limit=min(900,left,(datetime.fromisoformat(grant['expires_at'])-datetime.now(timezone.utc)).total_seconds())
     if limit<=0:raise PermissionError('WINDOW_RESOURCE_EXHAUSTED')
     args=[sys.executable,str(Path(__file__)),'--worker',stage]
@@ -118,9 +120,11 @@ def run():
     if not (ROOT/'WINDOW_UNIVERSE.json').exists():raise PermissionError('ACQUISITION_NOT_COMPLETE')
     count=read(ROOT/'WINDOW_UNIVERSE.json')['count']
     for batch in range((count+49)//50):
-        if read(ROOT/'resources'/f'prices-v2-{batch}.completed.json')['returncode']!=0:
+        receipt=ROOT/'resources'/f'prices-v3-{batch}.completed.json'
+        if not receipt.exists():receipt=ROOT/'resources'/f'prices-v2-{batch}.completed.json'
+        if read(receipt)['returncode']!=0:
             raise PermissionError('PRICE_BATCH_NOT_COMPLETE')
-    save(ROOT/'EXECUTION_FREEZE_V2.json',{'code':code(),'contract':contract(),'release_identity':grant['identity']})
+    save(ROOT/'EXECUTION_FREEZE_V3.json',{'code':code(),'contract':contract(),'release_identity':grant['identity']})
     if not (ROOT/'READY.json').exists():
         result=bounded('prepare-window')
         if result['returncode']:raise RuntimeError('WINDOW_PREPARATION_FAILED_SEE_RECEIPT')
