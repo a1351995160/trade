@@ -66,7 +66,34 @@ def test_sixty_session_compounding_and_amount_units():
     assert turnover.value.iloc[30:50].isna().all()
 
 
-@pytest.mark.parametrize('name',['MOMENTUM_5','STABILITY_20','MOMENTUM_60','LIQUIDITY_20'])
+def test_long_hold_uses_original_exit_engine_and_preserves_legacy_contract():
+    from test_degraded_execution_v2 import degraded
+    from chanlun_trader.research_factory.degraded_execution_v2 import _run_account
+    from chanlun_trader.research_factory.fixed_account_rules import FixedAccountRules
+    b=degraded()
+    days=[int(d.strftime('%Y%m%d')) for d in pd.bdate_range('2022-08-01',periods=35)]
+    daily=b.daily[b.daily.date==20220801]
+    states=b.states[b.states.trade_date=='20220801']
+    b.daily=pd.concat([daily.assign(date=d) for d in days],ignore_index=True)
+    b.states=pd.concat([states.assign(trade_date=str(d)) for d in days],ignore_index=True)
+    b.calendar=days
+    b.ready_factors=b.ready_factors[b.ready_factors.timestamp==20220801]
+    frozen=contract('STABILITY_20_HOLD_20')
+    b.contract_identity=stable_hash(frozen)
+    result=_run_account(b,('SYNTHETIC',False),None,frozen)
+    buys=[f for f in result['fills'] if f['side']=='BUY']
+    sells=[f for f in result['fills'] if f['side']=='SELL']
+    assert len(buys)==len(sells)==3
+    assert {int(f['fill_time'].strftime('%Y%m%d')) for f in sells}=={days[22]}
+    assert result['metrics']['total_fees']>0
+    b.hazards={s:[days[15]] for s in b.daily.symbol.unique()}
+    assert not _run_account(b,('SYNTHETIC',False),None,frozen)['fills']
+    with pytest.raises(ValueError,match='UNSUPPORTED'):
+        FixedAccountRules({**contract('STABILITY_20'),'holding_sessions':20})
+
+
+@pytest.mark.parametrize('name',['MOMENTUM_5','STABILITY_20','MOMENTUM_60','LIQUIDITY_20',
+                                'STABILITY_20_HOLD_20','LIQUIDITY_20_HOLD_20'])
 def test_governed_increment_repeat_and_revocation(tmp_path,name):
     _,plan,source,evidence,parent=grant(tmp_path)
     service=TrainSearchGovernanceV1(tmp_path,name)

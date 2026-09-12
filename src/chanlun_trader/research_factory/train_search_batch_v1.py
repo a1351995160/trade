@@ -12,6 +12,8 @@ FORMULAS = {
     'STABILITY_20': '-1/(1+STD_POPULATION(RETURN_5D[t-19:t]))',
     'MOMENTUM_60': '-(PRODUCT(1+RETURN_5D[t-5*k], k=0..11)-1)',
     'LIQUIDITY_20': '-MEAN(AMOUNT_CNY[t-19:t])',
+    'STABILITY_20_HOLD_20': '-1/(1+STD_POPULATION(RETURN_5D[t-19:t]))',
+    'LIQUIDITY_20_HOLD_20': '-MEAN(AMOUNT_CNY[t-19:t])',
 }
 
 
@@ -19,6 +21,7 @@ def contract(name):
     if name not in FORMULAS:
         raise ValueError('UNFROZEN_MECHANISM')
     return {**BASE, 'version': 'TRAIN_SEARCH_BATCH_V1_' + name,
+            'holding_sessions':20 if name.endswith('_HOLD_20') else 3,
             'adapter_version': 'TRAIN_SEARCH_BATCH_V1',
             'signal_version': 'TRAIN_SEARCH_BATCH_V1_' + name,
             'factor_id': name, 'signal_formula': FORMULAS[name],
@@ -29,6 +32,7 @@ def contract(name):
 
 def design(name):
     frozen = contract(name)
+    base_name = name.removesuffix('_HOLD_20')
     mechanisms = {
         'MOMENTUM_5': 'POSITIVE_FIVE_SESSION_PRICE_CHANGE',
         'STABILITY_20': 'LOW_DISPERSION_OF_OVERLAPPING_FIVE_SESSION_PRICE_CHANGES',
@@ -36,17 +40,18 @@ def design(name):
         'LIQUIDITY_20': 'HIGH_TRAILING_CNY_TURNOVER_LIQUIDITY',
     }
     return {'candidate_id': stable_hash(frozen), 'candidate_hash': stable_hash(frozen),
-            'mechanism': mechanisms[name],
-            'factor_ids': ['AMOUNT' if name == 'LIQUIDITY_20' else 'RETURN_5D'],
+            'mechanism': mechanisms[base_name],
+            'factor_ids': ['AMOUNT' if base_name == 'LIQUIDITY_20' else 'RETURN_5D'],
             'semantic_fingerprint': FORMULAS[name],
             'parameter_fingerprint': {'window': {'MOMENTUM_5':1,'MOMENTUM_60':56}.get(name,20),
-                                      'top_n': 3, 'holding_sessions': 3},
-            'holding_period_days': 3}
+                                      'top_n': 3, 'holding_sessions': frozen['holding_sessions']},
+            'holding_period_days': frozen['holding_sessions']}
 
 
 def transform(rows, sessions, name):
     """只在独立日历上组合已核验特征；缺日不压缩，源可见时间取依赖最大值。"""
     frozen = contract(name)
+    name = name.removesuffix('_HOLD_20')
     if sessions != sorted(set(sessions)):
         raise ValueError('INDEPENDENT_CALENDAR_REQUIRED')
     if rows.timestamp.duplicated().any() or not rows.timestamp.isin(sessions).all():

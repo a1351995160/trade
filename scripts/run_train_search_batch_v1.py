@@ -48,8 +48,8 @@ def freeze():
         raise PermissionError('ACTUAL_THREAD_REQUIRED')
     history = read(INPUT/'NOVELTY.json')
     comparison = [*history['comparison_design_records'], history['candidate']]
-    if BATCH == 2:
-        earlier = read(INPUT.parent/'train-search-batch-v1/PREREGISTRATION.json')
+    for earlier_batch in range(1,BATCH):
+        earlier = read(INPUT.parent/f'train-search-batch-v{earlier_batch}/PREREGISTRATION.json')
         comparison += [design(name) for name in earlier['contracts']]
     decisions = {}
     for name in NAMES:
@@ -63,8 +63,8 @@ def freeze():
     save(ROOT/'APPROVAL_SOURCE.json', source)
     paths = [INPUT/p for p in ['INPUT_MANIFEST.json','INPUT_READY.json','DAILY.parquet',
                               'STATES.parquet','FEATURES.parquet','NOVELTY.json']]
-    if BATCH == 2:
-        paths.append(INPUT.parent/'train-search-batch-v1/PREREGISTRATION.json')
+    for earlier_batch in range(1,BATCH):
+        paths.append(INPUT.parent/f'train-search-batch-v{earlier_batch}/PREREGISTRATION.json')
     save(ROOT/'PREREGISTRATION.json', {'version':f'TRAIN_SEARCH_BATCH_V{BATCH}',
         'contracts':{name:contract(name) for name in NAMES}, 'novelty':decisions,
         'code':code(), 'inputs':{str(p):sha(p) for p in paths},
@@ -77,7 +77,7 @@ def freeze():
         'feedback':'ALL_CANDIDATES_BINARY_SCREEN_AND_FAILURE_REASON_ONLY',
         'historical_train_exposure':True,'historical_novelty_semantics_incomplete':True,
         'stability_proxy':'20 overlapping 5-session price changes; NOT daily volatility',
-        'selection':'negative score ascending; original Top3/account/fees/exit/hazards unchanged',
+        'selection':'negative score ascending; original Top3/account/fees/hazards; explicit contract holding_sessions',
         'missing':'reindex independent calendar; no fill; retain all-date computability diagnostics',
         'identity':stable_hash([contract(n) for n in NAMES])})
 
@@ -114,7 +114,7 @@ def prepare(name):
         save(ROOT/name/'REJECTED.json', frozen['novelty'][name])
         return
     value = bundle(name, preparing=True)
-    if name == 'LIQUIDITY_20':
+    if name.removesuffix('_HOLD_20') == 'LIQUIDITY_20':
         value.ready_factors = value.ready_factors.merge(
             value.daily[['symbol','date','amount']],left_on=['symbol','timestamp'],
             right_on=['symbol','date'],how='left',validate='one_to_one')
@@ -141,12 +141,13 @@ def prepare(name):
     value.input_identity = input_id
     value.factor_identity = feature_hash
     paths = []
+    exit_offset = contract(name)['holding_sessions'] + 2
     for day, rows in factors.groupby('timestamp'):
         i = value.calendar.index(int(day))
         for rank, row in enumerate(rows[rows.value<0].sort_values(['value','symbol']).head(3).itertuples(),1):
             paths.append({'symbol':row.symbol,'signal_session':int(day),'rank':rank,
                 'entry_date':value.calendar[i+1],
-                'exit_date':value.calendar[i+5] if i+5<len(value.calendar) else None})
+                'exit_date':value.calendar[i+exit_offset] if i+exit_offset<len(value.calendar) else None})
     feasibility = check_feasibility(value,candidate_paths=paths)
     save(directory/'FEASIBILITY.json',json.loads(json.dumps(feasibility,default=str)))
     ready = {**read(INPUT/'INPUT_READY.json'),'input_identity':input_id,
@@ -255,15 +256,19 @@ def run():
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--batch',type=int,choices=[1,2],default=1)
+    parser.add_argument('--batch',type=int,choices=[1,2,3],default=1)
     parser.add_argument('--stage',choices=['prepare','account'])
-    parser.add_argument('--name',choices=['MOMENTUM_5','STABILITY_20','MOMENTUM_60','LIQUIDITY_20'])
+    parser.add_argument('--name',choices=['MOMENTUM_5','STABILITY_20','MOMENTUM_60','LIQUIDITY_20',
+                                        'STABILITY_20_HOLD_20','LIQUIDITY_20_HOLD_20'])
     parser.add_argument('--execution-id')
     options = parser.parse_args()
     BATCH = options.batch
     if BATCH == 2:
         ROOT = INPUT.parent/'train-search-batch-v2'
         NAMES = ['MOMENTUM_60','LIQUIDITY_20']
+    elif BATCH == 3:
+        ROOT = INPUT.parent/'train-search-batch-v3'
+        NAMES = ['STABILITY_20_HOLD_20','LIQUIDITY_20_HOLD_20']
     if options.stage:
         if options.name not in NAMES:
             raise PermissionError('CANDIDATE_NOT_IN_BATCH')

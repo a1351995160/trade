@@ -2587,3 +2587,28 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 ### Notes
 - progress.md追加本批执行结论；外部train-search-batch-v2保留输入、全量结果、可行性、二值反馈、资源及结算。
 - 本批代码改动清单见上一条日志。回滚点a0b56dc；代码回滚不能回滚消费、失败或信息访问。
+
+## 2026-09-12 - Task: 第三批固定较低换仓频率的两个持有期变体
+### What was done
+- 依据原最低佣金与频繁换仓机制，预先登记稳定性/流动性各一个20-session持有期变体；原3-session结果全部保留，费用不变，明确属于新参数试验。
+- 原共享规则仅新增两种精确版本的20-session支持，继续复用原lot退出器；hazard和可行性退出日同步来自冻结持有期。
+### Testing
+- 46项合成测试通过，3.10秒；原真实账户引擎在合成输入上验证20-session后的下一开盘退出、真实费用、长路径hazard拒绝、旧合同改20天仍拒绝；既有共享规则及治理回归通过。
+### Notes
+- src/chanlun_trader/research_factory/train_search_batch_v1.py：显式持有期变体。
+- src/chanlun_trader/research_factory/fixed_account_rules.py：两精确新版本支持，旧合同检查保留。
+- scripts/run_train_search_batch_v1.py：第三批路由及依合同推导退出日。
+- tests/research_factory/test_train_search_batch_v1.py：账户退出与治理回归。
+- docs/TRAIN_SEARCH_BATCH_V1.md：第三批冻结说明；progress.md追加。
+- 回滚点e68c588；可反向撤销第三批变更，保留真实证据及原账本。
+
+## 2026-09-12 - Task: 第三批结算并交付六项原结果
+### What was done
+- 第三批两项均COMPLETE并结算；累计六项主试验、修复0，六项训练净回报均未为正，流动性20-session变体还不足30个关闭lot。
+- 评估侧按事前报告规则读取原保存指标，生成用户专属REPORT.md/RESULTS_INDEX及六份实际访问记录；设计侧只接收固定失败原因，没有精确绩效反馈。
+### Testing
+- 六项结果SHA256、输入/合同与真实回执、SETTLED终态逐项核对通过；未重跑价格实验或计算新绩效统计。
+### Notes
+- scripts/report_train_search_v1.py：只读六份原结果的用户报告生成。
+- progress.md追加；外部train-search-delivery-v1保留报告、索引、规则和实际访问记录。
+- 第三批代码清单及46项回归见上一记录。回滚点e68c588；实际消费、失败及访问均不可回滚。

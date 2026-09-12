@@ -28,9 +28,14 @@ class FixedAccountRules:
     """只承接现有固定合同；新策略不能靠更换字段偷偷复用本入口。"""
 
     def __init__(self, contract: Mapping[str, Any]):
+        # 新研究变体显式版本化；旧冻结合同仍只接受3 session。
+        longer_hold = contract.get('signal_version') in {
+            'TRAIN_SEARCH_BATCH_V1_STABILITY_20_HOLD_20',
+            'TRAIN_SEARCH_BATCH_V1_LIQUIDITY_20_HOLD_20',
+        }
         supported = {
             'operator': 'LT', 'threshold': 0, 'ranking': 'FACTOR_ASC_SYMBOL_ASC',
-            'top_n': 3, 'entry': 'NEXT_SESSION_OPEN', 'holding_sessions': 3,
+            'top_n': 3, 'entry': 'NEXT_SESSION_OPEN', 'holding_sessions': 20 if longer_hold else 3,
             'exit': 'NEXT_SESSION_OPEN',
         }
         if any(contract.get(key) != value for key, value in supported.items()):
