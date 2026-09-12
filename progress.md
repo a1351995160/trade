@@ -2419,3 +2419,15 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - docs/baostock-progress-viewer.md：更新恢复说明；progress.md追加。
 - 外部ACQUISITION_RESUME_V1.json：独立输入恢复批准事实，不是账户曝光预算。
 - 回滚点c2ee338；可git revert本次提交，但须先确认恢复worker结束，不在运行中切换源码；外部原件和失败不得删除。
+
+## 2026-09-12 - Task: 确认恢复后真实读数并交还用户监控
+### What was done
+- 启动--resume，三个已有缓存分片1200/1250/1300均退出0；恢复worker继续获取后续固定成员。
+- 指定002853.SZ HFQ attempt-2已成功保存492行，接口error_code=0；确认后按用户要求停止持续监控。
+### Testing
+- 实际访问回执与响应SHA256一致：845beacd4ea6dd48868658e946a61f8d9695289c2e811004253f1016a3dabc67。
+- 仅确认文件身份及访问元数据，不计算信号或账户表现；这不是全部输入质量已通过。
+### Notes
+- progress.md：追加真实恢复成功与监控交接记录。
+- 外部responses/002853.SZ/attempt-2及resources/resume-fetch-*：程序保存请求/响应/访问和资源证据，原失败保持。
+- 回滚点126bd4c；可git revert本次日志提交，不能回滚或删除实际访问事实。当前程序仅取数和质量核验，不自动运行回测。
