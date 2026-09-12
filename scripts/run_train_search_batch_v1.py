@@ -12,6 +12,7 @@ from run_baostock_account_v1 import ROOT as INPUT, PARENT, SOURCE, active, read,
 
 ROOT = INPUT.parent / 'train-search-batch-v1'
 NAMES = ['MOMENTUM_5', 'STABILITY_20']
+BATCH = 1
 STATEMENT = '我批准你，我只有一个诉求，找到能盈利的为止，不需要任何限制，直接开干'
 
 
@@ -47,6 +48,9 @@ def freeze():
         raise PermissionError('ACTUAL_THREAD_REQUIRED')
     history = read(INPUT/'NOVELTY.json')
     comparison = [*history['comparison_design_records'], history['candidate']]
+    if BATCH == 2:
+        earlier = read(INPUT.parent/'train-search-batch-v1/PREREGISTRATION.json')
+        comparison += [design(name) for name in earlier['contracts']]
     decisions = {}
     for name in NAMES:
         decisions[name] = CandidateNoveltyGateV2().evaluate(design(name),
@@ -59,7 +63,9 @@ def freeze():
     save(ROOT/'APPROVAL_SOURCE.json', source)
     paths = [INPUT/p for p in ['INPUT_MANIFEST.json','INPUT_READY.json','DAILY.parquet',
                               'STATES.parquet','FEATURES.parquet','NOVELTY.json']]
-    save(ROOT/'PREREGISTRATION.json', {'version':'TRAIN_SEARCH_BATCH_V1',
+    if BATCH == 2:
+        paths.append(INPUT.parent/'train-search-batch-v1/PREREGISTRATION.json')
+    save(ROOT/'PREREGISTRATION.json', {'version':f'TRAIN_SEARCH_BATCH_V{BATCH}',
         'contracts':{name:contract(name) for name in NAMES}, 'novelty':decisions,
         'code':code(), 'inputs':{str(p):sha(p) for p in paths},
         'approval_sha256':sha(ROOT/'APPROVAL_SOURCE.json'),
@@ -108,6 +114,10 @@ def prepare(name):
         save(ROOT/name/'REJECTED.json', frozen['novelty'][name])
         return
     value = bundle(name, preparing=True)
+    if name == 'LIQUIDITY_20':
+        value.ready_factors = value.ready_factors.merge(
+            value.daily[['symbol','date','amount']],left_on=['symbol','timestamp'],
+            right_on=['symbol','date'],how='left',validate='one_to_one')
     save(ROOT/name/'ACCESS.json', {'reader':os.getpid(),'recipient':'EVALUATION_SIDE',
         'purpose':'FROZEN_SIGNAL_AND_NO_OUTCOME_FEASIBILITY','inputs':frozen['inputs'],
         'new_information_access':True,'price_performance_exposure':False})
@@ -183,7 +193,7 @@ def bounded(stage, name, execution_id=None):
     if limit<=0:
         raise PermissionError('BATCH_RESOURCE_EXHAUSTED')
     context = {'stage':stage,'candidate':name,'execution_id':execution_id}
-    args = [sys.executable,str(Path(__file__)),'--stage',stage,'--name',name]
+    args = [sys.executable,str(Path(__file__)),'--batch',str(BATCH),'--stage',stage,'--name',name]
     if execution_id:
         args += ['--execution-id',execution_id]
     env = {**os.environ,'PYTHONPATH':str(SOURCE/'src'),'PYTHONDONTWRITEBYTECODE':'1',
@@ -245,11 +255,18 @@ def run():
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('--batch',type=int,choices=[1,2],default=1)
     parser.add_argument('--stage',choices=['prepare','account'])
-    parser.add_argument('--name',choices=NAMES)
+    parser.add_argument('--name',choices=['MOMENTUM_5','STABILITY_20','MOMENTUM_60','LIQUIDITY_20'])
     parser.add_argument('--execution-id')
     options = parser.parse_args()
+    BATCH = options.batch
+    if BATCH == 2:
+        ROOT = INPUT.parent/'train-search-batch-v2'
+        NAMES = ['MOMENTUM_60','LIQUIDITY_20']
     if options.stage:
+        if options.name not in NAMES:
+            raise PermissionError('CANDIDATE_NOT_IN_BATCH')
         from chanlun_trader.synthetic_batch_resources import worker_resource_handshake
         handshake = worker_resource_handshake()
         expected = {'stage':options.stage,'candidate':options.name,'execution_id':options.execution_id}

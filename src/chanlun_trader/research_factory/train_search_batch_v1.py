@@ -10,6 +10,8 @@ from .common import stable_hash
 FORMULAS = {
     'MOMENTUM_5': '-RETURN_5D',
     'STABILITY_20': '-1/(1+STD_POPULATION(RETURN_5D[t-19:t]))',
+    'MOMENTUM_60': '-(PRODUCT(1+RETURN_5D[t-5*k], k=0..11)-1)',
+    'LIQUIDITY_20': '-MEAN(AMOUNT_CNY[t-19:t])',
 }
 
 
@@ -27,11 +29,17 @@ def contract(name):
 
 def design(name):
     frozen = contract(name)
+    mechanisms = {
+        'MOMENTUM_5': 'POSITIVE_FIVE_SESSION_PRICE_CHANGE',
+        'STABILITY_20': 'LOW_DISPERSION_OF_OVERLAPPING_FIVE_SESSION_PRICE_CHANGES',
+        'MOMENTUM_60': 'POSITIVE_SIXTY_SESSION_PRICE_CHANGE',
+        'LIQUIDITY_20': 'HIGH_TRAILING_CNY_TURNOVER_LIQUIDITY',
+    }
     return {'candidate_id': stable_hash(frozen), 'candidate_hash': stable_hash(frozen),
-            'mechanism': 'POSITIVE_FIVE_SESSION_PRICE_CHANGE' if name == 'MOMENTUM_5'
-                         else 'LOW_DISPERSION_OF_OVERLAPPING_FIVE_SESSION_PRICE_CHANGES',
-            'factor_ids': ['RETURN_5D'], 'semantic_fingerprint': FORMULAS[name],
-            'parameter_fingerprint': {'window': 1 if name == 'MOMENTUM_5' else 20,
+            'mechanism': mechanisms[name],
+            'factor_ids': ['AMOUNT' if name == 'LIQUIDITY_20' else 'RETURN_5D'],
+            'semantic_fingerprint': FORMULAS[name],
+            'parameter_fingerprint': {'window': {'MOMENTUM_5':1,'MOMENTUM_60':56}.get(name,20),
                                       'top_n': 3, 'holding_sessions': 3},
             'holding_period_days': 3}
 
@@ -48,8 +56,21 @@ def transform(rows, sessions, name):
     aligned = rows.set_index('timestamp').reindex(sessions)
     values = aligned.value.astype(float)
     values = values.where(np.isfinite(values))
-    width = 1 if name == 'MOMENTUM_5' else 20
-    score = -values if width == 1 else -1 / (1 + values.rolling(width, min_periods=width).std(ddof=0))
+    width = {'MOMENTUM_5':1,'MOMENTUM_60':56}.get(name,20)
+    if name == 'MOMENTUM_5':
+        score = -values
+    elif name == 'STABILITY_20':
+        score = -1 / (1 + values.rolling(width, min_periods=width).std(ddof=0))
+    elif name == 'MOMENTUM_60':
+        gross = pd.Series(1.0,index=sessions)
+        for lag in range(0,60,5):
+            gross *= 1 + values.shift(lag)
+        score = (1-gross).where(values.rolling(width,min_periods=width).count().eq(width))
+    else:
+        amount = pd.to_numeric(aligned.amount,errors='raise')
+        amount = amount.where(np.isfinite(amount) & amount.gt(0))
+        score = -amount.rolling(width,min_periods=width).mean()
+    score = score.where(np.isfinite(score))
     times = pd.to_datetime(aligned.effective_available_at, utc=True)
     seconds = pd.Series([t.timestamp() if pd.notna(t) else np.nan for t in times], index=sessions)
     latest = seconds.rolling(width, min_periods=width).max()

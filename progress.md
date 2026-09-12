@@ -2564,3 +2564,26 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - progress.md：追加实际执行证据；代码与31项测试保持上一记录状态。
 - 外部train-search-batch-v1：PREREGISTRATION、APPROVAL_SOURCE、两份FEATURES/COMPUTABILITY/FEASIBILITY/READY/RESULT/FEEDBACK/SETTLEMENT及资源回执。
 - 回滚点764e1c11b94a68969191b14f7346613ac7bf8535；撤销代码不能撤销真实消费和曝光。下一批不会修改本批规则重算。
+
+## 2026-09-12 - Task: 事前固定第二批长周期趋势与流动性研究
+### What was done
+- 第一批真实结果均未通过筛选后，定义并冻结第二批的60session复合价格变化和20session成交额均值两个独立假设；全部记为新试验，不视为免费修错。
+- 相同治理入口按显式批次选择两份合同，比较集承接第一批身份；旧代码已保存于a0b56dc，原件不覆盖。
+### Testing
+- 34项合成测试通过，2.37秒；新增60session复合恒等式手算、CNY均值和无成交缺口，全部四合同治理/幂等/撤销及共享账户回归通过。
+### Notes
+- src/chanlun_trader/research_factory/train_search_batch_v1.py：新增两份固定公式。
+- scripts/run_train_search_batch_v1.py：第二批显式路由及同源成交额接入。
+- tests/research_factory/test_train_search_batch_v1.py：公式和新合同测试。
+- docs/TRAIN_SEARCH_BATCH_V1.md：第二批事前说明；progress.md追加。
+- 回滚点a0b56dc；git revert后续提交可撤销第二批代码，真实账目和输出不可删除。
+
+## 2026-09-12 - Task: 第二批两项账户执行完成，保留失败
+### What was done
+- MOMENTUM_60及LIQUIDITY_20均完成账户主执行，二值训练筛选均false；本轮累计4次新主试验，修复0。
+- MOMENTUM_60明确作为趋势家族的窗口变体，不能声称与MOMENTUM_5完全独立；历史多重尝试负担不清零。
+### Testing
+- 两项资源worker退出0，原入口完成结算并保存结果哈希；没有读取本批精确绩效回流设计。
+### Notes
+- progress.md追加本批执行结论；外部train-search-batch-v2保留输入、全量结果、可行性、二值反馈、资源及结算。
+- 本批代码改动清单见上一条日志。回滚点a0b56dc；代码回滚不能回滚消费、失败或信息访问。

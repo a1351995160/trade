@@ -49,7 +49,24 @@ def test_undefined_not_zero_and_unfrozen_rejected():
         transform(pd.concat([rows,rows.iloc[:1]]),sessions,'MOMENTUM_5')
 
 
-@pytest.mark.parametrize('name',['MOMENTUM_5','STABILITY_20'])
+def test_sixty_session_compounding_and_amount_units():
+    dates=pd.bdate_range('2022-08-01',periods=70)
+    sessions=[int(d.strftime('%Y%m%d')) for d in dates]
+    rows=pd.DataFrame({'symbol':'000001.SZ','timestamp':sessions,
+        'value':[np.nan]*5+[1.01**5-1]*65,
+        'effective_available_at':dates.tz_localize('Asia/Shanghai')+pd.Timedelta(days=1),
+        'amount':np.arange(1,71)*10000.})
+    result=transform(rows,sessions,'MOMENTUM_60')
+    assert result.value.iloc[:60].isna().all()
+    assert result.value.iloc[60]==pytest.approx(1-1.01**60)
+    turnover=transform(rows,sessions,'LIQUIDITY_20')
+    assert turnover.value.iloc[19]==pytest.approx(-105000.)
+    rows.loc[30,'amount']=0
+    turnover=transform(rows,sessions,'LIQUIDITY_20')
+    assert turnover.value.iloc[30:50].isna().all()
+
+
+@pytest.mark.parametrize('name',['MOMENTUM_5','STABILITY_20','MOMENTUM_60','LIQUIDITY_20'])
 def test_governed_increment_repeat_and_revocation(tmp_path,name):
     _,plan,source,evidence,parent=grant(tmp_path)
     service=TrainSearchGovernanceV1(tmp_path,name)

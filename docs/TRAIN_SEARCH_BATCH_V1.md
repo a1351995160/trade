@@ -24,3 +24,11 @@
 训练筛选通过仅意味着需要独立证据的训练盈利候选，不是总目标完成、统计显著或实际可盈利。STRICT_TRAIN_INPUT_READY、READY_FOR_REAL_TRIAL、R1_FULLY_CLOSED、AUTONOMOUS_STRATEGY_GOAL_COMPLETED均保持false；V4和Windows OPEN保持原状态。此入口不运行正式Trial/Paper/真实订单，不公开真实数据或绩效。
 
 执行：在原研究工作区设置PYTHONPATH为src，运行`.venv/Scripts/python.exe scripts/run_train_search_batch_v1.py`。已经尝试但未完成的执行须先对账，不允许通过删除文件重跑。
+
+## 同一委托的第二批（新试验，不改第一批）
+
+第一批两项已完成并结算，均未通过固定训练筛选；代码恢复点a0b56dc。
+
+第二批预先固定MOMENTUM_60和LIQUIDITY_20。前者将t、t-5、…、t-55的12个五session涨幅复合为60session价格变化，再取负值排名；要求56个连续五session特征完整，保留开头预热不足日期。这不是修改MOMENTUM_5重跑，是已见训练数据上的新长周期假设，仍承接多次尝试负担。后者以最近20session成交额CNY均值的负值排名，检验高流动性选股；AMOUNT来自同一已校验RAW输入，不混用价格来源或单位。
+
+第二批也保持两次主试验、每worker900秒/2048MiB及原父期限；使用独立输出train-search-batch-v2，原权威账本内的另两个合同增量。批内公式先冻结，新颖性包含第一批设计身份。执行命令追加`--batch 2`。旧批不能用修改后的源码重跑；复现须按a0b56dc及旧代码哈希核对，实际消费不清除。
