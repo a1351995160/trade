@@ -2673,3 +2673,26 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - 本轮信号/治理/入口/测试/公开依据变更清单见上一条；progress.md追加。真实输入与原结果在外部私有证据根，不纳入git。
 - 回滚点b5ca3445c527e9bd9d07e0518fb7c81d3b905488；可git revert本轮提交回滚代码，真实曝光、消费、失败与访问记录不得回滚。
 - 未运行Validation、Final Test、V4、正式Trial、Paper或真实订单；未推送、合并或公开上传研究数据。
+
+## 2026-09-12 - Task: 按顺序推送并合并技术研究代码
+### What was done
+- 公开仓库沿当前main建立代码发布分支，保留远端路径校验；私有研究分支和绩效历史未推送。
+- PR #11已MERGED，公开提交72190dcc0f7130f7dd1f1a2e8c5a687846d95e4c，合并提交fb8ae468e12ef4e9f8299354d5791c00d8f2ee48，2026-09-12T09:13:48Z。
+### Testing
+- 发布工作区65项合成回归通过；23项GitHub平台检查全部通过后才合并，没有skip/timeout/Windows OPEN调整。
+### Notes
+- 本研究工作区仅progress.md追加；代码发布工作区E:/llmwiki/publish-technical-research-v1从c323677构建，公开变更不含真实输入、绩效或私有日志。
+- 私有恢复点a53749c；公开代码可revert PR #11的合并提交，研究原件和账目不可回滚。
+
+## 2026-09-12 - Task: 完成已结算候选稳健性核验并定位独立窗口封存
+### What was done
+- 对固定月末反转只读归档结果完成事后描述核验；真实价格试验新增0、账户修复使用0。静态双成本扣减消除盈利、观察年份并非全部盈利，未将训练正回报提升为稳健结论。
+- 初版报告因末端重复快照拒绝；源引擎收盘/结束两次快照造成唯一完全相同记录。保存旧源码/失败/读取证据，red复现后只修报告逻辑，原结果不改。v2数值报告及机器摘要交用户，设计仅收固定诊断标记。
+- 独立窗口日期守卫实测拒绝2025-08-01至2026-07-31，行情行读取0；旧Validation已有曝光，不能替代独立数据。交付精确窗口、接口、输入条件、资源与旧记录关系的单一释放决定，不声称完成独立验证。
+### Testing
+- 先3项报告手算通过；末端同值快照red确实失败；修复后4项通过，0.20秒。实际原结果/回执/合同/input hash一致，费用与滑点逐fill加总核对通过，487物理快照映射486逻辑session。
+- 本次仅新增4项报告测试；发布阶段65项及23项平台检查证据见上一条。未重跑价格试验、未修改正式统计政策、费用或窗口。
+### Notes
+- scripts/review_monthly_robustness_v1.py：固定只读报告与独立访问记录，输出版本v2；tests/research_factory/test_monthly_robustness_review_v1.py：手算及重复快照red/green。
+- docs/MONTHLY_ROBUSTNESS_AND_INDEPENDENCE_REVIEW_V1.md：实际结论、报告链接、精确封存边界与窗口决定；progress.md追加。私有外部目录monthly-robustness-review-v1/v2保留原件和派生证据。
+- 回滚点a53749c；可git revert本轮本地提交回滚报告代码，结果访问/失败与原绩效不可撤销。新增核验报告和私有日志不推送公开仓库。
