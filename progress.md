@@ -2475,3 +2475,66 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 ### Notes
 - progress.md：追加恢复后的真实读数证据；外部responses/600138.SH及resources/resume-fetch-3000.started.json由原入口保存。
 - 回滚点5d132c0；可git revert本次日志提交，实际访问和原失败不删除。后台仅取数，不自动启动回测。
+
+## 2026-09-12 - Task: 独立实现固定策略回测与信号预览共用规则
+### What was done
+- 从 27d6a861cd34f113c2b02d678c5734ca9a1a686f 创建独立工作区 E:/llmwiki/fixed-strategy-signal-parity-v1，分支 codex/fixed-strategy-signal-parity-v1；没有改动原研究工作区或外部取数目录，也未启动真实回测、Paper、交易。
+- 新增 fixed_account_rules.py，提取固定合同排序、可用时间、Top3、事件拒绝及按交易 session 的 lot 退出；degraded_execution_v2.py 改为调用共享规则。
+- 新增 fixed_account_preview.py，接受内存输入与对应阶段账户，复制账户后预览入场和退出；缺数据明确 NOT_READY，部分卖出显示剩余数量及待卖状态，保持 NOT_FOR_QUALIFICATION。
+- scripts/execute_baostock_account_v1.py、scripts/run_degraded_account_v2.py 将新共享执行依赖纳入源码身份；不修改任何实际 CODE_FREEZE 或批准回执。
+- 新增 tests/research_factory/test_fixed_account_signal_parity.py；docs/FIXED_ACCOUNT_SIGNAL_PARITY_V1.md 说明接口、阶段、限制、验证和后续集成条件。
+### Testing
+- 独立 .venv 按 requirements-p3b.txt 哈希锁安装依赖；默认镜像 SSL 失败后通过官方 PyPI 成功安装，未修改依赖锁。
+- 提取前后 normal、hazard、late、partial 四组合成场景的状态、指标、排名、信号、事件拒绝、退出和每日账户结果完全一致；本地基线保留在 test_artifacts/before-parity.json。
+- 最终相关七个测试文件共 68 passed in 39.85s；包含 25 项新增测试、真实账户回调与预览逐次对照、lot 部分卖出、账户不变性及原治理回归。forbidden_predictive/structural/ai 探针均为 0。
+- 前次在 E 盘 exFAT 临时目录运行，51 通过、17 项旧 daily_plan 测试在 os.link 准备阶段因 WinError 1 失败；换 C 盘独立 NTFS 临时目录后全部通过，未跳过断言或放宽治理实现。最终临时目录为 C:/Users/84219/AppData/Local/Temp/fixed-signal-parity-20260912-ntfs-2。
+### Notes
+- 交付仍为固定 TRAIN 探索合同，不代表策略有效、最新行情可用或实时执行就绪；未来事件排除的既有探索偏差未改变。
+- 修改尚未合并至原取数工作区。test_artifacts 下为本次合成测试痕迹，非真实研究结果。
+- 回滚点为上述基线提交；可在本独立工作区对三个已修改的既有代码文件及本次文档记录反向应用本次差异，并移除本次新增的两个模块、测试和说明文档。不要重置其他工作区或删除外部数据/回执。
+
+## 2026-09-12 - Task: 将固定策略信号一致性修复集成到原研究工作区
+### What was done
+- 经用户明确要求，将独立修复工作区的 6 个代码/测试文件、说明文档和本次进度记录集成到 E:/llmwiki/bounded-offline-strategy-research-v1；代码与测试逐字节核验一致，未创建 Git 提交。
+- fixed_account_rules.py 和 fixed_account_preview.py 提供共享规则与只读预览；degraded_execution_v2.py 调用共享规则；两个执行脚本纳入新源码依赖；test_fixed_account_signal_parity.py 提供一致性回归。
+- 更新 docs/FIXED_ACCOUNT_SIGNAL_PARITY_V1.md 的集成状态及原任务续跑说明；没有复制 test_artifacts 或改动外部数据、冻结、批准、资源及失败回执，没有启动输入物化或真实回测。
+- 集成前目标工作区干净、HEAD 为 27d6a861cd34f113c2b02d678c5734ca9a1a686f，未发现运行中的 BaoStock 进程；前次只读检查为 5182/5182 双价格成功、26/26 批质量通过。
+### Testing
+- 目标工作区相关七个测试文件：68 passed in 49.29s；禁止 predictive、structural、AI 探针均为 0。
+- 使用本次修复专用独立 .venv 的解释器，cwd 与 PYTHONPATH 均指向目标代码；临时目录 C:/Users/84219/AppData/Local/Temp/fixed-signal-parity-integration-20260912-1 位于 NTFS。
+- 6 个代码/测试文件与独立工作区逐字节一致，git diff --check 通过。
+### Notes
+- 下一步由原任务核对现状及原授权后继续输入准备、可行性检查和固定账户探索；输出仍是 TRAIN 探索，不代表实时执行或研究合格。
+- 回滚点 27d6a861cd34f113c2b02d678c5734ca9a1a686f。若尚无后续改动，可从该提交恢复 scripts/execute_baostock_account_v1.py、scripts/run_degraded_account_v2.py、src/chanlun_trader/research_factory/degraded_execution_v2.py，并移除本次新增的两个模块、测试和说明文档；保留本日志并追加回滚记录。已有后续改动时须反向应用本次差异，不做全工作区重置。
+
+## 2026-09-12 - Task: 承接未提交一致性修复并完成固定TRAIN账户主执行
+### What was done
+- 阅读一致性说明及最新集成日志，保留全部未提交改动；核对5182/5182响应、26/26质量及无残留取数进程，复用全部数据。
+- 按现有授权启动原执行入口，冻结实际源码，完成输入物化及可行性（1025路径/454日/580证券），随后由原组件登记主执行、消费并结算。
+- 主回测COMPLETE，MAIN=1、REPAIR=0；交付原始完整结果、账户checkpoint、文件哈希索引和中文报告。亏损如实保留，没有因结果差调用修复或搜索。
+### Testing
+- 实际研究工作区自己的.venv运行相关七文件：68 passed in 47.69s，C盘NTFS临时目录；predictive/structural/AI禁止探针0。治理测试合法合成approve/confirm探针各17，不误报为真实批准行为。
+- 输入准备worker 425.6751881秒退出0，账户worker72.4535631秒退出0，均未超时。累计资源174.6819743分钟；全局仍360分钟。
+- 原结果SHA256与completed回执一致，当前执行代码哈希与CODE_FREEZE一致，结果input_identity与READY一致，主/修复消费与结算事件匹配。期末权益/初始资金与保存净回报公式一致，unsupported_lots为空。
+- 原结果COMPLETE，期末1258.8489元、TRAIN模型净回报-87.411511%；当前会话实际结果信息访问已记录，不声称未见绩效。没有追加统计或重新计算绩效。
+### Notes
+- docs/BAOSTOCK_FIXED_TRAIN_EXECUTION_DELIVERY_V1.md：本次正式交付与外部真实文件链接。
+- progress.md：仅追加本轮记录，保留另一会话的历史追加与未提交改动。
+- 外部baostock-account-v1：CODE_FREEZE、信号准备访问、DAILY/FEATURES/STATES、INPUT_MANIFEST/READY、FEASIBILITY、实际执行结果/账本/访问/结算、DELIVERABLES_INDEX和中文报告。
+- 执行ID0252ab9757abd6f0030ce057a7750d1097ec8ad5b91cd3c7f585c9ccf2811b98；输入身份cd099adbd8d96252064e9a5e1177959b3d48ff16eeecddc552d24acae2920e77。
+- 本轮未改生产代码、未提交用户集成文件。回滚只可撤销本轮新建交付文档并追加更正日志；真实运行、访问、预算消费及结算不能回滚或删除。源码恢复点仍27d6a861cd34f113c2b02d678c5734ca9a1a686f加执行CODE_FREEZE中的未提交文件身份；禁止reset丢弃集成改动。
+- STRICT_TRAIN_INPUT_READY、READY_FOR_REAL_TRIAL、R1_FULLY_CLOSED、AUTONOMOUS_STRATEGY_GOAL_COMPLETED均false。Windows OPEN保留，无V4/Final Test/Paper/真实订单/merge/push。
+
+## 2026-09-12 - Task: 按用户要求提交固定账户一致性代码及执行交付
+### What was done
+- 将已集成的共享规则、只读预览、执行源码身份更新、针对性测试与交付文档纳入同一次本地提交；不改策略、不重跑回测、不推送或合并。
+### Testing
+- 沿用上一轮实际研究环境68项通过结果；本轮没有代码行为修改，不重复测试或CI。
+- 提交前git diff --check通过，当前账户执行源码与实际CODE_FREEZE逐文件哈希一致。提交只保存版本，不改写历史dirty_worktree=true执行事实。
+### Notes
+- src/chanlun_trader/research_factory/fixed_account_rules.py、fixed_account_preview.py、degraded_execution_v2.py：提交既有共享规则与预览集成。
+- scripts/execute_baostock_account_v1.py、scripts/run_degraded_account_v2.py：提交已有源码身份清单更新。
+- tests/research_factory/test_fixed_account_signal_parity.py：提交已有一致性回归。
+- docs/FIXED_ACCOUNT_SIGNAL_PARITY_V1.md、docs/BAOSTOCK_FIXED_TRAIN_EXECUTION_DELIVERY_V1.md：提交接口说明与执行结果交付。
+- progress.md：保留全部历史并追加本次提交记录。
+- 回滚点27d6a861cd34f113c2b02d678c5734ca9a1a686f；可git revert本次提交撤销代码集成，外部真实结果、批准、消费和失败记录不回滚。

@@ -6,7 +6,8 @@ import os
 
 import pandas as pd
 
-from .degraded_train_v1 import CONTRACT as ORIGINAL_CONTRACT, capacity, hazard_overlap
+from .degraded_train_v1 import CONTRACT as ORIGINAL_CONTRACT, capacity
+from .fixed_account_rules import FixedAccountRules
 from .train_account_runner_v1 import ExactStateMasterV1, TrainingAccountExecutionFailure
 from chanlun_trader.engine.security_state import SecurityState, ChinaPriceLimitModel
 from chanlun_trader.engine.corporate_action_engine_v1 import CorporateActionBacktestEngineV1
@@ -14,8 +15,7 @@ from chanlun_trader.engine.engine import EngineConfig
 from chanlun_trader.engine.asof import MarketDataStore
 from chanlun_trader.engine.fill import DailyBarFillModel
 from chanlun_trader.engine.time_types import EventKind
-from chanlun_trader.engine.signal import Signal, Side, ExecutionPolicy
-from chanlun_trader.engine.portfolio_exit import PortfolioExitEvaluatorV1
+from chanlun_trader.engine.signal import Side
 
 CONTRACT = {**ORIGINAL_CONTRACT, 'adapter_version': 'DEGRADED_EXECUTION_V2',
     'volume_semantics': 'TDX_DAY_VOLUME_SEMANTICS_V1',
@@ -181,49 +181,22 @@ def _run_account(bundle, source_identity, active_check, contract):
     engine.sellability_projections=[]
     factor_days={int(d):rows for d,rows in bundle.ready_factors.groupby('timestamp')}
     ranks=[];decisions=[];hazard_checks=[]
-    strategy_id=contract.get('signal_version','FIXED_REFERENCE')
-    evaluator=PortfolioExitEvaluatorV1(contract.get('signal_version','RETURN_5D_DEGRADED'),strategy_id,{'exit_type':'FIXED_HOLD','fixed_holding_sessions':3})
+    rules=FixedAccountRules(contract)
 
     def signals(view, ts, day):
-        if engine.unsupported_lots:
-            return []
         prior=engine.calendar.prev_day(day)
-        if prior is None or not 20220801<=prior<=20240731:
-            return []
-        rows=factor_days.get(prior)
-        if rows is None:
-            return []
-        selected=[]
-        for row in rows.sort_values(['value','symbol']).itertuples():
-            if engine.ledger.total_quantity(row.symbol):
-                continue
-            if row.value<0 and pd.Timestamp(row.effective_available_at)<=ts:
-                selected.append(row)
-            if len(selected)==3:
-                break
-        ranks.append({'source_session':prior,'decision_time':str(ts),
-            'top3':[{'symbol':r.symbol,'factor':r.value,'rank':i+1} for i,r in enumerate(selected)]})
-        found=[]
-        for rank,row in enumerate(selected,1):
-            exit_day=engine.calendar.next_day(day,4)
-            hits=hazard_overlap(bundle.hazards.get(row.symbol,()),prior,exit_day) if exit_day else []
-            reason='END_OF_TRAIN_NO_COMPLETE_CLOSURE_PATH' if exit_day is None else 'ENTRY_REJECT_CORPORATE_ACTION_UNSUPPORTED' if hits else 'OK'
-            record={'symbol':row.symbol,'source_session':prior,'decision_time':str(ts),
-                'earliest_exit_session':exit_day,'rank':rank,'hazard_dates':hits,'reason':reason}
-            hazard_checks.append(record)
-            if reason!='OK':
-                engine.entry_rejections.append(record)
-                continue
-            found.append(Signal(strategy_id,f'DEGRADED:{prior}:{row.symbol}',row.symbol,ts,
-                Side.BUY,score=-row.value,execution_policy=ExecutionPolicy.NEXT_SESSION_OPEN,
-                metadata={'source_session':prior,'rank':rank,'availability':'MODELED_NEXT_SESSION_OPEN'}))
-        return found
+        decision=rules.entries(factor_days.get(prior),engine.calendar,engine.ledger,
+            bundle.hazards,engine.unsupported_lots,ts)
+        if decision.ranking is not None:
+            ranks.append(decision.ranking)
+        hazard_checks.extend(decision.checks)
+        engine.entry_rejections.extend(record for record in decision.checks if record['reason']!='OK')
+        return decision.signals
 
     def exits(view, ts, day, ledger):
         if ts.hour!=15 or ts.minute!=30:
             return []
-        lots=[lot for key,lot in ledger.lots.items() if key not in engine.unsupported_lots]
-        found=evaluator.evaluate(lots,day,engine.calendar.date_index(day),{},ts)
+        found=rules.exits(engine.calendar,ledger,engine.unsupported_lots,ts)
         decisions.extend(asdict(d) for d in found)
         return found
 

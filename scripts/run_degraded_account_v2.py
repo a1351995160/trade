@@ -31,7 +31,7 @@ def sha(path):
 def code_identity():
     files=[Path(__file__),*sorted((SOURCE/'src/chanlun_trader/engine').glob('*.py'))]
     files += [SOURCE/'src/chanlun_trader/research_factory'/n for n in [
-        'degraded_execution_v2.py','degraded_input_v2.py','degraded_governance_v1.py','degraded_train_v1.py',
+        'degraded_execution_v2.py','degraded_input_v2.py','degraded_governance_v1.py','degraded_train_v1.py','fixed_account_rules.py',
         'train_account_runner_v1.py','train_execution_governance_v1.py','exploration_governance.py','budget.py','novelty.py']]
     files += [SOURCE/'src/chanlun_trader/synthetic_batch_resources.py',SOURCE/'src/chanlun_trader/data/tdx/windowed_actions_v1.py']
     return {str(p.relative_to(SOURCE)):sha(p) for p in files}
