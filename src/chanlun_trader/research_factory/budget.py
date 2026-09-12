@@ -73,8 +73,58 @@ class SearchBudgetRegistryV1:
     def register_objective(self, limit: int) -> None:
         self.register("objective", self.objective_id, limit)
 
+    def register_exploration_increment(self, grant_id: str, contract_ids: list[str]) -> None:
+        """前瞻用途增量，不注册或改写旧objective桶；调用方须持有绑定确认回执。"""
+        if len(contract_ids) != 4 or len(set(contract_ids)) != 4:
+            raise ValueError("EXPLORATION_REQUIRES_FOUR_FIXED_CONTRACTS")
+        self.register("exploration_increment", grant_id, 6)
+        self.register("exploration_planned", grant_id, 4)
+        self.register("exploration_repair", grant_id, 2)
+        for contract in contract_ids:
+            self.register("exploration_contract", grant_id + ":" + contract, 1)
+
+    def reserve_exploration(self, grant_id: str, contract_id: str, *, repair_id: str | None = None) -> str:
+        """只扣新用途桶；修复证据由治理入口验证，不能挪用其他Objective余额。"""
+        self._bucket("exploration_contract", grant_id + ":" + contract_id)
+        reservation = "EXP-" + stable_hash([grant_id, contract_id, repair_id])[:24]
+        if reservation in self._reservations or reservation in self._settled_reservations:
+            return reservation
+        refs = [("exploration_increment", grant_id, 1),
+                ("exploration_repair" if repair_id else "exploration_planned", grant_id, 1)]
+        if not repair_id:
+            refs.append(("exploration_contract", grant_id + ":" + contract_id, 1))
+        if any(self._bucket(kind, key).remaining < amount for kind, key, amount in refs):
+            raise BudgetExhaustedError("EXPLORATION_INCREMENT_EXHAUSTED")
+        for kind, key, amount in refs:
+            self._bucket(kind, key).reserved += amount
+        self._reservations[reservation] = refs
+        self._persist()
+        return reservation
+
     def register_batch(self, batch_id: str, limit: int) -> None:
         self.register("batch", batch_id, limit)
+
+    def register_train_execution_increment(self, grant_id: str, contract_id: str) -> None:
+        """当前用途固定1主试验+1确证修复；不修改旧Objective或探索桶。"""
+        self.register("train_execution_increment", grant_id, 2)
+        self.register("train_execution_main", grant_id, 1)
+        self.register("train_execution_repair", grant_id, 1)
+        self.register("train_execution_contract", grant_id+":"+contract_id, 1)
+
+    def reserve_train_execution(self, grant_id: str, contract_id: str, *, repair_id: str | None = None) -> str:
+        self._bucket("train_execution_contract", grant_id+":"+contract_id)
+        reservation="TRAIN-"+stable_hash([grant_id,contract_id,repair_id])[:24]
+        if reservation in self._reservations or reservation in self._settled_reservations:
+            return reservation
+        refs=[("train_execution_increment",grant_id,1),
+              ("train_execution_repair" if repair_id else "train_execution_main",grant_id,1)]
+        if not repair_id:refs.append(("train_execution_contract",grant_id+":"+contract_id,1))
+        if any(self._bucket(kind,key).remaining<amount for kind,key,amount in refs):
+            raise BudgetExhaustedError("TRAIN_EXECUTION_INCREMENT_EXHAUSTED")
+        for kind,key,amount in refs:self._bucket(kind,key).reserved+=amount
+        self._reservations[reservation]=refs
+        self._persist()
+        return reservation
 
     def register_family(self, family_id: str, limit: int) -> None:
         self.register("family", family_id, limit)

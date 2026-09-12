@@ -1858,3 +1858,59 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 
 - 同轮显式Linux规则检查进一步检出CA-01旧回执CRLF，原失败输出保留linux-whitespace-green.log（文件名不代表通过）。CA-01也改为archive.zip保存原三回执，provenance原来源哈希不变；test_synthetic_usage.py逐项验证后使用；本轮新增.gitattributes全部移除，无空白豁免。
 - legacy-containers.log/xml：2 passed/41 deselected，两种原字节容器兼容均通过；最终空白复核写入新的linux-whitespace-final.log，不覆盖前次失败。
+
+## 2026-09-12 - Task: 发布受限研究及固定账户代码
+### What was done
+- 在main基线上建立代码发布分支，仅移入研究适配、受限执行、共享固定账户规则、只读预览及合成测试。
+- 本地研究历史、真实数据、绩效、批准及消费回执保留在原工作区，不纳入公开Git历史。
+### Testing
+- 全部77个移入代码/测试文件与原已提交Git blob逐字节一致。
+- 新增及修改测试201 passed in 12.72s；隔离模式，NTFS临时目录；禁止执行和授权探针全部0。git diff --check通过。
+### Notes
+- scripts/：受限数据准备、证据核验、执行及进度工具。
+- src/chanlun_trader/data/tdx/、engine/、research/、research_factory/：数据适配、原账户/治理接线及共享规则。
+- tests/research/、tests/research_factory/：对应合成回归。
+- docs/BOUNDED_RESEARCH_CODE.md：公开使用范围和权限约束；progress.md追加本条发布记录。
+- 回滚点fed519b；可git revert本次发布提交，不能以代码回滚删除或重置本机实际研究回执。Windows OPEN保留。
+
+## 2026-09-12 - Task: 修复公开检查发现的证据路径边界
+### What was done
+- 对修复证明及其引用、OWNER请求/授权、恢复TDX来源和准备输入实施解析后的目录边界验证；保留既有哈希与窗口检查。
+- 用pd.isna表达NaN断言，不改变验证含义；将新增路径依赖纳入执行源码身份。
+### Testing
+- 针对性56项通过，包括越界、相似目录前缀拒绝以及原治理、OWNER和价格适配回归；执行探针0。
+- 不修改或关闭SonarCloud规则，不调整现有CI skip/timeout；等待远端重新验证。
+### Notes
+- scripts/run_train_account_v1.py、run_degraded_account_v2.py、build_owner_execution_package.py、validate_owner_execution_package.py、execute_baostock_account_v1.py：边界验证与源码依赖。
+- src/chanlun_trader/research_factory/evidence_paths.py、exploration_governance.py：目录约束与修复证据引用保护。
+- tests/research_factory/test_evidence_paths.py、test_baostock_price_views_v1.py：拒绝边界和明确NaN断言。
+- docs/BOUNDED_RESEARCH_CODE.md、progress.md：公开使用说明及本条记录。
+- 回滚点dab691d；可git revert本次安全修复，不影响本地研究分支或外部证据。
+
+## 2026-09-12 - Task: 保持修复回执身份与源码依赖完整
+### What was done
+- 路径安全检查仅使用局部解析结果，保留原repair载荷及其身份哈希；旧训练入口同时绑定新增路径模块。
+### Testing
+- 目录边界和受限探索治理回归通过，未改变原幂等载荷。
+### Notes
+- src/chanlun_trader/research_factory/exploration_governance.py：分离检查路径和原回执身份。
+- scripts/run_train_account_v1.py：补入源码依赖；progress.md追加。
+- 回滚点3e3d86a；可git revert本提交。
+
+## 2026-09-12 - Task: 补齐首次来源与派生证明的路径检查
+### What was done
+- 在任何解析符号链接的文件系统操作前先作词法目录检查，然后再校验解析结果；补齐初次OWNER来源、因子registry及训练修复红绿证明读取边界。
+### Testing
+- 路径、探索治理、训练增量和OWNER回归通过，保留全部原断言。
+### Notes
+- scripts/build_owner_execution_package.py、scripts/run_train_account_v1.py、src/chanlun_trader/research_factory/evidence_paths.py、train_execution_governance_v1.py：补齐读取前检查；progress.md追加。
+- 回滚点893f9a6；可git revert本次修复。
+
+## 2026-09-12 - Task: 完整覆盖OWNER日线读取路径
+### What was done
+- OWNER所有初次、预热及恢复读取共用同一目录边界；词法检查使用带目录分隔符的规范化前缀，解析符号链接后继续检查真实归属。
+### Testing
+- 路径穿越、相似前缀拒绝及OWNER回归通过；不扩大许可目录或跳过窗口检查。
+### Notes
+- scripts/build_owner_execution_package.py、src/chanlun_trader/research_factory/evidence_paths.py：完整读取边界；progress.md追加。
+- 回滚点5dbe986；可git revert本次修改。
