@@ -1914,3 +1914,18 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 ### Notes
 - scripts/build_owner_execution_package.py、src/chanlun_trader/research_factory/evidence_paths.py：完整读取边界；progress.md追加。
 - 回滚点5dbe986；可git revert本次修改。
+
+## 2026-09-12 - Task: 发布技术研究入口与合成验证
+### What was done
+- 从当前main建立代码发布分支，保留既有证据路径校验。接通版本化技术信号、原账户执行和只读报告程序；不发布私有研究日志、输入、回执或真实绩效。
+### Testing
+- 针对技术公式、旧合同、账户退出、信号预览与路径边界执行合成回归；实际结果将在本轮验证完成后追加。
+### Notes
+- scripts/run_train_search_batch_v1.py、scripts/report_train_search_v1.py、scripts/report_technical_train_v1.py：治理执行和本地结果报告。
+- src/chanlun_trader/research_factory/train_search_batch_v1.py、technical_train_signals_v1.py、fixed_account_rules.py：明确版本规则，旧合同仍受原检查。
+- tests/research_factory/test_train_search_batch_v1.py、test_technical_train_signals_v1.py：合成手算及治理回归。
+- docs/TECHNICAL_RESEARCH_SCOPE_V1.md：方法范围与冻结口径；docs/BOUNDED_RESEARCH_CODE.md：新增用法说明；progress.md仅追加公开工程信息。
+- 回滚点c323677；可git revert本次提交，不回滚或改写本机研究账目。
+
+### Testing（完成）
+- 65项针对性合成回归通过，7.39秒；git diff --check通过。
