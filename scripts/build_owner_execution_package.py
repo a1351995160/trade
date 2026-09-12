@@ -202,7 +202,8 @@ def resume_sources():
         'repair':'LOCALHOST_PROXY_ROUTING_AND_NON_TARGET_GBBQ_MARKET_CHECK','sample_and_tolerances_unchanged':True})
     tq=OwnerDailyProviderV1(TQClient(use_cache=False,retries=1,timeout=10));existing=dict(plan['warmup_sources']);comparisons=[]
     for symbol in freeze['samples']:
-        local,identity=read_day_window(existing[symbol]['path'],freeze['sample_dates'])
+        from chanlun_trader.research_factory.evidence_paths import within_root
+        local,identity=read_day_window(within_root(existing[symbol]['path'],TDX/'vipdoc'),freeze['sample_dates'])
         old=next(a for a in read(prior/'DAILY_READ_AUDIT.json') if a.get('path')==identity['path'] and a.get('rows')==identity['rows'])
         if old['window_sha256']!=identity['window_sha256']:raise ValueError('FROZEN_SAMPLE_SOURCE_CHANGED')
         remote=tq.get_daily(symbol);comparison=compare_sources(local,remote)

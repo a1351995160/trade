@@ -158,15 +158,17 @@ def prepare_input():
 
 
 def load_ready(repair=None):
+    from chanlun_trader.research_factory.evidence_paths import within_root
     r=read(ROOT/'INPUT_READY.json')
     if r['status']!='READY':raise PermissionError('INPUT_NOT_READY')
     if repair:
-        green=read(repair['green_evidence'])
+        green=read(within_root(repair['green_evidence'],ROOT.parent.parent))
         if green.get('status')!='PASS' or green.get('affects_input') is not False or green.get('code_hashes')!=code_identity():
             raise PermissionError('REPAIR_REQUIRES_VERIFIED_UNCHANGED_INPUT_AND_FROZEN_CODE')
     elif r['code_hashes']!=code_identity():raise PermissionError('FROZEN_INPUT_CODE_CHANGED')
     for item in r['files'].values():
-        if sha(item['path'])!=item['sha256']:raise ValueError('CLOSED_INPUT_CHANGED')
+        if sha(within_root(item['path'],ROOT))!=item['sha256']:raise ValueError('CLOSED_INPUT_CHANGED')
+    r['actions_manifest']=str(within_root(r['actions_manifest'],ROOT))
     if sha(r['actions_manifest'])!=r['actions_manifest_sha256']:raise ValueError('ACTION_IDENTITY_CHANGED')
     if sha(ROOT/'FIXED_REFERENCE_NOVELTY.json')!=r['novelty_evidence_sha256']:raise ValueError('NOVELTY_EVIDENCE_CHANGED')
     return r
@@ -229,7 +231,8 @@ def execute(repair_proof=None):
         result=bounded('prepare',seconds=min(900,remaining))
         save(ROOT/'preparation_process.json',{k:v.decode(errors='replace') if isinstance(v,bytes) else v for k,v in result.items()})
         if result['returncode']:raise RuntimeError('INPUT_PREPARATION_FAILED_DETAILS_ARCHIVED')
-    repair=read(repair_proof) if repair_proof else None
+    from chanlun_trader.research_factory.evidence_paths import within_root
+    repair=read(within_root(repair_proof,ROOT.parent.parent)) if repair_proof else None
     r=load_ready(repair)
     from chanlun_trader.research_factory.train_execution_governance_v1 import TrainExecutionGovernanceV1
     from chanlun_trader.research_factory.train_account_runner_v1 import FIXED_CONTRACT

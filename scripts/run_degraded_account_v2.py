@@ -32,7 +32,7 @@ def code_identity():
     files=[Path(__file__),*sorted((SOURCE/'src/chanlun_trader/engine').glob('*.py'))]
     files += [SOURCE/'src/chanlun_trader/research_factory'/n for n in [
         'degraded_execution_v2.py','degraded_input_v2.py','degraded_governance_v1.py','degraded_train_v1.py','fixed_account_rules.py',
-        'train_account_runner_v1.py','train_execution_governance_v1.py','exploration_governance.py','budget.py','novelty.py']]
+        'train_account_runner_v1.py','train_execution_governance_v1.py','exploration_governance.py','budget.py','novelty.py','evidence_paths.py']]
     files += [SOURCE/'src/chanlun_trader/synthetic_batch_resources.py',SOURCE/'src/chanlun_trader/data/tdx/windowed_actions_v1.py']
     return {str(p.relative_to(SOURCE)):sha(p) for p in files}
 
@@ -40,7 +40,8 @@ def code_identity():
 def load_ready(repair=None):
     r=read(ROOT/'INPUT_READY.json')
     if repair:
-        green=read(repair['green_evidence'])
+        from chanlun_trader.research_factory.evidence_paths import within_root
+        green=read(within_root(repair['green_evidence'],ROOT.parent.parent))
         if green.get('status')!='PASS' or green.get('affects_input') is not False or green.get('code_hashes')!=code_identity():
             raise PermissionError('REPAIR_CODE_OR_UNCHANGED_INPUT_NOT_PROVEN')
     elif r['code_identity']!=code_identity():
@@ -149,7 +150,8 @@ def execute(feasibility_only=False,repair_proof=None):
         print('INSUFFICIENT_EXECUTABLE_EVIDENCE_NO_ACCOUNT_EXPOSURE');return
     if feasibility_only:
         return
-    repair=read(repair_proof) if repair_proof else None
+    from chanlun_trader.research_factory.evidence_paths import within_root
+    repair=read(within_root(repair_proof,ROOT.parent.parent)) if repair_proof else None
     ready=load_ready(repair)
     from chanlun_trader.research_factory.degraded_governance_v1 import DegradedGovernanceV1
     service=DegradedGovernanceV1(ORIGINAL)

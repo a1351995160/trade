@@ -126,6 +126,11 @@ def validate_package(directory,request,authorization_sha256):
 
 
 if __name__=='__main__':
+    from chanlun_trader.research_factory.evidence_paths import within_root
     parser=argparse.ArgumentParser();parser.add_argument('directory');parser.add_argument('--request',required=True);parser.add_argument('--authorization',required=True)
-    args=parser.parse_args();r=validate_package(args.directory,json.loads(Path(args.request).read_text(encoding='utf-8')),digest(Path(args.authorization)))
+    args=parser.parse_args()
+    directory=within_root(args.directory,Path('E:/llmwiki/owner-execution-export-v1'))
+    request=within_root(args.request,Path('E:/llmwiki/autonomous-strategy-research-v1'))
+    authorization=within_root(args.authorization,Path('C:/Users/84219/.codex/attachments'))
+    r=validate_package(directory,json.loads(request.read_text(encoding='utf-8')),digest(authorization))
     print(json.dumps(r,ensure_ascii=False));raise SystemExit(0 if r['status']=='PASS' else 2)

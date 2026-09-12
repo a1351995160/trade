@@ -1872,3 +1872,17 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - tests/research/、tests/research_factory/：对应合成回归。
 - docs/BOUNDED_RESEARCH_CODE.md：公开使用范围和权限约束；progress.md追加本条发布记录。
 - 回滚点fed519b；可git revert本次发布提交，不能以代码回滚删除或重置本机实际研究回执。Windows OPEN保留。
+
+## 2026-09-12 - Task: 修复公开检查发现的证据路径边界
+### What was done
+- 对修复证明及其引用、OWNER请求/授权、恢复TDX来源和准备输入实施解析后的目录边界验证；保留既有哈希与窗口检查。
+- 用pd.isna表达NaN断言，不改变验证含义；将新增路径依赖纳入执行源码身份。
+### Testing
+- 针对性56项通过，包括越界、相似目录前缀拒绝以及原治理、OWNER和价格适配回归；执行探针0。
+- 不修改或关闭SonarCloud规则，不调整现有CI skip/timeout；等待远端重新验证。
+### Notes
+- scripts/run_train_account_v1.py、run_degraded_account_v2.py、build_owner_execution_package.py、validate_owner_execution_package.py、execute_baostock_account_v1.py：边界验证与源码依赖。
+- src/chanlun_trader/research_factory/evidence_paths.py、exploration_governance.py：目录约束与修复证据引用保护。
+- tests/research_factory/test_evidence_paths.py、test_baostock_price_views_v1.py：拒绝边界和明确NaN断言。
+- docs/BOUNDED_RESEARCH_CODE.md、progress.md：公开使用说明及本条记录。
+- 回滚点dab691d；可git revert本次安全修复，不影响本地研究分支或外部证据。
