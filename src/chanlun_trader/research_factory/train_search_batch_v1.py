@@ -5,9 +5,11 @@ import pandas as pd
 from .baostock_account_v1 import CONTRACT as BASE
 from .baostock_governance_v1 import BaostockGovernanceV1
 from .common import stable_hash
+from .technical_train_signals_v1 import FORMULAS as TECHNICAL_FORMULAS, WARMUP
 
 
 FORMULAS = {
+    **TECHNICAL_FORMULAS,
     'MOMENTUM_5': '-RETURN_5D',
     'STABILITY_20': '-1/(1+STD_POPULATION(RETURN_5D[t-19:t]))',
     'MOMENTUM_60': '-(PRODUCT(1+RETURN_5D[t-5*k], k=0..11)-1)',
@@ -23,6 +25,11 @@ def contract(name):
     if name not in FORMULAS:
         raise ValueError('UNFROZEN_MECHANISM')
     return {**BASE, 'version': 'TRAIN_SEARCH_BATCH_V1_' + name,
+            **({'technical_warmup_sessions':WARMUP[name],
+                 'technical_price_basis':'SAME_DAY_HFQ_CLOSE_OVER_RAW_CLOSE_SCALED_OHLC',
+                 'technical_missing_policy':'RESET_SEGMENT_NO_FILL',
+                 'technical_initialization':'EMA_FIRST_CLOSE; KDJ_K_D_50; SEE_FROZEN_SOURCE'}
+               if name in TECHNICAL_FORMULAS else {}),
             'holding_sessions':20 if '_HOLD_20' in name else 3,
             **({'market_gate':'MEDIAN_ELIGIBLE_RETURN_5D_GT_0'} if name.endswith('_MARKET_5') else {}),
             'adapter_version': 'TRAIN_SEARCH_BATCH_V1',
@@ -35,6 +42,12 @@ def contract(name):
 
 def design(name):
     frozen = contract(name)
+    if name in TECHNICAL_FORMULAS:
+        return {'candidate_id':stable_hash(frozen),'candidate_hash':stable_hash(frozen),
+                'mechanism':name.removesuffix('_HOLD_20'), 'factor_ids':[name.removesuffix('_HOLD_20')],
+                'semantic_fingerprint':FORMULAS[name],
+                'parameter_fingerprint':{'formula':FORMULAS[name],'warmup':WARMUP[name],
+                                         'top_n':3,'holding_sessions':20},'holding_period_days':20}
     base_name = name.removesuffix('_MARKET_5').removesuffix('_HOLD_20')
     mechanisms = {
         'MOMENTUM_5': 'POSITIVE_FIVE_SESSION_PRICE_CHANGE',
@@ -54,6 +67,9 @@ def design(name):
 
 def transform(rows, sessions, name):
     """只在独立日历上组合已核验特征；缺日不压缩，源可见时间取依赖最大值。"""
+    if name in TECHNICAL_FORMULAS:
+        from .technical_train_signals_v1 import transform as technical_transform
+        return technical_transform(rows,sessions,name)
     frozen = contract(name)
     market_gate = name.endswith('_MARKET_5')
     name = name.removesuffix('_MARKET_5').removesuffix('_HOLD_20')

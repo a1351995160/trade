@@ -2641,3 +2641,35 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - tests/research_factory/test_train_search_batch_v1.py：追加现金守恒断言；其余第四批代码变更清单见上一条日志。
 - progress.md追加；外部train-search-delivery-v2为本次报告及STATUS，四批原件保留。
 - 回滚点0a7c144；可git revert本次代码提交，真实试验、消费及失败不能回滚。当前无后台研究worker，不声称目标已达成或存在未执行的持续搜索。
+
+## 2026-09-12 - Task: 公开方法研究与六条技术信号接入
+### What was done
+- 查阅指标官方API、公式文档与原研究资料，扩展主流技术指标目录；目录中的待实现项不冒充已运行。首六条固定规则纳入原治理/账户入口，旧八项合同身份保持。
+- 原缓存HFQ收盘/同日RAW比例派生信号OHLC，成交仍RAW；缺日分段，分型封闭后才发布。每批独立事前冻结、原增量服务登记，未启用统计V4。
+### Testing
+- 38项针对性合成回归通过，3.48秒：MACD/KDJ手算、零分母、缺日、未来扰动、缠论前缀重放、RAW不变、六合同治理与原账户回归。
+- 尚未执行这六项真实账户试验；真实结果将在运行后追加，不预报成功。
+### Notes
+- src/chanlun_trader/research_factory/technical_train_signals_v1.py：六条明确技术规则和双价格派生。
+- src/chanlun_trader/research_factory/train_search_batch_v1.py：六合同、语义身份与转换分派。
+- src/chanlun_trader/research_factory/fixed_account_rules.py：六个精确20-session版本。
+- scripts/run_train_search_batch_v1.py：批5-7、来源逐文件验哈希及实际读取记录、源码与文档冻结。
+- tests/research_factory/test_technical_train_signals_v1.py：新增合成证据；tests/research_factory/test_train_search_batch_v1.py：新增六合同治理回归。
+- docs/TECHNICAL_RESEARCH_SCOPE_V1.md：研究范围、固定规则、来源与局限；progress.md追加。
+- 回滚点b5ca344；只回滚本轮代码，不撤销旧账户曝光/消费/失败。
+
+## 2026-09-12 - Task: 完成六项公开方法账户探索并固定首个训练盈利候选
+### What was done
+- 批5-7共六项真实账户试验全部COMPLETE并结算；月末20-session反转通过事前训练筛选，其余五项训练净回报非正。保留全部失败，不调参，不称正式资格。
+- 本轮新增MAIN=6、REPAIR=0；前四批8次和旧12次消费分别保留，不重写旧账。十二个准备/账户worker均退出0，累计1984.2106445000172秒。
+- 向请求用户归档technical-train-delivery-v1/REPORT.md、RESULTS_INDEX.json、STATUS.json及每项实际访问记录。评估侧复制原指标；设计侧只收到固定筛选原因，没有访问精确收益曲线或指标。
+- 固定MONTHLY_REVERSAL_HOLD_20为待稳健性与独立证据核验的训练候选；严格输入及三个正式完成/就绪标志继续false。
+### Testing
+- 最终39项针对性合成回归通过，3.58秒；另实际核验八份旧合同未改变。
+- 六项原结果哈希、合同与输入身份、正式回执及结算对应核验通过；12个worker无失败，当前本批无后台worker。
+- git diff --check通过；未跑全量CI，未扩大Windows OPEN隔离、skip或timeout。
+### Notes
+- scripts/report_technical_train_v1.py：新增六项原指标用户报告与状态，不补算统计；docs/TRAIN_SEARCH_BATCH_V1.md：追加本轮交付索引。
+- 本轮信号/治理/入口/测试/公开依据变更清单见上一条；progress.md追加。真实输入与原结果在外部私有证据根，不纳入git。
+- 回滚点b5ca3445c527e9bd9d07e0518fb7c81d3b905488；可git revert本轮提交回滚代码，真实曝光、消费、失败与访问记录不得回滚。
+- 未运行Validation、Final Test、V4、正式Trial、Paper或真实订单；未推送、合并或公开上传研究数据。

@@ -111,7 +111,10 @@ def test_market_gate_uses_cross_section_time_without_filling_missing_signal():
 
 @pytest.mark.parametrize('name',['MOMENTUM_5','STABILITY_20','MOMENTUM_60','LIQUIDITY_20',
                                 'STABILITY_20_HOLD_20','LIQUIDITY_20_HOLD_20',
-                                'MOMENTUM_60_HOLD_20_MARKET_5','STABILITY_20_HOLD_20_MARKET_5'])
+                                'MOMENTUM_60_HOLD_20_MARKET_5','STABILITY_20_HOLD_20_MARKET_5',
+                                'MACD_CROSS_HOLD_20','KDJ_OVERSOLD_CROSS_HOLD_20',
+                                'CHAN_BOTTOM_MACD_HOLD_20','MONTHLY_REVERSAL_HOLD_20',
+                                'HIGH_252_HOLD_20','LOW_MAX_20_HOLD_20'])
 def test_governed_increment_repeat_and_revocation(tmp_path,name):
     _,plan,source,evidence,parent=grant(tmp_path)
     service=TrainSearchGovernanceV1(tmp_path,name)

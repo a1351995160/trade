@@ -19,7 +19,9 @@ STATEMENT = '我批准你，我只有一个诉求，找到能盈利的为止，�
 def code():
     from execute_baostock_account_v1 import code_identity
     return {**code_identity(), **{str(p.relative_to(SOURCE)): sha(p) for p in [
-        Path(__file__), SOURCE/'src/chanlun_trader/research_factory/train_search_batch_v1.py']}}
+        Path(__file__), SOURCE/'src/chanlun_trader/research_factory/train_search_batch_v1.py',
+        SOURCE/'src/chanlun_trader/research_factory/technical_train_signals_v1.py',
+        SOURCE/'src/chanlun_trader/chan.py', SOURCE/'docs/TECHNICAL_RESEARCH_SCOPE_V1.md']}}
 
 
 def guard():
@@ -58,6 +60,7 @@ def freeze():
             same_batch_candidates=[design(other) for other in NAMES if other != name]).to_dict()
     source = {'origin': 'USER_EXPLICIT_PLAN_APPROVAL_VIA_CODEX', 'thread_id': thread,
               'approval_statement': STATEMENT, 'recorded_at': datetime.now(timezone.utc).isoformat(),
+              'technical_research_steering': '缠论的知识也用，kdj，macd等指标；不止我说的这些指标，应该还有很多其他指标的，技术指标都用上，不局限于我和你说的',
               'interpretation': 'DELEGATED_RESEARCH; BATCH_SIZE_CHOSEN_BY_AGENT; NO_PER_CANDIDATE_HUMAN_APPROVAL',
               'scope': 'EXISTING_TRAIN_ONLY_NO_TRADING_NO_PAID_DATA'}
     save(ROOT/'APPROVAL_SOURCE.json', source)
@@ -109,6 +112,7 @@ def prepare(name):
     from chanlun_trader.research_factory.common import stable_hash
     from chanlun_trader.research_factory.train_search_batch_v1 import transform, contract
     from chanlun_trader.research_factory.degraded_input_v2 import check_feasibility
+    from chanlun_trader.research_factory.technical_train_signals_v1 import FORMULAS as TECHNICAL
     frozen = read(ROOT/'PREREGISTRATION.json')
     if not frozen['novelty'][name]['allowed']:
         save(ROOT/name/'REJECTED.json', frozen['novelty'][name])
@@ -126,7 +130,20 @@ def prepare(name):
         'purpose':'FROZEN_SIGNAL_AND_NO_OUTCOME_FEASIBILITY','inputs':frozen['inputs'],
         'new_information_access':True,'price_performance_exposure':False})
     groups, diagnostics = [], []
-    for _, rows in value.ready_factors.groupby('symbol', observed=True, sort=True):
+    raw_groups = value.daily.groupby('symbol',observed=True).indices if name in TECHNICAL else {}
+    manifest = read(INPUT/'INPUT_MANIFEST.json') if name in TECHNICAL else {}
+    for symbol, rows in value.ready_factors.groupby('symbol', observed=True, sort=True):
+        if name in TECHNICAL:
+            from run_baostock_account_v1 import response_directory
+            from chanlun_trader.research_factory.technical_train_signals_v1 import adjusted_rows
+            path = response_directory(symbol,'1',INPUT)/'1.json'
+            expected = manifest['inputs'].get(str(path))
+            if expected is None or sha(path)!=expected:
+                raise PermissionError('HFQ_SOURCE_NOT_BOUND_OR_CHANGED')
+            save(ROOT/name/'source-access'/f'{symbol}.json',{'path':str(path),'sha256':expected,
+                'reader_pid':os.getpid(),'recipient':'EVALUATION_SIDE','purpose':'FROZEN_TECHNICAL_SIGNAL',
+                'at':datetime.now(timezone.utc).isoformat()})
+            rows = adjusted_rows(rows,value.daily.iloc[raw_groups[symbol]],read(path)['rows'])
         transformed = transform(rows, value.calendar, name)
         diagnostics.append(transformed[['symbol','timestamp','computable']])
         groups.append(transformed.loc[transformed.computable].drop(columns='computable'))
@@ -260,11 +277,14 @@ def run():
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--batch',type=int,choices=[1,2,3,4],default=1)
+    parser.add_argument('--batch',type=int,choices=[1,2,3,4,5,6,7],default=1)
     parser.add_argument('--stage',choices=['prepare','account'])
     parser.add_argument('--name',choices=['MOMENTUM_5','STABILITY_20','MOMENTUM_60','LIQUIDITY_20',
                                         'STABILITY_20_HOLD_20','LIQUIDITY_20_HOLD_20',
-                                        'MOMENTUM_60_HOLD_20_MARKET_5','STABILITY_20_HOLD_20_MARKET_5'])
+                                        'MOMENTUM_60_HOLD_20_MARKET_5','STABILITY_20_HOLD_20_MARKET_5',
+                                        'MACD_CROSS_HOLD_20','KDJ_OVERSOLD_CROSS_HOLD_20',
+                                        'CHAN_BOTTOM_MACD_HOLD_20','MONTHLY_REVERSAL_HOLD_20',
+                                        'HIGH_252_HOLD_20','LOW_MAX_20_HOLD_20'])
     parser.add_argument('--execution-id')
     options = parser.parse_args()
     BATCH = options.batch
@@ -277,6 +297,11 @@ if __name__=='__main__':
     elif BATCH == 4:
         ROOT = INPUT.parent/'train-search-batch-v4'
         NAMES = ['MOMENTUM_60_HOLD_20_MARKET_5','STABILITY_20_HOLD_20_MARKET_5']
+    elif BATCH in (5,6,7):
+        ROOT = INPUT.parent/f'train-search-batch-v{BATCH}'
+        NAMES = {5:['MACD_CROSS_HOLD_20','KDJ_OVERSOLD_CROSS_HOLD_20'],
+                 6:['CHAN_BOTTOM_MACD_HOLD_20','MONTHLY_REVERSAL_HOLD_20'],
+                 7:['HIGH_252_HOLD_20','LOW_MAX_20_HOLD_20']}[BATCH]
     if options.stage:
         if options.name not in NAMES:
             raise PermissionError('CANDIDATE_NOT_IN_BATCH')
