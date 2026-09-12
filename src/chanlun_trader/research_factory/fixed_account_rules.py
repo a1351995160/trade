@@ -32,6 +32,8 @@ class FixedAccountRules:
         longer_hold = contract.get('signal_version') in {
             'TRAIN_SEARCH_BATCH_V1_STABILITY_20_HOLD_20',
             'TRAIN_SEARCH_BATCH_V1_LIQUIDITY_20_HOLD_20',
+            'TRAIN_SEARCH_BATCH_V1_MOMENTUM_60_HOLD_20_MARKET_5',
+            'TRAIN_SEARCH_BATCH_V1_STABILITY_20_HOLD_20_MARKET_5',
         }
         supported = {
             'operator': 'LT', 'threshold': 0, 'ranking': 'FACTOR_ASC_SYMBOL_ASC',

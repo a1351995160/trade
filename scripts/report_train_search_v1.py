@@ -1,4 +1,4 @@
-"""评估侧读取六份既有结果，向用户保存原指标，设计侧只见固定筛选原因。"""
+"""评估侧读取八份既有结果，向用户保存原指标，设计侧只见固定筛选原因。"""
 import os
 from datetime import datetime, timezone
 from pathlib import Path
@@ -6,8 +6,9 @@ from pathlib import Path
 from run_baostock_account_v1 import ROOT as INPUT, read, save, sha
 
 CASES = {1:['MOMENTUM_5','STABILITY_20'],2:['MOMENTUM_60','LIQUIDITY_20'],
-         3:['STABILITY_20_HOLD_20','LIQUIDITY_20_HOLD_20']}
-ROOT = INPUT.parent/'train-search-delivery-v1'
+         3:['STABILITY_20_HOLD_20','LIQUIDITY_20_HOLD_20'],
+         4:['MOMENTUM_60_HOLD_20_MARKET_5','STABILITY_20_HOLD_20_MARKET_5']}
+ROOT = INPUT.parent/'train-search-delivery-v2'
 
 
 def reason(result):
@@ -27,12 +28,12 @@ def run():
     from chanlun_trader.research_factory.train_search_batch_v1 import TrainSearchGovernanceV1
     from run_baostock_account_v1 import PARENT
     from chanlun_trader.research_factory.common import stable_hash
-    save(ROOT/'REPORT_RULE.json',{'purpose':'USER_REPORT_OF_SIX_EXISTING_TRAIN_RESULTS',
+    save(ROOT/'REPORT_RULE.json',{'purpose':'USER_REPORT_OF_EIGHT_EXISTING_TRAIN_RESULTS',
         'script_sha256':sha(Path(__file__)), 'cases':CASES,
         'metrics':'COPY_ORIGINAL_METRICS_ONLY_NO_NEW_STATISTICS',
         'design_feedback':'EXISTING_SCREEN_COMPONENT_FAILURE_REASONS_ONLY',
         'new_result_information_access':True,'new_price_experiments':0})
-    table=['# 六项账户研究结果（仅TRAIN探索）','',
+    table=['# 八项账户研究结果（仅TRAIN探索）','',
         '以下指标直接来自已完成的原账户结果，已计入原费用。它们不是独立样本外证据，不保证未来盈利。',
         '本报告由评估脚本生成，精确数值交付请求用户；设计侧只接收固定筛选原因。','',
         '|候选|期末模型权益（元）|TRAIN模型净回报|最大回撤|已关闭lot|筛选结果|',
@@ -71,8 +72,8 @@ def run():
                 'input_identity':result['input_identity'],'metrics':m,
                 'main_used':settlement['MAIN_BACKTEST_EXPOSURES_USED'],
                 'repair_used':settlement['REPAIR_BACKTEST_EXPOSURES_USED']}
-    table += ['','所有六项同等报告；窗口/持有期变体并不构成独立机制证据。',
-        '保留旧12次消费与全部历史曝光；本轮6次主试验，修复0次。新颖性历史语义仍不完整。',
+    table += ['','所有八项同等报告；窗口/持有期变体并不构成独立机制证据。',
+        '保留旧12次消费与全部历史曝光；本轮8次主试验，修复0次。新颖性历史语义仍不完整。',
         '股票池状态、HFQ回溯版本和事后hazard排除仍有局限。未运行V4、正式Trial、Validation、Final Test、Paper或真实订单。',
         'STRICT_TRAIN_INPUT_READY=false；READY_FOR_REAL_TRIAL=false；R1_FULLY_CLOSED=false；AUTONOMOUS_STRATEGY_GOAL_COMPLETED=false。']
     save(ROOT/'RESULTS_INDEX.json',index)

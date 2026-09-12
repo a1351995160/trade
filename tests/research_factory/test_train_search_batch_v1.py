@@ -86,14 +86,32 @@ def test_long_hold_uses_original_exit_engine_and_preserves_legacy_contract():
     assert len(buys)==len(sells)==3
     assert {int(f['fill_time'].strftime('%Y%m%d')) for f in sells}=={days[22]}
     assert result['metrics']['total_fees']>0
+    # 恒定10元，3组各300股：佣金30、双边滑点18、卖印花税4.4955。
+    assert result['metrics']['ending_equity']==pytest.approx(10000-30-18-4.4955)
     b.hazards={s:[days[15]] for s in b.daily.symbol.unique()}
     assert not _run_account(b,('SYNTHETIC',False),None,frozen)['fills']
     with pytest.raises(ValueError,match='UNSUPPORTED'):
         FixedAccountRules({**contract('STABILITY_20'),'holding_sessions':20})
 
 
+def test_market_gate_uses_cross_section_time_without_filling_missing_signal():
+    sessions, rows=data()
+    rows['market_median']=-.01
+    rows['market_available_at']=rows.effective_available_at
+    negative=transform(rows,sessions,'STABILITY_20_HOLD_20_MARKET_5')
+    assert negative.value.iloc[:19].isna().all()
+    assert negative.value.iloc[19:].eq(1).all()
+    rows['market_median']=.01
+    late=pd.Timestamp('2023-01-01',tz='UTC')
+    rows.loc[19,'market_available_at']=late
+    positive=transform(rows,sessions,'STABILITY_20_HOLD_20_MARKET_5')
+    assert positive.value.iloc[19]<0
+    assert positive.effective_available_at.iloc[19]==late
+
+
 @pytest.mark.parametrize('name',['MOMENTUM_5','STABILITY_20','MOMENTUM_60','LIQUIDITY_20',
-                                'STABILITY_20_HOLD_20','LIQUIDITY_20_HOLD_20'])
+                                'STABILITY_20_HOLD_20','LIQUIDITY_20_HOLD_20',
+                                'MOMENTUM_60_HOLD_20_MARKET_5','STABILITY_20_HOLD_20_MARKET_5'])
 def test_governed_increment_repeat_and_revocation(tmp_path,name):
     _,plan,source,evidence,parent=grant(tmp_path)
     service=TrainSearchGovernanceV1(tmp_path,name)

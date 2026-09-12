@@ -14,6 +14,8 @@ FORMULAS = {
     'LIQUIDITY_20': '-MEAN(AMOUNT_CNY[t-19:t])',
     'STABILITY_20_HOLD_20': '-1/(1+STD_POPULATION(RETURN_5D[t-19:t]))',
     'LIQUIDITY_20_HOLD_20': '-MEAN(AMOUNT_CNY[t-19:t])',
+    'MOMENTUM_60_HOLD_20_MARKET_5': '-(PRODUCT(1+RETURN_5D[t-5*k], k=0..11)-1)',
+    'STABILITY_20_HOLD_20_MARKET_5': '-1/(1+STD_POPULATION(RETURN_5D[t-19:t]))',
 }
 
 
@@ -21,7 +23,8 @@ def contract(name):
     if name not in FORMULAS:
         raise ValueError('UNFROZEN_MECHANISM')
     return {**BASE, 'version': 'TRAIN_SEARCH_BATCH_V1_' + name,
-            'holding_sessions':20 if name.endswith('_HOLD_20') else 3,
+            'holding_sessions':20 if '_HOLD_20' in name else 3,
+            **({'market_gate':'MEDIAN_ELIGIBLE_RETURN_5D_GT_0'} if name.endswith('_MARKET_5') else {}),
             'adapter_version': 'TRAIN_SEARCH_BATCH_V1',
             'signal_version': 'TRAIN_SEARCH_BATCH_V1_' + name,
             'factor_id': name, 'signal_formula': FORMULAS[name],
@@ -32,7 +35,7 @@ def contract(name):
 
 def design(name):
     frozen = contract(name)
-    base_name = name.removesuffix('_HOLD_20')
+    base_name = name.removesuffix('_MARKET_5').removesuffix('_HOLD_20')
     mechanisms = {
         'MOMENTUM_5': 'POSITIVE_FIVE_SESSION_PRICE_CHANGE',
         'STABILITY_20': 'LOW_DISPERSION_OF_OVERLAPPING_FIVE_SESSION_PRICE_CHANGES',
@@ -43,7 +46,8 @@ def design(name):
             'mechanism': mechanisms[base_name],
             'factor_ids': ['AMOUNT' if base_name == 'LIQUIDITY_20' else 'RETURN_5D'],
             'semantic_fingerprint': FORMULAS[name],
-            'parameter_fingerprint': {'window': {'MOMENTUM_5':1,'MOMENTUM_60':56}.get(name,20),
+            'parameter_fingerprint': {'window': {'MOMENTUM_5':1,'MOMENTUM_60':56}.get(base_name,20),
+                                      **({'market_gate':'MEDIAN_ELIGIBLE_RETURN_5D_GT_0'} if name.endswith('_MARKET_5') else {}),
                                       'top_n': 3, 'holding_sessions': frozen['holding_sessions']},
             'holding_period_days': frozen['holding_sessions']}
 
@@ -51,7 +55,8 @@ def design(name):
 def transform(rows, sessions, name):
     """只在独立日历上组合已核验特征；缺日不压缩，源可见时间取依赖最大值。"""
     frozen = contract(name)
-    name = name.removesuffix('_HOLD_20')
+    market_gate = name.endswith('_MARKET_5')
+    name = name.removesuffix('_MARKET_5').removesuffix('_HOLD_20')
     if sessions != sorted(set(sessions)):
         raise ValueError('INDEPENDENT_CALENDAR_REQUIRED')
     if rows.timestamp.duplicated().any() or not rows.timestamp.isin(sessions).all():
@@ -79,6 +84,13 @@ def transform(rows, sessions, name):
     times = pd.to_datetime(aligned.effective_available_at, utc=True)
     seconds = pd.Series([t.timestamp() if pd.notna(t) else np.nan for t in times], index=sessions)
     latest = seconds.rolling(width, min_periods=width).max()
+    if market_gate:
+        median = pd.to_numeric(aligned.market_median,errors='raise')
+        score = score.where(median.gt(0),1.0).where(score.notna() & median.notna())
+        market_times = pd.to_datetime(aligned.market_available_at,utc=True)
+        market_seconds = pd.Series([t.timestamp() if pd.notna(t) else np.nan
+                                    for t in market_times],index=sessions)
+        latest = pd.concat([latest,market_seconds],axis=1).max(axis=1).where(latest.notna() & market_seconds.notna())
     out = pd.DataFrame({'symbol': rows.symbol.iloc[0], 'timestamp': sessions,
                         'value': score.to_numpy(),
                         'effective_available_at': pd.to_datetime(latest.to_numpy(), unit='s', utc=True),

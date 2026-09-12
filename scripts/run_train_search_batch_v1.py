@@ -114,6 +114,10 @@ def prepare(name):
         save(ROOT/name/'REJECTED.json', frozen['novelty'][name])
         return
     value = bundle(name, preparing=True)
+    if name.endswith('_MARKET_5'):
+        market = value.ready_factors.groupby('timestamp',observed=True).agg(
+            market_median=('value','median'),market_available_at=('effective_available_at','max'))
+        value.ready_factors = value.ready_factors.join(market,on='timestamp')
     if name.removesuffix('_HOLD_20') == 'LIQUIDITY_20':
         value.ready_factors = value.ready_factors.merge(
             value.daily[['symbol','date','amount']],left_on=['symbol','timestamp'],
@@ -256,10 +260,11 @@ def run():
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--batch',type=int,choices=[1,2,3],default=1)
+    parser.add_argument('--batch',type=int,choices=[1,2,3,4],default=1)
     parser.add_argument('--stage',choices=['prepare','account'])
     parser.add_argument('--name',choices=['MOMENTUM_5','STABILITY_20','MOMENTUM_60','LIQUIDITY_20',
-                                        'STABILITY_20_HOLD_20','LIQUIDITY_20_HOLD_20'])
+                                        'STABILITY_20_HOLD_20','LIQUIDITY_20_HOLD_20',
+                                        'MOMENTUM_60_HOLD_20_MARKET_5','STABILITY_20_HOLD_20_MARKET_5'])
     parser.add_argument('--execution-id')
     options = parser.parse_args()
     BATCH = options.batch
@@ -269,6 +274,9 @@ if __name__=='__main__':
     elif BATCH == 3:
         ROOT = INPUT.parent/'train-search-batch-v3'
         NAMES = ['STABILITY_20_HOLD_20','LIQUIDITY_20_HOLD_20']
+    elif BATCH == 4:
+        ROOT = INPUT.parent/'train-search-batch-v4'
+        NAMES = ['MOMENTUM_60_HOLD_20_MARKET_5','STABILITY_20_HOLD_20_MARKET_5']
     if options.stage:
         if options.name not in NAMES:
             raise PermissionError('CANDIDATE_NOT_IN_BATCH')

@@ -2612,3 +2612,32 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - scripts/report_train_search_v1.py：只读六份原结果的用户报告生成。
 - progress.md追加；外部train-search-delivery-v1保留报告、索引、规则和实际访问记录。
 - 第三批代码清单及46项回归见上一记录。回滚点e68c588；实际消费、失败及访问均不可回滚。
+
+## 2026-09-12 - Task: 冻结第四批市场状态入场条件
+### What was done
+- 将可计算候选池RETURN_5D中位数大于0作为事前固定的新入场条件，分别配合60session趋势和20session稳定性，均持有20session；计为两个新变体。
+- 市场条件使用当前session横截面且保留最晚成员可见时间；无行情下载，无成本或账户规则放宽。第四批版本号不代表V4统计方法。
+### Testing
+- 49项合成测试通过，3.28秒：市场条件不填造缺失信号、最晚跨成员时间优先、全部新合同原账本增量/幂等/撤销及原账户退出回归。
+### Notes
+- src/chanlun_trader/research_factory/train_search_batch_v1.py：两个明确组合与跨成员可见时间。
+- src/chanlun_trader/research_factory/fixed_account_rules.py：两精确20-session版本。
+- scripts/run_train_search_batch_v1.py：第四批及横截面聚合。
+- tests/research_factory/test_train_search_batch_v1.py：市场条件回归。
+- docs/TRAIN_SEARCH_BATCH_V1.md：事前第四批说明；progress.md追加。
+- 回滚点0a7c144；实际历史消费、报告及原结果不可回滚。
+
+## 2026-09-12 - Task: 完成八项研究执行的统一交付与现金核对
+### What was done
+- 四批八项账户均已完成和结算；训练净回报全部非正，两项同时关闭lot不足30，当前盈利候选0。
+- 用户报告更新至独立train-search-delivery-v2，旧六项报告不覆盖；八项原指标、身份、回执、结果哈希和实际访问均保留。精确指标未交设计侧。
+- 真实增量MAIN=8、REPAIR=0，无active reservation；16个资源worker全部退出0，累计804.0467007秒。正式原账未改写；增量registry没有objective种类桶不等于历史额度为0。
+### Testing
+- 第四批49项针对性测试已通过；追加恒定10元、3组300股完整账户现金守恒断言，1项针对性测试0.43秒通过，精确匹配佣金30、滑点18及印花税4.4955。
+- 报告筛选手算验证正收益/零收益/不足30lot/不完整结果；实际八项结果哈希、合同与输入身份、结算对应核验通过；当前源码与第四批冻结一致，git diff --check通过。
+### Notes
+- docs/TRAIN_SEARCH_BATCH_V1.md：追加最终执行事实与私有交付索引。
+- scripts/report_train_search_v1.py：八项既有结果只读报告，保留旧报告版本。
+- tests/research_factory/test_train_search_batch_v1.py：追加现金守恒断言；其余第四批代码变更清单见上一条日志。
+- progress.md追加；外部train-search-delivery-v2为本次报告及STATUS，四批原件保留。
+- 回滚点0a7c144；可git revert本次代码提交，真实试验、消费及失败不能回滚。当前无后台研究worker，不声称目标已达成或存在未执行的持续搜索。
