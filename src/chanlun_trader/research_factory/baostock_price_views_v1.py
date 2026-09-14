@@ -22,14 +22,25 @@ class PriceViews:
         return store
 
 
-def prepare_symbol(symbol, raw_rows, hfq_rows, sessions, *, state_rows=()):
+def prepare_symbol(symbol, raw_rows, hfq_rows, sessions, *, state_rows=(), window_contract=None):
     """只在授权的计算边界内调用；函数本身不授予真实输入或曝光许可。
 
     rows是同一Provider版本的原始API字典；不能将TDX价格混入后复权配对。
     调用者须先验证来源回执/哈希，再按原历史池预检决定哪些日期可排名。
     """
+    bounds=(20220722,20240731)
+    if window_contract is not None:
+        from .monthly_window_v1 import validate
+        from .weekly_window_v1 import VERSION as WEEKLY, validate as validate_weekly
+        from .residual_window_v1 import VERSION as RESIDUAL, CONFIRM_VERSIONS, TURNOVER_VERSIONS, SCALE_VERSIONS, TREND_RISK_VERSIONS, validate as validate_residual
+        if window_contract.get('version')==WEEKLY:
+            validate=validate_weekly
+        if window_contract.get('version')==RESIDUAL or window_contract.get('version') in CONFIRM_VERSIONS.values() or window_contract.get('version') in TURNOVER_VERSIONS.values() or window_contract.get('version') in SCALE_VERSIONS.values() or window_contract.get('version') in TREND_RISK_VERSIONS.values():
+            validate=validate_residual
+        validate(window_contract)
+        bounds=window_contract['input_window']
     if (not sessions or sessions != sorted(set(sessions)) or
-            sessions[0] < 20220722 or sessions[-1] > 20240731):
+            sessions[0] < bounds[0] or sessions[-1] > bounds[1]):
         raise ValueError('TRAIN_CALENDAR_REQUIRED')
     code = symbol[-2:].lower() + '.' + symbol[:6]
     from .baostock_input_v1 import verified_ipo_prefix

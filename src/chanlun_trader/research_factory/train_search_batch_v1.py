@@ -1,14 +1,41 @@
 """事前固定的两机制 TRAIN 探索；复用原账户规则和权威增量服务。"""
 import numpy as np
 import pandas as pd
+from copy import deepcopy
 
 from .baostock_account_v1 import CONTRACT as BASE
 from .baostock_governance_v1 import BaostockGovernanceV1
 from .common import stable_hash
 from .technical_train_signals_v1 import FORMULAS as TECHNICAL_FORMULAS, WARMUP
+from .structured_exit_trial_v1 import NAMES as STRUCTURED_NAMES, EXIT_POLICY, WITH_MARKET
+from .weekly_defensive_signals_v1 import NAMES as DEFENSIVE_NAMES
+from .weekly_fixed_trial_v1 import WITH_MARKET as FIXED_MARKET
 
+
+from .recovery_rotation_signals_v1 import RECOVERY, EXIT_POLICY as RECOVERY_EXIT
+
+from .response_confirmation_signals_v1 import NAMES as CONFIRM_NAMES
+from .lag_response_signals_v1 import NAMES as LAG_NAMES
+from .turnover_regime_signals_v1 import ALL_NAMES as TURNOVER_NAMES, LOW20
+from .calendar_recovery_signals_v1 import NAME as MONTH_START
+from .opening_pressure_signals_v1 import NAMES as OPENING_PRESSURE_NAMES
+from .scale_proxy_signals_v1 import NAMES as SCALE_PROXY_NAMES
+from .participation_stability_signals_v1 import NAMES as PARTICIPATION_NAMES
+from .trend_risk_horizon_signals_v1 import NAMES as TREND_RISK_NAMES
+from .breadth_regime_signals_v1 import NAMES as BREADTH_NAMES
+from .stock_trend_only_signals_v1 import NAME as STOCK_TREND_ONLY
+from .failed_low_break_signals_v1 import NAMES as FAILED_LOW_NAMES
+from .low_skew_signals_v1 import NAMES as LOW_SKEW_NAMES
+from .affordable_portfolio_signals_v1 import NAMES as AFFORDABLE_NAMES, MOM as AFFORDABLE_MOM, PARENTS as AFFORDABLE_PARENTS, POLICY as AFFORDABLE_POLICY
+from .alpha191_pressure_signals_v1 import NAMES as A191_NAMES
+from .shock_consolidation_signals_v1 import NAMES as SHOCK_NAMES
+from .skill_alpha_signals_v1 import NAMES as SKILL_ALPHA_NAMES
+from .market_sensitivity_signals_v1 import NAMES as SENSITIVITY_NAMES
+from .market_residual_signals_v1 import FORMULAS as RESIDUAL, WARMUP as RESIDUAL_WARMUP, RISK_NAMES as RESIDUAL_RISK
+from .market_residual_signals_v1 import EXIT_NAMES as RESIDUAL_EXITS, EXIT_POLICY as RESIDUAL_EXIT
 
 FORMULAS = {
+    **RESIDUAL,
     **TECHNICAL_FORMULAS,
     'MOMENTUM_5': '-RETURN_5D',
     'STABILITY_20': '-1/(1+STD_POPULATION(RETURN_5D[t-19:t]))',
@@ -25,13 +52,30 @@ def contract(name):
     if name not in FORMULAS:
         raise ValueError('UNFROZEN_MECHANISM')
     return {**BASE, 'version': 'TRAIN_SEARCH_BATCH_V1_' + name,
+            **({'signal_day_affordability':deepcopy(AFFORDABLE_POLICY),'skewness_definition':'TOTAL_DAILY_RETURN_POPULATION_MOMENT_20_NOT_IDIOSYNCRATIC'} if name in LOW_SKEW_NAMES else {}),
+            **({'signal_day_affordability':deepcopy(AFFORDABLE_POLICY),'method_adaptation':'FAILED_20_LOW_EOD_CONFIRMATION_NOT_INTRADAY_TURTLE_SOUP'} if name in FAILED_LOW_NAMES else {}),
+            **({'parent_candidate':'WEEKLY_LOW_VOL_TREND60_FIXED_HOLD_20','registered_ablation':'NO_AGGREGATE_MARKET_ENTRY_GATE','signal_day_affordability':deepcopy(AFFORDABLE_POLICY)} if name==STOCK_TREND_ONLY else {}),
+            **({'parent_candidate':'WEEKLY_LOW_VOL_TREND60_FIXED_HOLD_20','market_context':'ELIGIBLE_RETURN5_POSITIVE_FRACTION_100_MIN_MEMBERS','signal_day_affordability':deepcopy(AFFORDABLE_POLICY)} if name in BREADTH_NAMES else {}),
+            **({'parent_candidate':'AFFORDABLE_WEEKLY_LOW_VOL_MARKET_HOLD_20','registered_horizon_variant':'SMA200_TO_SMA60_NOT_ENGINEERING_REPAIR','signal_day_affordability':deepcopy(AFFORDABLE_POLICY)} if name in TREND_RISK_NAMES else {}),
+            **({'signal_day_affordability':deepcopy(AFFORDABLE_POLICY),'volume_semantics':'RAW_SHARE_VOLUME_CV_FIXED_20'} if name in PARTICIPATION_NAMES else {}),
+            **({'scale_proxy':'RAW_CLOSE_TIMES_RAW_VOLUME_DIV_VENDOR_TURN','scale_evidence':'DERIVED_SCALE_SORT_PROXY_NOT_VENDOR_CAPITALIZATION','signal_day_affordability':deepcopy(AFFORDABLE_POLICY)} if name in SCALE_PROXY_NAMES else {}),
+            **({'parent_candidate':'WEEKLY_OVERNIGHT_SUPPORT_HOLD_20','signal_day_affordability':deepcopy(AFFORDABLE_POLICY)} if name in OPENING_PRESSURE_NAMES else {}),
+            **({'parent_candidate':AFFORDABLE_PARENTS[name],'signal_day_affordability':deepcopy(AFFORDABLE_POLICY)} if name in AFFORDABLE_NAMES else {}),
+            **({'parent_candidate':'LOW_TURNOVER_WEEKLY_MOMENTUM_HOLD_3'} if name==LOW20 else {}),
+            **({'parent_candidate':'MONTHLY_REVERSAL_HOLD_20'} if name==MONTH_START else {}),
+            **({'supplemental_input':'TRAIN_TURNOVER_INPUT_V1','turnover_timing_model':'MODELED_SESSION_1800_FOR_TURNOVER_NOT_FINANCIAL_PUBLICATION','turnover_denominator_vintage':'NOT_PIT_ATTESTED','turnover_min_peers':100} if name in (*TURNOVER_NAMES,AFFORDABLE_MOM,*SCALE_PROXY_NAMES) else {}),
+            **({'exit_policy':deepcopy(EXIT_POLICY),'exit_input_timing':'PRIOR_SESSION_ASOF_CLOSE_NEXT_OPEN_ORDER'} if name in (*STRUCTURED_NAMES,*DEFENSIVE_NAMES) else {}),
+            **({'exit_policy':deepcopy(RECOVERY_EXIT),'exit_input_timing':'PRIOR_SESSION_ASOF_CLOSE_NEXT_OPEN_ORDER'} if name==RECOVERY else {}),
+            **({'exit_policy':deepcopy(RESIDUAL_EXIT),'exit_input_timing':'PRIOR_SESSION_ASOF_CLOSE_NEXT_OPEN_ORDER'} if name in RESIDUAL_EXITS else {}),
+            **({'market_gate':'MEDIAN_ELIGIBLE_RETURN_5D_GT_0'} if name in (*RESIDUAL_RISK,*RESIDUAL_EXITS,*SENSITIVITY_NAMES,*SKILL_ALPHA_NAMES,*LAG_NAMES,*CONFIRM_NAMES,*SHOCK_NAMES,*A191_NAMES,*TURNOVER_NAMES,*AFFORDABLE_NAMES,*OPENING_PRESSURE_NAMES,*SCALE_PROXY_NAMES,*PARTICIPATION_NAMES,*TREND_RISK_NAMES,*FAILED_LOW_NAMES,*LOW_SKEW_NAMES) else {}),
+            **({'market_context':'MEDIAN_ELIGIBLE_RETURN_5D','residual_fit_sessions':60,'residual_warmup_sessions':RESIDUAL_WARMUP[name]} if name in RESIDUAL else {}),
             **({'technical_warmup_sessions':WARMUP[name],
                  'technical_price_basis':'SAME_DAY_HFQ_CLOSE_OVER_RAW_CLOSE_SCALED_OHLC',
                  'technical_missing_policy':'RESET_SEGMENT_NO_FILL',
                  'technical_initialization':'EMA_FIRST_CLOSE; KDJ_K_D_50; SEE_FROZEN_SOURCE'}
                if name in TECHNICAL_FORMULAS else {}),
             'holding_sessions':20 if '_HOLD_20' in name else 3,
-            **({'market_gate':'MEDIAN_ELIGIBLE_RETURN_5D_GT_0'} if name.endswith('_MARKET_5') else {}),
+            **({'market_gate':'MEDIAN_ELIGIBLE_RETURN_5D_GT_0'} if name.endswith('_MARKET_5') or name in (WITH_MARKET,FIXED_MARKET) else {}),
             'adapter_version': 'TRAIN_SEARCH_BATCH_V1',
             'signal_version': 'TRAIN_SEARCH_BATCH_V1_' + name,
             'factor_id': name, 'signal_formula': FORMULAS[name],
@@ -47,7 +91,13 @@ def design(name):
                 'mechanism':name.removesuffix('_HOLD_20'), 'factor_ids':[name.removesuffix('_HOLD_20')],
                 'semantic_fingerprint':FORMULAS[name],
                 'parameter_fingerprint':{'formula':FORMULAS[name],'warmup':WARMUP[name],
-                                         'top_n':3,'holding_sessions':20},'holding_period_days':20}
+                                         'top_n':3,'holding_sessions':frozen['holding_sessions']},'holding_period_days':frozen['holding_sessions']}
+    if name in RESIDUAL:
+        return {'candidate_id':stable_hash(frozen),'candidate_hash':stable_hash(frozen),
+            'mechanism':name.removesuffix('_HOLD_20'),'factor_ids':['RETURN_5D','MEDIAN_ELIGIBLE_RETURN_5D'],
+            'semantic_fingerprint':RESIDUAL[name],
+            'parameter_fingerprint':{'fit_sessions':60,'warmup':RESIDUAL_WARMUP[name],'formula':RESIDUAL[name],'top_n':3,'holding_sessions':frozen['holding_sessions']},
+            'holding_period_days':frozen['holding_sessions']}
     base_name = name.removesuffix('_MARKET_5').removesuffix('_HOLD_20')
     mechanisms = {
         'MOMENTUM_5': 'POSITIVE_FIVE_SESSION_PRICE_CHANGE',
@@ -67,6 +117,9 @@ def design(name):
 
 def transform(rows, sessions, name):
     """只在独立日历上组合已核验特征；缺日不压缩，源可见时间取依赖最大值。"""
+    if name in RESIDUAL:
+        from .market_residual_signals_v1 import transform as residual_transform
+        return residual_transform(rows,sessions,name)
     if name in TECHNICAL_FORMULAS:
         from .technical_train_signals_v1 import transform as technical_transform
         return technical_transform(rows,sessions,name)

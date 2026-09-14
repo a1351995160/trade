@@ -6,6 +6,23 @@ from chanlun_trader.research_factory.train_search_batch_v1 import contract, desi
 from chanlun_trader.research_factory.common import stable_hash
 from chanlun_trader.research_factory.novelty import CandidateNoveltyGateV2
 from test_windowed_actions_and_train_grant import grant
+from datetime import datetime,timezone
+from unittest.mock import patch
+
+
+class _SyntheticClock(datetime):
+    @classmethod
+    def now(cls,tz=None):
+        value=cls(2026,9,13,0,0,tzinfo=timezone.utc)
+        return value.astimezone(tz) if tz is not None else value.replace(tzinfo=None)
+
+
+class _ExpiredSyntheticClock(datetime):
+    @classmethod
+    def now(cls,tz=None):
+        value=cls(2026,9,14,3,0,tzinfo=timezone.utc)
+        return value.astimezone(tz) if tz is not None else value.replace(tzinfo=None)
+
 
 
 def data():
@@ -66,7 +83,11 @@ def test_sixty_session_compounding_and_amount_units():
     assert turnover.value.iloc[30:50].isna().all()
 
 
-def test_long_hold_uses_original_exit_engine_and_preserves_legacy_contract():
+@pytest.mark.parametrize('name',['STABILITY_20_HOLD_20','BOLL_REENTRY_HOLD_20','DONCHIAN_55_BREAKOUT_HOLD_20',
+                                 'RSI_14_RECLAIM_HOLD_20','AROON_25_CROSS_HOLD_20',
+                                 'CCI_20_TREND_HOLD_20','KAMA_10_CROSS_HOLD_20',
+                                 'RSI2_TREND_200_HOLD_20','BULL_ENGULFING_DOWN_5_HOLD_20'])
+def test_long_hold_uses_original_exit_engine_and_preserves_legacy_contract(name):
     from test_degraded_execution_v2 import degraded
     from chanlun_trader.research_factory.degraded_execution_v2 import _run_account
     from chanlun_trader.research_factory.fixed_account_rules import FixedAccountRules
@@ -78,7 +99,7 @@ def test_long_hold_uses_original_exit_engine_and_preserves_legacy_contract():
     b.states=pd.concat([states.assign(trade_date=str(d)) for d in days],ignore_index=True)
     b.calendar=days
     b.ready_factors=b.ready_factors[b.ready_factors.timestamp==20220801]
-    frozen=contract('STABILITY_20_HOLD_20')
+    frozen=contract(name)
     b.contract_identity=stable_hash(frozen)
     result=_run_account(b,('SYNTHETIC',False),None,frozen)
     buys=[f for f in result['fills'] if f['side']=='BUY']
@@ -114,7 +135,14 @@ def test_market_gate_uses_cross_section_time_without_filling_missing_signal():
                                 'MOMENTUM_60_HOLD_20_MARKET_5','STABILITY_20_HOLD_20_MARKET_5',
                                 'MACD_CROSS_HOLD_20','KDJ_OVERSOLD_CROSS_HOLD_20',
                                 'CHAN_BOTTOM_MACD_HOLD_20','MONTHLY_REVERSAL_HOLD_20',
-                                'HIGH_252_HOLD_20','LOW_MAX_20_HOLD_20'])
+                                'HIGH_252_HOLD_20','LOW_MAX_20_HOLD_20',
+                                'BOLL_REENTRY_HOLD_20','DONCHIAN_55_BREAKOUT_HOLD_20',
+                                'RSI_14_RECLAIM_HOLD_20','AROON_25_CROSS_HOLD_20',
+                                'CCI_20_TREND_HOLD_20','KAMA_10_CROSS_HOLD_20',
+                                'RSI2_TREND_200_HOLD_20','BULL_ENGULFING_DOWN_5_HOLD_20'])
+@patch('test_windowed_actions_and_train_grant.datetime',_SyntheticClock)
+@patch('chanlun_trader.research_factory.degraded_governance_v1.datetime',_SyntheticClock)
+@patch('chanlun_trader.research_factory.exploration_governance.datetime',_SyntheticClock)
 def test_governed_increment_repeat_and_revocation(tmp_path,name):
     _,plan,source,evidence,parent=grant(tmp_path)
     service=TrainSearchGovernanceV1(tmp_path,name)
@@ -139,6 +167,12 @@ def test_governed_increment_repeat_and_revocation(tmp_path,name):
     assert service.reserve(cid)['status']=='ALREADY_ATTEMPTED'
     with pytest.raises(PermissionError,match='REPAIR'):
         service.reserve(cid,{'dummy':True})
+    # 合成时钟明确跨过原截止，拒绝断言保留；不会更改系统时间或真实回执。
+    before_expired=service.summary()
+    with patch('chanlun_trader.research_factory.degraded_governance_v1.datetime',_ExpiredSyntheticClock), patch('chanlun_trader.research_factory.exploration_governance.datetime',_ExpiredSyntheticClock):
+        with pytest.raises(PermissionError,match='EXPIRED'):service.confirm(plan,source,preflight=lambda:evidence)
+        with pytest.raises(PermissionError,match='EXPIRED'):service.active()
+        assert service.summary()==before_expired
     service.revoke('SYNTHETIC_STOP')
     with pytest.raises(PermissionError):
         service.active()

@@ -155,7 +155,7 @@ def run_degraded_account(bundle, source_identity, active_check=None):
     return _run_account(bundle, source_identity, active_check, CONTRACT)
 
 
-def _run_account(bundle, source_identity, active_check, contract):
+def _run_account(bundle, source_identity, active_check, contract, *, rules=None):
     synthetic = os.environ.get('CHANLUN_TEST_ISOLATION')=='1' and source_identity[0].startswith('SYNTHETIC')
     if active_check is None and not synthetic:
         raise PermissionError('GOVERNED_DEGRADED_EXECUTION_REQUIRED')
@@ -181,7 +181,8 @@ def _run_account(bundle, source_identity, active_check, contract):
     engine.sellability_projections=[]
     factor_days={int(d):rows for d,rows in bundle.ready_factors.groupby('timestamp')}
     ranks=[];decisions=[];hazard_checks=[]
-    rules=FixedAccountRules(contract)
+    rules=FixedAccountRules(contract) if rules is None else rules
+    if rules.contract!=contract:raise PermissionError('ACCOUNT_RULES_CONTRACT_CONFLICT')
 
     def signals(view, ts, day):
         prior=engine.calendar.prev_day(day)
@@ -196,7 +197,8 @@ def _run_account(bundle, source_identity, active_check, contract):
     def exits(view, ts, day, ledger):
         if ts.hour!=15 or ts.minute!=30:
             return []
-        found=rules.exits(engine.calendar,ledger,engine.unsupported_lots,ts)
+        extra={'factor_rows':factor_days.get(engine.calendar.prev_day(day))} if rules.structure_exit else {}
+        found=rules.exits(engine.calendar,ledger,engine.unsupported_lots,ts,**extra)
         decisions.extend(asdict(d) for d in found)
         return found
 
@@ -207,7 +209,9 @@ def _run_account(bundle, source_identity, active_check, contract):
             'exception_type':type(exc).__name__,'message':str(exc),'account_checkpoint':engine.ledger.checkpoint(),
             'orders':[asdict(o) for o in engine.order_manager.orders.values()],
             'events':engine.event_log.to_records(),'daily_holdings':engine.account_history}) from exc
-    snapshots=[s for s in result.ledger.snapshots if s.timestamp.hour==15 and s.timestamp.minute==30 and int(s.timestamp.strftime('%Y%m%d'))>=20220801]
+    from .monthly_window_v1 import signal_window
+    window_start,window_end=signal_window(contract)
+    snapshots=[s for s in result.ledger.snapshots if s.timestamp.hour==15 and s.timestamp.minute==30 and window_start<=int(s.timestamp.strftime('%Y%m%d'))<=window_end]
     partial=bool(engine.unsupported_lots)
     fills=result.ledger.executed_fills
     daily_index=bundle.daily.set_index(['symbol','date'])

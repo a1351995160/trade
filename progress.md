@@ -1929,3 +1929,11 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 
 ### Testing（完成）
 - 65项针对性合成回归通过，7.39秒；git diff --check通过。
+
+## 2026-09-14 - Task: 合并累计研究代码并保留main安全修复
+### What was done
+在独立工作区整合main与研究分支；保留main已有证据路径边界修复和研究分支新策略/窗口/统一账户能力。main公开progress历史保留，研究工作区完整原日志仍在本机不动。
+### Testing
+合并组合64项通过，3项历史授权到期失败；限定合成测试时钟后该文件13项通过。首次复用测试时钟产生循环导入，改为模块内合成时钟后收集及测试通过；生产时钟/期限不改。远端SonarCloud旧提交质量门禁未通过，未绕过。
+### Notes
+冲突文件逐项按两侧实际差异解决，保留evidence_paths及owner/repair引用校验；test_windowed_actions_and_train_grant.py仅合成时钟稳定化。原工作区未切分支、未stash、未改数据及预算。回滚采用git revert -m 1本合并提交，不reset原工作区。
