@@ -27,7 +27,7 @@ RULE={
 }
 
 
-def describe(result):
+def describe(result, *, approved_weekly_window=False):
     import pandas as pd
     if result['status']!='COMPLETE' or not result.get('metrics'):
         raise ValueError('COMPLETE_ORIGINAL_ACCOUNT_REQUIRED')
@@ -37,7 +37,10 @@ def describe(result):
     if len(snapshots)>1 and snapshots[-1]==snapshots[-2]:
         snapshots=snapshots[:-1]
     stamps=[pd.Timestamp(s['timestamp']).tz_convert('Asia/Shanghai') for s in snapshots]
-    if stamps!=sorted(set(stamps)) or not all(20220801<=int(s.strftime('%Y%m%d'))<=20240731 for s in stamps):
+    bounds=(20250801,20260731) if approved_weekly_window else (20220801,20240731)
+    if approved_weekly_window and result.get('evaluation_window')!=list(bounds):
+        raise ValueError('APPROVED_WEEKLY_RESULT_WINDOW_REQUIRED')
+    if stamps!=sorted(set(stamps)) or not all(bounds[0]<=int(s.strftime('%Y%m%d'))<=bounds[1] for s in stamps):
         raise ValueError('ORIGINAL_TRAIN_DAILY_IDENTITY_CONFLICT')
     if abs(snapshots[-1]['equity']-m['ending_equity'])>RULE['rounding_tolerance_cny']:
         raise ValueError('ENDING_EQUITY_CONFLICT')

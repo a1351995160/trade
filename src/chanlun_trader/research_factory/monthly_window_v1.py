@@ -22,6 +22,14 @@ def validate(value):
 
 
 def signal_window(value):
+    from .residual_window_v1 import VERSION as RESIDUAL, CONFIRM_VERSIONS, TURNOVER_VERSIONS, SCALE_VERSIONS, TREND_RISK_VERSIONS, validate as validate_residual
+    if value.get('version')==RESIDUAL or value.get('version') in CONFIRM_VERSIONS.values() or value.get('version') in TURNOVER_VERSIONS.values() or value.get('version') in SCALE_VERSIONS.values() or value.get('version') in TREND_RISK_VERSIONS.values():
+        validate_residual(value)
+        return tuple(value['signal_window'])
+    from .weekly_window_v1 import VERSION as WEEKLY, validate as validate_weekly
+    if value.get('version')==WEEKLY:
+        validate_weekly(value)
+        return tuple(value['signal_window'])
     if value.get('version')!=VERSION:
         if 'signal_window' in value or 'input_window' in value:
             raise PermissionError('UNRECOGNIZED_WINDOW_OVERRIDE')

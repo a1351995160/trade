@@ -1,3 +1,5 @@
+from unittest.mock import patch
+from test_train_search_batch_v1 import _SyntheticClock
 """外窗最小适配的真实组件合成验证。"""
 import pandas as pd
 import pytest
@@ -67,6 +69,11 @@ def test_window_original_account_engine_enters_and_exits_at_fixed_sessions():
     assert result['metrics']['total_fees']>0
 
 
+# Historical synthetic approval window only; production expiry is unchanged.
+@patch('test_windowed_actions_and_train_grant.datetime',_SyntheticClock)
+@patch('chanlun_trader.research_factory.degraded_governance_v1.datetime',_SyntheticClock)
+@patch('chanlun_trader.research_factory.train_execution_governance_v1.datetime',_SyntheticClock)
+@patch('chanlun_trader.research_factory.exploration_governance.datetime',_SyntheticClock)
 def test_window_budget_uses_original_and_does_not_allow_repeat(tmp_path):
     from test_windowed_actions_and_train_grant import grant
     from chanlun_trader.research_factory.monthly_window_governance_v1 import MonthlyWindowGovernanceV1
@@ -99,7 +106,8 @@ def test_provider_unknown_states_are_not_fabricated():
     assert rows[1]['eligibility_status']=='CONFLICT' and rows[1]['suspension_status']=='UNKNOWN'
 
 
-def test_synthetic_source_to_materialized_window_and_feasibility(tmp_path,monkeypatch):
+@pytest.mark.parametrize('st_codes', [[], ['sh.600002'], ['sh.600000','sh.600001','sh.600002']])
+def test_synthetic_source_to_materialized_window_and_feasibility(tmp_path,monkeypatch,st_codes):
     import sys
     from pathlib import Path
     sys.path.insert(0,str(Path(__file__).resolve().parents[2]/'scripts'))
@@ -128,7 +136,7 @@ def test_synthetic_source_to_materialized_window_and_feasibility(tmp_path,monkey
         for i,day in enumerate(days):
             price=10-i*.001
             raw.append(dict(code=code,date=day,adjustflag='3',open=str(price),high=str(price+.02),low=str(price-.02),
-                close=str(price),preclose=str(price+.001),volume='1000000',amount=str(price*1000000),tradestatus='1',isST='0'))
+                close=str(price),preclose=str(price+.001),volume='1000000',amount=str(price*1000000),tradestatus='1',isST='1' if code in st_codes else '0'))
             hfq.append(dict(code=code,date=day,adjustflag='1',close=str(price*2)))
         for flag,rows in [('3',raw),('1',hfq)]:
             path=tmp_path/'responses'/f'probe-{flag}.json' if code=='sh.600000' else tmp_path/'acquisition/prices'/code/f'{flag}.json'
@@ -136,10 +144,17 @@ def test_synthetic_source_to_materialized_window_and_feasibility(tmp_path,monkey
         archived(tmp_path/'acquisition/actions'/f'{code}.json',[])
     mod.prepare()
     ready=mod.read(tmp_path/'READY.json')
-    assert ready['feasibility_passed']
+    assert ready['feasibility_passed'] == (not st_codes)
     bundle=mod.load_bundle()
     assert bundle.daily.adjustflag.eq('3').all()
     assert bundle.ready_factors.timestamp.between(20250801,20260731).all()
     assert bundle.states.shape[0]==len(days)*3
+    assert len(bundle.daily)==len(days)*3
+    for code in st_codes:
+        symbol=code[3:]+'.'+code[:2].upper()
+        assert not bundle.ready_factors.symbol.eq(symbol).any()
+        assert bundle.states.loc[bundle.states.symbol.eq(symbol),'st_status'].eq('ST').all()
+        item=next(row for row in bundle.coverage if row['symbol']==symbol)
+        assert item['computable_rows']==0 and item['raw_rows']==len(days)
     assert mod.read(tmp_path/'FEASIBILITY.json')['thresholds']['entry_dates']==10
     assert not mod.read(tmp_path/'FEASIBILITY.json')['original_train_verdict']['passed']

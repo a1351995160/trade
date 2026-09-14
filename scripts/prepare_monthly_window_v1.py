@@ -91,7 +91,7 @@ def prepare():
             raise ValueError('POOL_DUPLICATE_IDENTITY')
         pools[int(date.replace('-',''))]={r['code']:r['tradeStatus'] for r in rows}
         inputs[str(path)]=digest
-    save(ROOT/'PREPARE_ACCESS.json',{'reader':grant['thread_id'],'purpose':'FIXED_SIGNAL_NO_OUTCOME_FEASIBILITY',
+    save(ROOT/'PREPARE_ACCESS_EMPTY_FIX_V1.json',{'reader':grant['thread_id'],'purpose':'FIXED_SIGNAL_NO_OUTCOME_FEASIBILITY',
         'recipient':'EVALUATION_SIDE','release_identity':grant['identity'],'contract':contract(),
         'source_publication':'UNKNOWN_MODELED_NEXT_OPEN','unit_evidence':'BAOSTOCK_SAME_PROVIDER_API_SHARES_CNY',
         'exact_performance_computed':False})
@@ -131,8 +131,8 @@ def prepare():
             & state.eligibility_status.ne('CONFLICT'))
         # 沿用原技术候选输入前置6-session有效性；月末指标自身仍需21个连续session。
         ready=eligible & known.rolling(6,min_periods=6).sum().eq(6).to_numpy() & views.features.value.notna().to_numpy()
-        rows=adjusted_rows(views.features.loc[ready].copy(),views.raw,pair[1]['rows'])
-        if len(rows):
+        if ready.any():
+            rows=adjusted_rows(views.features.loc[ready].copy(),views.raw,pair[1]['rows'])
             transformed=transform(rows,days,'MONTHLY_REVERSAL_HOLD_20')
             factors=transformed.loc[transformed.computable & transformed.timestamp.between(START,END)].drop(columns='computable')
             all_features.append(factors)
@@ -140,10 +140,15 @@ def prepare():
         raw=views.raw.loc[views.raw.code.notna(),['symbol','date','open','high','low','close','volume','amount','prev_close','adjustflag']]
         all_raw.append(raw)
         coverage.append({'symbol':symbol,'raw_rows':len(raw),'computable_rows':len(factors),
+            'signal_input_ready_rows':int(ready.sum()),
+            'no_signal_reason':'NO_READY_SIGNAL_INPUT' if not ready.any() else ('SIGNAL_WARMUP_OR_WINDOW_NOT_COMPUTABLE' if not len(factors) else None),
             'suspended_rows_preserved':quality['suspended_rows_preserved'],'hazard_dates':len(dates)})
     daily=pd.concat(all_raw,ignore_index=True)
     states=pd.concat(all_states,ignore_index=True)
-    features=pd.concat(all_features,ignore_index=True)
+    features=pd.concat(all_features,ignore_index=True) if all_features else pd.DataFrame({
+        'symbol':pd.Series(dtype='str'),'timestamp':pd.Series(dtype='int64'),
+        'value':pd.Series(dtype='float64'),'effective_available_at':pd.Series(dtype='datetime64[ns, UTC]'),
+        'signal_version':pd.Series(dtype='str')})
     for frame in [daily,states,features]:
         for col in set(['symbol','signal_version','eligibility_status','st_status','suspension_status','board','adjustflag']).intersection(frame.columns):
             frame[col]=frame[col].astype('category')

@@ -7,6 +7,23 @@ from chanlun_trader.research_factory.degraded_governance_v1 import DegradedGover
 from test_windowed_actions_and_train_grant import grant
 
 
+@pytest.fixture
+def historical_grant_clock(monkeypatch):
+    """旧固定批准在历史有效期内测试；不延长生产合同或跳过到期判断。"""
+    from datetime import datetime,timezone
+    from importlib import import_module
+    class HistoricalClock(datetime):
+        @classmethod
+        def now(cls,tz=None):
+            value=datetime(2026,9,13,tzinfo=timezone.utc)
+            return value.astimezone(tz) if tz else value.replace(tzinfo=None)
+    for name in ('test_windowed_actions_and_train_grant',
+                 'chanlun_trader.research_factory.degraded_governance_v1',
+                 'chanlun_trader.research_factory.train_execution_governance_v1',
+                 'chanlun_trader.research_factory.exploration_governance'):
+        monkeypatch.setattr(import_module(name),'datetime',HistoricalClock)
+
+
 def degraded():
     b=fixture();b.hazards={}
     b.ready_factors=b.factors.copy()
@@ -47,7 +64,7 @@ def test_late_input_no_orders_and_real_without_receipt_rejected():
     with pytest.raises(PermissionError):run_degraded_account(b,('ACTUAL',False))
 
 
-def test_degraded_grant_uses_original_registry_and_no_free_repeat(tmp_path):
+def test_degraded_grant_uses_original_registry_and_no_free_repeat(tmp_path,historical_grant_clock):
     old,p,source,e,parent=grant(tmp_path)
     s=DegradedGovernanceV1(tmp_path)
     p['contracts']={'fixed':CONTRACT};p['result_type']=CONTRACT['result_type']
@@ -114,7 +131,7 @@ def test_friday_entry_sellability_projects_to_next_real_session():
     assert all(pd.Timestamp(lot['sellable_from']).strftime('%Y%m%d')=='20220808' for lot in lots.values())
 
 
-def test_only_one_proven_repair_is_charged_in_original_registry(tmp_path):
+def test_only_one_proven_repair_is_charged_in_original_registry(tmp_path,historical_grant_clock):
     import json
     old,p,source,e,parent=grant(tmp_path)
     s=DegradedGovernanceV1(tmp_path)

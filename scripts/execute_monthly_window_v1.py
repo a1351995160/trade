@@ -27,17 +27,23 @@ def code():
 
 def frozen():
     grant=check()
-    value=read(ROOT/'EXECUTION_FREEZE_V3.json')
+    value=read(ROOT/'EXECUTION_FREEZE_EMPTY_FIX_V1.json')
     if value['code']!=code() or value['contract']!=contract() or value['release_identity']!=grant['identity']:
         raise PermissionError('WINDOW_EXECUTION_FREEZE_CHANGED')
+    recovery=read(ROOT/'PREPARATION_EMPTY_FIX_V1.json')
+    if value['recovery_sha256']!=sha(ROOT/'PREPARATION_EMPTY_FIX_V1.json'):
+        raise PermissionError('PREPARATION_RECOVERY_CHANGED')
+    for path,digest in recovery['preserved_evidence'].items():
+        if sha(path)!=digest:raise PermissionError('PREPARATION_FAILURE_EVIDENCE_CHANGED')
     return grant
 
 
 def bounded(stage,execution_id=None):
     from chanlun_trader.synthetic_batch_resources import run_bounded_worker
     grant=frozen()
-    started=ROOT/'resources'/f'{stage}.started.json'
-    completed=ROOT/'resources'/f'{stage}.completed.json'
+    label='prepare-window-empty-fix-v1' if stage=='prepare-window' else stage
+    started=ROOT/'resources'/f'{label}.started.json'
+    completed=ROOT/'resources'/f'{label}.completed.json'
     if started.exists() or completed.exists():
         raise PermissionError('EXISTING_EXECUTION_REQUIRES_RECONCILIATION_NO_REPLAY')
     used=sum(read(p)['elapsed_seconds'] for p in (ROOT/'resources').glob('*.completed.json'))
@@ -120,11 +126,16 @@ def run():
     if not (ROOT/'WINDOW_UNIVERSE.json').exists():raise PermissionError('ACQUISITION_NOT_COMPLETE')
     count=read(ROOT/'WINDOW_UNIVERSE.json')['count']
     for batch in range((count+49)//50):
-        receipt=ROOT/'resources'/f'prices-v3-{batch}.completed.json'
+        receipt=ROOT/'resources'/f'prices-v4-{batch}.completed.json'
+        if not receipt.exists():receipt=ROOT/'resources'/f'prices-v3-{batch}.completed.json'
         if not receipt.exists():receipt=ROOT/'resources'/f'prices-v2-{batch}.completed.json'
         if read(receipt)['returncode']!=0:
             raise PermissionError('PRICE_BATCH_NOT_COMPLETE')
-    save(ROOT/'EXECUTION_FREEZE_V3.json',{'code':code(),'contract':contract(),'release_identity':grant['identity']})
+    recovery=read(ROOT/'PREPARATION_EMPTY_FIX_V1.json')
+    if recovery['release_identity']!=grant['identity']:
+        raise PermissionError('PREPARATION_RECOVERY_RELEASE_CHANGED')
+    save(ROOT/'EXECUTION_FREEZE_EMPTY_FIX_V1.json',{'code':code(),'contract':contract(),'release_identity':grant['identity'],
+        'recovery_sha256':sha(ROOT/'PREPARATION_EMPTY_FIX_V1.json')})
     if not (ROOT/'READY.json').exists():
         result=bounded('prepare-window')
         if result['returncode']:raise RuntimeError('WINDOW_PREPARATION_FAILED_SEE_RECEIPT')

@@ -34,9 +34,20 @@ do {
     $pipelineReceipt="$evidenceRoot/PIPELINE_COMPLETED.json"
     if (Test-Path -LiteralPath "$evidenceRoot/PIPELINE_STARTED_V2.json") { $pipelineReceipt="$evidenceRoot/PIPELINE_COMPLETED_V2.json" }
     if (Test-Path -LiteralPath "$evidenceRoot/PIPELINE_STARTED_V3.json") { $pipelineReceipt="$evidenceRoot/PIPELINE_COMPLETED_V3.json" }
+    if (Test-Path -LiteralPath "$evidenceRoot/PIPELINE_STARTED_V4.json") { $pipelineReceipt="$evidenceRoot/PIPELINE_COMPLETED_V4.json" }
+    if (Test-Path -LiteralPath "$evidenceRoot/PIPELINE_STARTED_EMPTY_FIX_V1.json") { $pipelineReceipt="$evidenceRoot/PIPELINE_COMPLETED_EMPTY_FIX_V1.json" }
     if (Test-Path -LiteralPath $pipelineReceipt) {
         $pipeline=Get-Content -LiteralPath $pipelineReceipt -Raw | ConvertFrom-Json
         Write-Host "流程已退出：$($pipeline.exit_code)；具体限制查看pipeline.stderr.log与原回执。"
+    } elseif (Test-Path -LiteralPath "$evidenceRoot/PIPELINE_STARTED_EMPTY_FIX_V1.json") {
+        $preparation=Get-Content -LiteralPath "$evidenceRoot/PIPELINE_STARTED_EMPTY_FIX_V1.json" -Raw | ConvertFrom-Json
+        $preparationAlive=Get-Process -Id $preparation.pid -ErrorAction SilentlyContinue
+        Write-Host "空信号修复后输入准备/后续流程存活=$([bool]$preparationAlive)"
+    } elseif (Test-Path -LiteralPath "$evidenceRoot/PIPELINE_STARTED_V4.json") {
+        $running=Get-Content -LiteralPath "$evidenceRoot/PIPELINE_STARTED_V4.json" -Raw | ConvertFrom-Json
+        $fetchAlive=Get-Process -Id $running.acquisition_process_id -ErrorAction SilentlyContinue
+        $continuationAlive=Get-Process -Id $running.continuation_process_id -ErrorAction SilentlyContinue
+        Write-Host "V4恢复流程：取数进程存活=$([bool]$fetchAlive)；后续检查进程存活=$([bool]$continuationAlive)"
     }
     Write-Host '此脚本只读状态，不读取精确绩效，不重启或重试。Ctrl+C仅退出查看。'
     if (-not $Once) { Start-Sleep -Seconds 60 }
