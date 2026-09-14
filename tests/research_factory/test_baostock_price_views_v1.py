@@ -23,7 +23,7 @@ def test_split_does_not_create_reversal_and_store_is_raw():
     assert v.features.iloc[5].effective_available_at==pd.Timestamp('2022-08-01 09:30',tz='Asia/Shanghai')
     assert v.execution_store().get_daily_bar('600000.SH',20220729)['open']==5
     assert not v.execution_store().daily_hfq
-    assert v.features.iloc[-1].value!=v.features.iloc[-1].value
+    assert pd.isna(v.features.iloc[-1].value)
     assert raw[0]['open']==10
 
 

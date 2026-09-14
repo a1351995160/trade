@@ -16,7 +16,7 @@ def code_identity():
         'baostock_input_v1.py','baostock_price_views_v1.py','baostock_account_v1.py',
         'baostock_governance_v1.py','degraded_input_v2.py','degraded_execution_v2.py','fixed_account_rules.py',
         'degraded_governance_v1.py','train_execution_governance_v1.py','exploration_governance.py',
-        'budget.py','novelty.py','degraded_train_v1.py','train_account_runner_v1.py']]
+        'budget.py','novelty.py','degraded_train_v1.py','train_account_runner_v1.py','evidence_paths.py']]
     files += [SOURCE/'scripts'/n for n in ['run_baostock_account_v1.py',
         'prepare_baostock_account_v1.py','execute_baostock_account_v1.py','baostock_alias_v1.py']]
     files += [SOURCE/'src/chanlun_trader/synthetic_batch_resources.py']

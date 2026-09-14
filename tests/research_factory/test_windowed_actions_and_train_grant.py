@@ -1,3 +1,4 @@
+from unittest.mock import patch
 """本机合成导出与权威预算增量，旧账不迁移。"""
 import hashlib
 import json
@@ -9,6 +10,13 @@ from chanlun_trader.research_factory.budget import SearchBudgetRegistryV1,Budget
 from chanlun_trader.research_factory.exploration_governance import ExplorationGovernanceServiceV1
 from chanlun_trader.research_factory.train_execution_governance_v1 import TrainExecutionGovernanceV1
 from chanlun_trader.research_factory.train_account_runner_v1 import FIXED_CONTRACT
+
+
+class _SyntheticClock(datetime):
+    @classmethod
+    def now(cls,tz=None):
+        value=cls(2026,9,13,tzinfo=timezone.utc)
+        return value.astimezone(tz) if tz is not None else value.replace(tzinfo=None)
 
 
 def bundle(tmp_path,events,**changes):
@@ -60,6 +68,9 @@ def grant(tmp_path):
     return service,plan,source,evidence,parent
 
 
+@patch('test_windowed_actions_and_train_grant.datetime',_SyntheticClock)
+@patch('chanlun_trader.research_factory.train_execution_governance_v1.datetime',_SyntheticClock)
+@patch('chanlun_trader.research_factory.exploration_governance.datetime',_SyntheticClock)
 def test_increment_main_repair_and_old_buckets_unchanged(tmp_path):
     s,p,source,e,parent=grant(tmp_path);old=parent.summary()
     receipt=s.confirm(p,source,preflight=lambda:e)
@@ -73,6 +84,9 @@ def test_increment_main_repair_and_old_buckets_unchanged(tmp_path):
     assert parent.summary()==old
 
 
+@patch('test_windowed_actions_and_train_grant.datetime',_SyntheticClock)
+@patch('chanlun_trader.research_factory.train_execution_governance_v1.datetime',_SyntheticClock)
+@patch('chanlun_trader.research_factory.exploration_governance.datetime',_SyntheticClock)
 def test_not_ready_has_no_receipt_and_revocation_is_separate(tmp_path):
     s,p,source,e,parent=grant(tmp_path)
     with pytest.raises(PermissionError):s.confirm(p,source,preflight=lambda:{'status':'MISSING'})
@@ -82,6 +96,9 @@ def test_not_ready_has_no_receipt_and_revocation_is_separate(tmp_path):
     assert parent.active()
 
 
+@patch('test_windowed_actions_and_train_grant.datetime',_SyntheticClock)
+@patch('chanlun_trader.research_factory.train_execution_governance_v1.datetime',_SyntheticClock)
+@patch('chanlun_trader.research_factory.exploration_governance.datetime',_SyntheticClock)
 def test_consumed_before_start_journal_crash_never_becomes_free_replay(tmp_path):
     s,p,source,e,_=grant(tmp_path);s.confirm(p,source,preflight=lambda:e)
     run=s.reserve('fixed')
