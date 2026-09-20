@@ -192,6 +192,11 @@ jobs:
           tests/lookahead
           tests/research/test_predictive_executor_policy_pin.py
 
+      - name: Run system contract suite (PIT eligibility / valuation / bounded readers)
+        run: >-
+          python -m pytest -q -rA --tb=short --junitxml=tmp/pit-contract-results.xml
+          tests/pit
+
       - name: Upload R1 diagnostic evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -199,6 +204,7 @@ jobs:
           name: r1-${{ matrix.os }}-${{ github.sha }}
           path: |
             tmp/r1-results.xml
+            tmp/pit-contract-results.xml
             ${{ runner.temp }}/p3c-process-evidence/r1-caller
           if-no-files-found: warn
 

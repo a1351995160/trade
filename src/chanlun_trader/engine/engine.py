@@ -149,6 +149,9 @@ class BacktestEngineV2:
         self.ledger = PortfolioLedger(initial_cash=self.config.initial_cash)
         self.ledger.corporate_action_guard = self.config.corporate_action_guard
         self.event_log = BacktestEventLog()
+        # run-scoped 诊断列表：生命周期与本次 run 的 EventLog/Ledger 一致。
+        # 在 run 的初始化边界重置，避免上一次 run 的记录被导出到下一次结果。
+        self.sizing_skips = []
         self.order_manager = OrderManager(self.event_log)
         fee = ChinaAStockFeeModel(
             commission_rate=self.config.commission_rate,

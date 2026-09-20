@@ -157,6 +157,11 @@ jobs:
           tests/research_factory/test_process_diagnostics_v1.py
           tests/research_factory/test_phase3c_entry_boundaries_v1.py
 
+      - name: Run system contract suite (PIT eligibility / valuation / bounded readers)
+        run: >-
+          python -m pytest -q -rA --tb=short --junitxml=tmp/pit-contract-results.xml
+          tests/pit
+
       - name: Upload lifecycle test evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -164,5 +169,6 @@ jobs:
           name: p3c-${{ matrix.os }}-${{ github.sha }}
           path: |
             tmp/p3c-results.xml
+            tmp/pit-contract-results.xml
             ${{ runner.temp }}/p3c-process-evidence
           if-no-files-found: warn

@@ -4,9 +4,10 @@
 不需要 corporate_action 参数即可正常工作；且不因 PIT 开关默认值改变
 既有调用行为。
 
-导入来源必须指向本仓库（记录 __file__ 供集成证据）。
+导入来源必须指向**当前 checkout**（以解析后的绝对路径判定，不依赖目录名）。
 """
 import inspect
+from pathlib import Path
 
 import chanlun_trader
 from src.chanlun_trader.engine.broker import BrokerSimulator
@@ -15,12 +16,35 @@ from src.chanlun_trader.engine.engine import BacktestEngineV2, EngineConfig
 from tests.pit.test_pit_eligibility_contract import CAL, SYM, _run, _daily
 from src.chanlun_trader.engine.historical_eligibility import HistoricalEligibilityTable
 
+# 从**本测试文件位置**推导当前 checkout 根，而不是依赖目录名。
+# tests/pit/<this file> -> parents[2] == repo root
+REPO_ROOT = Path(__file__).resolve().parents[2]
+EXPECTED_PKG_INIT = (REPO_ROOT / "src" / "chanlun_trader" / "__init__.py").resolve()
+EXPECTED_ENGINE = (REPO_ROOT / "src" / "chanlun_trader" / "engine" / "engine.py").resolve()
+EXPECTED_BROKER = (REPO_ROOT / "src" / "chanlun_trader" / "engine" / "broker.py").resolve()
+
 
 def test_engine_and_broker_are_from_this_repository():
-    """关键模块必须来自本仓库，不混入审计目录或旧目录代码。"""
-    assert "trade-system-contract-port-v1" in chanlun_trader.__file__.replace("\\", "/")
-    assert "trade-system-contract-port-v1" in inspect.getfile(BacktestEngineV2).replace("\\", "/")
-    assert "trade-system-contract-port-v1" in inspect.getfile(BrokerSimulator).replace("\\", "/")
+    """关键模块必须来自**当前 checkout**，不混入旧目录或审计供体。
+
+    身份以「解析后的绝对路径是否等于本仓库内的确切预期文件」判定，
+    **不使用目录关键字**——换名 checkout、CI 上 clone 为 trade 等都必须通过。
+    """
+    pkg = Path(chanlun_trader.__file__).resolve()
+    engine = Path(inspect.getfile(BacktestEngineV2)).resolve()
+    broker = Path(inspect.getfile(BrokerSimulator)).resolve()
+
+    assert pkg == EXPECTED_PKG_INIT, (
+        "chanlun_trader 必须来自当前 checkout: %s != %s" % (pkg, EXPECTED_PKG_INIT))
+    assert engine == EXPECTED_ENGINE, (
+        "BacktestEngineV2 必须来自当前 checkout: %s != %s" % (engine, EXPECTED_ENGINE))
+    assert broker == EXPECTED_BROKER, (
+        "BrokerSimulator 必须来自当前 checkout: %s != %s" % (broker, EXPECTED_BROKER))
+
+    # 反向检查：不得来自当前 checkout 之外（例如旧工作区或审计供体）
+    for path in (pkg, engine, broker):
+        assert REPO_ROOT in path.parents, (
+            "模块位于当前 checkout 之外: %s (root=%s)" % (path, REPO_ROOT))
 
 
 def test_broker_signature_has_no_corporate_action_parameter():
