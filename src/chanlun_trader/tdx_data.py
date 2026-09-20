@@ -132,31 +132,62 @@ class TdxData:
                 self._gbbq_df.to_csv(cache_file, index=False)
         return self._gbbq_df
 
-    def get_day(self, code: str, market: int) -> pd.DataFrame:
-        """读取不复权日线，按代码缓存。"""
+    def get_day(self, code: str, market: int,
+                start_date: int = 0, end_date: int | None = None) -> pd.DataFrame:
+        """读取不复权日线，按代码缓存。
+
+        `end_date` 给出时使用**有界读取**（复用 research.io_safety 的
+        `read_day_file_range`），只物化窗口内记录，不把窗口外 OHLC 载入内存；
+        此路径**不写入**全量缓存，避免把窗口切片当全量。
+        未给出 `end_date` 时保持既有整体读取与缓存行为（向后兼容）。
+        """
+        if end_date is not None:
+            from chanlun_trader.research.io_safety import read_day_file_range
+            path = self.vipdoc / ("sh" if market == 1 else "sz") / "lday" / \
+                f"{'sh' if market == 1 else 'sz'}{code}.day"
+            if not path.exists():
+                return pd.DataFrame(columns=["date", "open", "high", "low", "close",
+                                             "volume", "amount"])
+            return read_day_file_range(str(path), int(start_date), int(end_date))
         key = f"{market}_{code}"
         if key not in self._day_cache:
             path = self.vipdoc / ("sh" if market == 1 else "sz") / "lday" / f"{'sh' if market==1 else 'sz'}{code}.day"
             self._day_cache[key] = read_day_file(path)
         return self._day_cache[key]
 
-    def get_qfq_day(self, code: str, market: int) -> pd.DataFrame:
-        """读取前复权日线。返回 DataFrame 含 qfq_open/qfq_high/qfq_low/qfq_close。"""
+    def get_qfq_day(self, code: str, market: int,
+                    start_date: int = 0, end_date: int | None = None) -> pd.DataFrame:
+        """读取前复权日线。返回 DataFrame 含 qfq_open/qfq_high/qfq_low/qfq_close。
+
+        `end_date` 给出时使用**有界路径**：
+          - RAW 通过 `get_day(..., end_date=...)` 只物化窗口内记录；
+          - **只应用 ex_date <= end_date 的公司行动**，因此不会用窗口之后才发生的
+            除权回改窗口内价格；
+          - **不写入** `_qfq_cache` 全量缓存。
+
+        语义差异提示：无界路径是**全样本 qfq**，有界路径是**窗口末封口 qfq**；
+        两者在窗口内**价格水平**可能相差一个常数因子（比率/收益率不变），
+        该差异未做前缀不变性认证，不得声称二者等价。
+        """
         from chanlun_trader.research.guard import (UnsafeLegacyQfqAccessError,
                                                     is_research_context)
         if is_research_context():
             raise UnsafeLegacyQfqAccessError(
                 "get_qfq_day is legacy full-sample qfq; use get_qfq_day_pit(as_of=...)"
             )
+        bounded = end_date is not None
         key = f"{market}_{code}"
-        if key in self._qfq_cache:
+        if not bounded and key in self._qfq_cache:
             return self._qfq_cache[key]
-        raw = self.get_day(code, market)
+        raw = self.get_day(code, market, start_date=start_date, end_date=end_date)
         if raw.empty:
-            self._qfq_cache[key] = raw.copy()
-            return self._qfq_cache[key]
+            if not bounded:
+                self._qfq_cache[key] = raw.copy()
+            return raw.copy()
         gbbq = self._load_gbbq()
         events = gbbq[(gbbq["code"] == code) & (gbbq["category"] == 1)].sort_values("datetime")
+        if bounded:
+            events = events[events["datetime"].astype("int64") <= int(end_date)]
         df = raw.copy()
         df["qfq_open"] = df["open"]
         df["qfq_high"] = df["high"]
@@ -181,7 +212,8 @@ class TdxData:
                 mask = df["date"] < d
                 for col in ("qfq_open", "qfq_high", "qfq_low", "qfq_close"):
                     df.loc[mask, col] = df.loc[mask, col] * adj
-        self._qfq_cache[key] = df
+        if not bounded:
+            self._qfq_cache[key] = df
         return df
 
     def get_qfq_day_pit(self, code: str, market: int, as_of: int) -> pd.DataFrame:
@@ -199,13 +231,21 @@ class TdxData:
         g = gbbq[gbbq["code"] == code].copy()
         return qfq_columns_asof(raw, g, as_of)
 
-    def get_benchmark(self, code: str = "sh000300") -> pd.DataFrame | None:
-        """读取指数日线作为基准（不复权，指数无除权问题）。"""
+    def get_benchmark(self, code: str = "sh000300",
+                      start_date: int = 0, end_date: int | None = None) -> pd.DataFrame | None:
+        """读取指数日线作为基准（不复权，指数无除权问题）。
+
+        `end_date` 给出时使用**有界读取**，只物化窗口内记录，
+        不把窗口外 OHLC 载入内存。未给出时保持既有整体读取行为。
+        """
         # code 形如 sh000300 / sz399006
         market_dir, code_part = code[:2], code[2:]
         path = self.vipdoc / market_dir / "lday" / f"{code}.day"
         if not path.exists():
             return None
+        if end_date is not None:
+            from chanlun_trader.research.io_safety import read_day_file_range
+            return read_day_file_range(str(path), int(start_date), int(end_date))
         return read_day_file(path)
 
 
