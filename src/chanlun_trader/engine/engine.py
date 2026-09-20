@@ -61,6 +61,9 @@ class EngineConfig:
     calendar_version: str = ""
     persist_run_manifest: bool = True
     run_manifest_root: str = "data/research/runs"
+    # PIT 历史资格 fail-closed 开关：接入 HistoricalEligibilityTable 时必须置 True，
+    # 否则缺失/冲突状态会被静默当作可买。默认 False 保持既有调用方行为不变。
+    pit_eligibility_enforced: bool = False
 
 
 @dataclass
@@ -131,6 +134,8 @@ class BacktestEngineV2:
         self.result: Optional[EngineResult] = None
         self._exit_order_lots: Dict[str, str] = {}
         self._pending_exit_lots: Dict[str, str] = {}
+        # sizing 为零而未生成订单的原因记录（可观测性；不改变交易行为）。
+        self.sizing_skips: List[dict] = []
 
     # ---------- setup ----------
     def add_signal(self, sig: Signal):
@@ -144,6 +149,9 @@ class BacktestEngineV2:
         self.ledger = PortfolioLedger(initial_cash=self.config.initial_cash)
         self.ledger.corporate_action_guard = self.config.corporate_action_guard
         self.event_log = BacktestEventLog()
+        # run-scoped 诊断列表：生命周期与本次 run 的 EventLog/Ledger 一致。
+        # 在 run 的初始化边界重置，避免上一次 run 的记录被导出到下一次结果。
+        self.sizing_skips = []
         self.order_manager = OrderManager(self.event_log)
         fee = ChinaAStockFeeModel(
             commission_rate=self.config.commission_rate,
@@ -166,7 +174,8 @@ class BacktestEngineV2:
         self.broker = BrokerSimulator(
             store=self.store, clock=self.clock, ledger=self.ledger, order_manager=self.order_manager,
             fee_model=fee, slippage_model=slip, fill_model=fill_model,
-            price_limit_model=ChinaPriceLimitModel(self.security_master),
+            price_limit_model=ChinaPriceLimitModel(
+                self.security_master, pit_enforced=self.config.pit_eligibility_enforced),
             suspension_model=SuspensionModel(),
             risk_manager=self.risk, lot_size=self.config.lot_size,
             partial_fill=self.config.partial_fill,
@@ -305,6 +314,36 @@ class BacktestEngineV2:
             metadata=sig.metadata,
         )
 
+    def _record_sizing_skip(self, intent: OrderIntent, ts: pd.Timestamp, reason: str,
+                            ref: float = 0.0, bar: Optional[dict] = None):
+        """记录 sizing 为零/无参考价而**未生成订单**的原因。
+
+        原实现直接 return None，不留任何痕迹，导致"选入候选却无订单"无法审计。
+        本方法只做记录，**不改变交易行为**：仍然不买入、不递补下一名候选。
+        """
+        rec = {
+            "ts": str(ts),
+            "date": date_key(ts),
+            "symbol": intent.symbol,
+            "strategy_id": intent.strategy_id,
+            "signal_id": intent.signal_id,
+            "reason": reason,
+            "reference_price": round(float(ref), 6),
+            "available_cash": round(float(self.ledger.available_cash()), 4),
+            "current_equity": round(float(self.ledger.current_equity()), 4),
+            "max_positions": int(self.config.max_positions),
+            "board_lot_cost": round(float(ref) * float(self.config.lot_size), 4) if ref > 0 else 0.0,
+            "behavior": "NO_ORDER_NO_FALLBACK_KEEP_CASH",
+        }
+        if bar is not None:
+            rec["bar_open"] = float(bar.get("open", 0.0))
+        self.sizing_skips.append(rec)
+        self.event_log.log(BacktestEvent(
+            event_id="", timestamp=ts, event_type="SIZING_SKIPPED",
+            strategy_id=intent.strategy_id, symbol=intent.symbol,
+            signal_id=intent.signal_id, intent_id=intent.intent_id,
+        ))
+
     def _submit_intent(self, intent: OrderIntent, ts: pd.Timestamp):
         ts = ensure_aware(ts)
         position_id = None
@@ -316,6 +355,7 @@ class BacktestEngineV2:
             bar = self.store.get_daily_bar(intent.symbol, d, price_mode="raw")
             ref = float(bar["open"]) if bar else 0.0
             if ref <= 0:
+                self._record_sizing_skip(intent, ts, "NO_REFERENCE_PRICE", ref=0.0)
                 return None
             target = PortfolioTarget(
                 strategy_id=intent.strategy_id, symbol=intent.symbol,
@@ -326,6 +366,9 @@ class BacktestEngineV2:
             qty = self.sizer.size_buy(target, self.ledger, ref_slipped, self.lot_model,
                                       max_positions=self.config.max_positions)
             if qty <= 0:
+                # 保留原行为："买不起即留现金，不递补下一名"。但留下明确原因记录。
+                self._record_sizing_skip(intent, ts, "SIZING_ZERO_AT_INTENT",
+                                         ref=ref_slipped, bar=bar)
                 return None
         else:
             if lot_id:
@@ -573,6 +616,7 @@ class BacktestEngineV2:
         self.result = EngineResult(
             ledger=self.ledger, event_log=self.event_log, orders=self.order_manager,
             clock=self.clock, context=self.context, signals=self.signals,
+            sizing_skips=list(self.sizing_skips),
         )
         return self.result
 
@@ -596,6 +640,7 @@ class EngineResult:
     clock: TradingClock
     context: BacktestRunContext
     signals: List[Signal] = field(default_factory=list)
+    sizing_skips: List[dict] = field(default_factory=list)
 
     @property
     def trades(self) -> List:
