@@ -160,7 +160,11 @@ jobs:
       - name: Run system contract suite (PIT eligibility / valuation / bounded readers)
         run: >-
           python -m pytest -q -rA --tb=short --junitxml=tmp/pit-contract-results.xml
-          tests/pit
+          tests/pit/test_pit_eligibility_contract.py
+          tests/pit/test_official_valuation_contract.py
+          tests/pit/test_bounded_reader_contract.py
+          tests/pit/test_target_engine_broker_wiring.py
+          tests/pit/test_sizing_skip_run_isolation.py
 
       - name: Upload lifecycle test evidence
         if: always()
