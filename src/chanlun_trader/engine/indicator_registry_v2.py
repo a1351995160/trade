@@ -289,7 +289,7 @@ class IndicatorRegistry:
         - 缺依赖字段 -> ``DATA_DEPENDENCY_NOT_MET``；
         - 声明需要额外数据但未提供 -> ``DATA_DEPENDENCY_NOT_MET``（不用替代值补齐）。
         """
-        spec = self.resolve(indicator_id)
+        spec = self.get(indicator_id, version) if version else self.resolve(indicator_id)
         key = (spec.indicator_id, spec.version)
         impl = self._impls.get(key)
         if impl is None:

@@ -610,11 +610,18 @@ def rsi(data: PriceInput, *, window: int = 14, price: str = "close") -> Indicato
 
 
 def _rsi_value(average_gain: float, average_loss: float) -> float:
-    if average_gain == 0.0 and average_loss == 0.0:
+    """RSI 边界：无涨无跌 -> 50（中性）；仅涨 -> 100；仅跌 -> 0。
+
+    用容差比较而非浮点相等，避免"极小但非零"的 gain/loss 被误判为 0。
+    """
+    tolerance = 1e-12
+    flat_gain = abs(average_gain) <= tolerance
+    flat_loss = abs(average_loss) <= tolerance
+    if flat_gain and flat_loss:
         return 50.0
-    if average_loss == 0.0:
+    if flat_loss:
         return 100.0
-    if average_gain == 0.0:
+    if flat_gain:
         return 0.0
     return 100.0 * average_gain / (average_gain + average_loss)
 
@@ -742,7 +749,6 @@ def psy(data: PriceInput, *, window: int = 12, price: str = "close") -> Indicato
     window = _require_positive_int(window, "window")
     values = _price_field(data, price)
     segments = segment_ids(np.isfinite(values) & (values > 0))
-    up = np.zeros(len(values))
     previous = np.concatenate(([np.nan], values[:-1]))
     up = np.where(np.isfinite(previous) & (values > previous), 1.0, 0.0)
     up[~np.isfinite(previous)] = np.nan

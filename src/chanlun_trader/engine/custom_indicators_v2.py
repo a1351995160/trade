@@ -168,7 +168,6 @@ class RsiRegimeProvider:
         rsi = rsi_result.output("rsi").to_numpy(dtype=float)
         rsi_ready = rsi_result.ready().to_numpy(dtype=bool)
 
-        regime = np.full(len(rsi), np.nan)
         # -1 超卖区，0 中性区，1 超买区；UNKNOWN 保持 NaN（不是 0）
         known = np.isfinite(rsi) & rsi_ready
         regime = np.where(known, np.where(rsi <= float(low), -1.0,

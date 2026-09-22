@@ -24,6 +24,7 @@ from chanlun_trader.engine.behavior_service_v1 import (  # noqa: E402
 )
 from chanlun_trader.engine.behavior_service_v2 import (  # noqa: E402
     run_behavior_backtest_v2,
+    write_result_v2,
 )
 from chanlun_trader.engine.custom_indicators_v2 import (  # noqa: E402
     custom_condition_fixtures,
@@ -72,6 +73,7 @@ def main() -> int:
         return 0
     if not args.request:
         parser.error("需要 --request 或 --list-indicators")
+        return 2   # parser.error 会先抛出 SystemExit；此行仅为满足静态检查
 
     request_path = resolve_within_root(args.request, args.request_root, purpose="REQUEST")
     payload = json.loads(request_path.read_text(encoding="utf-8"))
@@ -106,12 +108,7 @@ def main() -> int:
     for rejection in result["rejections"]:
         print("  拒因 %s %s @ %s" % (rejection["symbol"], rejection["reason"], rejection["at"]))
     if args.out:
-        from chanlun_trader.engine.behavior_service_v1 import resolve_within_root as _resolve
-
-        target = _resolve(args.out, args.out_root, purpose="RESULT")
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(json.dumps(result, ensure_ascii=False, indent=2, default=str),
-                          encoding="utf-8")
+        target = write_result_v2(args.out, result, root=args.out_root)
         print("结果：%s" % target)
     return 0
 

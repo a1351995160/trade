@@ -66,7 +66,7 @@ def _payload() -> dict:
     }
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(tmp_path: Path) -> TestClient:
     root = tmp_path / "synthetic_root"
     root.mkdir()

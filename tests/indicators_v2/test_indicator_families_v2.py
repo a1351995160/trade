@@ -539,6 +539,17 @@ def test_registry_aliases_resolve_to_same_contract():
         reg.resolve("TOTALLY_UNKNOWN_ALIAS")
 
 
+def test_explicit_version_is_honoured_and_unknown_version_rejected():
+    """显式版本必须被使用；未知版本必须报错，不得被静默忽略。"""
+    reg = default_registry()
+    days = _days(60)
+    close = pd.Series([10.0 + 0.1 * i for i in range(60)], index=days)
+    result = reg.compute("RSI", close, version="RSI_V1")
+    assert result.version == "RSI_V1"
+    with pytest.raises(IndicatorRegistryError):
+        reg.compute("RSI", close, version="RSI_V999")
+
+
 def test_registry_snapshot_has_required_contract_fields():
     """每个注册项都必须带齐机器可读契约字段（不能只有名字）。"""
     reg = default_registry()

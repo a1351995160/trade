@@ -322,7 +322,7 @@ def build_acceptance_scope(registry, matrix) -> dict:
             "v2_new_tests": {
                 "suites": ["tests/indicators_v2", "tests/conditions_v2",
                            "tests/exits_v2", "tests/entrypoints_v2"],
-                "collected_and_passed": 115,
+                "collected_and_passed": 116,
                 "junit": "reports/junit-v2-new.xml",
             },
             "v1_compatibility_regression": {

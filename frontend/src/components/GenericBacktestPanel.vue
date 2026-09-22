@@ -209,18 +209,18 @@ onMounted(loadContracts)
     <p v-if="errorText" class="v2-error">{{ errorText }}</p>
 
     <div class="v2-grid">
-      <label class="v2-field">
-        <span>交易日历（JSON 数组，YYYYMMDD）</span>
-        <textarea v-model="calendarText" rows="4" spellcheck="false" />
-      </label>
-      <label class="v2-field">
-        <span>证券代码</span>
-        <input v-model="symbolText" />
-      </label>
-      <label class="v2-field v2-wide">
-        <span>行情（JSON 数组：date/open/high/low/close/volume[/amount]）</span>
-        <textarea v-model="barsText" rows="6" spellcheck="false" />
-      </label>
+      <div class="v2-field">
+        <label for="v2-calendar">交易日历（JSON 数组，YYYYMMDD）</label>
+        <textarea id="v2-calendar" v-model="calendarText" rows="4" spellcheck="false" />
+      </div>
+      <div class="v2-field">
+        <label for="v2-symbol">证券代码</label>
+        <input id="v2-symbol" v-model="symbolText" />
+      </div>
+      <div class="v2-field v2-wide">
+        <label for="v2-bars">行情（JSON 数组：date/open/high/low/close/volume[/amount]）</label>
+        <textarea id="v2-bars" v-model="barsText" rows="6" spellcheck="false" />
+      </div>
     </div>
 
     <fieldset class="v2-box">
@@ -241,7 +241,12 @@ onMounted(loadContracts)
           <tr v-for="(item, index) in selected" :key="item.indicator_id">
             <td>{{ item.indicator_id }}</td>
             <td>{{ item.outputs.join(', ') }}</td>
-            <td><input v-model="item.paramsText" spellcheck="false" /></td>
+            <td>
+              <label class="v2-sr-only" :for="`v2-params-${item.indicator_id}`">
+                {{ item.indicator_id }} 参数
+              </label>
+              <input :id="`v2-params-${item.indicator_id}`" v-model="item.paramsText" spellcheck="false" />
+            </td>
             <td>{{ specOf(item.indicator_id)?.warmup_bars }}</td>
             <td><button type="button" @click="removeIndicator(index)">移除</button></td>
           </tr>
@@ -270,7 +275,10 @@ onMounted(loadContracts)
     </fieldset>
 
     <div class="v2-actions">
-      <label class="v2-field"><span>初始资金</span><input v-model.number="initialCash" type="number" /></label>
+      <div class="v2-field">
+        <label for="v2-initial-cash">初始资金</label>
+        <input id="v2-initial-cash" v-model.number="initialCash" type="number" />
+      </div>
       <button type="button" class="v2-run" @click="run">运行回测</button>
     </div>
 
@@ -302,6 +310,7 @@ onMounted(loadContracts)
 .v2-wide { grid-column: 1 / -1; }
 .v2-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #55606e; }
 .v2-field textarea, .v2-field input { font-family: Consolas, monospace; font-size: 12px; padding: 6px; border: 1px solid #cfd8e3; border-radius: 4px; }
+.v2-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .v2-box { border: 1px solid #dfe4ec; border-radius: 6px; padding: 12px; margin-bottom: 14px; }
 .v2-box legend { font-size: 13px; font-weight: 600; padding: 0 6px; }
 .v2-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }

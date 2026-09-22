@@ -168,7 +168,7 @@ class BehaviorRequestV2:
     def from_mapping(cls, payload: Mapping[str, Any]) -> "BehaviorRequestV2":
         if not isinstance(payload, Mapping):
             raise BehaviorRequestError("REQUEST_NOT_AN_OBJECT")
-        known = {f for f in cls.__dataclass_fields__}
+        known = set(cls.__dataclass_fields__)
         unknown = sorted(set(payload) - known)
         if unknown:
             raise BehaviorRequestError(f"UNKNOWN_REQUEST_FIELD:{','.join(unknown)}")
@@ -506,7 +506,6 @@ def run_behavior_backtest_v2(
 
     # 条件上下文按 session 预构建（每个 session 只暴露该日及之前的数据）。
     context_by_session: Dict[int, ConditionContext] = {}
-    session_index_of = {int(day): index for index, day in enumerate(calendar)}
     for symbol in request.symbols:
         frame = frames[symbol].sort_values("date").reset_index(drop=True)
         full_index = pd.Index(frame["date"].astype(int).to_numpy(), name="date")
@@ -670,6 +669,18 @@ def _referenced_indicators(node: Optional[Expr]) -> set:
         if isinstance(arg, Expr):
             found |= _referenced_indicators(arg)
     return found
+
+
+def write_result_v2(path: str | Path, result: Mapping[str, Any], *, root: str | Path) -> Path:
+    """写出 V2 结果 JSON；``path`` 必须落在调用者显式声明的 ``root`` 内。
+
+    写入放在服务层（与 V1 ``write_result`` 同一模式），CLI 只负责传入路径与根，
+    使外部参数不能直接决定任意写入位置。
+    """
+    target = resolve_within_root(path, root, purpose="RESULT")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(result, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+    return target
 
 
 def result_semantics(payload: Mapping[str, Any]) -> Dict[str, Any]:
