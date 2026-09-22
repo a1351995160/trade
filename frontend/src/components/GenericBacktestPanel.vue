@@ -225,7 +225,8 @@ onMounted(loadContracts)
 
     <fieldset class="v2-box">
       <legend>指标（来自注册表，共 {{ contracts?.indicators.length ?? 0 }} 项 / {{ families.length }} 家族）</legend>
-      <select @change="onSelectChange">
+      <label class="v2-sr-only" for="v2-indicator-select">选择要加入的指标</label>
+      <select id="v2-indicator-select" @change="onSelectChange">
         <option value="">— 选择一个指标加入 —</option>
         <optgroup v-for="family in families" :key="family" :label="family">
           <option v-for="spec in indicatorsByFamily[family]" :key="spec.indicator_id" :value="spec.indicator_id">
@@ -265,12 +266,14 @@ onMounted(loadContracts)
         <button type="button" class="v2-chip" @click="namedEntry = ''">清除（用表达式）</button>
       </p>
       <p v-if="namedEntry" class="v2-status">使用命名条件：{{ namedEntry }}</p>
-      <textarea v-model="entryConditionText" rows="8" spellcheck="false" :disabled="!!namedEntry" />
+      <label class="v2-sr-only" for="v2-entry-condition">入场条件表达式（JSON）</label>
+      <textarea id="v2-entry-condition" v-model="entryConditionText" rows="8" spellcheck="false" :disabled="!!namedEntry" />
     </fieldset>
 
     <fieldset class="v2-box">
       <legend>退出规则（V2 支持 {{ contracts?.supported_exit_types_v2.length ?? 0 }} 类）</legend>
-      <textarea v-model="exitRulesText" rows="4" spellcheck="false" />
+      <label class="v2-sr-only" for="v2-exit-rules">退出规则（JSON）</label>
+      <textarea id="v2-exit-rules" v-model="exitRulesText" rows="4" spellcheck="false" />
       <p class="v2-hint">明确不支持：{{ (contracts?.unsupported_exit_types_v2 ?? []).join('、') }}</p>
     </fieldset>
 

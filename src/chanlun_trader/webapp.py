@@ -393,7 +393,7 @@ def run_behavior_backtest_v2_endpoint(body: dict | None = None) -> dict:
         raise HTTPException(status_code=400, detail={"code": str(exc), "message_zh": "指标不受支持"}) from exc
     except (ExitConfigError, ConditionError, IndicatorInputError) as exc:
         raise HTTPException(status_code=400, detail={"code": str(exc), "message_zh": "请求不受支持"}) from exc
-    return result
+    return result.to_dict()
 
 
 @app.get("/api/kline/{code}")

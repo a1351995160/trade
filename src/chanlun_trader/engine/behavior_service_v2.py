@@ -582,7 +582,7 @@ def run_behavior_backtest_v2(
         "exit_state": lot.exit_state, "exit_reason": lot.exit_reason,
     } for lot in sorted(ledger.lots.values(), key=lambda item: item.lot_id)]
 
-    return {
+    return BehaviorResultV2({
         "mode": BEHAVIOR_MODE_V2,
         "engine_version": result.context.engine_version,
         "registry_version": REGISTRY_VERSION,
@@ -653,7 +653,7 @@ def run_behavior_backtest_v2(
         "official_valuation": official.to_dict(),
         "exit_evaluations": list(evaluator.evaluations),
         "run_summary": result.summary(),
-    }
+    })
 
 
 def _referenced_indicators(node: Optional[Expr]) -> set:
@@ -671,15 +671,51 @@ def _referenced_indicators(node: Optional[Expr]) -> set:
     return found
 
 
-def write_result_v2(path: str | Path, result: Mapping[str, Any], *, root: str | Path) -> Path:
+@dataclass(frozen=True)
+class BehaviorResultV2:
+    """V2 结果对象。
+
+    与 V1 ``BehaviorResultV1`` 同构：由服务内部构造的**类型化**结果，
+    而不是把外部传入的 Mapping 直接落盘。这既明确了结果契约，
+    也使写入路径不再直接接收未经类型化的外部内容。
+
+    为兼容既有调用方，支持按 key 读取（``result["mode"]``）与 ``dict(result)``。
+    """
+
+    payload: Mapping[str, Any]
+
+    def to_dict(self) -> Dict[str, Any]:
+        return dict(self.payload)
+
+    def __getitem__(self, key: str) -> Any:
+        return self.payload[key]
+
+    def __contains__(self, key: object) -> bool:
+        return key in self.payload
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return self.payload.get(key, default)
+
+    def keys(self):
+        return self.payload.keys()
+
+    def items(self):
+        return self.payload.items()
+
+    def __iter__(self):
+        return iter(self.payload)
+
+
+def write_result_v2(path: str | Path, result: BehaviorResultV2, *, root: str | Path) -> Path:
     """写出 V2 结果 JSON；``path`` 必须落在调用者显式声明的 ``root`` 内。
 
-    写入放在服务层（与 V1 ``write_result`` 同一模式），CLI 只负责传入路径与根，
-    使外部参数不能直接决定任意写入位置。
+    写入放在服务层（与 V1 ``write_result`` 同一模式）：CLI 只传入**已类型化**的
+    结果对象与根目录，外部参数不能直接决定任意写入位置。
     """
     target = resolve_within_root(path, root, purpose="RESULT")
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(json.dumps(result, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+    target.write_text(json.dumps(result.to_dict(), ensure_ascii=False, indent=2, default=str),
+                      encoding="utf-8")
     return target
 
 

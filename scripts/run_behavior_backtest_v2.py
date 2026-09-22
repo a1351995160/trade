@@ -78,7 +78,6 @@ def main() -> int:
     request_path = resolve_within_root(args.request, args.request_root, purpose="REQUEST")
     payload = json.loads(request_path.read_text(encoding="utf-8"))
     result = run_behavior_backtest_v2(payload)
-
     print("模式：%s" % result["mode"])
     print("引擎版本：%s" % result["engine_version"])
     print("注册表：%s" % result["registry_version"])
