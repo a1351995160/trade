@@ -2035,3 +2035,18 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 - docs/EXTENSIBLE_BACKTEST_ACCEPTANCE_V2.md：§6.6 依赖执行与指纹；10 VERIFIED 含义澄清。
 - .github/workflows/extensible-backtest-acceptance-v2.yml：纳入 tests/pr15_dependency。
 - 回滚点 c9a63ed；可 git revert 本次提交。
+
+### Testing（依赖作用域防误用）
+- 复现绕过：pinned DEP_V1 时，父实现直接 registry.compute("DEP") 仍取默认最新版 DEP_V2（父输出 2.0），而 hash 按 DEP_V1 算——防护缺口。
+- 修复：依赖求值期间，若该指标在作用域里已被固定版本，未显式传 version 的直接 compute() 抛 DIRECT_COMPUTE_BYPASSES_PINNED_DEPENDENCY 并指出正确做法。
+- 边界：依赖未固定时不误报；显式传 version 不算绕过；compute_dependency 内部带标记不会被自身防护拦下。
+- 修正仓库内真实绕过点：RsiRegimeProvider 原直接 registry.compute("RSI")，改为 compute_dependency，并为 RSI_REGIME_FLAG 登记 pinned_versions={"RSI":"RSI_V1"}。
+- 新增 4 项防护测试（绕过拒绝、未固定不误报、显式版本放行、内置依赖型指标走依赖路径）。
+- V2 新增 192 项通过；V1 兼容回归 139 项通过。
+- 完整套件：本次 HEAD 零新增失败 nodeid（基线 194 覆盖本次 193）；因果未确认，不声明全系统零回归。
+### Notes
+- src/chanlun_trader/engine/indicator_registry_v2.py：compute 增加 _via_dependency 标记与绕过防护；compute_dependency 标记来源。
+- src/chanlun_trader/engine/custom_indicators_v2.py：RsiRegimeProvider 改用 compute_dependency；RSI_REGIME_FLAG 登记 RSI 固定版本。
+- tests/pr15_dependency/test_dependency_execution_v1.py：新增四项防护测试（共 14 项）。
+- scripts/emit_v2_acceptance_scope_v1.py、reports/v2_acceptance/、ACCEPTANCE_SCOPE.json、docs/EXTENSIBLE_BACKTEST_ACCEPTANCE_V2.md：分母 192/139、§6.7 防误用与风险降级说明。
+- 回滚点 c6af41a；可 git revert 本次提交。

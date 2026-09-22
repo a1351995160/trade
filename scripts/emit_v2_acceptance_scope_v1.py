@@ -636,10 +636,10 @@ def build_acceptance_scope(registry, matrix) -> dict:
                 "pr15_targeted_suites": {
                     "tests/pr15_remediation": 30,
                     "tests/pr15_residual": 27,
-                    "tests/pr15_dependency": 10,
+                    "tests/pr15_dependency": 14,
                 },
-                "pr15_targeted_subtotal": 67,
-                "collected_and_passed": 188,
+                "pr15_targeted_subtotal": 71,
+                "collected_and_passed": 192,
                 "junit": "reports/junit-v2-new.xml",
                 "evidence_types": {
                     "helper": "直接调用注册表/求值器（公式逐值 oracle）",
@@ -647,7 +647,7 @@ def build_acceptance_scope(registry, matrix) -> dict:
                     "http": "FastAPI TestClient POST /api/backtest/behavior/v2",
                     "cli": "真实子进程执行 scripts/run_behavior_backtest_v2.py",
                 },
-                "note": ("PR15 定向三轮合计 67 项（第一轮 30 + 残留与指纹 27 + 依赖执行 10），"
+                "note": ("PR15 定向三轮合计 71 项（第一轮 30 + 残留与指纹 27 + 依赖执行 14），"
                          "经真实 API/CLI 与真实注册表入口取得 red/green；"
                          "分母按证据来源分开统计，不合并成单一数字宣称全部已验证公式。"),
             },

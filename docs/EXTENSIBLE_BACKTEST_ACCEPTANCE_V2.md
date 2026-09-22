@@ -338,9 +338,9 @@ registry.register(
 | `REAL_DATA_VALIDATED` | **否** |
 | `PROFITABILITY_VALIDATED` | **否**（且不在本轮目标内） |
 
-**188 项 V2 测试是真实证据，但不等于 51 项指标的所有行为均已验证**；
+**192 项 V2 测试是真实证据，但不等于 51 项指标的所有行为均已验证**；
 未列入 VERIFIED 的项按 PARTIAL 如实披露。分母按来源分开：
-V2 主体 121、PR15 定向 67（第一轮 30 + 残留与指纹 27 + 依赖执行 10）。
+V2 主体 121、PR15 定向 71（第一轮 30 + 残留与指纹 27 + 依赖执行 14）。
 
 软件对齐：未做与通达信/TA-Lib 的同输入同复权逐值对照，故只声明
 "本版本公式验收通过"，不声明"与第三方软件完全一致"。
@@ -367,6 +367,34 @@ V2 主体 121、PR15 定向 67（第一轮 30 + 残留与指纹 27 + 依赖执�
 | `_wilder_smooth` 种子被段首 NaN 污染 | **真实缺陷** | 种子改为取前 N 个**有限**值之和 |
 | `DMI` 段首 TR 因缺前收盘而丢弃 | 口径不一致（预热偏移） | 段首按惯例取 `H-L`，与 `true_range` 一致 |
 | `DYNAMIC_CURRENT` 在首根被跳过（提前 return） | **真实缺陷**（参数被忽略） | 首次创建状态后继续走更新逻辑；取不到当日 ATR 时按合同拒绝 |
+
+### 6.7 依赖作用域防误用（reviewed HEAD `c6af41a`）
+
+`DependencyScope` 只约束**使用 `compute_dependency` 的实现**。若某个指标实现内部
+直接调用 `registry.compute("DEP")`，仍会静默走默认最新版并绕过固定版本
+（复现：pinned `DEP_V1`，父输出却为 `DEP_V2` 的值）。
+
+**处置**：依赖求值期间，若该指标在作用域里已被固定版本，直接 `compute()`
+（未显式传 `version`）会被拒绝：
+
+```
+DIRECT_COMPUTE_BYPASSES_PINNED_DEPENDENCY:<id>:pinned=<version>:
+请在指标实现内使用 compute_dependency()，否则会静默使用默认最新版而非固定版本
+```
+
+三条边界：
+
+- 依赖**未被固定**时，直接 `compute()` 不构成绕过（不误报）；
+- 显式传 `version` 时不算绕过（调用方已明确指定版本）；
+- `compute_dependency` 内部走带标记的调用路径，不会被自身防护拦下。
+
+**同时修正了仓库内真实的绕过点**：`RsiRegimeProvider` 原先直接
+`registry.compute("RSI", ...)`，现已改为 `compute_dependency`，
+并为 `RSI_REGIME_FLAG` 登记 `pinned_versions={"RSI": "RSI_V1"}`。
+
+**风险降级说明**：这是**运行时防护**，不是类型系统级的架构强制。
+它把"第三方自定义指标绕过固定版本"从静默错误变为显式失败，
+但实现者仍须使用 `compute_dependency` 才能获得版本锁定。
 
 ### 6.6 依赖执行与指纹一致（reviewed HEAD `c9a63ed`）
 
@@ -491,14 +519,14 @@ V2，指纹必须随之改变。修复前指纹不变（选 V2 哈希 V1），�
 | **V2 主体小计** | | **121** | |
 | PR15 定向（第一轮 + 证据负向检查） | `tests/pr15_remediation` | 30 | 五类根因与证据适用性负向检查 |
 | PR15 定向（残留 + 指纹） | `tests/pr15_residual` | 27 | 版本绑定、ATR 规则身份、排名退出 |
-| PR15 定向（依赖执行一致性） | `tests/pr15_dependency` | 10 | 固定版本约束计算、共享依赖 DAG |
-| **PR15 定向小计** | | **67** | |
-| **合计** | | **188** | |
+| PR15 定向（依赖执行一致性） | `tests/pr15_dependency` | 14 | 固定版本约束计算、共享依赖 DAG、绕过防护 |
+| **PR15 定向小计** | | **71** | |
+| **合计** | | **192** | |
 
 V1 兼容回归单独统计：`tests/behavior`、`tests/indicators`、`tests/legacy_entry`、
 `tests/engine`、`tests/golden`、`tests/lookahead`、`tests/regression` 共 **139** 项。
 
-证据类型分开记录，不混为"188 项都验证了公式"：
+证据类型分开记录，不混为"192 项都验证了公式"：
 
 - **helper 级**：直接调用注册表/求值器（如公式逐值 oracle）；
 - **直接服务级**：调用 `run_behavior_backtest_v2`；

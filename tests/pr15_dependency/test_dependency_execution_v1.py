@@ -226,6 +226,110 @@ def test_pr15b2_shared_dependency_dag_is_accepted():
     assert float(registry.compute("PARENT", CLOSE).output("y").iloc[-1]) == pytest.approx(2.0)
 
 
+def test_dependency_scope_rejects_direct_registry_compute():
+    """防误用：依赖被固定时，父实现直接 ``registry.compute`` 必须失败。
+
+    模拟一个自定义指标在实现内部直接调用 ``registry.compute("DEP")``：
+    它会静默走默认最新版并绕过固定版本。有 pinned scope 时必须拒绝，
+    而不是静默给出 DEP_V2 的值。
+    """
+    registry = IndicatorRegistry()
+    registry.register(_spec("DEP", "DEP_V1", "f", "dep", "NEW_IN_V2", ["x"],
+                            {"window": 3}, ("close",), warmup_bars=1),
+                      _adapter(_leaf_source("DEP_V1", 1.0), ["x"]))
+    registry.register(_spec("DEP", "DEP_V2", "f", "dep", "NEW_IN_V2", ["x"],
+                            {"window": 3}, ("close",), warmup_bars=1),
+                      _adapter(_leaf_source("DEP_V2", 2.0), ["x"]))
+
+    def bypassing_parent(data, **kwargs):
+        """错误示范：直接 registry.compute，绕过依赖作用域。"""
+        dep = registry.compute("DEP", pd.Series(data.close, index=data.index))
+        return IndicatorFrameV2(
+            indicator_id="PARENT", version="PARENT_V1", index=data.index,
+            columns={"y": dep.output("x")}, ready=pd.Series(True, index=data.index),
+            segment=pd.Series(np.zeros(len(data.close), dtype=int), index=data.index),
+            warmup_bars=1)
+
+    bypassing_parent.__wrapped_impl__ = bypassing_parent
+    registry.register(_spec("PARENT", "PARENT_V1", "f", "parent", "NEW_IN_V2", ["y"],
+                            {}, ("close",), warmup_bars=1),
+                      _adapter(bypassing_parent, ["y"]),
+                      dependencies=("DEP",), pinned_versions={"DEP": "DEP_V1"})
+
+    with pytest.raises(DependencyResolutionError) as excinfo:
+        registry.compute("PARENT", CLOSE)
+    message = str(excinfo.value)
+    assert "DIRECT_COMPUTE_BYPASSES_PINNED_DEPENDENCY" in message
+    assert "DEP" in message and "DEP_V1" in message
+    assert "compute_dependency" in message, "错误信息未指出正确做法"
+
+
+def test_dependency_scope_allows_direct_compute_when_not_pinned():
+    """未固定该依赖时，直接 compute 不构成绕过（不误报）。"""
+    registry = IndicatorRegistry()
+    registry.register(_spec("DEP", "DEP_V1", "f", "dep", "NEW_IN_V2", ["x"],
+                            {"window": 3}, ("close",), warmup_bars=1),
+                      _adapter(_leaf_source("DEP_V1", 1.0), ["x"]))
+
+    def direct_parent(data, **kwargs):
+        dep = registry.compute("DEP", pd.Series(data.close, index=data.index))
+        return IndicatorFrameV2(
+            indicator_id="PARENT", version="PARENT_V1", index=data.index,
+            columns={"y": dep.output("x")}, ready=pd.Series(True, index=data.index),
+            segment=pd.Series(np.zeros(len(data.close), dtype=int), index=data.index),
+            warmup_bars=1)
+
+    direct_parent.__wrapped_impl__ = direct_parent
+    registry.register(_spec("PARENT", "PARENT_V1", "f", "parent", "NEW_IN_V2", ["y"],
+                            {}, ("close",), warmup_bars=1),
+                      _adapter(direct_parent, ["y"]), dependencies=("DEP",))
+    # 没有 pinned -> 不拒绝
+    assert float(registry.compute("PARENT", CLOSE).output("y").iloc[-1]) == pytest.approx(1.0)
+
+
+def test_dependency_scope_allows_explicit_version_in_direct_compute():
+    """显式传 version 时不算绕过（调用方已明确指定版本）。"""
+    registry = IndicatorRegistry()
+    registry.register(_spec("DEP", "DEP_V1", "f", "dep", "NEW_IN_V2", ["x"],
+                            {"window": 3}, ("close",), warmup_bars=1),
+                      _adapter(_leaf_source("DEP_V1", 1.0), ["x"]))
+    registry.register(_spec("DEP", "DEP_V2", "f", "dep", "NEW_IN_V2", ["x"],
+                            {"window": 3}, ("close",), warmup_bars=1),
+                      _adapter(_leaf_source("DEP_V2", 2.0), ["x"]))
+
+    def explicit_parent(data, **kwargs):
+        dep = registry.compute("DEP", pd.Series(data.close, index=data.index),
+                               version="DEP_V1")
+        return IndicatorFrameV2(
+            indicator_id="PARENT", version="PARENT_V1", index=data.index,
+            columns={"y": dep.output("x")}, ready=pd.Series(True, index=data.index),
+            segment=pd.Series(np.zeros(len(data.close), dtype=int), index=data.index),
+            warmup_bars=1)
+
+    explicit_parent.__wrapped_impl__ = explicit_parent
+    registry.register(_spec("PARENT", "PARENT_V1", "f", "parent", "NEW_IN_V2", ["y"],
+                            {}, ("close",), warmup_bars=1),
+                      _adapter(explicit_parent, ["y"]),
+                      dependencies=("DEP",), pinned_versions={"DEP": "DEP_V1"})
+    assert float(registry.compute("PARENT", CLOSE).output("y").iloc[-1]) == pytest.approx(1.0)
+
+
+def test_builtin_rsi_regime_flag_uses_dependency_path():
+    """内置的依赖型指标必须走 compute_dependency，且其固定版本生效。"""
+    from chanlun_trader.engine.custom_indicators_v2 import register_custom_indicators
+    from chanlun_trader.engine.indicator_registry_v2 import default_registry
+
+    registry = default_registry()
+    register_custom_indicators(registry)
+    assert "RSI" in registry._dependencies.get("RSI_REGIME_FLAG", ()), \
+        "RSI_REGIME_FLAG 未声明 RSI 依赖"
+    # 固定 RSI_V1 后，计算必须成功（若内部仍用直接 compute 会被拒绝）
+    result = registry.compute("RSI_REGIME_FLAG", CLOSE)
+    assert result.output_names == ["regime", "rsi_input"]
+    # 指纹与计算都解析到同一版本
+    assert registry.formula_hash("RSI_REGIME_FLAG")
+
+
 def test_pr15b2_shared_dependency_hash_is_deterministic():
     """共享依赖的指纹必须确定（独立构建的等价注册表给出相同结果）。"""
     first = _shared_dag_registry().formula_hash("PARENT")

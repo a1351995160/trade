@@ -164,7 +164,10 @@ class RsiRegimeProvider:
     def __call__(self, data: PriceInput, *, window: int = 14, low: float = 30.0,
                  high: float = 70.0) -> IndicatorFrameV2:
         close = pd.Series(data.close, index=data.index)
-        rsi_result = self.registry.compute("RSI", close, params={"window": int(window)})
+        # 依赖必须经 compute_dependency 取，使固定版本真实约束计算；
+        # 直接 compute 会在依赖被固定时被拒绝（防静默绕过）。
+        rsi_result = self.registry.compute_dependency(
+            "RSI", close, params={"window": int(window)})
         rsi = rsi_result.output("rsi").to_numpy(dtype=float)
         rsi_ready = rsi_result.ready().to_numpy(dtype=bool)
 
@@ -240,6 +243,7 @@ def register_custom_indicators(registry: IndicatorRegistry) -> List[str]:
         ),
         _adapter(provider, ["regime", "rsi_input"]),
         dependencies=("RSI",),
+        pinned_versions={"RSI": "RSI_V1"},
     )
     registered.append("RSI_REGIME_FLAG")
 

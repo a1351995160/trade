@@ -465,6 +465,7 @@ class IndicatorRegistry:
         prev_close: Optional[pd.Series] = None,
         params: Optional[Mapping[str, Any]] = None,
         extra_data: Optional[Mapping[str, pd.Series]] = None,
+        _via_dependency: bool = False,
     ) -> IndicatorResult:
         """统一的公共计算入口。
 
@@ -479,6 +480,19 @@ class IndicatorRegistry:
         impl = self._impls.get(key)
         if impl is None:
             raise IndicatorRegistryError(f"INDICATOR_NOT_IMPLEMENTED:{spec.indicator_id}@{spec.version}")
+
+        # 防误用：依赖求值期间，若该指标在作用域里已被固定版本，
+        # 直接调用 compute() 会静默走默认最新版并绕过固定，必须拒绝。
+        # 正确做法是调用 compute_dependency()（它带上 _via_dependency=True）。
+        if (not _via_dependency and self._scope is not None
+                and spec.indicator_id in self._scope.pinned
+                and version is None):
+            pinned_version = self._scope.pinned[spec.indicator_id]
+            raise DependencyResolutionError(
+                f"DIRECT_COMPUTE_BYPASSES_PINNED_DEPENDENCY:{spec.indicator_id}:"
+                f"pinned={pinned_version}:"
+                f"请在指标实现内使用 compute_dependency()，"
+                f"否则会静默使用默认最新版而非固定版本")
 
         supplied = dict(params or {})
         unknown = sorted(set(supplied) - set(spec.params))
@@ -538,7 +552,8 @@ class IndicatorRegistry:
         spec, resolved_version = _resolve_dependency(self, indicator_id, pinned)
         self._scope.resolved[indicator_id] = resolved_version
         kwargs.setdefault("version", resolved_version)
-        return self.compute(indicator_id, close, **kwargs)
+        # 显式标记来源：这是经过作用域解析的依赖调用，不算绕过。
+        return self.compute(indicator_id, close, _via_dependency=True, **kwargs)
 
     def resolve_instance(self, indicator_id: str, *, version: Optional[str] = None,
                          params: Optional[Mapping[str, Any]] = None) -> Tuple[IndicatorSpec, IndicatorInstanceKey]:
