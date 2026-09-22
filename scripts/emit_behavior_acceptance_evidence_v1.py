@@ -58,7 +58,7 @@ EXIT_RULES = {
 }
 
 
-def build_request(dataset_path=None) -> BehaviorRequestV1:
+def build_request(dataset_path=None, dataset_root=None) -> BehaviorRequestV1:
     payload = {
         "calendar": list(CAL),
         "symbols": [SYMBOL],
@@ -72,7 +72,8 @@ def build_request(dataset_path=None) -> BehaviorRequestV1:
     if dataset_path is None:
         payload["bars"] = {SYMBOL: entry_bars()}
     else:
-        payload["dataset_path"] = str(dataset_path)
+        payload["dataset_path"] = Path(dataset_path).name
+        payload["dataset_root"] = str(dataset_root)
     return BehaviorRequestV1.from_mapping(payload)
 
 
@@ -141,6 +142,7 @@ def capability_matrix(junit_path: Path) -> dict:
         "contract_version": "BT_BEHAVIOR_ACCEPTANCE_V1",
         "generated_from": "scripts/emit_behavior_acceptance_evidence_v1.py",
         "junit_evidence": junit,
+        "environment_failures_reference": "reports/behavior_acceptance_v1/ENVIRONMENT_FAILURES.json",
         "labels": {
             "FORMULA_VALIDATED": "公式/口径经独立 oracle 或手算核对通过",
             "ENTRYPOINT_WIRED": "存在可使用入口（API/CLI），参数真实透传",
@@ -281,10 +283,31 @@ def capability_matrix(junit_path: Path) -> dict:
             entry(
                 "公共 CLI", True, True, True,
                 "scripts/run_behavior_backtest_v1.py --request JSON [--out JSON]，支持 CSV/Parquet 文件入口",
-                "与 HTTP 共用同一服务函数",
+                "与 HTTP 共用同一服务函数；外部路径受 --request-root / --out-root 约束",
                 "BT_BEHAVIOR_DAILY_V1",
                 ["scripts/run_behavior_backtest_v1.py"],
                 f"{be}/test_public_entrypoints_v1.py::test_cli_matches_http_semantics",
+                "ENTRYPOINT_WIRED",
+            ),
+            entry(
+                "正式估值接线（独立日历 / 缺整日 / 缺末日 / NaN-Inf）", True, True, True,
+                "经 official_equity_curve 抽取 AFTER_CLOSE 正式点；显式日历必填；缺任一天（含末日）抛错；"
+                "权益必须有限正数；入口另按声明日历校验数据覆盖",
+                "无独立日历时仅提供 NON_OFFICIAL_DIAGNOSTIC 诊断输出，不得作为正式结论",
+                "OFFICIAL_VALUATION_V1",
+                ["src/chanlun_trader/engine/official_valuation.py",
+                 "src/chanlun_trader/engine/behavior_service_v1.py"],
+                f"{be}/test_official_valuation_wiring_v1.py::test_missing_whole_session_is_detected_through_public_entry",
+                "ACCOUNTING_VALIDATED",
+            ),
+            entry(
+                "外部路径约束（CLI / 文件入口）", True, True, True,
+                "resolve_within_root：根目录必填、拒绝 .. 穿越、解析链接后校验归属",
+                "越界路径明确拒绝（PATH_OUTSIDE_IO_ROOT / PARENT_TRAVERSAL_NOT_ALLOWED）",
+                "BT_IO_ROOT_GUARD_V1",
+                ["src/chanlun_trader/engine/behavior_service_v1.py",
+                 "scripts/run_behavior_backtest_v1.py"],
+                f"{be}/test_public_entrypoints_v1.py::test_cli_rejects_path_outside_declared_root",
                 "ENTRYPOINT_WIRED",
             ),
             entry(
@@ -330,7 +353,7 @@ def main() -> int:
 
     # 文件入口与内存入口必须给出一致的语义结果。
     from_memory = run_behavior_backtest_v1(build_request())
-    from_file = run_behavior_backtest_v1(build_request(csv_path))
+    from_file = run_behavior_backtest_v1(build_request(csv_path, args.out))
     assert from_memory.semantics() == from_file.semantics(), "文件入口与内存入口语义不一致"
 
     (args.out / "independent_expectations.json").write_text(

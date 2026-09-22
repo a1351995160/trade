@@ -1,0 +1,1021 @@
+{
+  "note": "本机既有环境失败：与 BASE_SHA 干净工作树逐条一致，非本轮引入，不计为通过。",
+  "total": 193,
+  "by_file": {
+    "tests/research_factory/test_synthetic_batch_contract.py": 23,
+    "tests/research_factory/test_predictive_trial_start_v1.py": 22,
+    "tests/research_factory/test_restart_recovery_v1.py": 13,
+    "tests/research_factory/test_phase3c_restart_v1.py": 12,
+    "tests/research_factory/test_real_sample_feasibility_provider_v1.py": 11,
+    "tests/research_integrity/test_clean_rerun_artifacts.py": 11,
+    "tests/research_factory/test_phase3c_entry_boundaries_v1.py": 8,
+    "tests/test_webapp.py": 6,
+    "tests/research_factory/test_durable_frozen_candidate_contract_v1.py": 5,
+    "tests/research_factory/test_resume_train_valuation_input_v1.py": 5,
+    "tests/research_factory/test_synthetic_batch_web.py": 4,
+    "tests/research/test_research_daemon.py": 4,
+    "tests/research_factory/test_contract_correction_v1.py": 4,
+    "tests/research_factory/test_r2_formal_services.py": 4,
+    "tests/research_factory/test_synthetic_batch_recovery.py": 4,
+    "tests/research_integrity/test_population_and_pit.py": 4,
+    "tests/research_factory/test_paper_replay.py": 3,
+    "tests/research_factory/test_synthetic_batch_races.py": 3,
+    "tests/research_factory/test_synthetic_batch_resources.py": 3,
+    "tests/research_factory/test_synthetic_usage.py": 3,
+    "tests/event_microstructure/test_event_available_at_no_future.py": 2,
+    "tests/external_seed/test_external_seed.py": 2,
+    "tests/final_test_lock/test_final_test_sealed.py": 2,
+    "tests/mechanism/test_a2_gate.py": 2,
+    "tests/red_team/test_red_team.py": 2,
+    "tests/red_team_engine/test_full_engine_red_team.py": 2,
+    "tests/research_console/test_research_console_read_boundary_v1.py": 2,
+    "tests/research_console/test_structural_pass_canonical_sync_v1.py": 2,
+    "tests/research_factory/test_phase3c_lifecycle_boundaries_v1.py": 2,
+    "tests/robustification/test_a1_gate.py": 2,
+    "tests/selector_v2/test_selector_v2.py": 2,
+    "tests/strategy_translation/test_coverage_audit.py": 2,
+    "tests/validation_reuse/test_validation_reuse.py": 2,
+    "tests/event_execution/test_event_signals.py": 1,
+    "tests/event_microstructure/test_alpha_decay_no_same_bar_lookahead.py": 1,
+    "tests/event_microstructure/test_bootstrap_not_nan.py": 1,
+    "tests/event_microstructure/test_event_execution_full_engine.py": 1,
+    "tests/event_microstructure/test_extreme_period_exclusion_full_engine.py": 1,
+    "tests/event_microstructure/test_final_test_lock.py": 1,
+    "tests/event_microstructure/test_top_winner_removal_full_engine.py": 1,
+    "tests/research/test_strategy_validation_pipeline.py": 1,
+    "tests/research/test_validation_decision_policy_v2.py": 1,
+    "tests/research_factory/test_autonomous_orchestrator_v2.py": 1,
+    "tests/research_factory/test_baostock_governance_v1.py": 1,
+    "tests/research_factory/test_objective_execution_binding.py": 1,
+    "tests/research_factory/test_synthetic_novelty.py": 1,
+    "tests/research_factory/test_train_valuation_input_v1.py": 1,
+    "tests/research_factory/test_turnover_window_input_v1.py": 1
+  },
+  "items": [
+    {
+      "kind": "ERROR",
+      "nodeid": "tests/research_factory/test_synthetic_batch_contract.py::test_actual_preview_confirmation_and_control",
+      "detail": ""
+    },
+    {
+      "kind": "ERROR",
+      "nodeid": "tests/research_factory/test_synthetic_batch_contract.py::test_invalid_request_does_not_form_preview[missing_limit]",
+      "detail": ""
+    },
+    {
+      "kind": "ERROR",
+      "nodeid": "tests/research_factory/test_synthetic_batch_contract.py::test_invalid_request_does_not_form_preview[parallel]",
+      "detail": ""
+    },
+    {
+      "kind": "ERROR",
+      "nodeid": "tests/research_factory/test_synthetic_batch_contract.py::test_invalid_request_does_not_form_preview[retry]",
+      "detail": ""
+    },
+    {
+      "kind": "ERROR",
+      "nodeid": "tests/research_factory/test_synthetic_batch_contract.py::test_invalid_request_does_not_form_preview[model]",
+      "detail": ""
+    },
+    {
+      "kind": "ERROR",
+      "nodeid": "tests/research_factory/test_synthetic_batch_contract.py::test_invalid_request_does_not_form_preview[unknown_action]",
+      "detail": ""
+    },
+    {
+      "kind": "ERROR",
+      "nodeid": "tests/research_factory/test_synthetic_batch_contract.py::test_invalid_request_does_not_form_preview[duplicate]",
+      "detail": ""
+    },
+    {
+      "kind": "ERROR",
+      "nodeid": "tests/research_factory/test_synthetic_batch_contract.py::test_invalid_request_does_not_form_preview[wrong_contract]",
+      "detail": ""
+    },
+    {
+      "kind": "ERROR",
+      "nodeid": "tests/research_factory/test_synthetic_batch_contract.py::test_invalid_request_does_not_form_preview[trial_cap]",
+      "detail": ""
+    },
+    {
+      "kind": "ERROR",
+      "nodeid": "tests/research_factory/test_synthetic_batch_contract.py::test_stale_source_and_expired_confirmation",
+      "detail": ""
+    },
+    {
+      "kind": "ERROR",
+      "nodeid": "tests/research_factory/test_synthetic_batch_contract.py::test_batch_identifier_cannot_escape_directory[.]",
+      "detail": ""
+    },
+    {
+      "kind": "ERROR",
+      "nodeid": "tests/research_factory/test_synthetic_batch_contract.py::test_batch_identifier_cannot_escape_directory[..]",
+      "detail": ""
+    },
+    {
+      "kind": "ERROR",
+      "nodeid": "tests/research_factory/test_synthetic_batch_contract.py::test_batch_identifier_cannot_escape_directory[../other]",
+      "detail": ""
+    },
+    {
+      "kind": "ERROR",
+      "nodeid": "tests/research_factory/test_synthetic_batch_contract.py::test_batch_identifier_cannot_escape_directory[C:/other]",
+      "detail": ""
+    },
+    {
+      "kind": "ERROR",
+      "nodeid": "tests/research_factory/test_synthetic_batch_contract.py::test_formal_creation_immutable_evidence_is_required[creation_receipt]",
+      "detail": ""
+    },
+    {
+      "kind": "ERROR",
+      "nodeid": "tests/research_factory/test_synthetic_batch_contract.py::test_formal_creation_immutable_evidence_is_required[family]",
+      "detail": ""
+    },
+    {
+      "kind": "ERROR",
+      "nodeid": "tests/research_factory/test_synthetic_batch_contract.py::test_single_candidate_actual_bounded_services",
+      "detail": ""
+    },
+    {
+      "kind": "ERROR",
+      "nodeid": "tests/research_factory/test_synthetic_batch_contract.py::test_revoke_between_process_creation_and_admission_blocks_real_worker",
+      "detail": ""
+    },
+    {
+      "kind": "ERROR",
+      "nodeid": "tests/research_factory/test_synthetic_batch_contract.py::test_concurrent_claim_and_stop_do_not_create_more_permits",
+      "detail": ""
+    },
+    {
+      "kind": "ERROR",
+      "nodeid": "tests/research_factory/test_synthetic_batch_contract.py::test_copied_approval_and_external_domain_are_rejected",
+      "detail": ""
+    },
+    {
+      "kind": "ERROR",
+      "nodeid": "tests/research_factory/test_synthetic_batch_web.py::test_real_api_preview_confirmation_run_and_readonly_history",
+      "detail": ""
+    },
+    {
+      "kind": "ERROR",
+      "nodeid": "tests/research_factory/test_synthetic_batch_web.py::test_future_and_expired_authorizations_can_be_revoked",
+      "detail": ""
+    },
+    {
+      "kind": "ERROR",
+      "nodeid": "tests/research_factory/test_synthetic_batch_web.py::test_readonly_cannot_claim_even_through_service",
+      "detail": ""
+    },
+    {
+      "kind": "ERROR",
+      "nodeid": "tests/research_factory/test_synthetic_batch_web.py::test_nonlocal_client_cannot_request_or_confirm",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/event_execution/test_event_signals.py::test_event_store_available_at_is_next_session",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/event_microstructure/test_alpha_decay_no_same_bar_lookahead.py::test_intraday_decay_points_marked_unknown_not_estimated",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/event_microstructure/test_bootstrap_not_nan.py::test_bootstrap_returns_full_summary_for_trade_pnl",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/event_microstructure/test_event_available_at_no_future.py::test_event_store_available_at_is_t_plus_one_date",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/event_microstructure/test_event_available_at_no_future.py::test_core_strategies_use_t_close_signal_and_next_open_entry",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/event_microstructure/test_event_execution_full_engine.py::test_executable_engine_runs_and_fills",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/event_microstructure/test_extreme_period_exclusion_full_engine.py::test_extreme_period_exclusion_is_noop_and_engine_rerun",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/event_microstructure/test_final_test_lock.py::test_final_test_still_sealed",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/event_microstructure/test_top_winner_removal_full_engine.py::test_top_winner_removal_rows_exist_and_are_engine_reruns",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/external_seed/test_external_seed.py::test_a3_gate_pass",
+      "detail": "- FileNot..."
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/external_seed/test_external_seed.py::test_zips_preserved",
+      "detail": "- asser..."
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/final_test_lock/test_final_test_sealed.py::test_final_test_sealed_in_status",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/final_test_lock/test_final_test_sealed.py::test_all_backtests_within_train",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/mechanism/test_a2_gate.py::test_a2_gate_pass",
+      "detail": "- FileNotFoundError..."
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/mechanism/test_a2_gate.py::test_factor_mechanism_map_exists",
+      "detail": "- Fi..."
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/red_team/test_red_team.py::test_a6_gate_pass",
+      "detail": "- FileNotFoundError..."
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/red_team/test_red_team.py::test_red_team_results_exist",
+      "detail": "- FileNot..."
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/red_team_engine/test_full_engine_red_team.py::test_full_engine_red_team_results_exist",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/red_team_engine/test_full_engine_red_team.py::test_all_stress_has_metrics_no_placeholder",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research/test_research_daemon.py::test_canonical_context_reads_authoritative_budget_and_marks_repaired_b10_resumable",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research/test_research_daemon.py::test_canonical_runtime_binds_executor_and_reconciles_existing_trial_without_budget_delta",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research/test_research_daemon.py::test_canonical_structural_provider_uses_proven_partition_size",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research/test_research_daemon.py::test_canonical_structural_preflight_rejects_non_executable_contract_before_provider",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research/test_strategy_validation_pipeline.py::test_phase4_uses_frozen_v2_semantic_compiler",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research/test_validation_decision_policy_v2.py::test_v2_policy_artifact_and_lock_are_valid",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_console/test_research_console_read_boundary_v1.py::test_fastapi_structural_reconciliation_requires_confirmation_and_current_candidate",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_console/test_research_console_read_boundary_v1.py::test_v1c_current_objective_read_models_preserve_terminal_safety",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_console/test_structural_pass_canonical_sync_v1.py::test_current_canonical_structural_pass_reconciliation_is_idempotent_after_predictive_trial_completion",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_console/test_structural_pass_canonical_sync_v1.py::test_current_structural_pass_is_projected_to_the_predictive_governance_boundary",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_autonomous_orchestrator_v2.py::test_validator_rejects_contract_that_cannot_be_executed_by_structural_provider",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_baostock_governance_v1.py::test_increment_uses_canonical_budget_and_old_receipt_cannot_be_reused",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_contract_correction_v1.py::test_incompatible_frozen_contract_is_invalidated_append_only_and_idempotently",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_contract_correction_v1.py::test_contract_correction_preview_is_stable_and_does_not_write",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_contract_correction_v1.py::test_contract_correction_confirmation_requires_current_preview",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_contract_correction_v1.py::test_contract_invalidation_refuses_candidate_with_trial_history",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_durable_frozen_candidate_contract_v1.py::test_freeze_persist_restart_reload_reconstructs_exact_candidate",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_durable_frozen_candidate_contract_v1.py::test_missing_frozen_field_fails_closed",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_durable_frozen_candidate_contract_v1.py::test_provider_candidate_payload_preserves_frozen_execution_semantics",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_durable_frozen_candidate_contract_v1.py::test_provider_candidate_payload_rejects_unsupported_family_before_runtime",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_durable_frozen_candidate_contract_v1.py::test_unknown_interaction_semantics_field_fails_closed",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_objective_execution_binding.py::test_real_process_lock_exit_recovery_and_replay",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_paper_replay.py::test_committed_tail_loss_blocks_actual_new_process_and_advance",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_paper_replay.py::test_process_exit_at_committed_head_boundary[before_head]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_paper_replay.py::test_process_exit_at_committed_head_boundary[after_head]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_phase3c_entry_boundaries_v1.py::test_projection_loss_is_distinct_from_execution_evidence_loss[projections]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_phase3c_entry_boundaries_v1.py::test_projection_loss_is_distinct_from_execution_evidence_loss[receipt_half_line]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_phase3c_entry_boundaries_v1.py::test_projection_loss_is_distinct_from_execution_evidence_loss[receipt_hash]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_phase3c_entry_boundaries_v1.py::test_projection_loss_is_distinct_from_execution_evidence_loss[receipt_missing]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_phase3c_entry_boundaries_v1.py::test_projection_loss_is_distinct_from_execution_evidence_loss[intent_missing]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_phase3c_entry_boundaries_v1.py::test_projection_loss_is_distinct_from_execution_evidence_loss[intent_hash]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_phase3c_entry_boundaries_v1.py::test_automatic_and_manual_proposal_share_process_lock[tick]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_phase3c_entry_boundaries_v1.py::test_automatic_and_manual_proposal_share_process_lock[hold_domain]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_phase3c_lifecycle_boundaries_v1.py::test_non_authorizing_status_rehash_fails_closed_in_real_chain[DEFER_PREDICTIVE_TRIAL]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_phase3c_lifecycle_boundaries_v1.py::test_non_authorizing_status_rehash_fails_closed_in_real_chain[END_CANDIDATE_RESEARCH_DIRECTION]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_phase3c_restart_v1.py::test_lifecycle_restart_matrix[L1]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_phase3c_restart_v1.py::test_lifecycle_restart_matrix[L2]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_phase3c_restart_v1.py::test_lifecycle_restart_matrix[L3]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_phase3c_restart_v1.py::test_lifecycle_restart_matrix[L4]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_phase3c_restart_v1.py::test_lifecycle_restart_matrix[L5]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_phase3c_restart_v1.py::test_lifecycle_restart_matrix[L6]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_phase3c_restart_v1.py::test_lifecycle_restart_matrix[L7]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_phase3c_restart_v1.py::test_lifecycle_restart_matrix[L8]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_phase3c_restart_v1.py::test_lifecycle_restart_matrix[L9]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_phase3c_restart_v1.py::test_lifecycle_restart_matrix[L10]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_phase3c_restart_v1.py::test_full_semantic_public_retry_keeps_attempt_identity[exit_before]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_phase3c_restart_v1.py::test_full_semantic_public_retry_keeps_attempt_identity[exit_retry_marker]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_predictive_trial_start_v1.py::test_start_is_exactly_once_and_reserves_canonical_budget_once",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_predictive_trial_start_v1.py::test_restart_recovery_reuses_existing_trial_identity_without_double_reservation",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_predictive_trial_start_v1.py::test_trial_contract_is_immutable_and_binds_existing_authorization",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_predictive_trial_start_v1.py::test_concurrent_double_clicks_return_one_idempotent_trial",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_predictive_trial_start_v1.py::test_formal_api_uses_start_service_for_synthetic_objective",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_predictive_trial_start_v1.py::test_browser_refresh_repeats_read_only_preview_without_creating_trial",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_predictive_trial_start_v1.py::test_daemon_restart_recovers_formal_trial_without_new_candidate_or_reservation",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_predictive_trial_start_v1.py::test_runner_failure_before_performance_releases_reserved_budget",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_predictive_trial_start_v1.py::test_runner_failure_after_performance_consumes_reserved_budget_once",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_predictive_trial_start_v1.py::test_start_fails_closed_when_any_canonical_gate_is_invalid[structural_unknown]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_predictive_trial_start_v1.py::test_start_fails_closed_when_any_canonical_gate_is_invalid[structural_blocked]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_predictive_trial_start_v1.py::test_start_fails_closed_when_any_canonical_gate_is_invalid[governance_not_authorized]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_predictive_trial_start_v1.py::test_start_fails_closed_when_any_canonical_gate_is_invalid[candidate_hash_mismatch]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_predictive_trial_start_v1.py::test_start_fails_closed_when_any_canonical_gate_is_invalid[candidate_superseded]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_predictive_trial_start_v1.py::test_start_fails_closed_when_any_canonical_gate_is_invalid[budget_exhausted]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_predictive_trial_start_v1.py::test_start_fails_closed_when_any_canonical_gate_is_invalid[final_test_open]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_predictive_trial_start_v1.py::test_start_fails_closed_when_any_canonical_gate_is_invalid[invalid_objective_state]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_predictive_trial_start_v1.py::test_start_rejects_second_trial_when_first_trial_already_exists",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_predictive_trial_start_v1.py::test_same_trial_resume_is_exactly_once_and_reuses_consumed_budget_slot",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_predictive_trial_start_v1.py::test_same_trial_resume_failure_keeps_budget_and_records_failure_history",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_predictive_trial_start_v1.py::test_formal_resume_api_is_local_and_idempotent",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_predictive_trial_start_v1.py::test_reauthorized_new_trial_has_new_governance_budget_and_trial_identity",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_r2_formal_services.py::test_formal_creation_actual_engines_adjudication_registry_and_restart",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_r2_formal_services.py::test_performance_access_process_exit_requires_actual_confirmed_same_trial_recovery",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_r2_formal_services.py::test_new_formal_intent_never_downgrades_through_legacy_entry",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_r2_formal_services.py::test_actual_v1_start_protocol_remains_legacy_without_migration",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_real_sample_feasibility_provider_v1.py::test_real_provider_materializes_legal_event_factor_rows_and_preserves_preflight",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_real_sample_feasibility_provider_v1.py::test_future_event_available_at_never_qualifies",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_real_sample_feasibility_provider_v1.py::test_event_partition_boundary_reads_next_available_date_bucket_without_future_rows",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_real_sample_feasibility_provider_v1.py::test_inline_frozen_daily_event_and_ranking_factor_materialize_without_global_registry",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_real_sample_feasibility_provider_v1.py::test_rank_only_composite_percentile_candidate_qualifies_then_ranks_deterministically",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_real_sample_feasibility_provider_v1.py::test_lhb_same_day_contract_is_legal_only_when_explicitly_supported",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_real_sample_feasibility_provider_v1.py::test_lhb_future_contract_never_qualifies_same_day",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_real_sample_feasibility_provider_v1.py::test_missing_pit_state_is_unknown_not_eligible",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_real_sample_feasibility_provider_v1.py::test_provider_rejects_outcome_bearing_structural_fixture",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_real_sample_feasibility_provider_v1.py::test_orchestrator_defaults_real_provider_only_for_real_backend",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_real_sample_feasibility_provider_v1.py::test_contract_defined_event_materialization_is_shared_by_structural_and_predictive_paths",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_restart_recovery_v1.py::test_process_exit_after_effect_public_tick_recovers_without_provider[proposal]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_restart_recovery_v1.py::test_process_exit_after_effect_public_tick_recovers_without_provider[preview]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_restart_recovery_v1.py::test_process_exit_after_effect_public_tick_recovers_without_provider[materialization]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_restart_recovery_v1.py::test_process_exit_before_effect_same_key_retry_or_stale_deny[False]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_restart_recovery_v1.py::test_process_exit_before_effect_same_key_retry_or_stale_deny[True]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_restart_recovery_v1.py::test_failed_retry_registers_one_attempt[False]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_restart_recovery_v1.py::test_failed_retry_registers_one_attempt[True]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_restart_recovery_v1.py::test_cp_and_real_domain_entry_share_process_boundary[hold_tick]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_restart_recovery_v1.py::test_cp_and_real_domain_entry_share_process_boundary[hold_domain]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_restart_recovery_v1.py::test_owner_killed_without_finally_allows_fresh_process_retry",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_restart_recovery_v1.py::test_competing_recoverers_after_owner_death_commit_once",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_restart_recovery_v1.py::test_independent_objective_and_normalized_root_process_locks",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_restart_recovery_v1.py::test_shared_graph_reloads_inside_resource_transaction",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_resume_train_valuation_input_v1.py::test_scope_preserves_old_evidence_and_budget",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_resume_train_valuation_input_v1.py::test_bound_identity_and_resource_limit",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_resume_train_valuation_input_v1.py::test_exact_interrupted_request_once_without_overwriting_old_started",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_resume_train_valuation_input_v1.py::test_new_worker_failure_is_settled_and_never_auto_replayed",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_resume_train_valuation_input_v1.py::test_materialization_uses_only_amended_remaining_data_seconds",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_synthetic_batch_contract.py::test_noncanonical_temp_alias_is_resolved_before_formal_creation",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_synthetic_batch_contract.py::test_multiple_explicit_candidates_advance_without_per_tick_confirmation",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_synthetic_batch_contract.py::test_worker_exit_after_performance_consumes_original_budget_without_retry",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_synthetic_batch_races.py::test_current_parent_and_sources_rechecked_immediately_before_performance[revoke]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_synthetic_batch_races.py::test_current_parent_and_sources_rechecked_immediately_before_performance[source]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_synthetic_batch_races.py::test_current_parent_and_sources_rechecked_immediately_before_performance[snapshot]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_synthetic_batch_recovery.py::test_controller_exit_new_process_recovery_is_not_new_execution",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_synthetic_batch_recovery.py::test_expiry_after_actual_confirmation_prevents_claim",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_synthetic_batch_recovery.py::test_insufficient_actual_worker_memory_blocks_domain_configuration",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_synthetic_batch_recovery.py::test_recovery_rolls_forward_durable_revocation_never_old_active_head",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_synthetic_batch_resources.py::test_actual_worker_resource_boundaries[normal]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_synthetic_batch_resources.py::test_actual_worker_resource_boundaries[memory]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_synthetic_batch_resources.py::test_actual_worker_resource_boundaries[timeout]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_synthetic_novelty.py::test_real_process_restart_and_registry_writer_cannot_cross_performance_boundary",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_synthetic_usage.py::test_revocation_loss_is_blocked_by_actual_cold_consumers",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_synthetic_usage.py::test_hard_exit_after_usage_event_never_rolls_back_to_active[confirm]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_synthetic_usage.py::test_hard_exit_after_usage_event_never_rolls_back_to_active[revoke]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_train_valuation_input_v1.py::test_delegated_read_receipt_repeat_revocation_and_no_budget_change",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_factory/test_turnover_window_input_v1.py::test_receipt_repeat_revoke_calendar_conflict_and_old_budget_unchanged",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_integrity/test_clean_rerun_artifacts.py::test_clean_rerun_uses_same_definition_hash",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_integrity/test_clean_rerun_artifacts.py::test_clean_rerun_no_parameter_change",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_integrity/test_clean_rerun_artifacts.py::test_clean_rerun_no_final_test_access",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_integrity/test_clean_rerun_artifacts.py::test_clean_rerun_uses_pit_feature_store",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_integrity/test_clean_rerun_artifacts.py::test_event_all_vs_first_population_reported",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_integrity/test_clean_rerun_artifacts.py::test_event_available_at_repaired",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_integrity/test_clean_rerun_artifacts.py::test_event_fdr_recomputed",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_integrity/test_clean_rerun_artifacts.py::test_event_placebo_not_substituted",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_integrity/test_clean_rerun_artifacts.py::test_mfe_mae_real_computation",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_integrity/test_clean_rerun_artifacts.py::test_pre_post_metric_reconciliation",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_integrity/test_clean_rerun_artifacts.py::test_selector_uses_postfix_status_only",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_integrity/test_population_and_pit.py::test_future_distribution_mutation",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_integrity/test_population_and_pit.py::test_event_population_consistency",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_integrity/test_population_and_pit.py::test_event_clustered_inference",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/research_integrity/test_population_and_pit.py::test_final_test_incident_persisted",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/robustification/test_a1_gate.py::test_a1_gate_pass",
+      "detail": "- FileNotFoun..."
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/robustification/test_a1_gate.py::test_a1_verdicts_exist",
+      "detail": "- FileNo..."
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/selector_v2/test_selector_v2.py::test_a7_gate_pass",
+      "detail": "- FileNotFoun..."
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/selector_v2/test_selector_v2.py::test_snapshot_production_empty",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/strategy_translation/test_coverage_audit.py::test_coverage_audit_exists_and_covers_events",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/strategy_translation/test_coverage_audit.py::test_every_promising_event_has_translation_status",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/test_webapp.py::test_index_page",
+      "detail": "- assert 404 == 200"
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/test_webapp.py::test_research_history_routes_serve_vue_shell[/research]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/test_webapp.py::test_research_history_routes_serve_vue_shell[/research/ai-researcher]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/test_webapp.py::test_research_history_routes_serve_vue_shell[/research/operations]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/test_webapp.py::test_research_history_routes_serve_vue_shell[/research/closeout]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/test_webapp.py::test_research_history_routes_serve_vue_shell[/research/governance]",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/validation_reuse/test_validation_reuse.py::test_validation_exposure_controlled",
+      "detail": ""
+    },
+    {
+      "kind": "FAILED",
+      "nodeid": "tests/validation_reuse/test_validation_reuse.py::test_no_new_research_uses_validation",
+      "detail": ""
+    }
+  ]
+}

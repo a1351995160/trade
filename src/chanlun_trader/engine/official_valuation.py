@@ -141,7 +141,11 @@ def official_equity_curve(snapshots: Sequence,
             continue
         seq += 1
         d = int(ts.strftime("%Y%m%d"))
-        by_date.setdefault(d, []).append((seq, ts.isoformat(), float(s.equity)))
+        try:
+            equity = float(s.equity)
+        except (TypeError, ValueError):
+            raise OfficialValuationError("non-numeric equity at date=%d: %r" % (d, s.equity))
+        by_date.setdefault(d, []).append((seq, ts.isoformat(), equity))
 
     if calendar is None:
         # V4 修复（复核 V4-P2-01）：正式入口**必须**接收可信运行日历。

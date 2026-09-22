@@ -1953,3 +1953,8 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - docs/BACKTEST_BEHAVIOR_ACCEPTANCE_V1.md、reports/behavior_acceptance_v1/CAPABILITY_MATRIX.json：口径、入口、能力矩阵与未支持范围。
 - .github/workflows/backtest-behavior-acceptance.yml：双平台 CI 与 JUnit 上传。
 - 回滚点 d14178f；可 git revert 本轮提交，不影响旧目录与既有研究账目。
+
+### Testing（V1 收尾追加）
+- 以 CI 同等隔离环境（CHANLUN_TEST_ISOLATION=1）在 BASE_SHA 干净工作树与本分支分别运行完整 pytest：失败集合逐条一致（193 项，均为本机缺少研究数据/前端未构建等既有环境失败），零新增失败、零回归；通过数 1853 增至 1963。
+- SonarCloud 4 条 SECURITY 项（2 HIGH 路径穿越 + 2 MEDIUM workflow 依赖未锁定）全部按证据以代码修复关闭，未删除检查、未扩大排除项、未加抑制标注；新增路径越界回归测试。
+- 正式估值接线：改为经 official_equity_curve 抽取，证明独立日历必填、缺整日/缺末日抛错、NaN/Inf 拒绝；入口增加声明日历的数据覆盖校验。修复 official_equity_curve 非数值权益泄漏 ValueError 的缺陷。

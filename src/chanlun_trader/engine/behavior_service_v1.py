@@ -38,6 +38,11 @@ from .daily_exit_v1 import (
     daily_exit_fn,
 )
 from .engine import BacktestEngineV2, EngineConfig
+from .official_valuation import (
+    OFFICIAL_VALUATION_TIME,
+    OfficialValuationError,
+    official_equity_curve,
+)
 from .indicators_v1 import (
     INDICATOR_CONTRACT_VERSION,
     KDJ_IMPLEMENTATION_VERSION,
@@ -46,6 +51,7 @@ from .indicators_v1 import (
 )
 from .signal import ExecutionPolicy, Side, Signal
 from .time_types import tz_aware
+from ..research.run_manifest import stable_hash
 
 BEHAVIOR_MODE = "BT_BEHAVIOR_DAILY_V1"
 SUPPORTED_MODES = (BEHAVIOR_MODE,)
@@ -63,6 +69,35 @@ class BehaviorRequestError(ValueError):
     """请求非法或请求了未验收能力。必须显式失败。"""
 
 
+class BehaviorPathError(BehaviorRequestError):
+    """外部提供的读写路径越出调用者显式声明的根目录。"""
+
+
+def resolve_within_root(path: str | Path, root: str | Path | None, *, purpose: str) -> Path:
+    """把外部提供的路径约束在调用者显式声明的根目录内。
+
+    用于 CLI / 文件入口：外部参数不得决定任意读写位置。
+
+    - `root` 必填且必须已存在；缺失即拒绝（不猜测工作目录）；
+    - 拒绝 `..` 父目录穿越；
+    - 相对路径按 `root` 解析，绝对路径也必须落在 `root` 内；
+    - 解析符号链接后再校验归属，防止链接逃逸。
+    """
+    if root is None:
+        raise BehaviorPathError(f"IO_ROOT_REQUIRED:{purpose}")
+    root_path = Path(root).resolve(strict=True)
+    if not root_path.is_dir():
+        raise BehaviorPathError(f"IO_ROOT_NOT_A_DIRECTORY:{purpose}")
+    candidate = Path(path)
+    if any(part == ".." for part in candidate.parts):
+        raise BehaviorPathError(f"PARENT_TRAVERSAL_NOT_ALLOWED:{purpose}")
+    target = (root_path / candidate) if not candidate.is_absolute() else candidate
+    target = target.resolve()
+    if not target.is_relative_to(root_path):
+        raise BehaviorPathError(f"PATH_OUTSIDE_IO_ROOT:{purpose}")
+    return target
+
+
 def _timestamp(day: int, hour: int, minute: int) -> pd.Timestamp:
     return tz_aware(day // 10000, (day // 100) % 100, day % 100, hour, minute)
 
@@ -76,6 +111,7 @@ class BehaviorRequestV1:
     symbols: Sequence[str] = field(default_factory=list)
     bars: Mapping[str, Sequence[Mapping[str, Any]]] = field(default_factory=dict)
     dataset_path: Optional[str] = None
+    dataset_root: Optional[str] = None
     entry_conditions: Sequence[str] = field(default_factory=lambda: ["ABOVE_ZERO_GOLDEN_CROSS"])
     exit_rules: Mapping[str, Any] = field(default_factory=dict)
     macd: Mapping[str, Any] = field(default_factory=lambda: {"fast": 12, "slow": 26, "signal": 9})
@@ -114,6 +150,8 @@ class BehaviorRequestV1:
             raise BehaviorRequestError("EMPTY_SYMBOL_SET")
         if self.dataset_path and self.bars:
             raise BehaviorRequestError("AMBIGUOUS_DATA_SOURCE")
+        if self.dataset_path and not self.dataset_root:
+            raise BehaviorRequestError("DATASET_ROOT_REQUIRED")
         if not self.dataset_path and not self.bars:
             raise BehaviorRequestError("NO_DATA_SOURCE")
         for name in self.entry_conditions:
@@ -147,6 +185,7 @@ class BehaviorResultV1:
     initial_cash: float
     equity_curve: List[dict]
     final_equity: float
+    official_valuation: Dict[str, Any]
     exit_evaluations: List[dict]
     run_summary: Dict[str, Any]
 
@@ -224,12 +263,13 @@ def _bars_from_mapping(bars: Mapping[str, Sequence[Mapping[str, Any]]]) -> Dict[
     return out
 
 
-def load_bars_from_file(path: str | Path) -> Dict[str, pd.DataFrame]:
+def load_bars_from_file(path: str | Path, *, root: str | Path) -> Dict[str, pd.DataFrame]:
     """从项目实际支持的文件入口装载合成行情（CSV / Parquet）。
 
     文件解析是真实的：调用方不得用内存 dict 绕过文件解析路径。
+    `path` 必须落在调用者显式声明的 `root` 内（见 `resolve_within_root`）。
     """
-    target = Path(path)
+    target = resolve_within_root(path, root, purpose="DATASET")
     if not target.exists():
         raise BehaviorRequestError(f"DATASET_NOT_FOUND:{target.name}")
     if target.suffix.lower() == ".csv":
@@ -333,11 +373,24 @@ def run_behavior_backtest_v1(request: BehaviorRequestV1 | Mapping[str, Any]) -> 
         request = BehaviorRequestV1.from_mapping(request)
     request.validate()
 
-    bars = load_bars_from_file(request.dataset_path) if request.dataset_path else _bars_from_mapping(request.bars)
+    bars = (load_bars_from_file(request.dataset_path, root=request.dataset_root)
+            if request.dataset_path else _bars_from_mapping(request.bars))
     missing = [s for s in request.symbols if s not in bars]
     if missing:
         raise BehaviorRequestError(f"SYMBOL_NOT_IN_DATASET:{','.join(sorted(missing))}")
     calendar = [int(d) for d in request.calendar]
+
+    # 声明日历必须被数据完整覆盖：缺任一天 -> 拒绝。
+    # 引擎对缺 bar 的 session 仍会发出快照并静默结转权益，
+    # 因此"缺整日"无法由事后估值发现，必须在此处 fail-closed。
+    for symbol in request.symbols:
+        present = set(int(d) for d in bars[symbol]["date"])
+        absent = [d for d in calendar if d not in present]
+        if absent:
+            raise BehaviorRequestError(
+                "CALENDAR_NOT_COVERED_BY_DATA:%s:missing=%d:first=%s%s"
+                % (symbol, len(absent), absent[0],
+                   " (INCLUDES END SESSION)" if absent[-1] == calendar[-1] else ""))
 
     rules = DailyExitRuleSetV1(**dict(request.exit_rules))
     macd_params = MacdParams(**dict(request.macd))
@@ -434,13 +487,33 @@ def run_behavior_backtest_v1(request: BehaviorRequestV1 | Mapping[str, Any]) -> 
             "exit_state": lot.exit_state,
             "exit_reason": lot.exit_reason,
         })
+    # 正式估值：必须走 official_equity_curve（显式日历 + AFTER_CLOSE 事件 + fail-closed）。
+    # 不能只导出 snapshots 取最后一条：那无法发现整日/末日缺失，也不校验 NaN/Inf。
+    official = official_equity_curve(
+        ledger.snapshots,
+        calendar=calendar,
+        start_date=calendar[0],
+        end_date=calendar[-1],
+        calendar_identity=stable_hash(list(calendar)),
+    )
+    official_points = [point.to_dict() for point in official.points]
     equity_curve = [
-        {"date": int(snapshot.timestamp.strftime("%Y%m%d")),
-         "cash": float(snapshot.cash),
-         "market_value": float(snapshot.market_value),
-         "equity": float(snapshot.equity)}
-        for snapshot in ledger.snapshots
+        {"date": int(point["date"]), "timestamp": point["timestamp"],
+         "event_kind": point["event_kind"], "event_sequence": int(point["event_sequence"]),
+         "equity": float(point["equity"])}
+        for point in official_points
     ]
+    # 逐日现金/市值取自当日 AFTER_CLOSE 结算终态快照（与正式估值同一事件）。
+    settlement = {}
+    for snapshot in ledger.snapshots:
+        ts = snapshot.timestamp
+        if ts.hour != OFFICIAL_VALUATION_TIME[0] or ts.minute != OFFICIAL_VALUATION_TIME[1]:
+            continue
+        settlement[int(ts.strftime("%Y%m%d"))] = snapshot
+    for row in equity_curve:
+        snapshot = settlement[row["date"]]
+        row["cash"] = float(snapshot.cash)
+        row["market_value"] = float(snapshot.market_value)
 
     return BehaviorResultV1(
         mode=BEHAVIOR_MODE,
@@ -502,14 +575,16 @@ def run_behavior_backtest_v1(request: BehaviorRequestV1 | Mapping[str, Any]) -> 
         cash=float(ledger.cash),
         initial_cash=float(ledger.initial_cash),
         equity_curve=equity_curve,
-        final_equity=float(equity_curve[-1]["equity"]) if equity_curve else float(ledger.initial_cash),
+        final_equity=float(official.points[-1].equity),
+        official_valuation=official.to_dict(),
         exit_evaluations=list(evaluator.evaluations),
         run_summary=result.summary(),
     )
 
 
-def write_result(path: str | Path, result: BehaviorResultV1) -> Path:
-    target = Path(path)
+def write_result(path: str | Path, result: BehaviorResultV1, *, root: str | Path) -> Path:
+    """写出结果 JSON；`path` 必须落在调用者显式声明的 `root` 内。"""
+    target = resolve_within_root(path, root, purpose="RESULT")
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(result.to_dict(), ensure_ascii=False, indent=2, default=str), encoding="utf-8")
     return target
@@ -520,13 +595,16 @@ __all__ = [
     "SUPPORTED_MODES",
     "RESERVED_MODES",
     "BehaviorRequestError",
+    "BehaviorPathError",
     "ConditionError",
     "ExitConfigError",
     "IndicatorInputError",
+    "OfficialValuationError",
     "BehaviorRequestV1",
     "BehaviorResultV1",
     "run_behavior_backtest_v1",
     "load_bars_from_file",
     "build_entry_signals",
+    "resolve_within_root",
     "write_result",
 ]

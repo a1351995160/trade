@@ -135,11 +135,9 @@ def test_cli_matches_http_semantics(tmp_path: Path, client: TestClient):
 
     http_body = client.post("/api/backtest/behavior", json=_payload()).json()
 
-    completed = subprocess.run(
-        [sys.executable, "scripts/run_behavior_backtest_v1.py",
-         "--request", str(request_path), "--out", str(result_path)],
-        cwd=str(REPO_ROOT), capture_output=True, text=True, encoding="utf-8",
-    )
+    completed = _run_cli(
+        ["--request", str(request_path), "--request-root", str(tmp_path),
+         "--out", str(result_path), "--out-root", str(tmp_path)])
     assert completed.returncode == 0, completed.stderr
     cli_body = json.loads(result_path.read_text(encoding="utf-8"))
 
@@ -155,6 +153,8 @@ def test_cli_matches_http_semantics(tmp_path: Path, client: TestClient):
     assert cli_body["final_equity"] == http_body["final_equity"]
     assert cli_body["equity_curve"] == http_body["equity_curve"]
     assert cli_body["orders"] == http_body["orders"]
+    # 正式估值元数据必须一致。
+    assert cli_body["official_valuation"] == http_body["official_valuation"]
 
 
 def test_cli_supports_file_entry(tmp_path: Path):
@@ -165,20 +165,57 @@ def test_cli_supports_file_entry(tmp_path: Path):
     to_dataset_csv(csv_path, {SYMBOL: entry_bars()})
     payload = _payload()
     payload.pop("bars")
-    payload["dataset_path"] = str(csv_path)
+    payload["dataset_path"] = csv_path.name
+    payload["dataset_root"] = str(tmp_path)
     request_path = tmp_path / "request_file.json"
     request_path.write_text(json.dumps(payload), encoding="utf-8")
     result_path = tmp_path / "result_file.json"
 
-    completed = subprocess.run(
-        [sys.executable, "scripts/run_behavior_backtest_v1.py",
-         "--request", str(request_path), "--out", str(result_path)],
-        cwd=str(REPO_ROOT), capture_output=True, text=True, encoding="utf-8",
-    )
+    completed = _run_cli(
+        ["--request", str(request_path), "--request-root", str(tmp_path),
+         "--out", str(result_path), "--out-root", str(tmp_path)])
     assert completed.returncode == 0, completed.stderr
     body = json.loads(result_path.read_text(encoding="utf-8"))
     assert [f["side"] for f in body["fills"]] == ["BUY", "SELL"]
     assert body["final_equity"] != 100_000.0
+
+
+def test_cli_rejects_path_outside_declared_root(tmp_path: Path):
+    """外部路径越出显式声明的根目录时必须拒绝，不得任意读写。"""
+    request_path = tmp_path / "request.json"
+    request_path.write_text(json.dumps(_payload()), encoding="utf-8")
+    outside = tmp_path.parent / "outside_result.json"
+
+    completed = _run_cli(
+        ["--request", str(request_path), "--request-root", str(tmp_path),
+         "--out", str(outside), "--out-root", str(tmp_path)])
+    assert completed.returncode != 0
+    assert "PATH_OUTSIDE_IO_ROOT" in (completed.stderr + completed.stdout)
+    assert not outside.exists()
+
+
+def test_service_rejects_dataset_path_outside_root(tmp_path: Path):
+    """文件入口的 dataset_path 同样受根目录约束。"""
+    from chanlun_trader.engine.behavior_service_v1 import (
+        BehaviorPathError,
+        BehaviorRequestV1,
+        run_behavior_backtest_v1,
+    )
+
+    payload = _payload()
+    payload.pop("bars")
+    payload["dataset_path"] = "../outside.csv"
+    payload["dataset_root"] = str(tmp_path)
+    with pytest.raises(BehaviorPathError):
+        run_behavior_backtest_v1(BehaviorRequestV1.from_mapping(payload))
+
+
+def _run_cli(extra_args):
+    return subprocess.run(
+        [sys.executable, "scripts/run_behavior_backtest_v1.py", *extra_args],
+        cwd=str(REPO_ROOT), capture_output=True, text=True,
+        encoding="utf-8", errors="replace",
+    )
 
 
 def test_http_behavior_endpoint_does_not_write_research_root(tmp_path: Path):

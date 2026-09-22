@@ -88,6 +88,37 @@ KDJ 条件：`KDJ_GOLDEN_CROSS` / `KDJ_DEATH_CROSS` / `KDJ_K_ABOVE_D` / `KDJ_OVE
 
 同一 lot 同一时点只生成一个有效退出意图；退出意图一旦成立，不因价格反弹或新入场信号撤销。
 
+### 2.4 正式估值（`OFFICIAL_VALUATION_V1`）
+
+结果中的 `equity_curve` 与 `final_equity` **不来自"导出快照取最后一条"**，而是经
+`engine/official_valuation.py::official_equity_curve` 抽取的正式估值点：
+
+- **独立日历必填**：`calendar` 由调用方显式传入，不从快照反推（`calendar=None` 直接抛错）；
+- 正式事件固定为 `AFTER_CLOSE`（15:30 盘后结算）；
+- 应有日历内**缺任一天（含末日）** → 抛 `OfficialValuationError`，不静默跳过、不缩短端点；
+- 权益必须为**有限正数**；NaN / Inf / 非数值 → 抛错；
+- 同一 session 多事件按**原始插入序号**取结算终态，禁止按 equity 大小挑选；
+- 每个点保留 `timestamp` / `event_kind` / `event_sequence` / `calendar_identity`。
+
+另有一层入口校验：引擎对**缺 bar 的 session 仍会发出快照并静默结转权益**，
+因此"缺整日"无法由事后估值发现。公共入口 `run_behavior_backtest_v1` 会先按声明日历
+校验数据覆盖，缺任一天即 `CALENDAR_NOT_COVERED_BY_DATA` 拒绝（末日缺失会标注
+`INCLUDES END SESSION`）。
+
+无独立日历时只提供 `diagnostic_curve_without_calendar()`，其输出明确标记
+`official=false` / `NON_OFFICIAL_DIAGNOSTIC`，**不得作为正式结论**。
+
+### 2.5 外部路径约束（`BT_IO_ROOT_GUARD_V1`）
+
+CLI 与文件入口的外部路径一律经 `resolve_within_root` 约束在调用者显式声明的根目录内：
+
+- `dataset_path` 必须配 `dataset_root`（缺失即 `DATASET_ROOT_REQUIRED`）；
+- 拒绝 `..` 父目录穿越（`PARENT_TRAVERSAL_NOT_ALLOWED`）；
+- 解析符号链接后再校验归属，越界即 `PATH_OUTSIDE_IO_ROOT`；
+- 结果输出同样受 `--out-root` 约束。
+
+外部参数不得决定任意读写位置。
+
 ---
 
 ## 3. 已修复的缺陷（红 → 绿）
@@ -109,6 +140,15 @@ KDJ 条件：`KDJ_GOLDEN_CROSS` / `KDJ_DEATH_CROSS` / `KDJ_K_ABOVE_D` / `KDJ_OVE
 `DailyBarFillModel` 原在 `int(volume * max_participation_rate) == 0` 时回退到
 `order.remaining_quantity`（全量成交），与容量约束自相矛盾。现改为返回
 `PARTICIPATION_LIMIT` 并拒单，不再退回全量。
+
+### 3.3 缺整日无法被发现（正式估值接线缺陷）
+
+原实现的 `equity_curve` / `final_equity` 只是"导出 `ledger.snapshots` 取最后一条"，
+因此无法发现整日/末日缺失，也不校验 NaN/Inf。现改为经 `official_equity_curve`
+抽取正式估值点，并在入口增加日历覆盖校验（见 §2.4）。
+
+同时修复 `official_equity_curve` 自身的一个缺陷：非数值权益原会泄漏 `ValueError`，
+现改为 fail-closed 的 `OfficialValuationError`。
 
 ---
 
@@ -160,11 +200,20 @@ POST /api/backtest/behavior
 ### CLI（支持文件入口）
 
 ```bash
-python scripts/run_behavior_backtest_v1.py --request request.json --out result.json
+python scripts/run_behavior_backtest_v1.py \
+    --request request.json --request-root . \
+    --out result.json --out-root .
 ```
 
-`request.json` 可含 `dataset_path` 指向 CSV / Parquet（列：`symbol,date,open,high,low,close,volume[,amount]`）。
+`request.json` 可含 `dataset_path`（CSV / Parquet，列：`symbol,date,open,high,low,close,volume[,amount]`）
+与 `dataset_root`；两者必须成对给出，且 `dataset_path` 必须落在 `dataset_root` 内。
 文件解析是真实的；同一请求在 CLI 与 HTTP 上得到相同的语义事件与账户结果。
+
+### 结果字段
+
+响应回显实际生效的 `engine_version`、`indicator_contract`、`condition_contract`、
+`exit_contract`、`exit_execution_mode`、`price_mode`、`time_rules` 与 `resolved_config`；
+`official_valuation` 给出正式估值的日历身份、区间与逐点事件身份。
 
 ---
 
@@ -185,7 +234,8 @@ python scripts/run_behavior_backtest_v1.py --request request.json --out result.j
 - `tests/behavior/test_daily_exit_rules_v1.py`：四类退出规则
 - `tests/behavior/test_full_account_chain_v1.py`：完整账户链 A–J 场景
 - `tests/behavior/test_ledger_hand_calculation_v1.py`：独立手算账本核对
-- `tests/behavior/test_public_entrypoints_v1.py`：API / CLI 语义一致与合同暴露
+- `tests/behavior/test_official_valuation_wiring_v1.py`：正式估值接线（独立日历 / 缺整日 / 缺末日 / NaN-Inf）
+- `tests/behavior/test_public_entrypoints_v1.py`：API / CLI 语义一致、合同暴露与路径越界拒绝
 - `tests/legacy_entry/test_index_filter_lookahead.py`：旧入口前视复现与修复
 
 ---
@@ -200,6 +250,9 @@ python scripts/run_behavior_backtest_v1.py --request request.json --out result.j
 | 结构价止损（`STRUCTURE_STOP`） | `ExitConfigError: UNSUPPORTED_EXIT_TYPE`（RAW 成交价与 QFQ 结构价无可比证据） |
 | 5MIN 撮合模式（`BT_BEHAVIOR_INTRADAY_V1`） | `UNSUPPORTED_MODE` |
 | 未知条件名 / 未知请求字段 | `UNSUPPORTED_CONDITION` / `UNKNOWN_REQUEST_FIELD` |
+| 声明日历未被数据覆盖（含缺末日） | `CALENDAR_NOT_COVERED_BY_DATA` |
+| 文件入口缺 `dataset_root` | `DATASET_ROOT_REQUIRED` |
+| 外部路径越界 / `..` 穿越 | `PATH_OUTSIDE_IO_ROOT` / `PARENT_TRAVERSAL_NOT_ALLOWED` |
 
 CLOSE_CONFIRM 模式**不会**因为 high/low 触及阈值就猜一个成交价；请求盘中执行必须得到明确的不支持结果。
 
@@ -238,3 +291,20 @@ CLOSE_CONFIRM 模式**不会**因为 high/low 触及阈值就猜一个成交价�
 本轮**按兼容性要求未改**（改成成本止损会改变既有策略的全局默认行为）。因此旧入口与新入口的
 "止损"含义不同。若后续要让旧入口也使用成本止损，需要一次明确的、带版本的策略语义变更决定，
 不属于本轮授权范围。在此之前，两个入口的止损语义必须在文档与界面上保持区分标识。
+
+---
+
+## 9. 静态检查（SonarCloud）处置记录
+
+本轮 PR 首次检查时 Quality Gate 失败，`new_security_rating = C`（要求 A）。
+共 4 条 SECURITY 影响项，**全部位于本轮新增代码**，已按证据逐条处置：
+
+| 规则 | 位置 | 判定 | 处置 |
+| --- | --- | --- | --- |
+| `githubactions:S8544` | `.github/workflows/backtest-behavior-acceptance.yml` | **真实缺陷**：依赖未锁定解析版本 | 改用仓库既有带哈希锁文件 `requirements-p3b.txt` + `--require-hashes`，与其它 workflow 一致 |
+| `githubactions:S8541` | 同上 | **真实缺陷**：未禁用 sdist 构建脚本 | 同上，并显式加 `--only-binary ":all:" --no-binary "pytdx"` |
+| `pythonsecurity:S8707` | `scripts/run_behavior_backtest_v1.py` | **真实缺陷**：CLI 外部参数可决定任意读写位置 | 新增 `resolve_within_root`，请求/结果路径必须落在显式声明的 `--request-root` / `--out-root` 内 |
+| `pythonsecurity:S8707` | `src/chanlun_trader/engine/behavior_service_v1.py` | **真实缺陷**：`write_result` 可写任意路径 | 同上；并新增 `test_cli_rejects_path_outside_declared_root` 等回归 |
+
+处置原则：**不删除检查、不扩大排除项、不绕过质量门**。4 条均为真实缺陷而非误报，因此以代码修复关闭，
+未使用任何抑制标注。修复后新增的路径越界回归测试证明约束确实生效。
