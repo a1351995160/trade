@@ -1958,3 +1958,95 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - 以 CI 同等隔离环境（CHANLUN_TEST_ISOLATION=1）在 BASE_SHA 干净工作树与本分支分别运行完整 pytest：失败集合逐条一致（193 项，均为本机缺少研究数据/前端未构建等既有环境失败），零新增失败、零回归；通过数 1853 增至 1963。
 - SonarCloud 4 条 SECURITY 项（2 HIGH 路径穿越 + 2 MEDIUM workflow 依赖未锁定）全部按证据以代码修复关闭，未删除检查、未扩大排除项、未加抑制标注；新增路径越界回归测试。
 - 正式估值接线：改为经 official_equity_curve 抽取，证明独立日历必填、缺整日/缺末日抛错、NaN/Inf 拒绝；入口增加声明日历的数据覆盖校验。修复 official_equity_curve 非数值权益泄漏 ValueError 的缺陷。
+
+## 2026-09-22 - Task: 可扩展回测验收 V2（通用指标、规则组合与账户链扩展）
+### What was done
+在已合并的 V1 main（c498ee2）上建立独立分支，复用 V1 的指标、条件、退出与引擎链，按家族增量实现通用指标体系、统一注册、受限条件组合与退出扩展。指标从 MACD/KDJ 扩到 7 家族 51 项（均线趋势、动量震荡、波动通道、量价资金代理、价格结构、统计截面、自定义组合），每项带机器可读契约（输出名、参数、预热、缺失政策、可用时间、单位、额外数据依赖）。新增受限表达式层支持比较/AND-OR-NOT 三值逻辑/交叉/位置/区间/滚动逻辑/截面排名；NOT(UNKNOWN) 保持 UNKNOWN，未 ready 与 NaN 不产生交易资格。退出在 V1 四类之上新增 ATR 距离、ATR 跟踪、指标条件、反向信号与明确版本结构价退出，结构止损与成本止损分别命名。公共 API/CLI/Web 三入口使用同一服务，合同端点由注册表动态提供，界面不硬编码指标。
+### Testing
+V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三值逻辑、安全拒绝、退出、完整账户链、三入口语义一致），JUnit 已落盘。V1 兼容回归 139 项通过。完整套件在 BASE_SHA 干净工作树与 V2 HEAD 分别运行：失败总数一致（各 170），差异项为既有顺序相关不稳定（Windows GBK 解码/共享状态），单独运行均通过，且 V2 模块未被 research_factory 引用。未读取真实行情、未运行真实绩效。
+### Notes
+- src/chanlun_trader/engine/indicators_v2.py、indicator_registry_v2.py、conditions_v2.py、daily_exit_v2.py、custom_indicators_v2.py、behavior_service_v2.py：多家族指标、注册契约、表达式层、退出扩展、自定义 fixture 与注册表驱动服务。
+- src/chanlun_trader/webapp.py：新增合同端点（注册表驱动）与 V2 回测端点，只读计算白名单扩展。
+- scripts/run_behavior_backtest_v2.py、scripts/emit_v2_acceptance_scope_v1.py：CLI 与验收证据生成。
+- frontend/src/components/GenericBacktestPanel.vue、frontend/src/App.vue：注册表驱动的通用回测配置表页。
+- tests/indicators_v2、tests/conditions_v2、tests/exits_v2、tests/entrypoints_v2：V2 新增测试。
+- docs/EXTENSIBLE_BACKTEST_ACCEPTANCE_V2.md、ACCEPTANCE_SCOPE.json、reports/v2_acceptance/：口径、范围、盘点、矩阵与回归证据。
+- .github/workflows/extensible-backtest-acceptance-v2.yml：双平台 CI，V1 兼容与 V2 新增分开执行并上传 JUnit。
+- 回滚点 c498ee2；可 git revert 本轮提交，不影响 V1 与受保护旧目录。
+
+### Testing（PR #15 定向复核修正追加）
+- 复现并关闭五类根因：指标实例覆盖、ATR 入场锚前视与参数忽略、多证券共用退出上下文、Top-N UNKNOWN 处理、证据矩阵前缀判定与实现指纹。
+- 修复过程中另发现并关闭四项真实缺陷：DMI/ADX 漏除 window 导致 ADX 放大约 N 倍、Wilder 种子被 NaN 污染、DMI 段首 TR 口径与 true_range 不一致、DYNAMIC_CURRENT 在首根被跳过。
+- 新增 tests/pr15_remediation（25 项），全部经真实 API/CLI 取得 red/green；V2 新增测试合计 141 项通过，V1 兼容回归 139 项通过。
+- 完整套件在 BASE_SHA 干净工作树与本次 HEAD 分别运行：零新增失败、零回归（基线 194 项失败集合覆盖本次 193 项；差异为既有顺序相关不稳定）。
+### Notes
+- src/chanlun_trader/engine/indicator_registry_v2.py、behavior_service_v2.py、conditions_v2.py、daily_exit_v2.py、custom_indicators_v2.py、indicators_v2.py、engine.py：实例身份、ATR 依赖与冻结锚、按证券上下文、Top-N 合格截面、公式指纹、ADX 修正与 lot 创建回调。
+- tests/pr15_remediation/test_pr15_remediation_v1.py、tests/indicators_v2：五类根因验收与 DMI/SAR 独立 oracle。
+- scripts/emit_v2_acceptance_scope_v1.py、docs/EXTENSIBLE_BACKTEST_ACCEPTANCE_V2.md、reports/v2_acceptance/：逐项证据矩阵与口径更新。
+- .github/workflows/extensible-backtest-acceptance-v2.yml：V2 新增测试纳入双平台 CI。
+- 回滚点 196e666；可 git revert 本次提交。
+
+### Testing（PR15 残留修正追加）
+- 复现并关闭四处残留：表达式内版本未核验、ATR 序列被最后一条规则覆盖且窗口从契约默认值重推、排名退出因按 session 取值而永不触发、矩阵证据只写目录名且指纹只拼依赖名称。
+- 另修一处真实缺陷：服务路径未把 ATR 绑定身份传给冻结锚，导致 trace 无法溯源实例。
+- 新增 tests/pr15_residual（20 项），全部经真实 API/CLI 取得 red/green；PR15 定向两轮合计 46 项通过，V2 主体 120 项通过，V1 兼容回归 139 项通过。
+- 矩阵新增 nodeid 实存校验测试：矩阵声称的 16 个 nodeid 全部能被 pytest 真实收集，写错即测试失败（发现并修正了 MACD/KDJ 两个错误 nodeid）。
+- 完整套件在 BASE_SHA 干净工作树与本次 HEAD 分别运行：零新增失败 nodeid（基线 194 项失败集合覆盖本次 193 项）；因果未确认，不声明全系统零回归。
+### Notes
+- src/chanlun_trader/engine/behavior_service_v2.py：表达式引用解析为精确实例键并核验版本；每条 ATR 规则各自持有序列与绑定身份；窗口取实际使用值；混合截面/时序条件运行前拒绝。
+- src/chanlun_trader/engine/daily_exit_v2.py：入场锚按 (lot_id, rule) 存储；排名退出按结果索引域取值（symbol 或 session）；绑定身份随 trace 输出。
+- src/chanlun_trader/engine/indicator_registry_v2.py：IndicatorResult 携带 resolved_params；公式指纹递归绑定依赖 version 与源码。
+- scripts/emit_v2_acceptance_scope_v1.py、docs/EXTENSIBLE_BACKTEST_ACCEPTANCE_V2.md、reports/v2_acceptance/：逐项精确 nodeid + 适用域 + JUnit，测试分母按来源分开，OPEN 项与因果未确认如实登记。
+- tests/pr15_residual/test_pr15_residual_v1.py：残留验收（版本绑定、双 ATR 规则、排名退出、指纹变异、nodeid 实存）。
+- tests/pr15_remediation、tests/exits_v2：同步按规则登记锚与 nodeid 校验。
+- .github/workflows/extensible-backtest-acceptance-v2.yml：残留测试纳入双平台 CI。
+- 回滚点 ae871ae；可 git revert 本次提交。
+
+### Testing（证据适用性与依赖指纹收尾）
+- 复现并修复依赖版本指纹缺陷：此前 _formula_hash 遍历 specs() 取第一个版本，而 get(id) 取最大版本，导致「执行选 V2 却哈希 V1」。现与执行共享同一解析，支持显式固定版本，缺依赖/歧义/循环明确拒绝。
+- 修正证据适用性：建立受审映射（指标→真实调用其实现的 oracle 测试；指标→真实消费其 indicator_id 的入口测试；条件维度→覆盖该维度正向语义的测试），逐维度分别判定。VERIFIED 从 28 项诚实降为 10 项——此前把所有 51 个指标名写进入口集合，等于用 RSI/EMA 的入口测试给其余 47 项作证。
+- MACD/KDJ 的 oracle 正确关联到 V1 兼容 JUnit（参数化节点），不再错误关联 V2 套件。
+- 新增负向检查：入口证据错设为只消费 RSI/EMA 的测试、条件维度共用 Top-N 测试、REF/arithmetic 仅有负向测试而误升 VERIFIED，均会被测试拒绝。
+- 强化排名换位测试：用明确两证券、日期与预期排名断言，替代原先的非空断言。
+- PR15 定向两轮 57 项通过；V2 主体 120 项通过；V1 兼容回归 139 项通过。
+- 完整套件在 BASE_SHA 干净工作树与本次 HEAD 分别运行：零新增失败 nodeid（基线 194 覆盖本次 193）；因果未确认，不声明全系统零回归。
+### Notes
+- src/chanlun_trader/engine/indicator_registry_v2.py：依赖解析与指纹共享同一确定结果；支持 pinned_versions；缺依赖/循环依赖抛 DependencyResolutionError。
+- scripts/emit_v2_acceptance_scope_v1.py：受审证据映射（ORACLE_NODEIDS / ENTRYPOINT_NODEIDS / CONDITION_NODEIDS / CONDITION_PARTIAL_REASONS / ASSERTION_SUMMARY），逐维度判定与断言内容登记。
+- tests/pr15_residual/test_pr15_residual_v1.py：依赖版本指纹六项测试、排名换位明确断言。
+- tests/pr15_remediation/test_pr15_remediation_v1.py：四项证据适用性负向检查。
+- docs/EXTENSIBLE_BACKTEST_ACCEPTANCE_V2.md、reports/v2_acceptance/、ACCEPTANCE_SCOPE.json：10/44、177/139、逐项原因与 OPEN 项同步。
+- 回滚点 204ccaa；可 git revert 本次提交。
+
+### Testing（依赖执行与指纹一致）
+- 复现并修复 B1：pinned_versions 只影响指纹、不约束计算——父公式内部 compute('DEP') 仍取默认最新版，父输出 1→2→99 而父 hash 不变。新增 DependencyScope 与 registry.compute_dependency，父实现取依赖走同一解析结果，固定版本真实约束计算；作用域按调用栈嵌套，嵌套固定版本不被其他节点默认值覆盖。
+- 复现并修复 B2：判环用单一 seen 集合，把合法共享依赖 PARENT→A、PARENT→B、B→A 误判为 CIRCULAR_DEPENDENCY:A。改为只针对当前递归路径判环，已完成节点缓存；共享依赖通过，真自循环与回边仍拒绝。
+- 父公式真实消费依赖（compute_dependency 并把值写入自身输出），不用常数或伪造 trace。
+- A 文字修正：10 VERIFIED 明确为 4 个指标 + 6 个条件函数维度，不是 10 项完整账户认证；补 cross_down 最小正例，CROSS 双向子维度分别记录；每条证据记录自己的 suite 与 JUnit（MACD/KDJ 在 V1 套件，共享契约测试在 V2 套件）；明确受审映射不能自动识别任意无关测试。
+- 新增 tests/pr15_dependency（10 项）；条件层补 cross_down 正例。
+- V2 新增 188 项通过；V1 兼容回归 139 项通过。
+- 完整套件：失败总数与 BASE_SHA 基线一致（各 194）；差异项单独运行通过且未引用 V2 模块；因果未确认，不声明全系统零回归。
+### Notes
+- src/chanlun_trader/engine/indicator_registry_v2.py：新增 DependencyScope 与 compute_dependency（固定版本真实约束计算）；_formula_hash 判环只针对当前递归路径并缓存已完成节点；_source_of 支持合成源码覆盖。
+- tests/pr15_dependency/test_dependency_execution_v1.py：B1/B2 定点验收（固定版本约束计算、默认解析驱动输出与指纹、嵌套固定、共享 DAG、真循环拒绝、注册顺序）。
+- tests/conditions_v2/test_condition_layer_v2.py：补 cross_down 正向用例。
+- tests/pr15_remediation/test_pr15_remediation_v1.py：适配每条证据自己的 suite 与 JUnit。
+- scripts/emit_v2_acceptance_scope_v1.py、reports/v2_acceptance/、ACCEPTANCE_SCOPE.json：CONDITION_EVIDENCE 子维度与 per-suite JUnit；分母 188/139。
+- docs/EXTENSIBLE_BACKTEST_ACCEPTANCE_V2.md：§6.6 依赖执行与指纹；10 VERIFIED 含义澄清。
+- .github/workflows/extensible-backtest-acceptance-v2.yml：纳入 tests/pr15_dependency。
+- 回滚点 c9a63ed；可 git revert 本次提交。
+
+### Testing（依赖作用域防误用）
+- 复现绕过：pinned DEP_V1 时，父实现直接 registry.compute("DEP") 仍取默认最新版 DEP_V2（父输出 2.0），而 hash 按 DEP_V1 算——防护缺口。
+- 修复：依赖求值期间，若该指标在作用域里已被固定版本，未显式传 version 的直接 compute() 抛 DIRECT_COMPUTE_BYPASSES_PINNED_DEPENDENCY 并指出正确做法。
+- 边界：依赖未固定时不误报；显式传 version 不算绕过；compute_dependency 内部带标记不会被自身防护拦下。
+- 修正仓库内真实绕过点：RsiRegimeProvider 原直接 registry.compute("RSI")，改为 compute_dependency，并为 RSI_REGIME_FLAG 登记 pinned_versions={"RSI":"RSI_V1"}。
+- 新增 4 项防护测试（绕过拒绝、未固定不误报、显式版本放行、内置依赖型指标走依赖路径）。
+- V2 新增 192 项通过；V1 兼容回归 139 项通过。
+- 完整套件：本次 HEAD 零新增失败 nodeid（基线 194 覆盖本次 193）；因果未确认，不声明全系统零回归。
+### Notes
+- src/chanlun_trader/engine/indicator_registry_v2.py：compute 增加 _via_dependency 标记与绕过防护；compute_dependency 标记来源。
+- src/chanlun_trader/engine/custom_indicators_v2.py：RsiRegimeProvider 改用 compute_dependency；RSI_REGIME_FLAG 登记 RSI 固定版本。
+- tests/pr15_dependency/test_dependency_execution_v1.py：新增四项防护测试（共 14 项）。
+- scripts/emit_v2_acceptance_scope_v1.py、reports/v2_acceptance/、ACCEPTANCE_SCOPE.json、docs/EXTENSIBLE_BACKTEST_ACCEPTANCE_V2.md：分母 192/139、§6.7 防误用与风险降级说明。
+- 回滚点 c6af41a；可 git revert 本次提交。

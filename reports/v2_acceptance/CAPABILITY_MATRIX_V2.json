@@ -1,0 +1,737 @@
+{
+  "registry_version": "BT_INDICATOR_REGISTRY_V2",
+  "minimum_set": {
+    "required": 54,
+    "verified": 10,
+    "partial": 44,
+    "not_verified": 0
+  },
+  "dimension_rule": "逐维度分别判定：FORMULA_VALIDATED 需独立数值 oracle；ENTRYPOINT_VALIDATED 需真实消费该指标的公开入口测试。全部声明维度为真才记 VERIFIED；缺任一维度记 PARTIAL 并写明原因。",
+  "note": "VERIFIED 要求同时具备：实现 + 独立数值 oracle + 契约测试 + 公开入口测试，且每项指向**真实覆盖该项能力**的测试 nodeid。仅注册/映射完成标 PARTIAL，不外推为公式或账户已验证。",
+  "unsupported_combinations": {
+    "MIXED_CROSS_SECTIONAL_AND_SERIES_CONDITION": "截面算子与时序算子在同一逻辑节点下混用：运行前显式拒绝（MIXED_CROSS_SECTIONAL_AND_SERIES_CONDITION_NOT_SUPPORTED），不做静默不退出。"
+  },
+  "families": [
+    {
+      "family": "基础算子",
+      "required": 10,
+      "verified": 4,
+      "partial": 6,
+      "items": [
+        {
+          "requirement": "arithmetic",
+          "target": "OPERATOR_LAYER",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": false,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=research/unified_factor.py（既有，本轮未改）; domain=面板级算子层; dimensions={FORMULA_VALIDATED=False,ENTRYPOINT_VALIDATED=False}; partial_reason=未接 V2 单证券公开链路与账户链; nodeid=无（本轮未接线）; junit=不适用"
+        },
+        {
+          "requirement": "comparison",
+          "target": "OPERATOR_LAYER",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": false,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=research/unified_factor.py（既有，本轮未改）; domain=面板级算子层; dimensions={FORMULA_VALIDATED=False,ENTRYPOINT_VALIDATED=False}; partial_reason=未接 V2 单证券公开链路与账户链; nodeid=无（本轮未接线）; junit=不适用"
+        },
+        {
+          "requirement": "boolean",
+          "target": "CONDITION_LAYER",
+          "status": "VERIFIED",
+          "met": true,
+          "dimensions": {
+            "FORMULA_VALIDATED": true
+          },
+          "evidence": "impl=src/chanlun_trader/engine/conditions_v2.py; domain=条件层算子:boolean; sub_dimensions={AND=VALIDATED,OR=VALIDATED,NOT=VALIDATED}; dimensions={FORMULA_VALIDATED=True}; suite=V2; junit=reports/junit-v2-new.xml; nodeid=tests/conditions_v2/test_condition_layer_v2.py::test_and_truth_table; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; assert(test_and_truth_table)=断言内容未登记; assert(test_registry_snapshot_has_required_contract_fields)=断言内容未登记"
+        },
+        {
+          "requirement": "REF",
+          "target": "CONDITION_LAYER",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": false
+          },
+          "evidence": "impl=src/chanlun_trader/engine/conditions_v2.py; domain=条件层算子:REF; dimensions={FORMULA_VALIDATED=False}; partial_reason=仅有负周期拒绝测试（test_negative_lag_rejected），无 shift/ref 正向取值测试; junit=reports/junit-v2-new.xml; nodeid=无正向正确性测试"
+        },
+        {
+          "requirement": "rolling SUM/MEAN/STD/VAR",
+          "target": "OPERATOR_LAYER",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": false,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=research/unified_factor.py（既有，本轮未改）; domain=面板级算子层; dimensions={FORMULA_VALIDATED=False,ENTRYPOINT_VALIDATED=False}; partial_reason=未接 V2 单证券公开链路与账户链; nodeid=无（本轮未接线）; junit=不适用"
+        },
+        {
+          "requirement": "HHV/LLV",
+          "target": "PRICE_EXTREMES",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": false,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py::price_extremes; domain=outputs=['hhv', 'llv'];params=['window'];price_mode=CALLER_DECLARED;warmup=20;unit=PRICE; dimensions={FORMULA_VALIDATED=False,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; missing_dimensions=FORMULA_VALIDATED,ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）"
+        },
+        {
+          "requirement": "COUNT",
+          "target": "OPERATOR_LAYER",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": false,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=research/unified_factor.py（既有，本轮未改）; domain=面板级算子层; dimensions={FORMULA_VALIDATED=False,ENTRYPOINT_VALIDATED=False}; partial_reason=未接 V2 单证券公开链路与账户链; nodeid=无（本轮未接线）; junit=不适用"
+        },
+        {
+          "requirement": "EVERY/EXIST",
+          "target": "CONDITION_LAYER",
+          "status": "VERIFIED",
+          "met": true,
+          "dimensions": {
+            "FORMULA_VALIDATED": true
+          },
+          "evidence": "impl=src/chanlun_trader/engine/conditions_v2.py; domain=条件层算子:EVERY/EXIST; sub_dimensions={EVERY=VALIDATED,EXIST=VALIDATED}; dimensions={FORMULA_VALIDATED=True}; suite=V2; junit=reports/junit-v2-new.xml; nodeid=tests/conditions_v2/test_condition_layer_v2.py::test_every_and_exist_semantics; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; assert(test_every_and_exist_semantics)=断言内容未登记; assert(test_registry_snapshot_has_required_contract_fields)=断言内容未登记"
+        },
+        {
+          "requirement": "BARSLAST",
+          "target": "CONDITION_LAYER",
+          "status": "VERIFIED",
+          "met": true,
+          "dimensions": {
+            "FORMULA_VALIDATED": true
+          },
+          "evidence": "impl=src/chanlun_trader/engine/conditions_v2.py; domain=条件层算子:BARSLAST; sub_dimensions={BARSLAST=VALIDATED}; dimensions={FORMULA_VALIDATED=True}; suite=V2; junit=reports/junit-v2-new.xml; nodeid=tests/conditions_v2/test_condition_layer_v2.py::test_barslast_counts_since_last_true; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; assert(test_barslast_counts_since_last_true)=断言内容未登记; assert(test_registry_snapshot_has_required_contract_fields)=断言内容未登记"
+        },
+        {
+          "requirement": "CROSS_UP/CROSS_DOWN",
+          "target": "CONDITION_LAYER",
+          "status": "VERIFIED",
+          "met": true,
+          "dimensions": {
+            "FORMULA_VALIDATED": true
+          },
+          "evidence": "impl=src/chanlun_trader/engine/conditions_v2.py; domain=条件层算子:CROSS_UP/CROSS_DOWN; sub_dimensions={CROSS_UP=VALIDATED,CROSS_DOWN=VALIDATED,cross_down_nodeid=tests/conditions_v2/test_condition_layer_v2.py::test_cross_down_positive_case}; dimensions={FORMULA_VALIDATED=True}; suite=V2; junit=reports/junit-v2-new.xml; nodeid=tests/conditions_v2/test_condition_layer_v2.py::test_cross_requires_adjacent_valid_observations; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/conditions_v2/test_condition_layer_v2.py::test_cross_down_positive_case; assert(test_cross_requires_adjacent_valid_observations)=断言内容未登记; assert(test_registry_snapshot_has_required_contract_fields)=断言内容未登记; assert(test_cross_down_positive_case)=断言内容未登记"
+        }
+      ]
+    },
+    {
+      "family": "均线与趋势",
+      "required": 10,
+      "verified": 2,
+      "partial": 8,
+      "items": [
+        {
+          "requirement": "MA/算术SMA",
+          "target": "MA",
+          "status": "VERIFIED",
+          "met": true,
+          "dimensions": {
+            "FORMULA_VALIDATED": true,
+            "ENTRYPOINT_VALIDATED": true
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py::ma_arithmetic; domain=outputs=['ma'];params=['price', 'window'];price_mode=CALLER_DECLARED;warmup=20;unit=PRICE; dimensions={FORMULA_VALIDATED=True,ENTRYPOINT_VALIDATED=True}; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_ma_matches_oracle; nodeid=tests/pr15_remediation/test_pr15_remediation_v1.py::test_pr1501_ma5_and_ma20_are_distinct_instances; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）; assert(test_ma_matches_oracle)=逐值比对独立 oracle（naive_sma），window 参数生效; assert(test_pr1501_ma5_and_ma20_are_distinct_instances)=MA(5)/MA(20) 为两个实例，声明顺序交换结果不变"
+        },
+        {
+          "requirement": "EMA",
+          "target": "EMA",
+          "status": "VERIFIED",
+          "met": true,
+          "dimensions": {
+            "FORMULA_VALIDATED": true,
+            "ENTRYPOINT_VALIDATED": true
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py::ema; domain=outputs=['ema'];params=['price', 'window'];price_mode=CALLER_DECLARED;warmup=12;unit=PRICE; dimensions={FORMULA_VALIDATED=True,ENTRYPOINT_VALIDATED=True}; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_ema_wma_rma_match_oracle; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）; assert(test_ema_wma_rma_match_oracle)=逐值比对独立 oracle；EMA 与 RMA 初值不同; assert(test_v2_endpoint_runs_and_reports_versions)=HTTP 入口真实消费 RSI+EMA 并产生成交，回显版本身份"
+        },
+        {
+          "requirement": "WMA",
+          "target": "WMA",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": true,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py::wma; domain=outputs=['wma'];params=['price', 'window'];price_mode=CALLER_DECLARED;warmup=20;unit=PRICE; dimensions={FORMULA_VALIDATED=True,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_ema_wma_rma_match_oracle; missing_dimensions=ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）; assert(test_ema_wma_rma_match_oracle)=逐值比对独立 oracle；EMA 与 RMA 初值不同"
+        },
+        {
+          "requirement": "RMA/Wilder",
+          "target": "RMA",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": true,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py::rma_wilder; domain=outputs=['rma'];params=['price', 'window'];price_mode=CALLER_DECLARED;warmup=14;unit=PRICE; dimensions={FORMULA_VALIDATED=True,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_ema_wma_rma_match_oracle; missing_dimensions=ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）; assert(test_ema_wma_rma_match_oracle)=逐值比对独立 oracle；EMA 与 RMA 初值不同"
+        },
+        {
+          "requirement": "通达信SMA(N,M)",
+          "target": "SMA_TDX",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": true,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py::sma_tdx; domain=outputs=['sma_tdx'];params=['price', 'weight', 'window'];price_mode=CALLER_DECLARED;warmup=9;unit=PRICE; dimensions={FORMULA_VALIDATED=True,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_sma_tdx_hand_computed_and_differs_from_arithmetic; missing_dimensions=ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）; assert(test_sma_tdx_hand_computed_and_differs_from_arithmetic)=手算 TDX 递推值，并断言与算术均值不同"
+        },
+        {
+          "requirement": "DEMA",
+          "target": "DEMA",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": false,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py::dema; domain=outputs=['dema', 'ema1', 'ema2'];params=['price', 'window'];price_mode=CALLER_DECLARED;warmup=39;unit=PRICE; dimensions={FORMULA_VALIDATED=False,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; missing_dimensions=FORMULA_VALIDATED,ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）"
+        },
+        {
+          "requirement": "TEMA",
+          "target": "TEMA",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": false,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py::tema; domain=outputs=['tema', 'ema1', 'ema2', 'ema3'];params=['price', 'window'];price_mode=CALLER_DECLARED;warmup=58;unit=PRICE; dimensions={FORMULA_VALIDATED=False,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; missing_dimensions=FORMULA_VALIDATED,ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）"
+        },
+        {
+          "requirement": "MACD",
+          "target": "MACD",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": true,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v1.py::_v1_macd; domain=outputs=['ema_fast', 'ema_slow', 'dif', 'dea', 'hist'];params=['fast', 'signal', 'slow'];price_mode=CALLER_DECLARED;warmup=34;unit=PRICE; dimensions={FORMULA_VALIDATED=True,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v1-compat.xml;reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators/test_indicator_formulas_v1.py::test_macd_v1_matches_independent_oracle; missing_dimensions=ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）; assert(test_macd_v1_matches_independent_oracle)=MACD(DIF/DEA/HIST) 逐值比对独立 oracle（V1 兼容套件，参数化）"
+        },
+        {
+          "requirement": "DMI/ADX",
+          "target": "DMI",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": true,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py::dmi_adx; domain=outputs=['plus_di', 'minus_di', 'adx', 'atr'];params=['window'];price_mode=CALLER_DECLARED;warmup=28;unit=INDEX_0_100; dimensions={FORMULA_VALIDATED=True,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_dmi_and_sar_match_independent_oracle; missing_dimensions=ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）; assert(test_dmi_and_sar_match_independent_oracle)=DMI(+DI/-DI/ADX) 与 SAR 逐值比对独立 oracle（含 AF 递增与反转）"
+        },
+        {
+          "requirement": "SAR",
+          "target": "SAR",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": true,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py::sar; domain=outputs=['sar', 'sar_trend'];params=['max_step', 'step'];price_mode=CALLER_DECLARED;warmup=2;unit=PRICE; dimensions={FORMULA_VALIDATED=True,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_dmi_and_sar_match_independent_oracle; missing_dimensions=ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）; assert(test_dmi_and_sar_match_independent_oracle)=DMI(+DI/-DI/ADX) 与 SAR 逐值比对独立 oracle（含 AF 递增与反转）"
+        }
+      ]
+    },
+    {
+      "family": "动量与震荡",
+      "required": 8,
+      "verified": 1,
+      "partial": 7,
+      "items": [
+        {
+          "requirement": "KDJ",
+          "target": "KDJ",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": true,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v1.py::_v1_kdj; domain=outputs=['rsv', 'k', 'd', 'j'];params=['d_period', 'k_period', 'n'];price_mode=CALLER_DECLARED;warmup=9;unit=INDEX_0_100; dimensions={FORMULA_VALIDATED=True,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v1-compat.xml;reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators/test_indicator_formulas_v1.py::test_kdj_v1_matches_independent_oracle; missing_dimensions=ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）; assert(test_kdj_v1_matches_independent_oracle)=KDJ(K/D/J) 逐值比对独立 oracle（V1 兼容套件，参数化）"
+        },
+        {
+          "requirement": "RSI",
+          "target": "RSI",
+          "status": "VERIFIED",
+          "met": true,
+          "dimensions": {
+            "FORMULA_VALIDATED": true,
+            "ENTRYPOINT_VALIDATED": true
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py::rsi; domain=outputs=['rsi'];params=['price', 'window'];price_mode=CALLER_DECLARED;warmup=15;unit=INDEX_0_100; dimensions={FORMULA_VALIDATED=True,ENTRYPOINT_VALIDATED=True}; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_rsi_matches_oracle; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）; assert(test_rsi_matches_oracle)=逐值比对独立 oracle（Wilder 平滑）; assert(test_v2_endpoint_runs_and_reports_versions)=HTTP 入口真实消费 RSI+EMA 并产生成交，回显版本身份"
+        },
+        {
+          "requirement": "CCI",
+          "target": "CCI",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": false,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py::cci; domain=outputs=['cci', 'typical_price'];params=['window'];price_mode=CALLER_DECLARED;warmup=14;unit=PRICE; dimensions={FORMULA_VALIDATED=False,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; missing_dimensions=FORMULA_VALIDATED,ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）"
+        },
+        {
+          "requirement": "Williams %R",
+          "target": "WILLIAMS_R",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": true,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py::williams_r; domain=outputs=['wr', 'hhv', 'llv'];params=['window'];price_mode=CALLER_DECLARED;warmup=14;unit=INDEX_0_100; dimensions={FORMULA_VALIDATED=True,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_williams_r_matches_oracle; missing_dimensions=ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）; assert(test_williams_r_matches_oracle)=逐值比对独立 oracle，且断言取值 0~100 非负"
+        },
+        {
+          "requirement": "ROC",
+          "target": "ROC",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": true,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py::roc; domain=outputs=['roc', 'ref_close'];params=['price', 'window'];price_mode=CALLER_DECLARED;warmup=13;unit=PERCENT; dimensions={FORMULA_VALIDATED=True,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_obv_roc_mtm_bias_match_oracle; missing_dimensions=ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）; assert(test_obv_roc_mtm_bias_match_oracle)=OBV/ROC/MTM/BIAS 四项逐值比对独立 oracle"
+        },
+        {
+          "requirement": "MTM/MOM",
+          "target": "MTM",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": true,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py::mtm; domain=outputs=['mtm', 'ref_close'];params=['price', 'window'];price_mode=CALLER_DECLARED;warmup=13;unit=PRICE; dimensions={FORMULA_VALIDATED=True,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_obv_roc_mtm_bias_match_oracle; missing_dimensions=ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）; assert(test_obv_roc_mtm_bias_match_oracle)=OBV/ROC/MTM/BIAS 四项逐值比对独立 oracle"
+        },
+        {
+          "requirement": "BIAS",
+          "target": "BIAS",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": true,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py::bias; domain=outputs=['bias', 'ma'];params=['price', 'window'];price_mode=CALLER_DECLARED;warmup=6;unit=PERCENT; dimensions={FORMULA_VALIDATED=True,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_obv_roc_mtm_bias_match_oracle; missing_dimensions=ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）; assert(test_obv_roc_mtm_bias_match_oracle)=OBV/ROC/MTM/BIAS 四项逐值比对独立 oracle"
+        },
+        {
+          "requirement": "TRIX",
+          "target": "TRIX",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": false,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py::trix; domain=outputs=['trix', 'trix_ma'];params=['price', 'signal', 'window'];price_mode=CALLER_DECLARED;warmup=45;unit=PERCENT; dimensions={FORMULA_VALIDATED=False,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; missing_dimensions=FORMULA_VALIDATED,ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）"
+        }
+      ]
+    },
+    {
+      "family": "波动与通道",
+      "required": 6,
+      "verified": 1,
+      "partial": 5,
+      "items": [
+        {
+          "requirement": "TR",
+          "target": "TRUE_RANGE",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": false,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py::true_range; domain=outputs=['tr'];params=[];price_mode=CALLER_DECLARED;warmup=1;unit=PRICE; dimensions={FORMULA_VALIDATED=False,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; missing_dimensions=FORMULA_VALIDATED,ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）"
+        },
+        {
+          "requirement": "ATR",
+          "target": "ATR",
+          "status": "VERIFIED",
+          "met": true,
+          "dimensions": {
+            "FORMULA_VALIDATED": true,
+            "ENTRYPOINT_VALIDATED": true
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py::atr; domain=outputs=['atr', 'tr'];params=['window'];price_mode=CALLER_DECLARED;warmup=14;unit=PRICE; dimensions={FORMULA_VALIDATED=True,ENTRYPOINT_VALIDATED=True}; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_atr_matches_oracle; nodeid=tests/pr15_residual/test_pr15_residual_v1.py::test_pr1502_atr7_and_atr14_differ_and_are_consumed_separately; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）; assert(test_atr_matches_oracle)=逐值比对独立 oracle（Wilder TR 平滑）; assert(test_pr1502_atr7_and_atr14_differ_and_are_consumed_separately)=ATR7/ATR14 各自绑定不同规则，两条退出线不相等"
+        },
+        {
+          "requirement": "NATR",
+          "target": "NATR",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": false,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py::natr; domain=outputs=['natr', 'atr'];params=['window'];price_mode=CALLER_DECLARED;warmup=14;unit=PERCENT; dimensions={FORMULA_VALIDATED=False,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; missing_dimensions=FORMULA_VALIDATED,ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）"
+        },
+        {
+          "requirement": "滚动波动率",
+          "target": "ROLLING_VOLATILITY",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": false,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py::rolling_volatility; domain=outputs=['volatility', 'return'];params=['annualize', 'ddof', 'price', 'window'];price_mode=CALLER_DECLARED;warmup=21;unit=RATIO; dimensions={FORMULA_VALIDATED=False,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; missing_dimensions=FORMULA_VALIDATED,ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）"
+        },
+        {
+          "requirement": "BOLL/BBANDS",
+          "target": "BOLLINGER",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": true,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py::bollinger; domain=outputs=['middle', 'upper', 'lower', 'bandwidth', 'percent_b', 'std'];params=['ddof', 'multiplier', 'price', 'window'];price_mode=CALLER_DECLARED;warmup=20;unit=PRICE; dimensions={FORMULA_VALIDATED=True,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_bollinger_matches_oracle; missing_dimensions=ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）; assert(test_bollinger_matches_oracle)=逐值比对独立 oracle，ddof=0 与 ddof=1 分别验证"
+        },
+        {
+          "requirement": "Donchian",
+          "target": "DONCHIAN",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": false,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py::donchian; domain=outputs=['upper', 'lower', 'middle'];params=['shift', 'window'];price_mode=CALLER_DECLARED;warmup=20;unit=PRICE; dimensions={FORMULA_VALIDATED=False,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; missing_dimensions=FORMULA_VALIDATED,ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）"
+        }
+      ]
+    },
+    {
+      "family": "量价与资金代理",
+      "required": 8,
+      "verified": 0,
+      "partial": 8,
+      "items": [
+        {
+          "requirement": "成交量均线",
+          "target": "VOLUME_MA",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": false,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py::volume_ma; domain=outputs=['volume_ma'];params=['window'];price_mode=CALLER_DECLARED;warmup=20;unit=SHARES; dimensions={FORMULA_VALIDATED=False,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; missing_dimensions=FORMULA_VALIDATED,ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）"
+        },
+        {
+          "requirement": "成交额均线",
+          "target": "AMOUNT_MA",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": false,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py::amount_ma; domain=outputs=['amount_ma'];params=['window'];price_mode=CALLER_DECLARED;warmup=20;unit=CURRENCY; dimensions={FORMULA_VALIDATED=False,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; missing_dimensions=FORMULA_VALIDATED,ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）"
+        },
+        {
+          "requirement": "RVOL",
+          "target": "RVOL_INCL_CURRENT",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": false,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py::rvol_incl_current; domain=outputs=['rvol', 'volume_ma'];params=['window'];price_mode=CALLER_DECLARED;warmup=20;unit=RATIO; dimensions={FORMULA_VALIDATED=False,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; missing_dimensions=FORMULA_VALIDATED,ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）"
+        },
+        {
+          "requirement": "OBV",
+          "target": "OBV",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": true,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py::obv; domain=outputs=['obv'];params=[];price_mode=CALLER_DECLARED;warmup=1;unit=SHARES; dimensions={FORMULA_VALIDATED=True,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_obv_roc_mtm_bias_match_oracle; missing_dimensions=ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）; assert(test_obv_roc_mtm_bias_match_oracle)=OBV/ROC/MTM/BIAS 四项逐值比对独立 oracle"
+        },
+        {
+          "requirement": "MFI",
+          "target": "MFI",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": false,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py::mfi; domain=outputs=['mfi', 'typical_price'];params=['window'];price_mode=CALLER_DECLARED;warmup=15;unit=INDEX_0_100; dimensions={FORMULA_VALIDATED=False,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; missing_dimensions=FORMULA_VALIDATED,ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）"
+        },
+        {
+          "requirement": "A/D",
+          "target": "ACCUMULATION_DISTRIBUTION",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": false,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py::accumulation_distribution; domain=outputs=['ad_line', 'money_flow_volume'];params=[];price_mode=CALLER_DECLARED;warmup=1;unit=SHARES; dimensions={FORMULA_VALIDATED=False,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; missing_dimensions=FORMULA_VALIDATED,ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）"
+        },
+        {
+          "requirement": "CMF",
+          "target": "CHAIKIN_MONEY_FLOW",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": false,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py::chaikin_money_flow; domain=outputs=['cmf', 'mfv_sum', 'volume_sum'];params=['window'];price_mode=CALLER_DECLARED;warmup=20;unit=RATIO; dimensions={FORMULA_VALIDATED=False,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; missing_dimensions=FORMULA_VALIDATED,ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）"
+        },
+        {
+          "requirement": "PVT",
+          "target": "PVT",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": false,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py::pvt; domain=outputs=['pvt'];params=[];price_mode=CALLER_DECLARED;warmup=1;unit=SHARES; dimensions={FORMULA_VALIDATED=False,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; missing_dimensions=FORMULA_VALIDATED,ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）"
+        }
+      ]
+    },
+    {
+      "family": "价格结构",
+      "required": 5,
+      "verified": 0,
+      "partial": 5,
+      "items": [
+        {
+          "requirement": "区间高低点",
+          "target": "PRICE_EXTREMES",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": false,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py::price_extremes; domain=outputs=['hhv', 'llv'];params=['window'];price_mode=CALLER_DECLARED;warmup=20;unit=PRICE; dimensions={FORMULA_VALIDATED=False,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; missing_dimensions=FORMULA_VALIDATED,ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）"
+        },
+        {
+          "requirement": "前N根突破",
+          "target": "PRIOR_BREAKOUT",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": false,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py::prior_breakout; domain=outputs=['prior_high', 'prior_low', 'break_up', 'break_down'];params=['window'];price_mode=CALLER_DECLARED;warmup=21;unit=PRICE; dimensions={FORMULA_VALIDATED=False,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; missing_dimensions=FORMULA_VALIDATED,ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）"
+        },
+        {
+          "requirement": "回撤/振幅",
+          "target": "DRAWDOWN_FROM_PEAK",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": false,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py::drawdown_from_peak; domain=outputs=['drawdown', 'peak'];params=['price', 'window'];price_mode=CALLER_DECLARED;warmup=60;unit=RATIO; dimensions={FORMULA_VALIDATED=False,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; missing_dimensions=FORMULA_VALIDATED,ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）"
+        },
+        {
+          "requirement": "实体/上下影线/缺口比例",
+          "target": "BAR_SHAPE",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": true,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py::bar_shape; domain=outputs=['body_ratio', 'upper_shadow_ratio', 'lower_shadow_ratio', 'range_pct', 'gap_pct'];params=['window'];price_mode=CALLER_DECLARED;warmup=1;unit=RATIO; dimensions={FORMULA_VALIDATED=True,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_hlc3_slope_zscore_shape_match_oracle; missing_dimensions=ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）; assert(test_hlc3_slope_zscore_shape_match_oracle)=rolling_slope / time_series_zscore / bar_shape 逐值比对独立 oracle"
+        },
+        {
+          "requirement": "连续上涨下跌",
+          "target": "STREAK",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": true,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py::streak; domain=outputs=['up_streak', 'down_streak'];params=['price'];price_mode=CALLER_DECLARED;warmup=1;unit=BARS; dimensions={FORMULA_VALIDATED=True,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_streak_matches_oracle; missing_dimensions=ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）; assert(test_streak_matches_oracle)=连续涨跌计数逐值比对独立 oracle"
+        }
+      ]
+    },
+    {
+      "family": "统计与截面组合",
+      "required": 7,
+      "verified": 2,
+      "partial": 5,
+      "items": [
+        {
+          "requirement": "历史收益",
+          "target": "HISTORICAL_RETURN",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": false,
+            "ENTRYPOINT_VALIDATED": true
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py::historical_return; domain=outputs=['return', 'ref_close'];params=['log', 'price', 'window'];price_mode=CALLER_DECLARED;warmup=21;unit=RATIO; dimensions={FORMULA_VALIDATED=False,ENTRYPOINT_VALIDATED=True}; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/pr15_residual/test_pr15_residual_v1.py::test_pr1504_ranking_exit_produces_real_exit_in_public_service; missing_dimensions=FORMULA_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）; assert(test_pr1504_ranking_exit_produces_real_exit_in_public_service)=排名条件经公开服务产生真实退出"
+        },
+        {
+          "requirement": "线性斜率",
+          "target": "ROLLING_SLOPE",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": true,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py::rolling_slope; domain=outputs=['slope'];params=['price', 'window'];price_mode=CALLER_DECLARED;warmup=20;unit=PRICE_PER_BAR; dimensions={FORMULA_VALIDATED=True,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_hlc3_slope_zscore_shape_match_oracle; missing_dimensions=ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）; assert(test_hlc3_slope_zscore_shape_match_oracle)=rolling_slope / time_series_zscore / bar_shape 逐值比对独立 oracle"
+        },
+        {
+          "requirement": "时间序列标准化",
+          "target": "TIME_SERIES_ZSCORE",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": true,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py::time_series_zscore; domain=outputs=['ts_zscore', 'mean', 'std'];params=['ddof', 'price', 'window'];price_mode=CALLER_DECLARED;warmup=60;unit=RATIO; dimensions={FORMULA_VALIDATED=True,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_hlc3_slope_zscore_shape_match_oracle; missing_dimensions=ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）; assert(test_hlc3_slope_zscore_shape_match_oracle)=rolling_slope / time_series_zscore / bar_shape 逐值比对独立 oracle"
+        },
+        {
+          "requirement": "相关系数",
+          "target": "OPERATOR_LAYER:correlation",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": false,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=research/unified_factor.py（既有，本轮未改）; domain=面板级算子层; dimensions={FORMULA_VALIDATED=False,ENTRYPOINT_VALIDATED=False}; partial_reason=未接 V2 单证券公开链路与账户链; nodeid=无（本轮未接线）; junit=不适用"
+        },
+        {
+          "requirement": "Beta",
+          "target": "OPERATOR_LAYER:beta",
+          "status": "PARTIAL",
+          "met": false,
+          "dimensions": {
+            "FORMULA_VALIDATED": false,
+            "ENTRYPOINT_VALIDATED": false
+          },
+          "evidence": "impl=research/unified_factor.py（既有，本轮未改）; domain=面板级算子层; dimensions={FORMULA_VALIDATED=False,ENTRYPOINT_VALIDATED=False}; partial_reason=未接 V2 单证券公开链路与账户链; nodeid=无（本轮未接线）; junit=不适用"
+        },
+        {
+          "requirement": "截面rank/percentile",
+          "target": "CONDITION_LAYER:rank",
+          "status": "VERIFIED",
+          "met": true,
+          "dimensions": {
+            "FORMULA_VALIDATED": true
+          },
+          "evidence": "impl=src/chanlun_trader/engine/conditions_v2.py; domain=条件层算子:截面rank/percentile; sub_dimensions={rank=PARTIAL,percentile=VALIDATED}; dimensions={FORMULA_VALIDATED=True}; suite=V2; junit=reports/junit-v2-new.xml; nodeid=tests/conditions_v2/test_condition_layer_v2.py::test_cross_sectional_percentile_ranks_within_bar_only; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; assert(test_cross_sectional_percentile_ranks_within_bar_only)=断言内容未登记; assert(test_registry_snapshot_has_required_contract_fields)=断言内容未登记"
+        },
+        {
+          "requirement": "Top-N",
+          "target": "CONDITION_LAYER:top_n",
+          "status": "VERIFIED",
+          "met": true,
+          "dimensions": {
+            "FORMULA_VALIDATED": true
+          },
+          "evidence": "impl=src/chanlun_trader/engine/conditions_v2.py; domain=条件层算子:Top-N; sub_dimensions={top_n=VALIDATED}; dimensions={FORMULA_VALIDATED=True}; suite=V2; junit=reports/junit-v2-new.xml; nodeid=tests/conditions_v2/test_condition_layer_v2.py::test_cross_sectional_top_n_stable_tie_break; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; assert(test_cross_sectional_top_n_stable_tie_break)=断言内容未登记; assert(test_registry_snapshot_has_required_contract_fields)=断言内容未登记"
+        }
+      ]
+    }
+  ],
+  "exit_rules": {
+    "v1_reused": [
+      "FIXED_COST_STOP",
+      "FIXED_TAKE_PROFIT",
+      "TRAILING_CLOSE_STOP",
+      "FIXED_HOLD"
+    ],
+    "v2_added": [
+      "ATR_DISTANCE_STOP",
+      "ATR_TRAILING_STOP",
+      "INDICATOR_CONDITION_EXIT",
+      "REVERSE_SIGNAL_EXIT",
+      "STRUCTURE_PRICE_STOP"
+    ],
+    "unsupported": [
+      "INTRADAY_TOUCH_STOP",
+      "TICK_LEVEL_EXIT",
+      "MULTI_TIMEFRAME_EXIT"
+    ],
+    "supported_total": [
+      "FIXED_COST_STOP",
+      "FIXED_TAKE_PROFIT",
+      "TRAILING_CLOSE_STOP",
+      "FIXED_HOLD",
+      "ATR_DISTANCE_STOP",
+      "ATR_TRAILING_STOP",
+      "INDICATOR_CONDITION_EXIT",
+      "REVERSE_SIGNAL_EXIT",
+      "STRUCTURE_PRICE_STOP"
+    ]
+  },
+  "custom_fixtures": {
+    "VOLUME_BREAKOUT_SCORE": "多输入（价格结构 × 量价）",
+    "TREND_STRENGTH_RATIO": "多输入（ADX × 均线距离）",
+    "RSI_REGIME_FLAG": "依赖另一个指标（消费 RSI 输出）",
+    "dependencies": {
+      "VOLUME_BREAKOUT_SCORE": [],
+      "TREND_STRENGTH_RATIO": [],
+      "RSI_REGIME_FLAG": [
+        "RSI"
+      ]
+    }
+  },
+  "status_dimensions": [
+    "IMPLEMENTED",
+    "FORMULA_VALIDATED",
+    "CAUSALITY_VALIDATED",
+    "REGISTERED",
+    "ENTRYPOINT_WIRED",
+    "EXECUTION_BEHAVIOR_VALIDATED",
+    "ACCOUNTING_VALIDATED",
+    "REAL_DATA_VALIDATED",
+    "PROFITABILITY_VALIDATED"
+  ],
+  "environment_failures": {
+    "note": "与 BASE_SHA 干净工作树逐条一致；非本轮引入，不计为通过。",
+    "isolated_run": {
+      "failed": 193,
+      "errors_included": true
+    },
+    "categories": {
+      "本地未设合成隔离变量的治理门禁": [
+        "NOVELTY_IMPORT_ISOLATION_REQUIRED",
+        "OBJECTIVE_V2_SYNTHETIC_GOVERNANCE_REQUIRED",
+        "BATCH_SYNTHETIC_GOVERNANCE_REQUIRED"
+      ],
+      "缺本机研究工件": [
+        "FileNotFoundError: data/research/event_store/*.parquet"
+      ],
+      "前端未构建": [
+        "tests/test_webapp.py 6 项 404"
+      ],
+      "需封存期真实产物": [
+        "tests/research_integrity/test_clean_rerun_artifacts.py"
+      ]
+    },
+    "detailed_reference": "reports/behavior_acceptance_v1/ENVIRONMENT_FAILURES.json"
+  }
+}

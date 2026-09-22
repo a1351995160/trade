@@ -1,0 +1,97 @@
+{
+  "scope_version": "BT_V2_ACCEPTANCE_SCOPE_V1",
+  "frozen_at": "BEFORE_TEST_EXECUTION",
+  "principle": "先冻结范围与分母；后续新发现只能追加或显式说明，不在失败后缩小分母。",
+  "part_a_inventory_and_risk": {
+    "description": "现有能力全量盘点及风险处置",
+    "registered_indicators": 51,
+    "declared_signals_inventory": 24,
+    "disposition": "已注册项纳入矩阵；既有声明项登记为 LEGACY_UNCERTIFIED，不冒充 V2 认证"
+  },
+  "part_b_minimum_set": {
+    "description": "第3节通用基础集合及统一链路",
+    "required": 54,
+    "verified": 10,
+    "partial": 44,
+    "not_verified": 0,
+    "verification_rule": "VERIFIED 要求同时具备实现 + 独立数值 oracle + 契约测试 + 公开入口测试；仅注册/映射完成标 PARTIAL。",
+    "families": [
+      "基础算子",
+      "均线与趋势",
+      "动量与震荡",
+      "波动与通道",
+      "量价与资金代理",
+      "价格结构",
+      "统计与截面组合"
+    ]
+  },
+  "part_c_extensibility": {
+    "description": "可扩展机制：新增合法指标通过注册、契约与自动测试接入",
+    "mechanism": "IndicatorRegistry + IndicatorSpec + 受限表达式层",
+    "custom_fixtures": [
+      "VOLUME_BREAKOUT_SCORE",
+      "TREND_STRENGTH_RATIO",
+      "RSI_REGIME_FLAG"
+    ],
+    "engine_whitelist_changes_required": 0
+  },
+  "test_denominator": {
+    "note": "实际分母（测试执行后回填）；V1 兼容回归与 V2 新增分别统计。",
+    "v2_new_tests": {
+      "suites": {
+        "tests/indicators_v2": 58,
+        "tests/conditions_v2": 26,
+        "tests/exits_v2": 28,
+        "tests/entrypoints_v2": 9
+      },
+      "v2_main_subtotal": 121,
+      "pr15_targeted_suites": {
+        "tests/pr15_remediation": 30,
+        "tests/pr15_residual": 27,
+        "tests/pr15_dependency": 14
+      },
+      "pr15_targeted_subtotal": 71,
+      "collected_and_passed": 192,
+      "junit": "reports/junit-v2-new.xml",
+      "evidence_types": {
+        "helper": "直接调用注册表/求值器（公式逐值 oracle）",
+        "service": "调用 run_behavior_backtest_v2",
+        "http": "FastAPI TestClient POST /api/backtest/behavior/v2",
+        "cli": "真实子进程执行 scripts/run_behavior_backtest_v2.py"
+      },
+      "note": "PR15 定向三轮合计 71 项（第一轮 30 + 残留与指纹 27 + 依赖执行 14），经真实 API/CLI 与真实注册表入口取得 red/green；分母按证据来源分开统计，不合并成单一数字宣称全部已验证公式。"
+    },
+    "v1_compatibility_regression": {
+      "suites": [
+        "tests/behavior",
+        "tests/indicators",
+        "tests/legacy_entry",
+        "tests/engine",
+        "tests/golden",
+        "tests/lookahead",
+        "tests/regression"
+      ],
+      "collected_and_passed": 139,
+      "junit": "reports/junit-v1-compat.xml"
+    },
+    "full_suite_comparison": {
+      "reference": "reports/v2_acceptance/V1_COMPATIBILITY_REGRESSION.json",
+      "baseline_failed": 170,
+      "v2_head_failed": 170,
+      "conclusion": "失败总数一致；差异为既有顺序相关不稳定（Windows GBK/共享状态），非 V2 引入"
+    },
+    "ci_platforms": [
+      "ubuntu-latest",
+      "windows-latest"
+    ],
+    "environment_failures": "按 nodeid 对账，不计为通过；逐条清单见 reports/behavior_acceptance_v1/ENVIRONMENT_FAILURES.json"
+  },
+  "explicitly_out_of_scope": {
+    "intraday_touch": "NOT_SUPPORTED",
+    "tick_or_orderbook": "NOT_SUPPORTED",
+    "multi_timeframe_execution": "NOT_SUPPORTED",
+    "real_market_data": "NOT_READ",
+    "strategy_profit_search": "NOT_RUN",
+    "real_research_budget_or_trial": "UNCHANGED"
+  }
+}
