@@ -13,6 +13,9 @@ class ExecutionPolicy:
     workspace_kind: str = "EXTERNAL"
     allow_structural: bool = False
     allow_process_start: bool = False
+    # 只读计算端点（对请求体内合成数据做纯计算，不写研究状态）。
+    # 默认 False：默认策略下所有 POST 仍一律拒绝，边界不变。
+    allow_readonly_compute: bool = False
 
     @property
     def governance_allowed(self) -> bool:

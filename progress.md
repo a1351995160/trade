@@ -1937,3 +1937,24 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 合并组合64项通过，3项历史授权到期失败；限定合成测试时钟后该文件13项通过。首次复用测试时钟产生循环导入，改为模块内合成时钟后收集及测试通过；生产时钟/期限不改。远端SonarCloud旧提交质量门禁未通过，未绕过。
 ### Notes
 冲突文件逐项按两侧实际差异解决，保留evidence_paths及owner/repair引用校验；test_windowed_actions_and_train_grant.py仅合成时钟稳定化。原工作区未切分支、未stash、未改数据及预算。回滚采用git revert -m 1本合并提交，不reset原工作区。
+
+## 2026-09-15 - Task: 回测行为验收 V1（指标、日线退出与公共入口）
+### What was done
+核清旧 BacktestRunner、V2 BacktestEngineV2、经典 Web 回测接口与研究服务的实际调用关系，建立版本化指标与日线退出口径并接通公共 API/CLI。补齐 MACD_V1、五类分别命名的 MACD 条件、KDJ(9,3,3)、MA/EMA/CROSS，以及"收盘判断、次一 session 开盘尝试执行"的固定成本止损、固定止盈、最高收盘价移动止损、固定持有退出；成本锚为该 lot 实际成交价。修复旧入口大盘过滤在开盘读取当日未来收盘的前视缺陷，并修正日线撮合在容量为零时退回全量成交的行为。盘中触价、Tick/盘口与多周期请求明确拒绝，未静默降级。
+### Testing
+在 BASE_SHA=d14178f 的干净工作树与本轮分支分别运行完整 pytest：失败集合完全一致（335 项，均为缺少本机研究数据/未构建前端等既有环境失败），无新增失败、无回归；通过数由 1711 增至 1803。本轮新增 92 项测试（公式 oracle、四类退出、完整账户链 A-J、独立手算账本、API/CLI 语义一致、旧入口前视红转绿）全部通过，JUnit 已生成。旧入口前视与容量为零两项为真实业务 red 到 green。未执行真实行情、真实绩效或真实研究授权。
+### Notes
+- src/chanlun_trader/engine/indicators_v1.py、conditions_v1.py、daily_exit_v1.py、behavior_service_v1.py：新增版本化指标、条件、日线退出与显式模式服务。
+- src/chanlun_trader/backtest.py：修复旧入口大盘过滤开盘前视并 fail-closed。
+- src/chanlun_trader/engine/fill.py：容量为零时拒绝成交，不退回全量。
+- src/chanlun_trader/execution_policy.py、webapp.py：新增默认关闭的只读计算开关与行为回测入口、合同只读端点。
+- scripts/run_behavior_backtest_v1.py、scripts/emit_behavior_acceptance_evidence_v1.py：CLI 入口与证据生成。
+- tests/indicators、tests/behavior、tests/legacy_entry：公式、退出、账户链、手算账本、公共入口与旧入口回归。
+- docs/BACKTEST_BEHAVIOR_ACCEPTANCE_V1.md、reports/behavior_acceptance_v1/CAPABILITY_MATRIX.json：口径、入口、能力矩阵与未支持范围。
+- .github/workflows/backtest-behavior-acceptance.yml：双平台 CI 与 JUnit 上传。
+- 回滚点 d14178f；可 git revert 本轮提交，不影响旧目录与既有研究账目。
+
+### Testing（V1 收尾追加）
+- 以 CI 同等隔离环境（CHANLUN_TEST_ISOLATION=1）在 BASE_SHA 干净工作树与本分支分别运行完整 pytest：失败集合逐条一致（193 项，均为本机缺少研究数据/前端未构建等既有环境失败），零新增失败、零回归；通过数 1853 增至 1963。
+- SonarCloud 4 条 SECURITY 项（2 HIGH 路径穿越 + 2 MEDIUM workflow 依赖未锁定）全部按证据以代码修复关闭，未删除检查、未扩大排除项、未加抑制标注；新增路径越界回归测试。
+- 正式估值接线：改为经 official_equity_curve 抽取，证明独立日历必填、缺整日/缺末日抛错、NaN/Inf 拒绝；入口增加声明日历的数据覆盖校验。修复 official_equity_curve 非数值权益泄漏 ValueError 的缺陷。

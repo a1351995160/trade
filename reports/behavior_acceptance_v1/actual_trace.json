@@ -1,0 +1,1049 @@
+{
+  "mode": "BT_BEHAVIOR_DAILY_V1",
+  "engine_version": "2.0.0",
+  "indicator_contract": "BT_INDICATORS_V1",
+  "indicator_versions": {
+    "macd": "MACD_V1",
+    "kdj": "KDJ_V1"
+  },
+  "condition_contract": "BT_MACD_CONDITIONS_V1",
+  "exit_contract": "BT_DAILY_EXIT_V1",
+  "exit_execution_mode": "CLOSE_CONFIRM_NEXT_SESSION_OPEN",
+  "price_mode": "RAW_EXECUTION_QFQ_FEATURE_DECLARED",
+  "time_rules": {
+    "signal_time": "COMPLETED_DAILY_CLOSE_15:00_ASIA_SHANGHAI",
+    "earliest_execution": "NEXT_SESSION_OPEN_09:30",
+    "timezone": "Asia/Shanghai",
+    "intraday_touch": "NOT_SUPPORTED",
+    "multi_timeframe": "NOT_SUPPORTED"
+  },
+  "resolved_config": {
+    "request": {
+      "mode": "BT_BEHAVIOR_DAILY_V1",
+      "symbols": [
+        "600000.SH"
+      ],
+      "entry_conditions": [
+        "ABOVE_ZERO_GOLDEN_CROSS"
+      ],
+      "macd": {
+        "fast": 12,
+        "slow": 26,
+        "signal": 9
+      },
+      "kdj": {
+        "n": 9,
+        "k_period": 3,
+        "d_period": 3
+      },
+      "exit_rules": {
+        "contract_version": "BT_DAILY_EXIT_V1",
+        "execution_mode": "CLOSE_CONFIRM_NEXT_SESSION_OPEN",
+        "exit_types": [
+          "FIXED_COST_STOP",
+          "FIXED_TAKE_PROFIT",
+          "TRAILING_CLOSE_STOP",
+          "FIXED_HOLD"
+        ],
+        "stop_loss_pct": 0.03,
+        "take_profit_pct": 0.1,
+        "trailing_activate_pct": 0.05,
+        "trailing_pct": 0.08,
+        "fixed_holding_sessions": 20,
+        "cost_anchor": "ACTUAL_LOT_ENTRY_FILL_PRICE_EXCLUDING_COMMISSION",
+        "trigger_price_field": "COMPLETED_DAILY_CLOSE_RAW",
+        "earliest_execution": "NEXT_SESSION_OPEN",
+        "reason_priority": [
+          "EXIT_FIXED_COST_STOP",
+          "EXIT_TRAILING_STOP",
+          "EXIT_FIXED_TAKE_PROFIT",
+          "EXIT_STRUCTURE_OR_INDICATOR",
+          "EXIT_FIXED_HOLD"
+        ]
+      },
+      "initial_cash": 100000.0,
+      "max_positions": 1,
+      "max_position_weight": 1.0,
+      "commission_rate": 0.00025,
+      "min_commission": 5.0,
+      "stamp_tax_rate": 0.0005,
+      "slippage_bps": 0.001,
+      "max_holding_days": 0
+    },
+    "engine_config_hash": "ba8e6c37b6b3",
+    "condition_trace_rows": {
+      "600000.SH": 46
+    },
+    "conditions_matched": {
+      "600000.SH": 1
+    }
+  },
+  "signals": [
+    {
+      "signal_id": "BT_BEHAVIOR_V1:600000.SH:20241017",
+      "symbol": "600000.SH",
+      "generated_at": "2024-10-17 15:00:00+08:00",
+      "direction": "BUY",
+      "signal_type": "ABOVE_ZERO_GOLDEN_CROSS",
+      "execution_policy": "NEXT_SESSION_OPEN"
+    }
+  ],
+  "orders": [
+    {
+      "order_id": "ord-000001",
+      "symbol": "600000.SH",
+      "side": "BUY",
+      "quantity": 9900,
+      "filled_quantity": 9900,
+      "status": "FILLED",
+      "created_at": "2024-10-17 15:00:00+08:00",
+      "eligible_at": "2024-10-18 09:30:00+08:00",
+      "reason_code": "ENTRY_SIGNAL",
+      "lot_id": null
+    }
+  ],
+  "fills": [
+    {
+      "fill_time": "2024-10-18 09:30:00+08:00",
+      "symbol": "600000.SH",
+      "side": "BUY",
+      "quantity": 9900,
+      "price": 10.01,
+      "fee": 24.7748,
+      "gross_value": 99099.0,
+      "lot_id": "lot-000001",
+      "order_id": "ord-000001",
+      "realized_pnl": 0.0,
+      "reality_flag": "OK"
+    }
+  ],
+  "lots": [
+    {
+      "lot_id": "lot-000001",
+      "symbol": "600000.SH",
+      "quantity": 9900,
+      "remaining_quantity": 9900,
+      "entry_price": 10.01,
+      "cost": 99123.7748,
+      "buy_time": "2024-10-18 09:30:00+08:00",
+      "sellable_from": "2024-10-19 09:30:00+08:00",
+      "entry_session": 20241018,
+      "entry_session_index": 34,
+      "exit_state": "OPEN",
+      "exit_reason": ""
+    }
+  ],
+  "trades": [
+    {
+      "trade_id": "tr-000001",
+      "symbol": "600000.SH",
+      "side": "BUY",
+      "quantity": 9900,
+      "price": 10.01,
+      "fee": 24.7748,
+      "fill_time": "2024-10-18 09:30:00+08:00",
+      "lot_id": "lot-000001",
+      "realized_pnl": 0.0,
+      "reality_flag": "OK"
+    }
+  ],
+  "rejections": [],
+  "cash": 876.2252000000008,
+  "initial_cash": 100000.0,
+  "equity_curve": [
+    {
+      "date": 20240902,
+      "timestamp": "2024-09-02T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 1,
+      "equity": 100000.0,
+      "cash": 100000.0,
+      "market_value": 0.0
+    },
+    {
+      "date": 20240903,
+      "timestamp": "2024-09-03T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 2,
+      "equity": 100000.0,
+      "cash": 100000.0,
+      "market_value": 0.0
+    },
+    {
+      "date": 20240904,
+      "timestamp": "2024-09-04T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 3,
+      "equity": 100000.0,
+      "cash": 100000.0,
+      "market_value": 0.0
+    },
+    {
+      "date": 20240905,
+      "timestamp": "2024-09-05T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 4,
+      "equity": 100000.0,
+      "cash": 100000.0,
+      "market_value": 0.0
+    },
+    {
+      "date": 20240906,
+      "timestamp": "2024-09-06T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 5,
+      "equity": 100000.0,
+      "cash": 100000.0,
+      "market_value": 0.0
+    },
+    {
+      "date": 20240909,
+      "timestamp": "2024-09-09T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 6,
+      "equity": 100000.0,
+      "cash": 100000.0,
+      "market_value": 0.0
+    },
+    {
+      "date": 20240910,
+      "timestamp": "2024-09-10T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 7,
+      "equity": 100000.0,
+      "cash": 100000.0,
+      "market_value": 0.0
+    },
+    {
+      "date": 20240911,
+      "timestamp": "2024-09-11T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 8,
+      "equity": 100000.0,
+      "cash": 100000.0,
+      "market_value": 0.0
+    },
+    {
+      "date": 20240912,
+      "timestamp": "2024-09-12T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 9,
+      "equity": 100000.0,
+      "cash": 100000.0,
+      "market_value": 0.0
+    },
+    {
+      "date": 20240913,
+      "timestamp": "2024-09-13T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 10,
+      "equity": 100000.0,
+      "cash": 100000.0,
+      "market_value": 0.0
+    },
+    {
+      "date": 20240916,
+      "timestamp": "2024-09-16T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 11,
+      "equity": 100000.0,
+      "cash": 100000.0,
+      "market_value": 0.0
+    },
+    {
+      "date": 20240917,
+      "timestamp": "2024-09-17T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 12,
+      "equity": 100000.0,
+      "cash": 100000.0,
+      "market_value": 0.0
+    },
+    {
+      "date": 20240918,
+      "timestamp": "2024-09-18T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 13,
+      "equity": 100000.0,
+      "cash": 100000.0,
+      "market_value": 0.0
+    },
+    {
+      "date": 20240919,
+      "timestamp": "2024-09-19T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 14,
+      "equity": 100000.0,
+      "cash": 100000.0,
+      "market_value": 0.0
+    },
+    {
+      "date": 20240920,
+      "timestamp": "2024-09-20T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 15,
+      "equity": 100000.0,
+      "cash": 100000.0,
+      "market_value": 0.0
+    },
+    {
+      "date": 20240923,
+      "timestamp": "2024-09-23T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 16,
+      "equity": 100000.0,
+      "cash": 100000.0,
+      "market_value": 0.0
+    },
+    {
+      "date": 20240924,
+      "timestamp": "2024-09-24T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 17,
+      "equity": 100000.0,
+      "cash": 100000.0,
+      "market_value": 0.0
+    },
+    {
+      "date": 20240925,
+      "timestamp": "2024-09-25T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 18,
+      "equity": 100000.0,
+      "cash": 100000.0,
+      "market_value": 0.0
+    },
+    {
+      "date": 20240926,
+      "timestamp": "2024-09-26T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 19,
+      "equity": 100000.0,
+      "cash": 100000.0,
+      "market_value": 0.0
+    },
+    {
+      "date": 20240927,
+      "timestamp": "2024-09-27T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 20,
+      "equity": 100000.0,
+      "cash": 100000.0,
+      "market_value": 0.0
+    },
+    {
+      "date": 20240930,
+      "timestamp": "2024-09-30T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 21,
+      "equity": 100000.0,
+      "cash": 100000.0,
+      "market_value": 0.0
+    },
+    {
+      "date": 20241001,
+      "timestamp": "2024-10-01T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 22,
+      "equity": 100000.0,
+      "cash": 100000.0,
+      "market_value": 0.0
+    },
+    {
+      "date": 20241002,
+      "timestamp": "2024-10-02T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 23,
+      "equity": 100000.0,
+      "cash": 100000.0,
+      "market_value": 0.0
+    },
+    {
+      "date": 20241003,
+      "timestamp": "2024-10-03T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 24,
+      "equity": 100000.0,
+      "cash": 100000.0,
+      "market_value": 0.0
+    },
+    {
+      "date": 20241004,
+      "timestamp": "2024-10-04T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 25,
+      "equity": 100000.0,
+      "cash": 100000.0,
+      "market_value": 0.0
+    },
+    {
+      "date": 20241007,
+      "timestamp": "2024-10-07T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 26,
+      "equity": 100000.0,
+      "cash": 100000.0,
+      "market_value": 0.0
+    },
+    {
+      "date": 20241008,
+      "timestamp": "2024-10-08T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 27,
+      "equity": 100000.0,
+      "cash": 100000.0,
+      "market_value": 0.0
+    },
+    {
+      "date": 20241009,
+      "timestamp": "2024-10-09T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 28,
+      "equity": 100000.0,
+      "cash": 100000.0,
+      "market_value": 0.0
+    },
+    {
+      "date": 20241010,
+      "timestamp": "2024-10-10T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 29,
+      "equity": 100000.0,
+      "cash": 100000.0,
+      "market_value": 0.0
+    },
+    {
+      "date": 20241011,
+      "timestamp": "2024-10-11T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 30,
+      "equity": 100000.0,
+      "cash": 100000.0,
+      "market_value": 0.0
+    },
+    {
+      "date": 20241014,
+      "timestamp": "2024-10-14T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 31,
+      "equity": 100000.0,
+      "cash": 100000.0,
+      "market_value": 0.0
+    },
+    {
+      "date": 20241015,
+      "timestamp": "2024-10-15T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 32,
+      "equity": 100000.0,
+      "cash": 100000.0,
+      "market_value": 0.0
+    },
+    {
+      "date": 20241016,
+      "timestamp": "2024-10-16T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 33,
+      "equity": 100000.0,
+      "cash": 100000.0,
+      "market_value": 0.0
+    },
+    {
+      "date": 20241017,
+      "timestamp": "2024-10-17T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 34,
+      "equity": 100000.0,
+      "cash": 100000.0,
+      "market_value": 0.0
+    },
+    {
+      "date": 20241018,
+      "timestamp": "2024-10-18T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 35,
+      "equity": 99876.2252,
+      "cash": 876.2252,
+      "market_value": 99000.0
+    },
+    {
+      "date": 20241021,
+      "timestamp": "2024-10-21T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 36,
+      "equity": 99876.2252,
+      "cash": 876.2252,
+      "market_value": 99000.0
+    },
+    {
+      "date": 20241022,
+      "timestamp": "2024-10-22T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 37,
+      "equity": 99876.2252,
+      "cash": 876.2252,
+      "market_value": 99000.0
+    },
+    {
+      "date": 20241023,
+      "timestamp": "2024-10-23T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 38,
+      "equity": 99876.2252,
+      "cash": 876.2252,
+      "market_value": 99000.0
+    },
+    {
+      "date": 20241024,
+      "timestamp": "2024-10-24T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 39,
+      "equity": 99876.2252,
+      "cash": 876.2252,
+      "market_value": 99000.0
+    },
+    {
+      "date": 20241025,
+      "timestamp": "2024-10-25T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 40,
+      "equity": 99876.2252,
+      "cash": 876.2252,
+      "market_value": 99000.0
+    },
+    {
+      "date": 20241028,
+      "timestamp": "2024-10-28T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 41,
+      "equity": 99876.2252,
+      "cash": 876.2252,
+      "market_value": 99000.0
+    },
+    {
+      "date": 20241029,
+      "timestamp": "2024-10-29T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 42,
+      "equity": 99876.2252,
+      "cash": 876.2252,
+      "market_value": 99000.0
+    },
+    {
+      "date": 20241030,
+      "timestamp": "2024-10-30T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 43,
+      "equity": 99876.2252,
+      "cash": 876.2252,
+      "market_value": 99000.0
+    },
+    {
+      "date": 20241031,
+      "timestamp": "2024-10-31T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 44,
+      "equity": 99876.2252,
+      "cash": 876.2252,
+      "market_value": 99000.0
+    },
+    {
+      "date": 20241101,
+      "timestamp": "2024-11-01T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 45,
+      "equity": 99876.2252,
+      "cash": 876.2252,
+      "market_value": 99000.0
+    },
+    {
+      "date": 20241104,
+      "timestamp": "2024-11-04T15:30:00+08:00",
+      "event_kind": "AFTER_CLOSE",
+      "event_sequence": 47,
+      "equity": 99876.2252,
+      "cash": 876.2252,
+      "market_value": 99000.0
+    }
+  ],
+  "final_equity": 99876.2252,
+  "official_valuation": {
+    "event": "AFTER_CLOSE",
+    "start_date": 20240902,
+    "end_date": 20241104,
+    "calendar_identity": "b91b8a3b38310b0d546592c68f8287028a37957f4a8c455ec1b65df430809539",
+    "n_days": 46,
+    "points": [
+      {
+        "date": 20240902,
+        "timestamp": "2024-09-02T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 1,
+        "equity": 100000.0
+      },
+      {
+        "date": 20240903,
+        "timestamp": "2024-09-03T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 2,
+        "equity": 100000.0
+      },
+      {
+        "date": 20240904,
+        "timestamp": "2024-09-04T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 3,
+        "equity": 100000.0
+      },
+      {
+        "date": 20240905,
+        "timestamp": "2024-09-05T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 4,
+        "equity": 100000.0
+      },
+      {
+        "date": 20240906,
+        "timestamp": "2024-09-06T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 5,
+        "equity": 100000.0
+      },
+      {
+        "date": 20240909,
+        "timestamp": "2024-09-09T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 6,
+        "equity": 100000.0
+      },
+      {
+        "date": 20240910,
+        "timestamp": "2024-09-10T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 7,
+        "equity": 100000.0
+      },
+      {
+        "date": 20240911,
+        "timestamp": "2024-09-11T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 8,
+        "equity": 100000.0
+      },
+      {
+        "date": 20240912,
+        "timestamp": "2024-09-12T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 9,
+        "equity": 100000.0
+      },
+      {
+        "date": 20240913,
+        "timestamp": "2024-09-13T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 10,
+        "equity": 100000.0
+      },
+      {
+        "date": 20240916,
+        "timestamp": "2024-09-16T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 11,
+        "equity": 100000.0
+      },
+      {
+        "date": 20240917,
+        "timestamp": "2024-09-17T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 12,
+        "equity": 100000.0
+      },
+      {
+        "date": 20240918,
+        "timestamp": "2024-09-18T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 13,
+        "equity": 100000.0
+      },
+      {
+        "date": 20240919,
+        "timestamp": "2024-09-19T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 14,
+        "equity": 100000.0
+      },
+      {
+        "date": 20240920,
+        "timestamp": "2024-09-20T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 15,
+        "equity": 100000.0
+      },
+      {
+        "date": 20240923,
+        "timestamp": "2024-09-23T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 16,
+        "equity": 100000.0
+      },
+      {
+        "date": 20240924,
+        "timestamp": "2024-09-24T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 17,
+        "equity": 100000.0
+      },
+      {
+        "date": 20240925,
+        "timestamp": "2024-09-25T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 18,
+        "equity": 100000.0
+      },
+      {
+        "date": 20240926,
+        "timestamp": "2024-09-26T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 19,
+        "equity": 100000.0
+      },
+      {
+        "date": 20240927,
+        "timestamp": "2024-09-27T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 20,
+        "equity": 100000.0
+      },
+      {
+        "date": 20240930,
+        "timestamp": "2024-09-30T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 21,
+        "equity": 100000.0
+      },
+      {
+        "date": 20241001,
+        "timestamp": "2024-10-01T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 22,
+        "equity": 100000.0
+      },
+      {
+        "date": 20241002,
+        "timestamp": "2024-10-02T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 23,
+        "equity": 100000.0
+      },
+      {
+        "date": 20241003,
+        "timestamp": "2024-10-03T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 24,
+        "equity": 100000.0
+      },
+      {
+        "date": 20241004,
+        "timestamp": "2024-10-04T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 25,
+        "equity": 100000.0
+      },
+      {
+        "date": 20241007,
+        "timestamp": "2024-10-07T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 26,
+        "equity": 100000.0
+      },
+      {
+        "date": 20241008,
+        "timestamp": "2024-10-08T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 27,
+        "equity": 100000.0
+      },
+      {
+        "date": 20241009,
+        "timestamp": "2024-10-09T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 28,
+        "equity": 100000.0
+      },
+      {
+        "date": 20241010,
+        "timestamp": "2024-10-10T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 29,
+        "equity": 100000.0
+      },
+      {
+        "date": 20241011,
+        "timestamp": "2024-10-11T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 30,
+        "equity": 100000.0
+      },
+      {
+        "date": 20241014,
+        "timestamp": "2024-10-14T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 31,
+        "equity": 100000.0
+      },
+      {
+        "date": 20241015,
+        "timestamp": "2024-10-15T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 32,
+        "equity": 100000.0
+      },
+      {
+        "date": 20241016,
+        "timestamp": "2024-10-16T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 33,
+        "equity": 100000.0
+      },
+      {
+        "date": 20241017,
+        "timestamp": "2024-10-17T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 34,
+        "equity": 100000.0
+      },
+      {
+        "date": 20241018,
+        "timestamp": "2024-10-18T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 35,
+        "equity": 99876.2252
+      },
+      {
+        "date": 20241021,
+        "timestamp": "2024-10-21T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 36,
+        "equity": 99876.2252
+      },
+      {
+        "date": 20241022,
+        "timestamp": "2024-10-22T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 37,
+        "equity": 99876.2252
+      },
+      {
+        "date": 20241023,
+        "timestamp": "2024-10-23T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 38,
+        "equity": 99876.2252
+      },
+      {
+        "date": 20241024,
+        "timestamp": "2024-10-24T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 39,
+        "equity": 99876.2252
+      },
+      {
+        "date": 20241025,
+        "timestamp": "2024-10-25T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 40,
+        "equity": 99876.2252
+      },
+      {
+        "date": 20241028,
+        "timestamp": "2024-10-28T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 41,
+        "equity": 99876.2252
+      },
+      {
+        "date": 20241029,
+        "timestamp": "2024-10-29T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 42,
+        "equity": 99876.2252
+      },
+      {
+        "date": 20241030,
+        "timestamp": "2024-10-30T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 43,
+        "equity": 99876.2252
+      },
+      {
+        "date": 20241031,
+        "timestamp": "2024-10-31T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 44,
+        "equity": 99876.2252
+      },
+      {
+        "date": 20241101,
+        "timestamp": "2024-11-01T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 45,
+        "equity": 99876.2252
+      },
+      {
+        "date": 20241104,
+        "timestamp": "2024-11-04T15:30:00+08:00",
+        "event_kind": "AFTER_CLOSE",
+        "event_sequence": 47,
+        "equity": 99876.2252
+      }
+    ]
+  },
+  "exit_evaluations": [
+    {
+      "trade_session": 20241018,
+      "lot_id": "lot-000001",
+      "symbol": "600000.SH",
+      "state": "OPEN",
+      "close": 10.0,
+      "anchor": 10.01,
+      "trailing_activated": false,
+      "trailing_line": 0.0,
+      "peak_close": 10.01
+    },
+    {
+      "trade_session": 20241021,
+      "lot_id": "lot-000001",
+      "symbol": "600000.SH",
+      "state": "OPEN",
+      "close": 10.0,
+      "anchor": 10.01,
+      "trailing_activated": false,
+      "trailing_line": 0.0,
+      "peak_close": 10.01
+    },
+    {
+      "trade_session": 20241022,
+      "lot_id": "lot-000001",
+      "symbol": "600000.SH",
+      "state": "OPEN",
+      "close": 10.0,
+      "anchor": 10.01,
+      "trailing_activated": false,
+      "trailing_line": 0.0,
+      "peak_close": 10.01
+    },
+    {
+      "trade_session": 20241023,
+      "lot_id": "lot-000001",
+      "symbol": "600000.SH",
+      "state": "OPEN",
+      "close": 10.0,
+      "anchor": 10.01,
+      "trailing_activated": false,
+      "trailing_line": 0.0,
+      "peak_close": 10.01
+    },
+    {
+      "trade_session": 20241024,
+      "lot_id": "lot-000001",
+      "symbol": "600000.SH",
+      "state": "OPEN",
+      "close": 10.0,
+      "anchor": 10.01,
+      "trailing_activated": false,
+      "trailing_line": 0.0,
+      "peak_close": 10.01
+    },
+    {
+      "trade_session": 20241025,
+      "lot_id": "lot-000001",
+      "symbol": "600000.SH",
+      "state": "OPEN",
+      "close": 10.0,
+      "anchor": 10.01,
+      "trailing_activated": false,
+      "trailing_line": 0.0,
+      "peak_close": 10.01
+    },
+    {
+      "trade_session": 20241028,
+      "lot_id": "lot-000001",
+      "symbol": "600000.SH",
+      "state": "OPEN",
+      "close": 10.0,
+      "anchor": 10.01,
+      "trailing_activated": false,
+      "trailing_line": 0.0,
+      "peak_close": 10.01
+    },
+    {
+      "trade_session": 20241029,
+      "lot_id": "lot-000001",
+      "symbol": "600000.SH",
+      "state": "OPEN",
+      "close": 10.0,
+      "anchor": 10.01,
+      "trailing_activated": false,
+      "trailing_line": 0.0,
+      "peak_close": 10.01
+    },
+    {
+      "trade_session": 20241030,
+      "lot_id": "lot-000001",
+      "symbol": "600000.SH",
+      "state": "OPEN",
+      "close": 10.0,
+      "anchor": 10.01,
+      "trailing_activated": false,
+      "trailing_line": 0.0,
+      "peak_close": 10.01
+    },
+    {
+      "trade_session": 20241031,
+      "lot_id": "lot-000001",
+      "symbol": "600000.SH",
+      "state": "OPEN",
+      "close": 10.0,
+      "anchor": 10.01,
+      "trailing_activated": false,
+      "trailing_line": 0.0,
+      "peak_close": 10.01
+    },
+    {
+      "trade_session": 20241101,
+      "lot_id": "lot-000001",
+      "symbol": "600000.SH",
+      "state": "OPEN",
+      "close": 10.0,
+      "anchor": 10.01,
+      "trailing_activated": false,
+      "trailing_line": 0.0,
+      "peak_close": 10.01
+    },
+    {
+      "trade_session": 20241104,
+      "lot_id": "lot-000001",
+      "symbol": "600000.SH",
+      "state": "OPEN",
+      "close": 10.0,
+      "anchor": 10.01,
+      "trailing_activated": false,
+      "trailing_line": 0.0,
+      "peak_close": 10.01
+    }
+  ],
+  "run_summary": {
+    "engine_version": "2.0.0",
+    "mode": "DAILY",
+    "initial_cash": 100000.0,
+    "final_equity": 99876.2252,
+    "total_return": -0.001237747999999983,
+    "n_trades": 1,
+    "unsupported_trade_count": 0,
+    "run_certification": "VALID",
+    "realized_pnl": 0.0,
+    "total_fees": 24.7748,
+    "turnover": 99099.0,
+    "n_events": 5
+  }
+}

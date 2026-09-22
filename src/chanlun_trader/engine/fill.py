@@ -48,6 +48,10 @@ class DailyBarFillModel(FillModel):
     """日线填充：参考 bar open 作为成交价。可配置 max_participation_rate 做粗略容量压力。
 
     保守模型：不假装知道盘口；只做 open 参考价 + 滑点 + 涨跌停/停牌过滤。
+
+    容量合同：``int(volume * max_participation_rate) == 0`` 时**拒绝成交**
+    （``PARTICIPATION_LIMIT``），不退回全量成交。原实现把 0 视为"无限制"，
+    在极低流动性 bar 上会静默放大到订单全量，与容量约束自相矛盾。
     """
 
     def __init__(self, max_participation_rate: float = 0.10):
@@ -61,7 +65,9 @@ class DailyBarFillModel(FillModel):
         if open_px <= 0 or volume <= 0:
             return None, 0, "NO_TRADABLE_BAR"
         max_qty_by_volume = int(volume * self.max_participation_rate)
-        qty = min(order.remaining_quantity, max_qty_by_volume) if max_qty_by_volume > 0 else order.remaining_quantity
+        if max_qty_by_volume <= 0:
+            return None, 0, "PARTICIPATION_LIMIT"
+        qty = min(order.remaining_quantity, max_qty_by_volume)
         if qty <= 0:
             return None, 0, "PARTICIPATION_LIMIT"
         return open_px, qty, "OK"

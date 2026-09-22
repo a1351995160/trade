@@ -1,0 +1,298 @@
+{
+  "contract_version": "BT_BEHAVIOR_ACCEPTANCE_V1",
+  "generated_from": "scripts/emit_behavior_acceptance_evidence_v1.py",
+  "junit_evidence": "reports\\junit-bt-behavior.xml",
+  "environment_failures_reference": "reports/behavior_acceptance_v1/ENVIRONMENT_FAILURES.json",
+  "labels": {
+    "FORMULA_VALIDATED": "公式/口径经独立 oracle 或手算核对通过",
+    "ENTRYPOINT_WIRED": "存在可使用入口（API/CLI），参数真实透传",
+    "EXECUTION_BEHAVIOR_VALIDATED": "经真实引擎链路验证退出/成交行为",
+    "ACCOUNTING_VALIDATED": "现金/持仓/费用/收益经独立预期值核对",
+    "REAL_DATA_VALIDATED": "真实行情数据验证（本轮未做）",
+    "PROFITABILITY_VALIDATED": "盈利能力（本轮未做，且非目标）"
+  },
+  "capabilities": [
+    {
+      "capability": "MACD（MACD_V1）",
+      "implemented": true,
+      "wired": true,
+      "real_call_verified": true,
+      "validated_scope": "显式递推 EMA12/26/9，DIF/DEA/HIST=2*(DIF-DEA)，warmup=slow+signal-1=34",
+      "unsupported_scope": "不声称与第三方软件逐值一致；未做同复权外部对照",
+      "version": "MACD_V1",
+      "evidence": [
+        "src/chanlun_trader/engine/indicators_v1.py"
+      ],
+      "tests": "tests/indicators/test_indicator_formulas_v1.py::test_macd_v1_hand_computed_short_sequence",
+      "status": "FORMULA_VALIDATED"
+    },
+    {
+      "capability": "MACD 条件（五类分别命名）",
+      "implemented": true,
+      "wired": true,
+      "real_call_verified": true,
+      "validated_scope": "DIF_ABOVE_ZERO / BOTH_LINES_ABOVE_ZERO / GOLDEN_CROSS / DEATH_CROSS / ABOVE_ZERO_GOLDEN_CROSS",
+      "unsupported_scope": "不做含糊的『MACD 水上』合并标签",
+      "version": "BT_MACD_CONDITIONS_V1",
+      "evidence": [
+        "src/chanlun_trader/engine/conditions_v1.py"
+      ],
+      "tests": "tests/indicators/test_indicator_formulas_v1.py::test_macd_conditions_are_distinct_not_a_single_label",
+      "status": "FORMULA_VALIDATED+EXECUTION_BEHAVIOR_VALIDATED"
+    },
+    {
+      "capability": "KDJ(9,3,3)（KDJ_V1）",
+      "implemented": true,
+      "wired": true,
+      "real_call_verified": true,
+      "validated_scope": "LLV/HHV(9)、RSV、K=(2K'+RSV)/3、D=(2D'+K)/3、J=3K-2D；段首 K=D=50",
+      "unsupported_scope": "HHV==LLV / NaN / 非法价格 -> NOT_READY 并结束该段；J 不裁剪",
+      "version": "KDJ_V1",
+      "evidence": [
+        "src/chanlun_trader/engine/indicators_v1.py"
+      ],
+      "tests": "tests/indicators/test_indicator_formulas_v1.py::test_kdj_v1_hand_computed_short_sequence",
+      "status": "FORMULA_VALIDATED"
+    },
+    {
+      "capability": "MA / EMA / CROSS",
+      "implemented": true,
+      "wired": true,
+      "real_call_verified": true,
+      "validated_scope": "显式递推 EMA、SMA(window)、cross_up/cross_down（要求相邻有效 bar）",
+      "unsupported_scope": "无",
+      "version": "MA_EMA_CROSS_V1",
+      "evidence": [
+        "src/chanlun_trader/engine/indicators_v1.py"
+      ],
+      "tests": "tests/indicators/test_indicator_formulas_v1.py::test_cross_helpers_match_oracle",
+      "status": "FORMULA_VALIDATED"
+    },
+    {
+      "capability": "固定成本止损（价格百分比）",
+      "implemented": true,
+      "wired": true,
+      "real_call_verified": true,
+      "validated_scope": "SL = 实际成交价*(1-stop_pct)；已完成收盘 <= SL 触发；次日开盘执行",
+      "unsupported_scope": "不是净盈利阈值；不含费用口径",
+      "version": "BT_DAILY_EXIT_V1",
+      "evidence": [
+        "src/chanlun_trader/engine/daily_exit_v1.py"
+      ],
+      "tests": "tests/behavior/test_daily_exit_rules_v1.py::test_cost_stop_anchor_is_actual_fill_price_not_structure_low",
+      "status": "EXECUTION_BEHAVIOR_VALIDATED+ACCOUNTING_VALIDATED"
+    },
+    {
+      "capability": "固定止盈",
+      "implemented": true,
+      "wired": true,
+      "real_call_verified": true,
+      "validated_scope": "TP = 实际成交价*(1+profit_pct)；已完成收盘 >= TP 触发",
+      "unsupported_scope": "价格百分比版本，不是扣费后净盈利阈值",
+      "version": "BT_DAILY_EXIT_V1",
+      "evidence": [
+        "src/chanlun_trader/engine/daily_exit_v1.py"
+      ],
+      "tests": "tests/behavior/test_daily_exit_rules_v1.py::test_take_profit_changes_orders_and_ledger",
+      "status": "EXECUTION_BEHAVIOR_VALIDATED"
+    },
+    {
+      "capability": "最高收盘价移动止损",
+      "implemented": true,
+      "wired": true,
+      "real_call_verified": true,
+      "validated_scope": "peak_close 初始=成交价；激活峰值 >= 成交价*(1+activate)；线=peak*(1-trail)，只收紧",
+      "unsupported_scope": "部分卖出不重置峰值；未激活不触发",
+      "version": "BT_DAILY_EXIT_V1",
+      "evidence": [
+        "src/chanlun_trader/engine/daily_exit_v1.py"
+      ],
+      "tests": "tests/behavior/test_daily_exit_rules_v1.py::test_trailing_stop_inactive_then_active_then_tightens",
+      "status": "EXECUTION_BEHAVIOR_VALIDATED"
+    },
+    {
+      "capability": "固定持有退出",
+      "implemented": true,
+      "wired": true,
+      "real_call_verified": true,
+      "validated_scope": "按独立交易日历 entry_session_index + fixed_holding_sessions 计算到期",
+      "unsupported_scope": "不用信号日或证券现存数据行数替代",
+      "version": "BT_DAILY_EXIT_V1",
+      "evidence": [
+        "src/chanlun_trader/engine/daily_exit_v1.py"
+      ],
+      "tests": "tests/behavior/test_daily_exit_rules_v1.py::test_fixed_hold_uses_trading_session_index",
+      "status": "EXECUTION_BEHAVIOR_VALIDATED"
+    },
+    {
+      "capability": "结构价止损（保留独立语义）",
+      "implemented": false,
+      "wired": false,
+      "real_call_verified": false,
+      "validated_scope": "本轮仅在 PortfolioExitEvaluatorV1 保留 STRUCTURE_INVALIDATION（因子条件）",
+      "unsupported_scope": "RAW 成交价与 QFQ 结构价无转换证据时拒绝配置；本版本显式拒绝 STRUCTURE_STOP",
+      "version": "LEGACY/UNSUPPORTED",
+      "evidence": [
+        "src/chanlun_trader/engine/portfolio_exit.py",
+        "src/chanlun_trader/engine/daily_exit_v1.py"
+      ],
+      "tests": "tests/behavior/test_daily_exit_rules_v1.py::test_unsupported_exit_types_are_rejected",
+      "status": "NOT_SUPPORTED_IN_THIS_VERSION"
+    },
+    {
+      "capability": "日线盘中触价 / Tick / 盘口",
+      "implemented": false,
+      "wired": false,
+      "real_call_verified": false,
+      "validated_scope": "明确拒绝：返回 UNSUPPORTED_EXIT_TYPE / UNSUPPORTED_MODE",
+      "unsupported_scope": "CLOSE_CONFIRM 模式不按 high/low 猜盘中先后",
+      "version": "NOT_SUPPORTED",
+      "evidence": [
+        "src/chanlun_trader/engine/daily_exit_v1.py",
+        "src/chanlun_trader/engine/behavior_service_v1.py"
+      ],
+      "tests": "tests/behavior/test_daily_exit_rules_v1.py::test_high_low_touch_without_close_trigger_produces_no_exit",
+      "status": "NOT_SUPPORTED"
+    },
+    {
+      "capability": "多周期执行",
+      "implemented": false,
+      "wired": false,
+      "real_call_verified": false,
+      "validated_scope": "明确拒绝 BT_BEHAVIOR_MULTI_TIMEFRAME_V1",
+      "unsupported_scope": "5MIN 撮合仅存在于既有引擎，未经本轮验收",
+      "version": "NOT_SUPPORTED",
+      "evidence": [
+        "src/chanlun_trader/engine/behavior_service_v1.py"
+      ],
+      "tests": "tests/behavior/test_daily_exit_rules_v1.py::test_unsupported_mode_is_rejected_not_silently_downgraded",
+      "status": "NOT_SUPPORTED"
+    },
+    {
+      "capability": "旧入口大盘过滤开盘前视修复",
+      "implemented": true,
+      "wired": true,
+      "real_call_verified": true,
+      "validated_scope": "严格早于 d 的已完成指数收盘；预热不足/无历史 -> fail-closed",
+      "unsupported_scope": "旧入口仍为 legacy/未认证范围；不与新入口混用结果",
+      "version": "LEGACY_INDEX_FILTER_FIX_V1",
+      "evidence": [
+        "src/chanlun_trader/backtest.py"
+      ],
+      "tests": "tests/legacy_entry/test_index_filter_lookahead.py::test_open_decision_ignores_same_day_index_close",
+      "status": "EXECUTION_BEHAVIOR_VALIDATED"
+    },
+    {
+      "capability": "撮合容量合同（int(volume*rate)==0 拒绝）",
+      "implemented": true,
+      "wired": true,
+      "real_call_verified": true,
+      "validated_scope": "DailyBarFillModel 在容量为 0 时返回 PARTICIPATION_LIMIT，不退回全量成交",
+      "unsupported_scope": "为既有模型的行为修正；调用方需注意低流动性 bar 现在会拒单",
+      "version": "DailyBarFillModel",
+      "evidence": [
+        "src/chanlun_trader/engine/fill.py"
+      ],
+      "tests": "tests/behavior/test_full_account_chain_v1.py::test_scenario_f_zero_capacity_rejects_instead_of_full_fill",
+      "status": "EXECUTION_BEHAVIOR_VALIDATED"
+    },
+    {
+      "capability": "公共 API（HTTP）",
+      "implemented": true,
+      "wired": true,
+      "real_call_verified": true,
+      "validated_scope": "GET /api/backtest/behavior/contracts；POST /api/backtest/behavior（请求体内合成行情）",
+      "unsupported_scope": "不接受 dataset_path；强制 persist_run_manifest=False；不写研究目录",
+      "version": "BT_BEHAVIOR_DAILY_V1",
+      "evidence": [
+        "src/chanlun_trader/webapp.py"
+      ],
+      "tests": "tests/behavior/test_public_entrypoints_v1.py::test_http_behavior_endpoint_runs_and_reports_versions",
+      "status": "ENTRYPOINT_WIRED"
+    },
+    {
+      "capability": "公共 CLI",
+      "implemented": true,
+      "wired": true,
+      "real_call_verified": true,
+      "validated_scope": "scripts/run_behavior_backtest_v1.py --request JSON [--out JSON]，支持 CSV/Parquet 文件入口",
+      "unsupported_scope": "与 HTTP 共用同一服务函数；外部路径受 --request-root / --out-root 约束",
+      "version": "BT_BEHAVIOR_DAILY_V1",
+      "evidence": [
+        "scripts/run_behavior_backtest_v1.py"
+      ],
+      "tests": "tests/behavior/test_public_entrypoints_v1.py::test_cli_matches_http_semantics",
+      "status": "ENTRYPOINT_WIRED"
+    },
+    {
+      "capability": "正式估值接线（独立日历 / 缺整日 / 缺末日 / NaN-Inf）",
+      "implemented": true,
+      "wired": true,
+      "real_call_verified": true,
+      "validated_scope": "经 official_equity_curve 抽取 AFTER_CLOSE 正式点；显式日历必填；缺任一天（含末日）抛错；权益必须有限正数；入口另按声明日历校验数据覆盖",
+      "unsupported_scope": "无独立日历时仅提供 NON_OFFICIAL_DIAGNOSTIC 诊断输出，不得作为正式结论",
+      "version": "OFFICIAL_VALUATION_V1",
+      "evidence": [
+        "src/chanlun_trader/engine/official_valuation.py",
+        "src/chanlun_trader/engine/behavior_service_v1.py"
+      ],
+      "tests": "tests/behavior/test_official_valuation_wiring_v1.py::test_missing_whole_session_is_detected_through_public_entry",
+      "status": "ACCOUNTING_VALIDATED"
+    },
+    {
+      "capability": "外部路径约束（CLI / 文件入口）",
+      "implemented": true,
+      "wired": true,
+      "real_call_verified": true,
+      "validated_scope": "resolve_within_root：根目录必填、拒绝 .. 穿越、解析链接后校验归属",
+      "unsupported_scope": "越界路径明确拒绝（PATH_OUTSIDE_IO_ROOT / PARENT_TRAVERSAL_NOT_ALLOWED）",
+      "version": "BT_IO_ROOT_GUARD_V1",
+      "evidence": [
+        "src/chanlun_trader/engine/behavior_service_v1.py",
+        "scripts/run_behavior_backtest_v1.py"
+      ],
+      "tests": "tests/behavior/test_public_entrypoints_v1.py::test_cli_rejects_path_outside_declared_root",
+      "status": "ENTRYPOINT_WIRED"
+    },
+    {
+      "capability": "经典 Web 回测入口（/api/backtest）",
+      "implemented": true,
+      "wired": true,
+      "real_call_verified": true,
+      "validated_scope": "保持既有策略：在 create_app 下仍返回 LEGACY_EXECUTION_DISABLED",
+      "unsupported_scope": "未认证为本轮行为基线；未静默切换到 V2",
+      "version": "legacy-v1",
+      "evidence": [
+        "src/chanlun_trader/webapp.py"
+      ],
+      "tests": "tests/behavior/test_public_entrypoints_v1.py::test_legacy_web_backtest_endpoint_is_not_silently_replaced",
+      "status": "LEGACY_NOT_CERTIFIED"
+    }
+  ],
+  "excluded_this_round": {
+    "supported_exit_types": [
+      "FIXED_COST_STOP",
+      "FIXED_TAKE_PROFIT",
+      "TRAILING_CLOSE_STOP",
+      "FIXED_HOLD"
+    ],
+    "reserved_exit_types": [
+      "STRUCTURE_STOP",
+      "INDICATOR_EXIT",
+      "INTRADAY_TOUCH_STOP",
+      "TICK_LEVEL_EXIT",
+      "MULTI_TIMEFRAME_EXIT"
+    ],
+    "indicator_contract": "BT_INDICATORS_V1"
+  },
+  "final_flags": {
+    "REAL_RESEARCH_EXECUTED": false,
+    "NEW_REAL_PERFORMANCE_EXPOSURES": 0,
+    "STRATEGY_PROFITABILITY_CERTIFIED": false,
+    "MAIN_MERGED": false,
+    "OLD_WORKSPACE_CHANGED": false,
+    "ORIGINAL_CANDIDATE_GOAL": "NOT_ACHIEVED_ARCHIVED",
+    "REAL_DATA_VALIDATED": false,
+    "PROFITABILITY_VALIDATED": false
+  }
+}
