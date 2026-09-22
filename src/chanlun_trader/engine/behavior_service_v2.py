@@ -401,7 +401,8 @@ def build_cross_section(
                     continue
                 value = series.loc[session]
                 is_ready = bool(result.ready().loc[session]) if session in result.ready().index else False
-                finite = bool(np.isfinite(value)) if value == value else False
+                # 只有**有限**数值才是合法成员；NaN / Inf 一律不合格。
+                finite = bool(np.isfinite(float(value)))
                 resolved = float(value) if (is_ready and finite) else np.nan
                 keys = [f"{instance_key}.{name}"]
                 if counts[result.indicator_id] == 1:
