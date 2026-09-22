@@ -2050,3 +2050,17 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 - tests/pr15_dependency/test_dependency_execution_v1.py：新增四项防护测试（共 14 项）。
 - scripts/emit_v2_acceptance_scope_v1.py、reports/v2_acceptance/、ACCEPTANCE_SCOPE.json、docs/EXTENSIBLE_BACKTEST_ACCEPTANCE_V2.md：分母 192/139、§6.7 防误用与风险降级说明。
 - 回滚点 c6af41a；可 git revert 本次提交。
+
+## 2026-09-22 - Task: PR #15 合并（V2 通用指标与 PR15 定向修正）
+### What was done
+经用户明确批准，将 PR #15 从 Draft 转 Ready 并以普通 merge commit 合入 main。合并前核验：head 为被复核的 c8999dd、mergeable=MERGEABLE、mergeStateStatus=CLEAN、双平台 CI 与 SonarCloud 全部通过。未使用 squash/rebase，未 force push，未绕过检查。
+### Testing
+- 合并前检查：BT extensible acceptance V2（ubuntu-latest 与 windows-latest 各两次运行）全部 pass；SonarCloud pass，三项评级 1.0（A），SECURITY/RELIABILITY 项清零。
+- 合并后核验：mergeCommit=f5acb0317719a42eb7071504048e341b50a7ac12，mergedAt=2026-09-22T22:08:13Z，state=MERGED；合并提交双父节点为 c498ee2（合并前 main）与 c8999dd（复核 HEAD），确认为普通 merge commit。
+- main 内容核验：V2 六个 engine 模块、依赖防护测试、验收文档与双平台 workflow 均存在于 origin/main；V1 最终 HEAD 36ccc37 仍在 main 祖先链。
+- 合并前证据：V2 新增 192 项、V1 兼容回归 139 项全部通过；完整套件零新增失败 nodeid（因果未确认，未声明全系统零回归）。
+### Notes
+- 本次为合并操作，未修改任何源码文件；仅追加本进度记录。
+- 合并事实：V2_PR_NUMBER=15、V2_MERGED=true、V2_FINAL_HEAD=c8999dd62f3882eb659886c71d7571ef799cecfe、V2_MERGE_SHA=f5acb0317719a42eb7071504048e341b50a7ac12、V2_BASE_SHA=c498ee217e1f4e84eca398d690fce21beca22088。
+- 边界保持：V1_PR_NUMBER=14、V1_MERGED=true、V1_FINAL_HEAD=36ccc374dd562fca33c39a198660e4c9b9daa563、V1_MERGE_SHA=c498ee217e1f4e84eca398d690fce21beca22088；STRATEGY_PROFITABILITY_CERTIFIED=false、REAL_RESEARCH_EXECUTED=false、NEW_REAL_PERFORMANCE_EXPOSURES=0、OLD_WORKSPACE_CHANGED=false。
+- 回滚方式：如需撤销，可对 main 执行 git revert -m 1 f5acb0317719a42eb7071504048e341b50a7ac12（保留历史，不改写已推送提交）。
