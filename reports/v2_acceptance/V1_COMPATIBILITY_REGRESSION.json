@@ -1,0 +1,25 @@
+{
+  "note": "V1 兼容回归对比：BASE_SHA 干净工作树 vs V2 HEAD，CI 同等隔离环境。",
+  "base_sha": "c498ee217e1f4e84eca398d690fce21beca22088",
+  "isolated_env": {
+    "CHANLUN_TEST_ISOLATION": "1"
+  },
+  "baseline": {
+    "failed_incl_errors": 194
+  },
+  "v2_head": {
+    "failed_incl_errors": 194
+  },
+  "new_failures": [
+    "tests/research_factory/test_train_search_batch_v1.py::test_sixty_session_compounding_and_amount_units"
+  ],
+  "no_longer_failing": [
+    "tests/research_factory/test_objective_execution_binding.py::test_formal_creation_persists_binding_and_original_transaction"
+  ],
+  "classification": {
+    "new_failures_nature": "既有顺序相关不稳定（Windows GBK 解码/共享状态），非 V2 引入",
+    "evidence": "两个 flaky 用例各自单独运行均通过；且两棵树失败总数相同（各 170 failed）",
+    "v2_modules_imported_by_research_factory": false
+  },
+  "environment_failures_reference": "reports/behavior_acceptance_v1/ENVIRONMENT_FAILURES.json"
+}

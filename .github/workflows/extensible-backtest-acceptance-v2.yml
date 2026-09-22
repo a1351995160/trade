@@ -1,0 +1,82 @@
+name: Extensible Backtest Acceptance V2
+
+on:
+  pull_request:
+  push:
+    branches:
+      - "codex/**"
+
+permissions:
+  contents: read
+
+jobs:
+  v2-acceptance:
+    name: BT extensible acceptance V2 (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python: "3.11"
+            pythonpath: tests/isolation:src
+          - os: windows-latest
+            python: "3.13"
+            pythonpath: tests/isolation;src
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    env:
+      PYTHONPATH: ${{ matrix.pythonpath }}
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUTF8: "1"
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+
+      - name: Install deterministic test dependencies
+        run: >
+          python -m pip install --disable-pip-version-check
+          --only-binary ":all:" --no-binary "pytdx"
+          --require-hashes -r .github/workflows/requirements-p3b.txt
+
+      - name: V1 compatibility regression
+        run: >
+          python -m pytest
+          tests/behavior
+          tests/indicators
+          tests/legacy_entry
+          tests/engine
+          tests/golden
+          tests/lookahead
+          tests/regression
+          -q
+          --junitxml=junit/v1-compatibility-${{ matrix.os }}.xml
+
+      - name: V2 new capability suite
+        run: >
+          python -m pytest
+          tests/indicators_v2
+          tests/conditions_v2
+          tests/exits_v2
+          tests/entrypoints_v2
+          -q
+          --junitxml=junit/v2-new-${{ matrix.os }}.xml
+
+      - name: Emit acceptance scope and matrices
+        run: python scripts/emit_v2_acceptance_scope_v1.py
+
+      - name: Upload JUnit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-v2-acceptance-${{ matrix.os }}
+          path: junit/
+          if-no-files-found: warn

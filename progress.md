@@ -1958,3 +1958,18 @@ Windows CI 选择已在本地认证的 Python 3.13 系列，Linux 保留 3.11；
 - 以 CI 同等隔离环境（CHANLUN_TEST_ISOLATION=1）在 BASE_SHA 干净工作树与本分支分别运行完整 pytest：失败集合逐条一致（193 项，均为本机缺少研究数据/前端未构建等既有环境失败），零新增失败、零回归；通过数 1853 增至 1963。
 - SonarCloud 4 条 SECURITY 项（2 HIGH 路径穿越 + 2 MEDIUM workflow 依赖未锁定）全部按证据以代码修复关闭，未删除检查、未扩大排除项、未加抑制标注；新增路径越界回归测试。
 - 正式估值接线：改为经 official_equity_curve 抽取，证明独立日历必填、缺整日/缺末日抛错、NaN/Inf 拒绝；入口增加声明日历的数据覆盖校验。修复 official_equity_curve 非数值权益泄漏 ValueError 的缺陷。
+
+## 2026-09-22 - Task: 可扩展回测验收 V2（通用指标、规则组合与账户链扩展）
+### What was done
+在已合并的 V1 main（c498ee2）上建立独立分支，复用 V1 的指标、条件、退出与引擎链，按家族增量实现通用指标体系、统一注册、受限条件组合与退出扩展。指标从 MACD/KDJ 扩到 7 家族 51 项（均线趋势、动量震荡、波动通道、量价资金代理、价格结构、统计截面、自定义组合），每项带机器可读契约（输出名、参数、预热、缺失政策、可用时间、单位、额外数据依赖）。新增受限表达式层支持比较/AND-OR-NOT 三值逻辑/交叉/位置/区间/滚动逻辑/截面排名；NOT(UNKNOWN) 保持 UNKNOWN，未 ready 与 NaN 不产生交易资格。退出在 V1 四类之上新增 ATR 距离、ATR 跟踪、指标条件、反向信号与明确版本结构价退出，结构止损与成本止损分别命名。公共 API/CLI/Web 三入口使用同一服务，合同端点由注册表动态提供，界面不硬编码指标。
+### Testing
+V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三值逻辑、安全拒绝、退出、完整账户链、三入口语义一致），JUnit 已落盘。V1 兼容回归 139 项通过。完整套件在 BASE_SHA 干净工作树与 V2 HEAD 分别运行：失败总数一致（各 170），差异项为既有顺序相关不稳定（Windows GBK 解码/共享状态），单独运行均通过，且 V2 模块未被 research_factory 引用。未读取真实行情、未运行真实绩效。
+### Notes
+- src/chanlun_trader/engine/indicators_v2.py、indicator_registry_v2.py、conditions_v2.py、daily_exit_v2.py、custom_indicators_v2.py、behavior_service_v2.py：多家族指标、注册契约、表达式层、退出扩展、自定义 fixture 与注册表驱动服务。
+- src/chanlun_trader/webapp.py：新增合同端点（注册表驱动）与 V2 回测端点，只读计算白名单扩展。
+- scripts/run_behavior_backtest_v2.py、scripts/emit_v2_acceptance_scope_v1.py：CLI 与验收证据生成。
+- frontend/src/components/GenericBacktestPanel.vue、frontend/src/App.vue：注册表驱动的通用回测配置表页。
+- tests/indicators_v2、tests/conditions_v2、tests/exits_v2、tests/entrypoints_v2：V2 新增测试。
+- docs/EXTENSIBLE_BACKTEST_ACCEPTANCE_V2.md、ACCEPTANCE_SCOPE.json、reports/v2_acceptance/：口径、范围、盘点、矩阵与回归证据。
+- .github/workflows/extensible-backtest-acceptance-v2.yml：双平台 CI，V1 兼容与 V2 新增分开执行并上传 JUnit。
+- 回滚点 c498ee2；可 git revert 本轮提交，不影响 V1 与受保护旧目录。

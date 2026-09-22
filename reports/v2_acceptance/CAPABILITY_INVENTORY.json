@@ -1,0 +1,2230 @@
+{
+  "registry_version": "BT_INDICATOR_REGISTRY_V2",
+  "counts": {
+    "registered_indicators": 51,
+    "families": 7,
+    "reuse_as_is": 2,
+    "new_in_v2": 49
+  },
+  "entries": [
+    {
+      "capability_id": "ACCUMULATION_DISTRIBUTION",
+      "family": "量价与资金代理",
+      "name": "A/D 线",
+      "aliases": [
+        "AD"
+      ],
+      "formula_version": "ACCUMULATION_DISTRIBUTION_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "close",
+        "high",
+        "low",
+        "volume"
+      ],
+      "outputs": [
+        "ad_line",
+        "money_flow_volume"
+      ],
+      "params": {},
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 1,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "SHARES",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "AMOUNT_MA",
+      "family": "量价与资金代理",
+      "name": "成交额均线",
+      "aliases": [],
+      "formula_version": "AMOUNT_MA_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "amount"
+      ],
+      "outputs": [
+        "amount_ma"
+      ],
+      "params": {
+        "window": 20
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 20,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "CURRENCY",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "ATR",
+      "family": "波动与通道",
+      "name": "ATR",
+      "aliases": [],
+      "formula_version": "ATR_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "close",
+        "high",
+        "low"
+      ],
+      "outputs": [
+        "atr",
+        "tr"
+      ],
+      "params": {
+        "window": 14
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 14,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "PRICE",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "BAR_SHAPE",
+      "family": "价格结构",
+      "name": "K 线形态比例",
+      "aliases": [],
+      "formula_version": "BAR_SHAPE_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "close",
+        "high",
+        "low",
+        "open"
+      ],
+      "outputs": [
+        "body_ratio",
+        "upper_shadow_ratio",
+        "lower_shadow_ratio",
+        "range_pct",
+        "gap_pct"
+      ],
+      "params": {
+        "window": 20
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 1,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "RATIO",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "BIAS",
+      "family": "动量与震荡",
+      "name": "乖离率 BIAS",
+      "aliases": [],
+      "formula_version": "BIAS_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "close"
+      ],
+      "outputs": [
+        "bias",
+        "ma"
+      ],
+      "params": {
+        "window": 6,
+        "price": "close"
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 6,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "PERCENT",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "BOLLINGER",
+      "family": "波动与通道",
+      "name": "布林带 BOLL",
+      "aliases": [
+        "BOLL",
+        "BBANDS"
+      ],
+      "formula_version": "BOLLINGER_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "close"
+      ],
+      "outputs": [
+        "middle",
+        "upper",
+        "lower",
+        "bandwidth",
+        "percent_b",
+        "std"
+      ],
+      "params": {
+        "window": 20,
+        "multiplier": 2.0,
+        "ddof": 0,
+        "price": "close"
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 20,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "PRICE",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "ddof 默认 0（总体）；样本口径需显式传 ddof=1",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "CCI",
+      "family": "动量与震荡",
+      "name": "CCI",
+      "aliases": [],
+      "formula_version": "CCI_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "close",
+        "high",
+        "low"
+      ],
+      "outputs": [
+        "cci",
+        "typical_price"
+      ],
+      "params": {
+        "window": 14
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 14,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "PRICE",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "CHAIKIN_MONEY_FLOW",
+      "family": "量价与资金代理",
+      "name": "CMF",
+      "aliases": [],
+      "formula_version": "CHAIKIN_MONEY_FLOW_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "close",
+        "high",
+        "low",
+        "volume"
+      ],
+      "outputs": [
+        "cmf",
+        "mfv_sum",
+        "volume_sum"
+      ],
+      "params": {
+        "window": 20
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 20,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "RATIO",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "DEMA",
+      "family": "均线与趋势",
+      "name": "双重指数移动平均",
+      "aliases": [],
+      "formula_version": "DEMA_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "close"
+      ],
+      "outputs": [
+        "dema",
+        "ema1",
+        "ema2"
+      ],
+      "params": {
+        "window": 20,
+        "price": "close"
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 39,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "PRICE",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "DMI",
+      "family": "均线与趋势",
+      "name": "DMI / ADX",
+      "aliases": [],
+      "formula_version": "DMI_ADX_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "close",
+        "high",
+        "low"
+      ],
+      "outputs": [
+        "plus_di",
+        "minus_di",
+        "adx",
+        "atr"
+      ],
+      "params": {
+        "window": 14
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 28,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "INDEX_0_100",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "DONCHIAN",
+      "family": "波动与通道",
+      "name": "Donchian 通道",
+      "aliases": [],
+      "formula_version": "DONCHIAN_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "close",
+        "high",
+        "low"
+      ],
+      "outputs": [
+        "upper",
+        "lower",
+        "middle"
+      ],
+      "params": {
+        "window": 20,
+        "shift": 0
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 20,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "PRICE",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "DRAWDOWN_FROM_PEAK",
+      "family": "价格结构",
+      "name": "自窗口峰值回撤",
+      "aliases": [],
+      "formula_version": "DRAWDOWN_FROM_PEAK_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "close"
+      ],
+      "outputs": [
+        "drawdown",
+        "peak"
+      ],
+      "params": {
+        "window": 60,
+        "price": "close"
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 60,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "RATIO",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "EMA",
+      "family": "均线与趋势",
+      "name": "指数移动平均",
+      "aliases": [],
+      "formula_version": "EMA_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "close"
+      ],
+      "outputs": [
+        "ema"
+      ],
+      "params": {
+        "window": 12,
+        "price": "close"
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 12,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "PRICE",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "与 RMA 并存：alpha=2/(N+1) vs alpha=1/N",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "HISTORICAL_RETURN",
+      "family": "统计与截面组合",
+      "name": "历史收益",
+      "aliases": [],
+      "formula_version": "HISTORICAL_RETURN_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "close"
+      ],
+      "outputs": [
+        "return",
+        "ref_close"
+      ],
+      "params": {
+        "window": 20,
+        "price": "close",
+        "log": false
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 21,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "RATIO",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "HLC3",
+      "family": "量价与资金代理",
+      "name": "HLC3 典型价代理",
+      "aliases": [],
+      "formula_version": "HLC3_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "close",
+        "high",
+        "low"
+      ],
+      "outputs": [
+        "hlc3"
+      ],
+      "params": {},
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 1,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "PRICE",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "与 VWAP_SESSION_PROXY、ROLLING_VWAP 三者不同名不同口径",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "KDJ",
+      "family": "动量与震荡",
+      "name": "KDJ(9,3,3)（V1 口径）",
+      "aliases": [],
+      "formula_version": "KDJ_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v1.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v1.py",
+      "inputs": [
+        "close",
+        "high",
+        "low"
+      ],
+      "outputs": [
+        "rsv",
+        "k",
+        "d",
+        "j"
+      ],
+      "params": {
+        "n": 9,
+        "k_period": 3,
+        "d_period": 3
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 9,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "INDEX_0_100",
+      "reuse": "REUSE_AS_IS",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": true,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": true,
+        "EXECUTION_BEHAVIOR_VALIDATED": true,
+        "ACCOUNTING_VALIDATED": true,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "",
+      "next_action": "REUSE_AS_IS"
+    },
+    {
+      "capability_id": "KELTNER",
+      "family": "波动与通道",
+      "name": "Keltner 通道",
+      "aliases": [],
+      "formula_version": "KELTNER_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "close",
+        "high",
+        "low"
+      ],
+      "outputs": [
+        "upper",
+        "middle",
+        "lower",
+        "atr"
+      ],
+      "params": {
+        "window": 20,
+        "atr_window": 10,
+        "multiplier": 2.0
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 20,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "PRICE",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "MA",
+      "family": "均线与趋势",
+      "name": "算术移动平均",
+      "aliases": [
+        "MA",
+        "SMA",
+        "MOVING_AVERAGE"
+      ],
+      "formula_version": "MA_ARITHMETIC_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "close"
+      ],
+      "outputs": [
+        "ma"
+      ],
+      "params": {
+        "window": 20,
+        "price": "close"
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 20,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "PRICE",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "与 SMA_TDX 并存：算术均值 vs 通达信递推 SMA(X,N,M)",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "MACD",
+      "family": "均线与趋势",
+      "name": "MACD（V1 口径）",
+      "aliases": [],
+      "formula_version": "MACD_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v1.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v1.py",
+      "inputs": [
+        "close"
+      ],
+      "outputs": [
+        "ema_fast",
+        "ema_slow",
+        "dif",
+        "dea",
+        "hist"
+      ],
+      "params": {
+        "fast": 12,
+        "slow": 26,
+        "signal": 9
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 34,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "PRICE",
+      "reuse": "REUSE_AS_IS",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": true,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": true,
+        "EXECUTION_BEHAVIOR_VALIDATED": true,
+        "ACCOUNTING_VALIDATED": true,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "与 MACD_HIST_RAW 并存：本项 HIST=2*(DIF-DEA)，后者 HIST_RAW=DIF-DEA",
+      "next_action": "REUSE_AS_IS"
+    },
+    {
+      "capability_id": "MACD_HIST_RAW",
+      "family": "均线与趋势",
+      "name": "MACD 柱（DIF-DEA 方言）",
+      "aliases": [],
+      "formula_version": "MACD_HIST_RAW_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "close"
+      ],
+      "outputs": [
+        "dif",
+        "dea",
+        "hist_raw"
+      ],
+      "params": {
+        "fast": 12,
+        "slow": 26,
+        "signal": 9
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 34,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "PRICE",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "与 MACD 并存：明确不同柱口径，不互相覆盖",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "MFI",
+      "family": "量价与资金代理",
+      "name": "资金流量指标 MFI",
+      "aliases": [],
+      "formula_version": "MFI_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "close",
+        "high",
+        "low",
+        "volume"
+      ],
+      "outputs": [
+        "mfi",
+        "typical_price"
+      ],
+      "params": {
+        "window": 14
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 15,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "INDEX_0_100",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "MTM",
+      "family": "动量与震荡",
+      "name": "动量 MTM/MOM",
+      "aliases": [
+        "MOM"
+      ],
+      "formula_version": "MTM_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "close"
+      ],
+      "outputs": [
+        "mtm",
+        "ref_close"
+      ],
+      "params": {
+        "window": 12,
+        "price": "close"
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 13,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "PRICE",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "NATR",
+      "family": "波动与通道",
+      "name": "NATR（ATR 百分比）",
+      "aliases": [],
+      "formula_version": "NATR_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "close",
+        "high",
+        "low"
+      ],
+      "outputs": [
+        "natr",
+        "atr"
+      ],
+      "params": {
+        "window": 14
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 14,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "PERCENT",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "OBV",
+      "family": "量价与资金代理",
+      "name": "OBV",
+      "aliases": [],
+      "formula_version": "OBV_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "close",
+        "volume"
+      ],
+      "outputs": [
+        "obv"
+      ],
+      "params": {},
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 1,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "SHARES",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "PRICE_EXTREMES",
+      "family": "价格结构",
+      "name": "区间高低点",
+      "aliases": [
+        "HHV",
+        "LLV"
+      ],
+      "formula_version": "PRICE_EXTREMES_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "close",
+        "high",
+        "low"
+      ],
+      "outputs": [
+        "hhv",
+        "llv"
+      ],
+      "params": {
+        "window": 20
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 20,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "PRICE",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "PRIOR_BREAKOUT",
+      "family": "价格结构",
+      "name": "前 N 根突破",
+      "aliases": [],
+      "formula_version": "PRIOR_BREAKOUT_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "close",
+        "high",
+        "low"
+      ],
+      "outputs": [
+        "prior_high",
+        "prior_low",
+        "break_up",
+        "break_down"
+      ],
+      "params": {
+        "window": 20
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 21,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "PRICE",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "PSY",
+      "family": "动量与震荡",
+      "name": "心理线 PSY",
+      "aliases": [],
+      "formula_version": "PSY_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "close"
+      ],
+      "outputs": [
+        "psy"
+      ],
+      "params": {
+        "window": 12,
+        "price": "close"
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 13,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "PERCENT",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "PVT",
+      "family": "量价与资金代理",
+      "name": "PVT",
+      "aliases": [],
+      "formula_version": "PVT_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "close",
+        "volume"
+      ],
+      "outputs": [
+        "pvt"
+      ],
+      "params": {},
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 1,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "SHARES",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "RMA",
+      "family": "均线与趋势",
+      "name": "Wilder 平滑（RMA）",
+      "aliases": [
+        "RMA",
+        "WILDER"
+      ],
+      "formula_version": "RMA_WILDER_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "close"
+      ],
+      "outputs": [
+        "rma"
+      ],
+      "params": {
+        "window": 14,
+        "price": "close"
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 14,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "PRICE",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "与 EMA 并存：Wilder 口径",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "ROC",
+      "family": "动量与震荡",
+      "name": "变动率 ROC",
+      "aliases": [],
+      "formula_version": "ROC_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "close"
+      ],
+      "outputs": [
+        "roc",
+        "ref_close"
+      ],
+      "params": {
+        "window": 12,
+        "price": "close"
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 13,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "PERCENT",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "ROLLING_SLOPE",
+      "family": "统计与截面组合",
+      "name": "线性斜率",
+      "aliases": [],
+      "formula_version": "ROLLING_SLOPE_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "close"
+      ],
+      "outputs": [
+        "slope"
+      ],
+      "params": {
+        "window": 20,
+        "price": "close"
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 20,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "PRICE_PER_BAR",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "ROLLING_VOLATILITY",
+      "family": "波动与通道",
+      "name": "滚动波动率（收益率）",
+      "aliases": [],
+      "formula_version": "ROLLING_VOLATILITY_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "close"
+      ],
+      "outputs": [
+        "volatility",
+        "return"
+      ],
+      "params": {
+        "window": 20,
+        "price": "close",
+        "annualize": 0,
+        "ddof": 1
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 21,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "RATIO",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "ROLLING_VWAP",
+      "family": "量价与资金代理",
+      "name": "滚动 VWAP",
+      "aliases": [],
+      "formula_version": "ROLLING_VWAP_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "amount",
+        "volume"
+      ],
+      "outputs": [
+        "rolling_vwap"
+      ],
+      "params": {
+        "window": 20
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 20,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "PRICE",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "与 VWAP_SESSION_PROXY、HLC3 三者不同名不同口径",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "RSI",
+      "family": "动量与震荡",
+      "name": "Wilder RSI",
+      "aliases": [],
+      "formula_version": "RSI_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "close"
+      ],
+      "outputs": [
+        "rsi"
+      ],
+      "params": {
+        "window": 14,
+        "price": "close"
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 15,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "INDEX_0_100",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "RSI_REGIME_FLAG",
+      "family": "自定义组合",
+      "name": "RSI 区间状态标记（依赖 RSI）",
+      "aliases": [],
+      "formula_version": "RSI_REGIME_FLAG_V1",
+      "implementation_path": "src/chanlun_trader/engine/custom_indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/custom_indicators_v2.py",
+      "inputs": [
+        "close"
+      ],
+      "outputs": [
+        "regime",
+        "rsi_input"
+      ],
+      "params": {
+        "window": 14,
+        "low": 30.0,
+        "high": 70.0
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 15,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "STATE_CODE",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": false,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "RVOL_INCL_CURRENT",
+      "family": "量价与资金代理",
+      "name": "相对量（分母含当前 bar）",
+      "aliases": [],
+      "formula_version": "RVOL_INCL_CURRENT_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "volume"
+      ],
+      "outputs": [
+        "rvol",
+        "volume_ma"
+      ],
+      "params": {
+        "window": 20
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 20,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "RATIO",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "与 RVOL_PRIOR 并存：分母是否含当前 bar 不同",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "RVOL_PRIOR",
+      "family": "量价与资金代理",
+      "name": "相对量（分母为前 N 根）",
+      "aliases": [],
+      "formula_version": "RVOL_PRIOR_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "volume"
+      ],
+      "outputs": [
+        "rvol",
+        "volume_ma_prior"
+      ],
+      "params": {
+        "window": 20
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 21,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "RATIO",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "与 RVOL_INCL_CURRENT 并存：分母口径不同",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "SAR",
+      "family": "均线与趋势",
+      "name": "抛物线 SAR",
+      "aliases": [],
+      "formula_version": "SAR_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "close",
+        "high",
+        "low"
+      ],
+      "outputs": [
+        "sar",
+        "sar_trend"
+      ],
+      "params": {
+        "step": 0.02,
+        "max_step": 0.2
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 2,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "PRICE",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "SMA_TDX",
+      "family": "均线与趋势",
+      "name": "通达信 SMA(X,N,M)",
+      "aliases": [],
+      "formula_version": "SMA_TDX_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "close"
+      ],
+      "outputs": [
+        "sma_tdx"
+      ],
+      "params": {
+        "window": 9,
+        "weight": 1,
+        "price": "close"
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 9,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "PRICE",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "与 MA 并存：递推平滑，非普通滚动均值",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "STREAK",
+      "family": "价格结构",
+      "name": "连续上涨/下跌根数",
+      "aliases": [],
+      "formula_version": "STREAK_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "close"
+      ],
+      "outputs": [
+        "up_streak",
+        "down_streak"
+      ],
+      "params": {
+        "price": "close"
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 1,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "BARS",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "TEMA",
+      "family": "均线与趋势",
+      "name": "三重指数移动平均",
+      "aliases": [],
+      "formula_version": "TEMA_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "close"
+      ],
+      "outputs": [
+        "tema",
+        "ema1",
+        "ema2",
+        "ema3"
+      ],
+      "params": {
+        "window": 20,
+        "price": "close"
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 58,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "PRICE",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "TIME_SERIES_ZSCORE",
+      "family": "统计与截面组合",
+      "name": "时序标准化 z-score",
+      "aliases": [],
+      "formula_version": "TIME_SERIES_ZSCORE_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "close"
+      ],
+      "outputs": [
+        "ts_zscore",
+        "mean",
+        "std"
+      ],
+      "params": {
+        "window": 60,
+        "price": "close",
+        "ddof": 1
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 60,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "RATIO",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "时序标准化；截面 rank/zscore 在条件层，二者不同口径",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "TREND_STRENGTH_RATIO",
+      "family": "自定义组合",
+      "name": "趋势强度比值（ADX × 均线距离）",
+      "aliases": [],
+      "formula_version": "TREND_STRENGTH_RATIO_V1",
+      "implementation_path": "src/chanlun_trader/engine/custom_indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/custom_indicators_v2.py",
+      "inputs": [
+        "close",
+        "high",
+        "low"
+      ],
+      "outputs": [
+        "strength",
+        "adx",
+        "ma_distance"
+      ],
+      "params": {
+        "window": 14,
+        "ma_window": 20
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 28,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "RATIO",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": false,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "TRIX",
+      "family": "动量与震荡",
+      "name": "TRIX",
+      "aliases": [],
+      "formula_version": "TRIX_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "close"
+      ],
+      "outputs": [
+        "trix",
+        "trix_ma"
+      ],
+      "params": {
+        "window": 12,
+        "signal": 9,
+        "price": "close"
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 45,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "PERCENT",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "TRUE_RANGE",
+      "family": "波动与通道",
+      "name": "真实波幅 TR",
+      "aliases": [
+        "TR"
+      ],
+      "formula_version": "TRUE_RANGE_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "close",
+        "high",
+        "low"
+      ],
+      "outputs": [
+        "tr"
+      ],
+      "params": {},
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 1,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "PRICE",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "TURNOVER_RATE",
+      "family": "量价与资金代理",
+      "name": "换手率",
+      "aliases": [],
+      "formula_version": "TURNOVER_RATE_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "volume"
+      ],
+      "outputs": [
+        "turnover_rate"
+      ],
+      "params": {
+        "window": 1
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 1,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "PERCENT",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [
+        "float_shares"
+      ],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "VOLUME_BREAKOUT_SCORE",
+      "family": "自定义组合",
+      "name": "成交量确认的突破评分",
+      "aliases": [],
+      "formula_version": "VOLUME_BREAKOUT_SCORE_V1",
+      "implementation_path": "src/chanlun_trader/engine/custom_indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/custom_indicators_v2.py",
+      "inputs": [
+        "close",
+        "high",
+        "volume"
+      ],
+      "outputs": [
+        "score",
+        "break_up",
+        "rvol"
+      ],
+      "params": {
+        "window": 20,
+        "volume_window": 20
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 21,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "RATIO",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": false,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "VOLUME_MA",
+      "family": "量价与资金代理",
+      "name": "成交量均线",
+      "aliases": [],
+      "formula_version": "VOLUME_MA_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "volume"
+      ],
+      "outputs": [
+        "volume_ma"
+      ],
+      "params": {
+        "window": 20
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 20,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "SHARES",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "VWAP_SESSION_PROXY",
+      "family": "量价与资金代理",
+      "name": "session 成交均价代理（amount/volume）",
+      "aliases": [],
+      "formula_version": "VWAP_SESSION_PROXY_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "amount",
+        "volume"
+      ],
+      "outputs": [
+        "vwap_session_proxy"
+      ],
+      "params": {},
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 1,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "PRICE",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "与 HLC3、ROLLING_VWAP 三者不同名不同口径，禁止互相顶替",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "WILLIAMS_R",
+      "family": "动量与震荡",
+      "name": "Williams %R",
+      "aliases": [
+        "WR"
+      ],
+      "formula_version": "WILLIAMS_R_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "close",
+        "high",
+        "low"
+      ],
+      "outputs": [
+        "wr",
+        "hhv",
+        "llv"
+      ],
+      "params": {
+        "window": 14
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 14,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "INDEX_0_100",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "使用 0~100 表达，不返回负值形式",
+      "next_action": "NEW_IN_V2"
+    },
+    {
+      "capability_id": "WMA",
+      "family": "均线与趋势",
+      "name": "线性加权移动平均",
+      "aliases": [],
+      "formula_version": "WMA_V1",
+      "implementation_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "declaration_path": "src/chanlun_trader/engine/indicators_v2.py",
+      "inputs": [
+        "close"
+      ],
+      "outputs": [
+        "wma"
+      ],
+      "params": {
+        "window": 20,
+        "price": "close"
+      },
+      "price_mode": "CALLER_DECLARED",
+      "frequency": "DAILY",
+      "available_at": "COMPLETED_BAR_CLOSE",
+      "warmup": 20,
+      "missing_policy": "NAN_PROPAGATES_SEGMENT_BREAK",
+      "unit": "PRICE",
+      "reuse": "NEW_IN_V2",
+      "requires_extra_data": [],
+      "evidence_status": {
+        "IMPLEMENTED": true,
+        "FORMULA_VALIDATED": true,
+        "CAUSALITY_VALIDATED": false,
+        "REGISTERED": true,
+        "ENTRYPOINT_WIRED": false,
+        "EXECUTION_BEHAVIOR_VALIDATED": false,
+        "ACCOUNTING_VALIDATED": false,
+        "REAL_DATA_VALIDATED": false,
+        "PROFITABILITY_VALIDATED": false
+      },
+      "duplicate_or_conflict": "",
+      "next_action": "NEW_IN_V2"
+    }
+  ],
+  "declared_but_not_in_registry": [
+    "MACD_CROSS_HOLD_20",
+    "KDJ_OVERSOLD_CROSS_HOLD_20",
+    "RSI_14_RECLAIM_HOLD_20",
+    "RSI2_TREND_200_HOLD_20",
+    "AROON_25_CROSS_HOLD_20",
+    "BOLL_REENTRY_HOLD_20",
+    "DONCHIAN_55_BREAKOUT_HOLD_20",
+    "CCI_20_TREND_HOLD_20",
+    "KAMA_10_CROSS_HOLD_20",
+    "ADX_EMA_PULLBACK_HOLD_20",
+    "SQUEEZE_TREND_TURNOVER_HOLD_20",
+    "ATR_14_UP_BREAKOUT_HOLD_20",
+    "SMA_50_200_CROSS_HOLD_20",
+    "TRIX_15_ZERO_CROSS_HOLD_20",
+    "ROC20_ACCEL_HOLD_20",
+    "HAMMER_DOWN_5_HOLD_20",
+    "THREE_SOLDIERS_HOLD_20",
+    "INSIDE_BAR_UP_HOLD_20",
+    "BULL_ENGULFING_DOWN_5_HOLD_20",
+    "CHAN_BOTTOM_MACD_HOLD_20",
+    "HIGH_252_HOLD_20",
+    "LOW_MAX_20_HOLD_20",
+    "MONTHLY_REVERSAL_HOLD_20",
+    "SMA20_PULLBACK_200_HOLD_20"
+  ],
+  "extension_backlog": {
+    "KAMA": "NOT_IMPLEMENTED_THIS_ROUND",
+    "DMA": "NOT_IMPLEMENTED_THIS_ROUND",
+    "DPO": "NOT_IMPLEMENTED_THIS_ROUND",
+    "PSY": "IMPLEMENTED_PSY",
+    "VR": "NOT_IMPLEMENTED_THIS_ROUND",
+    "BR/AR": "NOT_IMPLEMENTED_THIS_ROUND",
+    "CR": "NOT_IMPLEMENTED_THIS_ROUND",
+    "EMV": "NOT_IMPLEMENTED_THIS_ROUND",
+    "Supertrend": "NOT_IMPLEMENTED_THIS_ROUND",
+    "Keltner": "KELTNER",
+    "蜡烛形态": "PARTIAL_BAR_SHAPE_ONLY",
+    "分型/笔/中枢/背驰": "EXISTING_CHAN_ENGINE_NOT_V2_CERTIFIED"
+  },
+  "data_dependent": {
+    "TURNOVER_RATE": {
+      "requires": [
+        "float_shares (历史流通股本)"
+      ],
+      "this_round": "缺字段返回 DATA_DEPENDENCY_NOT_MET；不生成随机值/0/当前快照替代",
+      "real_data_validated": false
+    },
+    "REAL_VWAP": {
+      "requires": [
+        "同口径金额/股数或逐笔交易数据"
+      ],
+      "this_round": "本轮只提供 VWAP_SESSION_PROXY / HLC3 / ROLLING_VWAP 三个不同名代理",
+      "real_data_validated": false
+    },
+    "INDUSTRY_STRENGTH": {
+      "requires": [
+        "时点行业成员"
+      ],
+      "this_round": "NOT_IMPLEMENTED_THIS_ROUND",
+      "real_data_validated": false
+    },
+    "ORDER_BOOK / 大单 / 筹码 / 龙虎榜 / 基本面": {
+      "requires": [
+        "对应历史源与可用时间"
+      ],
+      "this_round": "NOT_IMPLEMENTED_THIS_ROUND",
+      "real_data_validated": false
+    }
+  }
+}

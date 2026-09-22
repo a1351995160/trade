@@ -37,6 +37,12 @@ from .engine.behavior_service_v1 import (
     IndicatorInputError,
     run_behavior_backtest_v1,
 )
+from .engine.behavior_service_v2 import (
+    RESERVED_MODES_V2,
+    SUPPORTED_MODES_V2,
+    run_behavior_backtest_v2,
+)
+from .engine.indicator_registry_v2 import IndicatorRegistryError
 from .metrics import compute_metrics
 from .report import write_report
 from .research_console import AIInvocationModeServiceV1, ResearchConsoleReadError, ResearchConsoleReadService
@@ -66,7 +72,7 @@ FRONTEND_DIST = PROJECT_ROOT / "frontend" / "dist"
 
 # 只读计算端点白名单：对请求体内合成数据做纯计算，不写研究状态。
 # 仅在 ExecutionPolicy.allow_readonly_compute=True 时放行；默认只读策略下仍拒绝。
-READ_ONLY_COMPUTE_PATHS = ("/api/backtest/behavior",)
+READ_ONLY_COMPUTE_PATHS = ("/api/backtest/behavior", "/api/backtest/behavior/v2")
 
 app = FastAPI(title="缠论选股交易系统")
 
@@ -265,23 +271,71 @@ def backtest_status(request: Request, task_id: str) -> dict:
 
 @app.get("/api/backtest/behavior/contracts")
 def behavior_contracts() -> dict:
-    """公开已验证行为模式的合同标识与支持范围（只读）。"""
+    """公开已验证行为模式的合同标识与支持范围（只读）。
+
+    V2 起由**注册表动态提供**指标、输出名与参数 schema；界面不应硬编码
+    MACD/KDJ 选项。V1 的合同信息保留在同一响应中，便于对照。
+    """
     from .engine.conditions_v1 import condition_registry
+    from .engine.conditions_v2 import CONDITION_LAYER_VERSION
+    from .engine.custom_indicators_v2 import (
+        custom_condition_fixtures,
+        custom_exit_condition_fixtures,
+        register_custom_indicators,
+    )
     from .engine.daily_exit_v1 import RESERVED_EXIT_TYPES, SUPPORTED_EXIT_TYPES
+    from .engine.daily_exit_v2 import (
+        DAILY_EXIT_CONTRACT_V2,
+        SUPPORTED_EXIT_TYPES_V2,
+        UNSUPPORTED_EXIT_TYPES_V2,
+        V2_ADDITIONAL_EXIT_TYPES,
+    )
+    from .engine.indicator_registry_v2 import default_registry
     from .engine.indicators_v1 import INDICATOR_CONTRACT_VERSION
+    from .engine.indicators_v2 import INDICATORS_V2_VERSION
+
+    registry = default_registry()
+    register_custom_indicators(registry)
+    indicators = [{
+        "indicator_id": spec.indicator_id,
+        "version": spec.version,
+        "family": spec.family,
+        "display_name": spec.display_name,
+        "outputs": list(spec.outputs),
+        "params": dict(spec.params),
+        "inputs": list(spec.inputs),
+        "unit": spec.unit,
+        "warmup_bars": spec.warmup_bars,
+        "requires_extra_data": list(spec.requires_extra_data),
+        "aliases": list(spec.aliases),
+    } for spec in registry.specs()]
 
     return {
         "supported_modes": list(SUPPORTED_MODES),
         "reserved_modes": list(RESERVED_MODES),
+        "supported_modes_v2": list(SUPPORTED_MODES_V2),
+        "reserved_modes_v2": list(RESERVED_MODES_V2),
         "legacy_endpoint": {
             "path": "/api/backtest",
             "engine_version": "legacy-v1",
             "certification": "LEGACY_NOT_CERTIFIED_BY_BT_BEHAVIOR_DAILY_V1",
         },
         "indicator_contract": INDICATOR_CONTRACT_VERSION,
+        "indicators_v2_contract": INDICATORS_V2_VERSION,
+        "condition_contract_v2": CONDITION_LAYER_VERSION,
+        "exit_contract_v2": DAILY_EXIT_CONTRACT_V2,
         "conditions": condition_registry(),
         "supported_exit_types": list(SUPPORTED_EXIT_TYPES),
         "reserved_exit_types": list(RESERVED_EXIT_TYPES),
+        "supported_exit_types_v2": list(SUPPORTED_EXIT_TYPES_V2),
+        "additional_exit_types_v2": list(V2_ADDITIONAL_EXIT_TYPES),
+        "unsupported_exit_types_v2": list(UNSUPPORTED_EXIT_TYPES_V2),
+        # 注册表驱动：界面据此渲染可选指标与参数，无需硬编码
+        "registry_version": registry.to_dict()["registry_version"],
+        "families": registry.families(),
+        "indicators": indicators,
+        "custom_entry_conditions": sorted(custom_condition_fixtures()),
+        "custom_exit_conditions": sorted(custom_exit_condition_fixtures()),
     }
 
 
@@ -311,6 +365,35 @@ def run_behavior_backtest(body: dict | None = None) -> dict:
     except (ExitConfigError, ConditionError, IndicatorInputError) as exc:
         raise HTTPException(status_code=400, detail={"code": str(exc), "message_zh": "请求不受支持"}) from exc
     return result.to_dict()
+
+
+@app.post("/api/backtest/behavior/v2")
+def run_behavior_backtest_v2_endpoint(body: dict | None = None) -> dict:
+    """BT_BEHAVIOR_DAILY_V2 通用回测入口（注册表驱动 + 表达式条件）。
+
+    与 CLI ``scripts/run_behavior_backtest_v2.py`` 调用同一服务函数
+    ``run_behavior_backtest_v2``，因此同一请求语义与账户结果一致。
+
+    本入口只接受请求体内的合成行情：不接受 ``dataset_path``，
+    也不写任何研究目录（``persist_run_manifest`` 强制为 False）。
+    """
+    payload = dict(body or {})
+    if payload.get("dataset_path"):
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "FILE_ENTRY_NOT_AVAILABLE_OVER_HTTP",
+                    "message_zh": "HTTP 入口只接受请求体内的合成行情；文件入口请使用 CLI。"},
+        )
+    payload["persist_run_manifest"] = False
+    try:
+        result = run_behavior_backtest_v2(payload)
+    except BehaviorRequestError as exc:
+        raise HTTPException(status_code=400, detail={"code": str(exc), "message_zh": "请求不受支持"}) from exc
+    except IndicatorRegistryError as exc:
+        raise HTTPException(status_code=400, detail={"code": str(exc), "message_zh": "指标不受支持"}) from exc
+    except (ExitConfigError, ConditionError, IndicatorInputError) as exc:
+        raise HTTPException(status_code=400, detail={"code": str(exc), "message_zh": "请求不受支持"}) from exc
+    return result
 
 
 @app.get("/api/kline/{code}")

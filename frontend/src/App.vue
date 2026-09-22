@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import BacktestPanel from './components/BacktestPanel.vue'
+import GenericBacktestPanel from './components/GenericBacktestPanel.vue'
 import ScreenerPanel from './components/ScreenerPanel.vue'
 import KlinePanel from './components/KlinePanel.vue'
 import ResearchConsole from './console/ResearchConsole.vue'
 import './console/research-console.css'
 
-const tab = ref<'backtest' | 'screener' | 'kline'>('backtest')
+const tab = ref<'backtest' | 'generic' | 'screener' | 'kline'>('backtest')
 const path = ref(window.location.pathname || '/')
 const routeKey = ref(`${window.location.pathname || '/'}${window.location.search || ''}`)
 const isResearchConsole = computed(() => path.value === '/research' || path.value.startsWith('/research/') || ['/daemon', '/shadow', '/data-health', '/reports'].includes(path.value))
@@ -46,11 +47,13 @@ onBeforeUnmount(() => window.removeEventListener('popstate', onPopState))
     </header>
     <nav class="legacy-tabs" aria-label="原有交易工具">
       <button :class="['legacy-tab', { active: tab === 'backtest' }]" @click="tab = 'backtest'">回测</button>
+      <button :class="['legacy-tab', { active: tab === 'generic' }]" @click="tab = 'generic'">通用回测 V2</button>
       <button :class="['legacy-tab', { active: tab === 'screener' }]" @click="tab = 'screener'">选股</button>
       <button :class="['legacy-tab', { active: tab === 'kline' }]" @click="tab = 'kline'">K线图</button>
     </nav>
     <main class="legacy-main">
       <BacktestPanel v-if="tab === 'backtest'" />
+      <GenericBacktestPanel v-else-if="tab === 'generic'" />
       <ScreenerPanel v-else-if="tab === 'screener'" />
       <KlinePanel v-else />
     </main>

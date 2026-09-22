@@ -1,0 +1,460 @@
+{
+  "registry_version": "BT_INDICATOR_REGISTRY_V2",
+  "minimum_set": {
+    "required": 54,
+    "met": 54
+  },
+  "families": [
+    {
+      "family": "基础算子",
+      "required": 10,
+      "met": 10,
+      "items": [
+        {
+          "requirement": "arithmetic",
+          "target": "OPERATOR_LAYER",
+          "met": true,
+          "note": "既有 research/unified_factor.py 算子注册表（本轮未改）"
+        },
+        {
+          "requirement": "comparison",
+          "target": "OPERATOR_LAYER",
+          "met": true,
+          "note": "既有 research/unified_factor.py 算子注册表（本轮未改）"
+        },
+        {
+          "requirement": "boolean",
+          "target": "CONDITION_LAYER",
+          "met": true,
+          "note": "本轮 engine/conditions_v2.py 条件层"
+        },
+        {
+          "requirement": "REF",
+          "target": "CONDITION_LAYER",
+          "met": true,
+          "note": "本轮 engine/conditions_v2.py 条件层"
+        },
+        {
+          "requirement": "rolling SUM/MEAN/STD/VAR",
+          "target": "OPERATOR_LAYER",
+          "met": true,
+          "note": "既有 research/unified_factor.py 算子注册表（本轮未改）"
+        },
+        {
+          "requirement": "HHV/LLV",
+          "target": "PRICE_EXTREMES",
+          "met": true,
+          "note": "PRICE_EXTREMES_V1"
+        },
+        {
+          "requirement": "COUNT",
+          "target": "OPERATOR_LAYER",
+          "met": true,
+          "note": "既有 research/unified_factor.py 算子注册表（本轮未改）"
+        },
+        {
+          "requirement": "EVERY/EXIST",
+          "target": "CONDITION_LAYER",
+          "met": true,
+          "note": "本轮 engine/conditions_v2.py 条件层"
+        },
+        {
+          "requirement": "BARSLAST",
+          "target": "CONDITION_LAYER",
+          "met": true,
+          "note": "本轮 engine/conditions_v2.py 条件层"
+        },
+        {
+          "requirement": "CROSS_UP/CROSS_DOWN",
+          "target": "CONDITION_LAYER",
+          "met": true,
+          "note": "本轮 engine/conditions_v2.py 条件层"
+        }
+      ]
+    },
+    {
+      "family": "均线与趋势",
+      "required": 10,
+      "met": 10,
+      "items": [
+        {
+          "requirement": "MA/算术SMA",
+          "target": "MA",
+          "met": true,
+          "note": "MA_ARITHMETIC_V1"
+        },
+        {
+          "requirement": "EMA",
+          "target": "EMA",
+          "met": true,
+          "note": "EMA_V1"
+        },
+        {
+          "requirement": "WMA",
+          "target": "WMA",
+          "met": true,
+          "note": "WMA_V1"
+        },
+        {
+          "requirement": "RMA/Wilder",
+          "target": "RMA",
+          "met": true,
+          "note": "RMA_WILDER_V1"
+        },
+        {
+          "requirement": "通达信SMA(N,M)",
+          "target": "SMA_TDX",
+          "met": true,
+          "note": "SMA_TDX_V1"
+        },
+        {
+          "requirement": "DEMA",
+          "target": "DEMA",
+          "met": true,
+          "note": "DEMA_V1"
+        },
+        {
+          "requirement": "TEMA",
+          "target": "TEMA",
+          "met": true,
+          "note": "TEMA_V1"
+        },
+        {
+          "requirement": "MACD",
+          "target": "MACD",
+          "met": true,
+          "note": "MACD_V1"
+        },
+        {
+          "requirement": "DMI/ADX",
+          "target": "DMI",
+          "met": true,
+          "note": "DMI_ADX_V1"
+        },
+        {
+          "requirement": "SAR",
+          "target": "SAR",
+          "met": true,
+          "note": "SAR_V1"
+        }
+      ]
+    },
+    {
+      "family": "动量与震荡",
+      "required": 8,
+      "met": 8,
+      "items": [
+        {
+          "requirement": "KDJ",
+          "target": "KDJ",
+          "met": true,
+          "note": "KDJ_V1"
+        },
+        {
+          "requirement": "RSI",
+          "target": "RSI",
+          "met": true,
+          "note": "RSI_V1"
+        },
+        {
+          "requirement": "CCI",
+          "target": "CCI",
+          "met": true,
+          "note": "CCI_V1"
+        },
+        {
+          "requirement": "Williams %R",
+          "target": "WILLIAMS_R",
+          "met": true,
+          "note": "WILLIAMS_R_V1"
+        },
+        {
+          "requirement": "ROC",
+          "target": "ROC",
+          "met": true,
+          "note": "ROC_V1"
+        },
+        {
+          "requirement": "MTM/MOM",
+          "target": "MTM",
+          "met": true,
+          "note": "MTM_V1"
+        },
+        {
+          "requirement": "BIAS",
+          "target": "BIAS",
+          "met": true,
+          "note": "BIAS_V1"
+        },
+        {
+          "requirement": "TRIX",
+          "target": "TRIX",
+          "met": true,
+          "note": "TRIX_V1"
+        }
+      ]
+    },
+    {
+      "family": "波动与通道",
+      "required": 6,
+      "met": 6,
+      "items": [
+        {
+          "requirement": "TR",
+          "target": "TRUE_RANGE",
+          "met": true,
+          "note": "TRUE_RANGE_V1"
+        },
+        {
+          "requirement": "ATR",
+          "target": "ATR",
+          "met": true,
+          "note": "ATR_V1"
+        },
+        {
+          "requirement": "NATR",
+          "target": "NATR",
+          "met": true,
+          "note": "NATR_V1"
+        },
+        {
+          "requirement": "滚动波动率",
+          "target": "ROLLING_VOLATILITY",
+          "met": true,
+          "note": "ROLLING_VOLATILITY_V1"
+        },
+        {
+          "requirement": "BOLL/BBANDS",
+          "target": "BOLLINGER",
+          "met": true,
+          "note": "BOLLINGER_V1"
+        },
+        {
+          "requirement": "Donchian",
+          "target": "DONCHIAN",
+          "met": true,
+          "note": "DONCHIAN_V1"
+        }
+      ]
+    },
+    {
+      "family": "量价与资金代理",
+      "required": 8,
+      "met": 8,
+      "items": [
+        {
+          "requirement": "成交量均线",
+          "target": "VOLUME_MA",
+          "met": true,
+          "note": "VOLUME_MA_V1"
+        },
+        {
+          "requirement": "成交额均线",
+          "target": "AMOUNT_MA",
+          "met": true,
+          "note": "AMOUNT_MA_V1"
+        },
+        {
+          "requirement": "RVOL",
+          "target": "RVOL_INCL_CURRENT",
+          "met": true,
+          "note": "RVOL_INCL_CURRENT_V1"
+        },
+        {
+          "requirement": "OBV",
+          "target": "OBV",
+          "met": true,
+          "note": "OBV_V1"
+        },
+        {
+          "requirement": "MFI",
+          "target": "MFI",
+          "met": true,
+          "note": "MFI_V1"
+        },
+        {
+          "requirement": "A/D",
+          "target": "ACCUMULATION_DISTRIBUTION",
+          "met": true,
+          "note": "ACCUMULATION_DISTRIBUTION_V1"
+        },
+        {
+          "requirement": "CMF",
+          "target": "CHAIKIN_MONEY_FLOW",
+          "met": true,
+          "note": "CHAIKIN_MONEY_FLOW_V1"
+        },
+        {
+          "requirement": "PVT",
+          "target": "PVT",
+          "met": true,
+          "note": "PVT_V1"
+        }
+      ]
+    },
+    {
+      "family": "价格结构",
+      "required": 5,
+      "met": 5,
+      "items": [
+        {
+          "requirement": "区间高低点",
+          "target": "PRICE_EXTREMES",
+          "met": true,
+          "note": "PRICE_EXTREMES_V1"
+        },
+        {
+          "requirement": "前N根突破",
+          "target": "PRIOR_BREAKOUT",
+          "met": true,
+          "note": "PRIOR_BREAKOUT_V1"
+        },
+        {
+          "requirement": "回撤/振幅",
+          "target": "DRAWDOWN_FROM_PEAK",
+          "met": true,
+          "note": "DRAWDOWN_FROM_PEAK_V1"
+        },
+        {
+          "requirement": "实体/上下影线/缺口比例",
+          "target": "BAR_SHAPE",
+          "met": true,
+          "note": "BAR_SHAPE_V1"
+        },
+        {
+          "requirement": "连续上涨下跌",
+          "target": "STREAK",
+          "met": true,
+          "note": "STREAK_V1"
+        }
+      ]
+    },
+    {
+      "family": "统计与截面组合",
+      "required": 7,
+      "met": 7,
+      "items": [
+        {
+          "requirement": "历史收益",
+          "target": "HISTORICAL_RETURN",
+          "met": true,
+          "note": "HISTORICAL_RETURN_V1"
+        },
+        {
+          "requirement": "线性斜率",
+          "target": "ROLLING_SLOPE",
+          "met": true,
+          "note": "ROLLING_SLOPE_V1"
+        },
+        {
+          "requirement": "时间序列标准化",
+          "target": "TIME_SERIES_ZSCORE",
+          "met": true,
+          "note": "TIME_SERIES_ZSCORE_V1"
+        },
+        {
+          "requirement": "相关系数",
+          "target": "OPERATOR_LAYER:correlation",
+          "met": true,
+          "note": "既有 research/unified_factor.py 算子注册表（本轮未改）"
+        },
+        {
+          "requirement": "Beta",
+          "target": "OPERATOR_LAYER:beta",
+          "met": true,
+          "note": "既有 research/unified_factor.py 算子注册表（本轮未改）"
+        },
+        {
+          "requirement": "截面rank/percentile",
+          "target": "CONDITION_LAYER:rank",
+          "met": true,
+          "note": "本轮 engine/conditions_v2.py 条件层"
+        },
+        {
+          "requirement": "Top-N",
+          "target": "CONDITION_LAYER:top_n",
+          "met": true,
+          "note": "本轮 engine/conditions_v2.py 条件层"
+        }
+      ]
+    }
+  ],
+  "exit_rules": {
+    "v1_reused": [
+      "FIXED_COST_STOP",
+      "FIXED_TAKE_PROFIT",
+      "TRAILING_CLOSE_STOP",
+      "FIXED_HOLD"
+    ],
+    "v2_added": [
+      "ATR_DISTANCE_STOP",
+      "ATR_TRAILING_STOP",
+      "INDICATOR_CONDITION_EXIT",
+      "REVERSE_SIGNAL_EXIT",
+      "STRUCTURE_PRICE_STOP"
+    ],
+    "unsupported": [
+      "INTRADAY_TOUCH_STOP",
+      "TICK_LEVEL_EXIT",
+      "MULTI_TIMEFRAME_EXIT"
+    ],
+    "supported_total": [
+      "FIXED_COST_STOP",
+      "FIXED_TAKE_PROFIT",
+      "TRAILING_CLOSE_STOP",
+      "FIXED_HOLD",
+      "ATR_DISTANCE_STOP",
+      "ATR_TRAILING_STOP",
+      "INDICATOR_CONDITION_EXIT",
+      "REVERSE_SIGNAL_EXIT",
+      "STRUCTURE_PRICE_STOP"
+    ]
+  },
+  "custom_fixtures": {
+    "VOLUME_BREAKOUT_SCORE": "多输入（价格结构 × 量价）",
+    "TREND_STRENGTH_RATIO": "多输入（ADX × 均线距离）",
+    "RSI_REGIME_FLAG": "依赖另一个指标（消费 RSI 输出）",
+    "dependencies": {
+      "VOLUME_BREAKOUT_SCORE": [],
+      "TREND_STRENGTH_RATIO": [],
+      "RSI_REGIME_FLAG": [
+        "RSI"
+      ]
+    }
+  },
+  "status_dimensions": [
+    "IMPLEMENTED",
+    "FORMULA_VALIDATED",
+    "CAUSALITY_VALIDATED",
+    "REGISTERED",
+    "ENTRYPOINT_WIRED",
+    "EXECUTION_BEHAVIOR_VALIDATED",
+    "ACCOUNTING_VALIDATED",
+    "REAL_DATA_VALIDATED",
+    "PROFITABILITY_VALIDATED"
+  ],
+  "environment_failures": {
+    "note": "与 BASE_SHA 干净工作树逐条一致；非本轮引入，不计为通过。",
+    "isolated_run": {
+      "failed": 193,
+      "errors_included": true
+    },
+    "categories": {
+      "本地未设合成隔离变量的治理门禁": [
+        "NOVELTY_IMPORT_ISOLATION_REQUIRED",
+        "OBJECTIVE_V2_SYNTHETIC_GOVERNANCE_REQUIRED",
+        "BATCH_SYNTHETIC_GOVERNANCE_REQUIRED"
+      ],
+      "缺本机研究工件": [
+        "FileNotFoundError: data/research/event_store/*.parquet"
+      ],
+      "前端未构建": [
+        "tests/test_webapp.py 6 项 404"
+      ],
+      "需封存期真实产物": [
+        "tests/research_integrity/test_clean_rerun_artifacts.py"
+      ]
+    },
+    "detailed_reference": "reports/behavior_acceptance_v1/ENVIRONMENT_FAILURES.json"
+  }
+}
