@@ -110,11 +110,16 @@ def _series(frame: pd.DataFrame, name: str) -> pd.Series:
 
 @dataclass
 class IndicatorRequest:
-    """一个指标请求：id + 可选版本 + 参数。"""
+    """一个指标请求：id + 可选版本 + 参数 + 可选**实例别名**。
+
+    ``alias`` 用于在同一请求里引用同一指标的多个实例（例如 ``ma_fast`` / ``ma_slow``）。
+    未给 alias 时，实例身份由 ``indicator_id@version#params`` 决定。
+    """
 
     indicator_id: str
     version: Optional[str] = None
     params: Mapping[str, Any] = field(default_factory=dict)
+    alias: Optional[str] = None
 
     @classmethod
     def from_mapping(cls, payload: Mapping[str, Any]) -> "IndicatorRequest":
@@ -122,7 +127,7 @@ class IndicatorRequest:
             return cls(indicator_id=payload)
         if not isinstance(payload, Mapping):
             raise BehaviorRequestError("INVALID_INDICATOR_REQUEST")
-        known = {"indicator_id", "version", "params"}
+        known = {"indicator_id", "version", "params", "alias"}
         unknown = sorted(set(payload) - known)
         if unknown:
             raise BehaviorRequestError(f"UNKNOWN_INDICATOR_REQUEST_FIELD:{','.join(unknown)}")
@@ -130,7 +135,8 @@ class IndicatorRequest:
             raise BehaviorRequestError("INDICATOR_ID_REQUIRED")
         return cls(indicator_id=str(payload["indicator_id"]),
                    version=payload.get("version"),
-                   params=dict(payload.get("params") or {}))
+                   params=dict(payload.get("params") or {}),
+                   alias=(str(payload["alias"]) if payload.get("alias") else None))
 
 
 @dataclass
@@ -251,14 +257,46 @@ def compute_indicators(
     frames: Mapping[str, pd.DataFrame],
     requests: Sequence[IndicatorRequest],
 ) -> Dict[str, Dict[str, IndicatorResult]]:
-    """对每个证券计算全部请求指标。返回 ``{symbol: {indicator_id: result}}``。"""
+    """对每个证券计算全部请求指标。
+
+    返回 ``{symbol: {instance_key: result}}``。
+
+    实例身份 = ``alias``（若给）否则 ``indicator_id@version#params``。
+    **同一请求内重复或冲突的实例身份必须先拒绝**，不能静默覆盖：
+    ``MA(5)`` 与 ``MA(20)`` 是两个实例；仅别名不同但解析到同一 canonical
+    id 且参数相同也不构成独立实例。
+    """
     if not requests:
         raise BehaviorRequestError("EMPTY_INDICATOR_LIST")
+
+    # 先解析全部请求并检测重复/冲突身份。
+    resolved_requests: List[Tuple[str, IndicatorRequest, IndicatorResult]] = []
+    seen: Dict[str, Tuple[str, str]] = {}
+    for request in requests:
+        spec, key = registry.resolve_instance(
+            request.indicator_id, version=request.version, params=request.params)
+        instance_key = request.alias or f"{spec.indicator_id}@{spec.version}#{key.as_string()}"
+        fingerprint = key.as_string()
+        if instance_key in seen:
+            previous = seen[instance_key]
+            raise BehaviorRequestError(
+                f"DUPLICATE_INDICATOR_INSTANCE:{instance_key}:"
+                f"already={previous[0]}@{previous[1]}:conflict={spec.indicator_id}@{spec.version}")
+        # 同一 canonical 实例被声明两次（即使 alias 不同）也不允许：
+        # 那会伪装成两个独立实例。
+        for existing_key, (existing_id, existing_fp) in seen.items():
+            if existing_fp == fingerprint:
+                raise BehaviorRequestError(
+                    f"CONFLICTING_INDICATOR_INSTANCE:{existing_key}:{instance_key}:"
+                    f"same_canonical_instance:{spec.indicator_id}@{spec.version}")
+        seen[instance_key] = (spec.indicator_id, fingerprint)
+        resolved_requests.append((instance_key, request, spec))
+
     output: Dict[str, Dict[str, IndicatorResult]] = {}
     for symbol in sorted(frames):
         frame = frames[symbol]
         results: Dict[str, IndicatorResult] = {}
-        for request in requests:
+        for instance_key, request, spec in resolved_requests:
             try:
                 result = registry.compute(
                     request.indicator_id, _series(frame, "close"),
@@ -272,29 +310,107 @@ def compute_indicators(
                 )
             except IndicatorRegistryError as exc:
                 raise BehaviorRequestError(f"INDICATOR_ERROR:{symbol}:{exc}") from exc
-            results[result.indicator_id] = result
+            results[instance_key] = result
         output[symbol] = results
     return output
+
+
+def instance_lookup(results: Mapping[str, IndicatorResult]) -> Dict[str, str]:
+    """构造 ``indicator_id -> instance_key`` 的反查表。
+
+    当同一 indicator_id 有多个实例时，**不允许**按 id 含糊引用：
+    调用方必须用 alias 或完整实例键。
+    """
+    by_id: Dict[str, List[str]] = {}
+    for instance_key, result in results.items():
+        by_id.setdefault(result.indicator_id, []).append(instance_key)
+    lookup: Dict[str, str] = {}
+    for indicator_id, keys in by_id.items():
+        if len(keys) == 1:
+            lookup[indicator_id] = keys[0]
+        else:
+            for key in keys:
+                lookup[key] = key
+    return lookup
 
 
 def build_condition_context(
     frame: pd.DataFrame,
     results: Mapping[str, IndicatorResult],
     index: pd.Index,
+    *,
+    cross_section: Optional[pd.DataFrame] = None,
 ) -> ConditionContext:
-    """构造求值上下文：指标输出键为 ``f"{indicator_id}.{output}"``。"""
+    """构造求值上下文。
+
+    输出键同时提供两种形式：
+
+    - ``f"{instance_key}.{output}"``（**精确**，推荐，多实例时必须用它）；
+    - ``f"{indicator_id}.{output}"``（**仅在该 indicator_id 只有单一实例时**提供）。
+
+    当同一 id 有多个实例时不再提供含糊的 id 形式，避免"引用到了另一个实例"。
+    """
     values: Dict[str, pd.Series] = {}
     ready: Dict[str, pd.Series] = {}
-    for indicator_id, result in results.items():
+    counts: Dict[str, int] = {}
+    for result in results.values():
+        counts[result.indicator_id] = counts.get(result.indicator_id, 0) + 1
+    for instance_key, result in results.items():
         for name in result.output_names:
-            key = f"{indicator_id}.{name}"
-            values[key] = result.output(name).reindex(index)
-            ready[key] = result.ready().reindex(index).fillna(False)
+            series = result.output(name).reindex(index)
+            ready_series = result.ready().reindex(index).fillna(False).astype(bool)
+            values[f"{instance_key}.{name}"] = series
+            ready[f"{instance_key}.{name}"] = ready_series
+            if counts[result.indicator_id] == 1:
+                values[f"{result.indicator_id}.{name}"] = series
+                ready[f"{result.indicator_id}.{name}"] = ready_series
     fields: Dict[str, pd.Series] = {}
     for name in ("close", "high", "low", "open", "volume", "amount"):
         if name in frame.columns:
             fields[name] = pd.to_numeric(frame[name], errors="coerce").reindex(index)
-    return ConditionContext(indicator_values=values, fields=fields, index=index, ready=ready)
+    return ConditionContext(indicator_values=values, fields=fields, index=index,
+                            ready=ready, cross_section=cross_section)
+
+
+def build_cross_section(
+    symbol_results: Mapping[str, Mapping[str, IndicatorResult]],
+    session: int,
+) -> Optional[pd.DataFrame]:
+    """为**单个 session** 构造合法截面。
+
+    行 = 证券，列 = ``f"{instance_key}.{output}"``；只包含在该 session
+    已 ready 且有限的成员值。不合格成员保留 NaN，由条件层判为 UNKNOWN。
+    当某 indicator_id 只有单一实例时，同时提供 ``f"{id}.{output}"`` 形式，
+    使条件可按指标 id 引用（与单证券上下文一致）。
+    """
+    # 实例计数必须按**单个证券**统计（同一 id 是否在该证券上有多个实例），
+    # 不能把所有证券的实例数累加，否则单实例指标会被误判为多实例。
+    counts: Dict[str, int] = {}
+    for results in symbol_results.values():
+        per_symbol: Dict[str, int] = {}
+        for result in results.values():
+            per_symbol[result.indicator_id] = per_symbol.get(result.indicator_id, 0) + 1
+        for indicator_id, value in per_symbol.items():
+            counts[indicator_id] = max(counts.get(indicator_id, 0), value)
+    columns: Dict[str, Dict[str, float]] = {}
+    for symbol, results in symbol_results.items():
+        for instance_key, result in results.items():
+            for name in result.output_names:
+                series = result.output(name)
+                if session not in series.index:
+                    continue
+                value = series.loc[session]
+                is_ready = bool(result.ready().loc[session]) if session in result.ready().index else False
+                finite = bool(np.isfinite(value)) if value == value else False
+                resolved = float(value) if (is_ready and finite) else np.nan
+                keys = [f"{instance_key}.{name}"]
+                if counts[result.indicator_id] == 1:
+                    keys.append(f"{result.indicator_id}.{name}")
+                for key in keys:
+                    columns.setdefault(key, {})[symbol] = resolved
+    if not columns:
+        return None
+    return pd.DataFrame(columns).sort_index()
 
 
 def build_entry_signals_v2(
@@ -318,39 +434,66 @@ def build_entry_signals_v2(
     trace: Dict[str, Any] = {}
     calendar_set = {int(d) for d in calendar}
 
+    # 表达式里的 alias 解析为实例键（多实例引用必须精确）。
+    alias_map = _alias_map(indicator_results, indicator_requests)
+    entry_condition = _bind_aliases(entry_condition, alias_map)
+
+    prepared_frames: Dict[str, pd.DataFrame] = {}
     for symbol in sorted(frames):
         frame = frames[symbol].sort_values("date").reset_index(drop=True)
         index = pd.Index(frame["date"].astype(int).to_numpy(), name="date")
-        prepared = frame.set_index(index)
-        context = build_condition_context(prepared, indicator_results[symbol], index)
-        condition = evaluator.evaluate(entry_condition, context)
-        eligible = is_eligible(condition)
-        reasons = rejection_reason(condition)
+        prepared_frames[symbol] = frame.set_index(index)
 
+    # 逐 session 评估：每个 session 只暴露该日及之前的已完成数据，
+    # 截面只包含该日合法成员（成员资格 + ready + finite + 时间可见性）。
+    for symbol in sorted(frames):
+        prepared = prepared_frames[symbol]
+        index = prepared.index
         symbol_trace: Dict[str, Any] = {
             "indicator_outputs": {
-                indicator_id: list(result.output_names)
-                for indicator_id, result in indicator_results[symbol].items()
+                instance_key: list(result.output_names)
+                for instance_key, result in indicator_results[symbol].items()
             },
-            "condition_true": int(eligible.sum()),
-            "condition_false": int((reasons == "CONDITION_FALSE").sum()),
-            "condition_unknown": int((reasons == "CONDITION_UNKNOWN").sum()),
+            "condition_true": 0,
+            "condition_false": 0,
+            "condition_unknown": 0,
         }
+        for day in index:
+            day_int = int(day)
+            if day_int not in calendar_set:
+                continue
+            visible = index[index <= day]
+            cross_section = build_cross_section(indicator_results, day_int)
+            context = build_condition_context(
+                prepared.loc[visible], indicator_results[symbol], visible,
+                cross_section=cross_section)
+            condition = evaluator.evaluate(entry_condition, context)
+            # 截面算子返回以**证券**为索引的结果；按当前证券取值。
+            # 时序算子返回以**时间**为索引的结果；按当前 session 取值。
+            if symbol in condition.index:
+                value = condition.loc[symbol]
+            elif day in condition.index:
+                value = condition.loc[day]
+            else:
+                value = np.nan
+            if not (isinstance(value, float) and np.isnan(value)) and value > 0:
+                symbol_trace["condition_true"] += 1
+                signals.append(Signal(
+                    strategy_id=strategy_id,
+                    signal_id=f"{strategy_id}:{symbol}:{day_int}",
+                    symbol=symbol,
+                    generated_at=_timestamp(day_int, 15, 0),
+                    direction=Side.BUY,
+                    signal_type="EXPRESSION_ENTRY",
+                    execution_policy=ExecutionPolicy.NEXT_SESSION_OPEN,
+                    score=0.0,
+                ))
+            elif isinstance(value, float) and np.isnan(value):
+                symbol_trace["condition_unknown"] += 1
+            else:
+                symbol_trace["condition_false"] += 1
         trace[symbol] = symbol_trace
 
-        for day in index:
-            if int(day) not in calendar_set or not bool(eligible.loc[day]):
-                continue
-            signals.append(Signal(
-                strategy_id=strategy_id,
-                signal_id=f"{strategy_id}:{symbol}:{int(day)}",
-                symbol=symbol,
-                generated_at=_timestamp(int(day), 15, 0),
-                direction=Side.BUY,
-                signal_type="EXPRESSION_ENTRY",
-                execution_policy=ExecutionPolicy.NEXT_SESSION_OPEN,
-                score=0.0,
-            ))
     signals.sort(key=lambda s: (s.generated_at, s.symbol))
     return signals, trace, indicator_results
 
@@ -436,12 +579,13 @@ def run_behavior_backtest_v2(
                          if request.reverse_signal_condition is not None else None)
 
     indicator_requests = [IndicatorRequest.from_mapping(item) for item in request.indicators]
-    # 条件里引用的指标若未显式请求，自动补上（保证条件可求值）。
+    aliases = {item.alias for item in indicator_requests if item.alias}
+    # 条件里引用的指标若未显式请求（且不是已声明的别名），自动补上。
     required = _referenced_indicators(entry_condition)
     for extra in (exit_condition, reverse_condition):
         required |= _referenced_indicators(extra)
     declared = {item.indicator_id for item in indicator_requests}
-    for indicator_id in sorted(required - declared):
+    for indicator_id in sorted(required - declared - aliases):
         indicator_requests.append(IndicatorRequest(indicator_id=indicator_id))
     if not indicator_requests:
         raise BehaviorRequestError("NO_INDICATORS_FOR_CONDITION")
@@ -450,6 +594,14 @@ def run_behavior_backtest_v2(
         frames, calendar, indicator_requests, entry_condition,
         registry=reg, strategy_id=request.strategy_id,
     )
+
+    # 把表达式里的 alias 解析为实例键（在拿到实例列表之后）。
+    alias_map = _alias_map(indicator_results, indicator_requests)
+    for alias, instance_key in alias_map.items():
+        if alias == instance_key:
+            continue
+    exit_condition = _bind_aliases(exit_condition, alias_map)
+    reverse_condition = _bind_aliases(reverse_condition, alias_map)
 
     store = MarketDataStore(feature_price_mode="raw")
     for symbol in request.symbols:
@@ -505,34 +657,59 @@ def run_behavior_backtest_v2(
     )
 
     # 条件上下文按 session 预构建（每个 session 只暴露该日及之前的数据）。
-    context_by_session: Dict[int, ConditionContext] = {}
-    for symbol in request.symbols:
-        frame = frames[symbol].sort_values("date").reset_index(drop=True)
-        full_index = pd.Index(frame["date"].astype(int).to_numpy(), name="date")
-        prepared = frame.set_index(full_index)
+    # 仅当**确实**需要指标条件退出/反向信号时才构建，避免为固定持有/成本止损等
+    # 基础退出引入不必要的指标上下文限制。
+    needs_condition_context = exit_condition is not None or reverse_condition is not None
+    context_by_session: Dict[int, Dict[str, ConditionContext]] = {}
+    if needs_condition_context:
         for day in calendar:
-            visible = full_index[full_index <= int(day)]
-            context_by_session.setdefault(int(day), {})[symbol] = build_condition_context(
-                prepared.loc[visible], indicator_results[symbol], visible)
+            # 每个 session 的合法截面：成员资格、ready、finite 与时间可见性
+            # 均在该 session 的视图上绑定，绝不用全样本或未来成员。
+            cross_section = build_cross_section(indicator_results, int(day))
+            for symbol in request.symbols:
+                frame = frames[symbol].sort_values("date").reset_index(drop=True)
+                full_index = pd.Index(frame["date"].astype(int).to_numpy(), name="date")
+                prepared = frame.set_index(full_index)
+                visible = full_index[full_index <= int(day)]
+                context_by_session.setdefault(int(day), {})[symbol] = build_condition_context(
+                    prepared.loc[visible], indicator_results[symbol], visible,
+                    cross_section=cross_section)
 
     def condition_context_fn(day: int):
-        per_symbol = context_by_session.get(int(day), {})
+        """返回 **按证券** 的上下文映射；多证券各自独立，绝不共用一个上下文。"""
+        per_symbol = context_by_session.get(int(day))
         if not per_symbol:
             return None
-        if len(per_symbol) == 1:
-            return next(iter(per_symbol.values()))
-        raise BehaviorRequestError("MULTI_SYMBOL_CONDITION_EXIT_NOT_SUPPORTED")
+        return dict(per_symbol)
 
-    atr_series = {
-        symbol: indicator_results[symbol]["ATR"].output("atr")
-        for symbol in request.symbols
-        if "ATR" in indicator_results[symbol]
-    }
+    atr_series, atr_bindings = _resolve_atr_dependencies(
+        reg, request, rules, indicator_results, indicator_requests)
+    _assert_atr_dependencies_satisfied(rules, request, atr_bindings)
+
+    def on_fill_hook(lot) -> None:
+        """持仓创建时冻结入场 ATR 锚（严格早于入场日的最近可用值）。"""
+        if not atr_series:
+            return
+        frozen = evaluator.freeze_entry_anchor(
+            lot.lot_id, lot.symbol, int(lot.entry_session or 0), atr_series)
+        if frozen is None and (rules.atr_distance is not None or rules.atr_trailing is not None):
+            evaluator._blocked(lot, int(lot.entry_session or 0), "ATR_ENTRY_ANCHOR",
+                               "NO_PRIOR_AVAILABLE_ATR")
+
+    engine.fill_hook = on_fill_hook
     exit_callback = (daily_exit_fn_v2(evaluator, store, calendar,
                                       atr_series=atr_series,
-                                      condition_context_fn=condition_context_fn)
+                                      condition_context_fn=(condition_context_fn
+                                                            if needs_condition_context else None))
                      if evaluator.rules.enabled else None)
     result = engine.run(exit_fn=exit_callback)
+
+    # 规则已启用却无法执行（例如 ATR 锚未冻结）时，不得把该运行报成正常完成。
+    if evaluator.blocked_lots:
+        reasons = sorted({item["blocked_reason"] for item in evaluator.blocked_lots})
+        raise BehaviorRequestError(
+            "EXIT_RULE_NOT_EXECUTABLE:%s:affected_lots=%d"
+            % (",".join(reasons), len(evaluator.blocked_lots)))
 
     ledger = result.ledger
     official = official_equity_curve(
@@ -624,6 +801,7 @@ def run_behavior_backtest_v2(
             },
             "engine_config_hash": result.context.config_hash,
             "condition_trace": condition_trace,
+            "atr_bindings": {label: binding.to_dict() for label, binding in atr_bindings.items()},
             "indicator_outputs": {
                 symbol: {iid: list(res.output_names)
                          for iid, res in results.items()}
@@ -654,6 +832,116 @@ def run_behavior_backtest_v2(
         "exit_evaluations": list(evaluator.evaluations),
         "run_summary": result.summary(),
     })
+
+
+def _resolve_atr_dependencies(reg, request, rules, indicator_results, indicator_requests):
+    """从规则建立 ATR 依赖：按 atr_window、版本、价格尺度分别绑定。
+
+    距离止损与跟踪止损若窗口不同，必须各自解析到**不同的** ATR 实例，
+    不能共用一条未核验的 ATR。
+    """
+    from .daily_exit_v2 import AtrBinding
+
+    needed: Dict[str, Any] = {}
+    for label, spec in (("atr_distance", rules.atr_distance), ("atr_trailing", rules.atr_trailing)):
+        if spec is None:
+            continue
+        needed[label] = spec
+    if not needed:
+        return {}, {}
+
+    # 找该窗口对应的已请求 ATR 实例；缺则明确报错，不静默取任意一条。
+    # 窗口取自**请求实际声明的参数**（ATR 契约里窗口参数名为 ``window``）。
+    declared_window: Dict[str, int] = {}
+    for item in indicator_requests:
+        try:
+            spec, _key = reg.resolve_instance(item.indicator_id, version=item.version,
+                                              params=item.params)
+        except IndicatorRegistryError:
+            continue
+        if spec.indicator_id != "ATR":
+            continue
+        merged = {name: dict(item.params).get(name, default)
+                  for name, default in spec.params.items()}
+        declared_window[item.alias or spec.indicator_id] = int(
+            merged.get("atr_window", merged.get("window", 14)))
+
+    atr_instances: Dict[int, List[str]] = {}
+    for symbol in request.symbols:
+        for instance_key, result in indicator_results[symbol].items():
+            if result.indicator_id != "ATR":
+                continue
+            window = declared_window.get(instance_key)
+            if window is None:
+                declared = result.spec.params
+                window = int(declared.get("atr_window", declared.get("window", 14)))
+            if instance_key not in atr_instances.setdefault(window, []):
+                atr_instances[window].append(instance_key)
+
+    series: Dict[str, pd.Series] = {}
+    bindings: Dict[str, AtrBinding] = {}
+    for label, spec in needed.items():
+        window = int(spec.atr_window)
+        candidates = atr_instances.get(window, [])
+        if not candidates:
+            raise BehaviorRequestError(
+                f"ATR_DEPENDENCY_NOT_DECLARED:{label}:atr_window={window}:"
+                f"请显式请求 ATR 并设置 params.atr_window={window}")
+        instance_key = sorted(candidates)[0]
+        for symbol in request.symbols:
+            result = indicator_results[symbol].get(instance_key)
+            if result is None:
+                raise BehaviorRequestError(f"ATR_INSTANCE_MISSING:{symbol}:{instance_key}")
+            series[symbol] = result.output("atr")
+        bindings[label] = AtrBinding(
+            instance_key=instance_key, atr_window=window, version=result.version,
+            price_mode=result.spec.price_mode,
+            available_at_rule=result.spec.available_at_rule,
+        )
+    return series, bindings
+
+
+def _assert_atr_dependencies_satisfied(rules, request, bindings) -> None:
+    """启用 ATR 规则却没有可用 ATR 依赖时，明确拒绝运行。"""
+    for label, spec in (("atr_distance", rules.atr_distance), ("atr_trailing", rules.atr_trailing)):
+        if spec is None:
+            continue
+        if label not in bindings:
+            raise BehaviorRequestError(f"ATR_DEPENDENCY_UNRESOLVED:{label}")
+
+
+def _alias_map(indicator_results: Mapping[str, Mapping[str, IndicatorResult]],
+               requests: Sequence[IndicatorRequest]) -> Dict[str, str]:
+    """构造 ``alias -> instance_key`` 映射（用于表达式按 alias 引用实例）。
+
+    别名解析到**唯一**实例；未声明别名时也允许用完整实例键引用。
+    """
+    mapping: Dict[str, str] = {}
+    keys = {key for results in indicator_results.values() for key in results}
+    for request in requests:
+        if not request.alias:
+            continue
+        spec, instance = None, None
+        for key in keys:
+            if key.startswith(f"{request.alias}@") or key.endswith(f"#{request.alias}"):
+                mapping[request.alias] = key
+                break
+    for key in keys:
+        mapping.setdefault(key, key)
+    return mapping
+
+
+def _bind_aliases(node: Optional[Expr], aliases: Mapping[str, str]) -> Optional[Expr]:
+    """把表达式里的 ``indicator`` 引用从 alias 解析为实例键。"""
+    if node is None or not isinstance(node, Expr):
+        return node
+    args = tuple(_bind_aliases(arg, aliases) for arg in node.args)
+    params = dict(node.params)
+    if node.op == "indicator" and args:
+        reference = str(args[0])
+        if reference in aliases:
+            return Expr(node.op, (aliases[reference],), params)
+    return Expr(node.op, args, params)
 
 
 def _referenced_indicators(node: Optional[Expr]) -> set:

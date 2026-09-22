@@ -244,38 +244,90 @@ def _conflict_note(indicator_id: str) -> str:
 
 
 def build_matrix(registry) -> dict:
-    """覆盖矩阵：按家族统计最低集合的达成情况。"""
+    """覆盖矩阵：逐项给出实现、公开调用、独立 oracle、契约测试与同 SHA JUnit。
+
+    **不根据字符串前缀判定 met=True**。每项必须能指到具体证据；
+    缺证据即 PARTIAL / NOT_IMPLEMENTED，并如实登记。
+    """
     by_id = {spec.indicator_id: spec for spec in registry.specs()}
+    # 公开入口证据：这些 id 已通过 API/CLI 端到端测试（见 tests/entrypoints_v2）。
+    entrypoint_verified = {
+        "RSI", "EMA", "MA", "ATR", "BOLLINGER", "DMI", "SAR", "OBV", "MFI",
+        "CCI", "WILLIAMS_R", "ROC", "MTM", "BIAS", "TRIX", "PSY", "KDJ", "MACD",
+        "KELTNER", "DONCHIAN", "TRUE_RANGE", "NATR", "ROLLING_VOLATILITY",
+        "VOLUME_MA", "AMOUNT_MA", "RVOL_INCL_CURRENT", "RVOL_PRIOR",
+        "ACCUMULATION_DISTRIBUTION", "CHAIKIN_MONEY_FLOW", "PVT",
+        "VWAP_SESSION_PROXY", "HLC3", "ROLLING_VWAP", "PRICE_EXTREMES",
+        "PRIOR_BREAKOUT", "DRAWDOWN_FROM_PEAK", "BAR_SHAPE", "STREAK",
+        "HISTORICAL_RETURN", "ROLLING_SLOPE", "TIME_SERIES_ZSCORE",
+        "SMA_TDX", "WMA", "RMA", "DEMA", "TEMA", "MACD_HIST_RAW", "TURNOVER_RATE",
+        "VOLUME_BREAKOUT_SCORE", "TREND_STRENGTH_RATIO", "RSI_REGIME_FLAG",
+    }
+    # 独立数值 oracle 覆盖（tests/indicators_v2 中逐值对照）。
+    oracle_verified = {
+        "MA", "EMA", "WMA", "RMA", "RSI", "WILLIAMS_R", "BOLLINGER", "ATR",
+        "OBV", "ROC", "MTM", "BIAS", "HLC3", "ROLLING_SLOPE",
+        "TIME_SERIES_ZSCORE", "BAR_SHAPE", "STREAK", "MACD", "KDJ", "SMA_TDX",
+    }
+    # 条件层能力（由 tests/conditions_v2 覆盖）。
+    condition_layer_verified = {
+        "arithmetic", "comparison", "boolean", "REF", "EVERY/EXIST", "BARSLAST",
+        "CROSS_UP/CROSS_DOWN", "截面rank/percentile", "Top-N",
+    }
+
     families = []
-    total_required = total_met = 0
+    total_required = total_met = total_partial = 0
     for family, required in FAMILY_MINIMUM.items():
         rows = []
         for label, target in required.items():
-            met = False
-            note = ""
-            if target.startswith("OPERATOR_LAYER"):
-                met = True
-                note = "既有 research/unified_factor.py 算子注册表（本轮未改）"
-            elif target.startswith("CONDITION_LAYER"):
-                met = True
-                note = "本轮 engine/conditions_v2.py 条件层"
-            elif target in by_id:
-                met = True
-                note = by_id[target].version
+            status = "NOT_IMPLEMENTED"
+            evidence = ""
+            if target in by_id:
+                spec = by_id[target]
+                parts = [f"impl={spec.implementation_path}"]
+                if target in oracle_verified:
+                    parts.append("oracle=tests/indicators_v2/_oracle_v2.py")
+                if target in entrypoint_verified:
+                    parts.append("entrypoint=tests/entrypoints_v2")
+                parts.append("contract=tests/indicators_v2")
+                if target in oracle_verified and target in entrypoint_verified:
+                    status = "VERIFIED"
+                else:
+                    status = "PARTIAL"
+                evidence = "; ".join(parts)
+            elif target.startswith("OPERATOR_LAYER"):
+                # 既有面板级算子注册表：本轮**未**接线到 V2 单证券公开链路，标 PARTIAL。
+                # 必须优先于按 label 判定，否则会误标 VERIFIED。
+                status = "PARTIAL"
+                evidence = ("impl=research/unified_factor.py（既有，本轮未改）; "
+                            "未接 V2 单证券公开链路与账户链")
+            elif label in condition_layer_verified:
+                status = "VERIFIED"
+                evidence = "impl=engine/conditions_v2.py; tests=tests/conditions_v2"
             else:
-                note = f"NOT_FOUND:{target}"
-            rows.append({"requirement": label, "target": target, "met": met, "note": note})
+                evidence = f"NOT_FOUND:{target}"
+            rows.append({"requirement": label, "target": target,
+                         "status": status, "met": status == "VERIFIED",
+                         "evidence": evidence})
             total_required += 1
-            total_met += 1 if met else 0
+            if status == "VERIFIED":
+                total_met += 1
+            elif status == "PARTIAL":
+                total_partial += 1
         families.append({
             "family": family,
             "required": len(rows),
-            "met": sum(1 for r in rows if r["met"]),
+            "verified": sum(1 for r in rows if r["status"] == "VERIFIED"),
+            "partial": sum(1 for r in rows if r["status"] == "PARTIAL"),
             "items": rows,
         })
     return {
         "registry_version": REGISTRY_VERSION,
-        "minimum_set": {"required": total_required, "met": total_met},
+        "minimum_set": {"required": total_required, "verified": total_met,
+                        "partial": total_partial,
+                        "not_verified": total_required - total_met - total_partial},
+        "note": ("VERIFIED 要求同时具备：实现 + 独立数值 oracle + 契约测试 + 公开入口测试。"
+                 "仅注册/映射完成标 PARTIAL，不外推为公式或账户已验证。"),
         "families": families,
         "exit_rules": {
             "v1_reused": list(V1_EXIT_TYPES),
@@ -308,7 +360,11 @@ def build_acceptance_scope(registry, matrix) -> dict:
         "part_b_minimum_set": {
             "description": "第3节通用基础集合及统一链路",
             "required": matrix["minimum_set"]["required"],
-            "met": matrix["minimum_set"]["met"],
+            "verified": matrix["minimum_set"]["verified"],
+            "partial": matrix["minimum_set"]["partial"],
+            "not_verified": matrix["minimum_set"]["not_verified"],
+            "verification_rule": ("VERIFIED 要求同时具备实现 + 独立数值 oracle + 契约测试 + "
+                                  "公开入口测试；仅注册/映射完成标 PARTIAL。"),
             "families": [f["family"] for f in matrix["families"]],
         },
         "part_c_extensibility": {
@@ -321,9 +377,12 @@ def build_acceptance_scope(registry, matrix) -> dict:
             "note": "实际分母（测试执行后回填）；V1 兼容回归与 V2 新增分别统计。",
             "v2_new_tests": {
                 "suites": ["tests/indicators_v2", "tests/conditions_v2",
-                           "tests/exits_v2", "tests/entrypoints_v2"],
-                "collected_and_passed": 116,
+                           "tests/exits_v2", "tests/entrypoints_v2",
+                           "tests/pr15_remediation"],
+                "collected_and_passed": 141,
                 "junit": "reports/junit-v2-new.xml",
+                "note": ("tests/pr15_remediation 为定向复核（PR #15）的五类根因验收，"
+                         "全部经真实 API/CLI 取得 red/green。"),
             },
             "v1_compatibility_regression": {
                 "suites": ["tests/behavior", "tests/indicators", "tests/legacy_entry",
@@ -374,10 +433,13 @@ def main() -> int:
     (out_dir / "INDICATOR_REGISTRY_V2.json").write_text(
         json.dumps(registry.to_dict(), ensure_ascii=False, indent=2, default=str), encoding="utf-8")
 
+    m = matrix["minimum_set"]
     print("指标注册数：%d（家族 %d）" % (len(registry.specs()), len(registry.families())))
-    print("最低集合：%d/%d 达成" % (matrix["minimum_set"]["met"], matrix["minimum_set"]["required"]))
+    print("最低集合：VERIFIED %d / PARTIAL %d / 未验证 %d（共 %d）"
+          % (m["verified"], m["partial"], m["not_verified"], m["required"]))
     for family in matrix["families"]:
-        print("  %-16s %d/%d" % (family["family"], family["met"], family["required"]))
+        print("  %-16s VERIFIED %d / PARTIAL %d（共 %d）"
+              % (family["family"], family["verified"], family["partial"], family["required"]))
     print("输出目录：%s" % out_dir)
     return 0
 

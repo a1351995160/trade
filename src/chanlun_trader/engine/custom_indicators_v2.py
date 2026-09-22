@@ -239,6 +239,7 @@ def register_custom_indicators(registry: IndicatorRegistry) -> List[str]:
             evidence={"IMPLEMENTED": True, "REGISTERED": True},
         ),
         _adapter(provider, ["regime", "rsi_input"]),
+        dependencies=("RSI",),
     )
     registered.append("RSI_REGIME_FLAG")
 

@@ -1973,3 +1973,15 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 - docs/EXTENSIBLE_BACKTEST_ACCEPTANCE_V2.md、ACCEPTANCE_SCOPE.json、reports/v2_acceptance/：口径、范围、盘点、矩阵与回归证据。
 - .github/workflows/extensible-backtest-acceptance-v2.yml：双平台 CI，V1 兼容与 V2 新增分开执行并上传 JUnit。
 - 回滚点 c498ee2；可 git revert 本轮提交，不影响 V1 与受保护旧目录。
+
+### Testing（PR #15 定向复核修正追加）
+- 复现并关闭五类根因：指标实例覆盖、ATR 入场锚前视与参数忽略、多证券共用退出上下文、Top-N UNKNOWN 处理、证据矩阵前缀判定与实现指纹。
+- 修复过程中另发现并关闭四项真实缺陷：DMI/ADX 漏除 window 导致 ADX 放大约 N 倍、Wilder 种子被 NaN 污染、DMI 段首 TR 口径与 true_range 不一致、DYNAMIC_CURRENT 在首根被跳过。
+- 新增 tests/pr15_remediation（25 项），全部经真实 API/CLI 取得 red/green；V2 新增测试合计 141 项通过，V1 兼容回归 139 项通过。
+- 完整套件在 BASE_SHA 干净工作树与本次 HEAD 分别运行：零新增失败、零回归（基线 194 项失败集合覆盖本次 193 项；差异为既有顺序相关不稳定）。
+### Notes
+- src/chanlun_trader/engine/indicator_registry_v2.py、behavior_service_v2.py、conditions_v2.py、daily_exit_v2.py、custom_indicators_v2.py、indicators_v2.py、engine.py：实例身份、ATR 依赖与冻结锚、按证券上下文、Top-N 合格截面、公式指纹、ADX 修正与 lot 创建回调。
+- tests/pr15_remediation/test_pr15_remediation_v1.py、tests/indicators_v2：五类根因验收与 DMI/SAR 独立 oracle。
+- scripts/emit_v2_acceptance_scope_v1.py、docs/EXTENSIBLE_BACKTEST_ACCEPTANCE_V2.md、reports/v2_acceptance/：逐项证据矩阵与口径更新。
+- .github/workflows/extensible-backtest-acceptance-v2.yml：V2 新增测试纳入双平台 CI。
+- 回滚点 196e666；可 git revert 本次提交。

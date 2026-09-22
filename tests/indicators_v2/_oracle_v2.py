@@ -257,3 +257,108 @@ def naive_ts_zscore(values, window: int, ddof: int) -> List[Optional[float]]:
         std = float(chunk.std(ddof=ddof))
         out.append(None if std == 0 else (values[i] - mean) / std)
     return out
+
+
+def naive_dmi(highs, lows, closes, prev_closes, window: int) -> dict:
+    """DMI/ADX 独立实现（Wilder 原始口径）。
+
+    TR/+DM/-DM 用 Wilder RMA 平滑；+DI/-DI 需 N 根；ADX = RMA(DX, N)。
+    """
+    n = len(closes)
+    tr = [None] * n
+    plus_dm = [None] * n
+    minus_dm = [None] * n
+    for i in range(n):
+        pc = prev_closes[i]
+        if pc is None or pc != pc or pc <= 0:
+            tr[i] = highs[i] - lows[i]
+        else:
+            tr[i] = max(highs[i] - lows[i], abs(highs[i] - pc), abs(lows[i] - pc))
+        if i == 0:
+            plus_dm[i] = 0.0
+            minus_dm[i] = 0.0
+            continue
+        up_move = highs[i] - highs[i - 1]
+        down_move = lows[i - 1] - lows[i]
+        plus_dm[i] = up_move if (up_move > 0 and up_move > down_move) else 0.0
+        minus_dm[i] = down_move if (down_move > 0 and down_move > up_move) else 0.0
+
+    def wilder(values):
+        out = [None] * n
+        if n < window:
+            return out
+        seed = sum(values[:window])
+        out[window - 1] = seed
+        previous = seed
+        for i in range(window, n):
+            previous = previous - previous / window + values[i]
+            out[i] = previous
+        return out
+
+    smooth_tr = wilder(tr)
+    smooth_plus = wilder(plus_dm)
+    smooth_minus = wilder(minus_dm)
+    plus_di = [None] * n
+    minus_di = [None] * n
+    dx = [None] * n
+    for i in range(n):
+        if smooth_tr[i] and smooth_tr[i] > 0:
+            plus_di[i] = 100.0 * smooth_plus[i] / smooth_tr[i]
+            minus_di[i] = 100.0 * smooth_minus[i] / smooth_tr[i]
+            denom = plus_di[i] + minus_di[i]
+            dx[i] = 100.0 * abs(plus_di[i] - minus_di[i]) / denom if denom > 0 else None
+    usable = [i for i in range(n) if dx[i] is not None]
+    adx = [None] * n
+    if len(usable) >= window:
+        seed = sum(dx[i] for i in usable[:window])
+        adx[usable[window - 1]] = seed / window
+        previous = seed
+        for offset in range(window, len(usable)):
+            i = usable[offset]
+            previous = previous - previous / window + dx[i]
+            adx[i] = previous / window
+    return {"plus_di": plus_di, "minus_di": minus_di, "adx": adx, "tr": tr}
+
+
+def naive_sar(highs, lows, step: float = 0.02, max_step: float = 0.2):
+    """抛物线 SAR 独立实现。
+
+    初始趋势由前两根确定；AF 从 step 起、创新极值递增、上限 max_step；
+    反转时 AF 重置并取该方向极值；含"不高于前两根最低/不低于前两根最高"约束。
+    """
+    n = len(highs)
+    sar = [None] * n
+    trend = [0] * n
+    if n < 2:
+        return {"sar": sar, "trend": trend}
+    rising = highs[1] >= highs[0]
+    extreme = highs[0] if rising else lows[0]
+    value = lows[0] if rising else highs[0]
+    af = step
+    sar[0] = value
+    trend[0] = 1 if rising else -1
+    for i in range(1, n):
+        value = value + af * (extreme - value)
+        if rising:
+            value = min(value, lows[i - 1]) if i < 2 else min(value, lows[i - 1], lows[i - 2])
+            if lows[i] < value:
+                rising = False
+                value = extreme
+                extreme = lows[i]
+                af = step
+            elif highs[i] > extreme:
+                extreme = highs[i]
+                af = min(af + step, max_step)
+        else:
+            value = max(value, highs[i - 1]) if i < 2 else max(value, highs[i - 1], highs[i - 2])
+            if highs[i] > value:
+                rising = True
+                value = extreme
+                extreme = highs[i]
+                af = step
+            elif lows[i] < extreme:
+                extreme = lows[i]
+                af = min(af + step, max_step)
+        sar[i] = value
+        trend[i] = 1 if rising else -1
+    return {"sar": sar, "trend": trend}

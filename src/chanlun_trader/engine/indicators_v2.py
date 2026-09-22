@@ -455,7 +455,7 @@ def dmi_adx(data: PriceInput, *, window: int = 14) -> IndicatorFrameV2:
     """
     window = _require_positive_int(window, "window")
     high, low = _require_high_low(data, "DMI_ADX")
-    valid = data.ohlc_valid() & np.isfinite(data.prev_close) & (data.prev_close > 0)
+    valid = data.ohlc_valid()
     segments = segment_ids(valid)
 
     tr = np.full(len(high), np.nan)
@@ -464,17 +464,22 @@ def dmi_adx(data: PriceInput, *, window: int = 14) -> IndicatorFrameV2:
     for i in range(len(high)):
         if not valid[i]:
             continue
-        up_move = high[i] - high[i - 1] if i > 0 and valid[i - 1] else np.nan
-        down_move = low[i - 1] - low[i] if i > 0 and valid[i - 1] else np.nan
-        tr[i] = max(
-            high[i] - low[i],
-            abs(high[i] - data.prev_close[i]),
-            abs(low[i] - data.prev_close[i]),
-        )
-        plus_dm[i] = up_move if np.isfinite(up_move) and up_move > 0 and (
-            not np.isfinite(down_move) or up_move > down_move) else 0.0
-        minus_dm[i] = down_move if np.isfinite(down_move) and down_move > 0 and (
-            not np.isfinite(up_move) or down_move > up_move) else 0.0
+        previous_close = data.prev_close[i]
+        if np.isfinite(previous_close) and previous_close > 0:
+            tr[i] = max(high[i] - low[i], abs(high[i] - previous_close),
+                        abs(low[i] - previous_close))
+        else:
+            # 段首（或前收盘不可用）：按惯例取 H-L，与 true_range 口径一致。
+            tr[i] = high[i] - low[i]
+        if i > 0 and valid[i - 1]:
+            up_move = high[i] - high[i - 1]
+            down_move = low[i - 1] - low[i]
+        else:
+            up_move = down_move = np.nan
+        plus_dm[i] = up_move if (np.isfinite(up_move) and up_move > 0
+                                 and (not np.isfinite(down_move) or up_move > down_move)) else 0.0
+        minus_dm[i] = down_move if (np.isfinite(down_move) and down_move > 0
+                                    and (not np.isfinite(up_move) or down_move > up_move)) else 0.0
 
     atr = _wilder_smooth(tr, segments, window)
     smooth_plus = _wilder_smooth(plus_dm, segments, window)
@@ -485,7 +490,9 @@ def dmi_adx(data: PriceInput, *, window: int = 14) -> IndicatorFrameV2:
         minus_di = 100.0 * np.where(atr > 0, smooth_minus / atr, np.nan)
         denom = plus_di + minus_di
         dx = 100.0 * np.where(denom > 0, np.abs(plus_di - minus_di) / denom, np.nan)
-    adx = _wilder_smooth(dx, segments, window)
+    # ``_wilder_smooth`` 返回 Wilder 累加和；ADX 是**平均**（RMA），
+    # 因此必须除以 window，与 ATR 同一口径。漏除会让 ADX 放大约 N 倍。
+    adx = _wilder_smooth(dx, segments, window) / float(window)
     counts = _segment_count(segments)
     ready = (counts >= 2 * window) & np.isfinite(adx)
     return _frame("DMI_ADX", "DMI_ADX_V1", data.index, {
@@ -494,14 +501,18 @@ def dmi_adx(data: PriceInput, *, window: int = 14) -> IndicatorFrameV2:
 
 
 def _wilder_smooth(values: np.ndarray, segments: np.ndarray, window: int) -> np.ndarray:
-    """对已分段序列做 Wilder RMA：段首 = 前 N 个合格值之和（Wilder 原始 TR 累加口径）。"""
+    """对已分段序列做 Wilder RMA：段首 = 前 N 个**有限**值之和。
+
+    必须跳过段首的 NaN（例如 +DI/-DI 预热期），否则种子会被 NaN 污染，
+    或在 NaN 上累加出错误量级。
+    """
     out = np.full(len(values), np.nan)
     for segment in range(int(segments.max()) + 1) if len(values) else []:
         positions = np.flatnonzero(segments == segment)
         usable = positions[np.isfinite(values[positions])]
         if usable.size < window:
             continue
-        seed = float(np.nansum(values[usable[:window]]))
+        seed = float(np.sum(values[usable[:window]]))
         out[usable[window - 1]] = seed
         previous = seed
         for offset in range(window, usable.size):

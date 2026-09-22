@@ -78,13 +78,36 @@ REASON_PRIORITY_V2: Sequence[str] = (
 
 
 @dataclass(frozen=True)
+class AtrBinding:
+    """一条 ATR 序列的**绑定身份**。
+
+    距离止损与跟踪止损可能使用不同窗口/版本/价格尺度，因此不能共用一条
+    未核验的 ATR。绑定身份进入规则合同，缺失即拒绝运行。
+    """
+
+    instance_key: str
+    atr_window: int
+    version: str
+    price_mode: str
+    available_at_rule: str
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"instance_key": self.instance_key, "atr_window": int(self.atr_window),
+                "version": self.version, "price_mode": self.price_mode,
+                "available_at_rule": self.available_at_rule}
+
+
+@dataclass(frozen=True)
 class AtrDistanceSpec:
     """ATR 距离规则。
 
     ``multiple`` 与 ``atr_window`` 决定距离；``anchor`` 决定用哪个 ATR 值：
 
-    - ``ENTRY_LAST_KNOWN``：入场前已可用的最近 ATR（默认，无前视）；
+    - ``ENTRY_LAST_KNOWN``：入场**之前**已可用的最近 ATR（默认，无前视）；
     - ``DYNAMIC_CURRENT``：当根已完成收盘的 ATR（必须显式选择，且只收紧）。
+
+    ``ENTRY_LAST_KNOWN`` 的锚必须在**持仓创建时**冻结：不得回退使用
+    入场当天的最终 ATR（那会用到入场之后才知道的波动）。
     """
 
     multiple: float
@@ -232,6 +255,9 @@ class DailyExitEvaluatorV2:
         self._condition_evaluator = condition_evaluator
         self.atr_trailing: Dict[str, AtrTrailingState] = {}
         self._entry_atr: Dict[str, float] = {}
+        self._entry_atr_binding: Dict[str, AtrBinding] = {}
+        # 规则启用但缺少必需 ATR 绑定时的阻断记录（不得把未执行止损报成正常完成）
+        self.blocked_lots: List[dict] = []
         self.evaluations: List[dict] = []
         self._v1_consumed = 0
 
@@ -254,16 +280,37 @@ class DailyExitEvaluatorV2:
         value = float(value)
         return value if np.isfinite(value) and value > 0 else None
 
-    def register_entry_atr(self, lot_id: str, atr_value: float) -> None:
+    def register_entry_atr(self, lot_id: str, atr_value: float, *,
+                           binding: Optional[AtrBinding] = None) -> None:
         """登记该 lot 的**入场前已可用** ATR 锚。
 
         调用方必须在成交发生时（或之前）用当时可见的 ATR 调用本方法；
-        不得传入当天未完成的 ATR。
+        不得传入入场当天未完成的 ATR。
         """
         value = float(atr_value)
         if not np.isfinite(value) or value <= 0:
             raise ExitConfigError(f"INVALID_ENTRY_ATR:{atr_value!r}")
         self._entry_atr[lot_id] = value
+        if binding is not None:
+            self._entry_atr_binding[lot_id] = binding
+
+    def freeze_entry_anchor(self, lot_id: str, symbol: str, entry_session: int,
+                            atr_series: Mapping[str, pd.Series]) -> Optional[float]:
+        """在**持仓创建时**冻结入场 ATR 锚：取严格早于入场日的最近可用 ATR。
+
+        绝不回退到入场当天的最终 ATR —— 那是入场之后才知道的信息。
+        无可用历史 ATR 时返回 None（调用方必须据此拒绝或阻断入场）。
+        """
+        series = atr_series.get(symbol)
+        if series is None:
+            return None
+        history = series[series.index < int(entry_session)]
+        history = history[np.isfinite(history.to_numpy(dtype=float)) & (history.to_numpy(dtype=float) > 0)]
+        if history.empty:
+            return None
+        value = float(history.iloc[-1])
+        self._entry_atr[lot_id] = value
+        return value
 
     # -- 评估 -------------------------------------------------------------
     def evaluate(
@@ -328,26 +375,39 @@ class DailyExitEvaluatorV2:
             # V1 已判定的原因（成本止损 / 移动止损 / 固定止盈 / 固定持有）。
             hits.extend(v1_by_lot.get(lot.lot_id, []))
 
-            # 2) ATR 距离止损（固定距离，锚为入场前已可用 ATR）
+            # 2) ATR 距离止损（固定距离，锚为**入场前已冻结**的 ATR）
             if self.rules.atr_distance is not None and "ATR_DISTANCE_STOP" in self.rules.exit_types:
                 entry_atr = self._entry_atr.get(lot.lot_id)
-                if entry_atr is None and self.rules.atr_distance.anchor == "ENTRY_LAST_KNOWN":
-                    entry_atr = self._atr_at(atr_series, lot.symbol, int(lot.entry_session or trade_session))
-                if entry_atr is not None:
+                if entry_atr is None:
+                    # 规则启用但缺少冻结锚：**阻断并披露**，不回退到入场当日 ATR，
+                    # 也不生成退出意图（那会卖出而非阻断入场）。
+                    self._blocked(lot, trade_session, "ATR_DISTANCE_STOP",
+                                  "ENTRY_ATR_ANCHOR_NOT_FROZEN")
+                else:
                     line = anchor - float(self.rules.atr_distance.multiple) * entry_atr
                     extra["atr_distance_line"] = round(line, 6)
                     extra["entry_atr"] = round(entry_atr, 6)
+                    binding = self._entry_atr_binding.get(lot.lot_id)
+                    if binding is not None:
+                        extra["entry_atr_binding"] = binding.to_dict()
                     if close <= line:
                         hits.append("EXIT_ATR_DISTANCE_STOP")
 
             # 3) ATR 跟踪止损（只收紧）
             if self.rules.atr_trailing is not None and "ATR_TRAILING_STOP" in self.rules.exit_types:
-                state = self._update_atr_trailing(lot, close, atr_series, trade_session)
-                if state is not None:
-                    extra["atr_trailing_line"] = round(state.line, 6)
-                    extra["atr_trailing_peak"] = round(state.peak_close, 6)
-                    if close <= state.line:
-                        hits.append("EXIT_ATR_TRAILING_STOP")
+                if self._entry_atr.get(lot.lot_id) is None and self.rules.atr_trailing.anchor == "ENTRY_LAST_KNOWN":
+                    self._blocked(lot, trade_session, "ATR_TRAILING_STOP",
+                                  "ENTRY_ATR_ANCHOR_NOT_FROZEN")
+                else:
+                    state = self._update_atr_trailing(lot, close, atr_series, trade_session)
+                    if state is None:
+                        self._blocked(lot, trade_session, "ATR_TRAILING_STOP",
+                                      "ATR_SERIES_UNAVAILABLE")
+                    else:
+                        extra["atr_trailing_line"] = round(state.line, 6)
+                        extra["atr_trailing_peak"] = round(state.peak_close, 6)
+                        if close <= state.line:
+                            hits.append("EXIT_ATR_TRAILING_STOP")
 
             # 4) 结构价止损（RAW 尺度，显式声明；不隐含转换成成本止损）
             if self.rules.structure_stop_price is not None and "STRUCTURE_PRICE_STOP" in self.rules.exit_types:
@@ -357,16 +417,18 @@ class DailyExitEvaluatorV2:
                     hits.append("EXIT_STRUCTURE_PRICE_STOP")
 
             # 5) 指标条件退出 / 反向信号退出（三值：只有 TRUE 才退出）
+            #    上下文必须按 **lot.symbol** 取，多证券不得共用一个上下文。
             if condition_context is not None:
+                lot_context = self._context_for(condition_context, lot.symbol)
                 if (self.rules.indicator_condition_exit is not None
                         and "INDICATOR_CONDITION_EXIT" in self.rules.exit_types):
                     if self._condition_true(self.rules.indicator_condition_exit,
-                                            condition_context, trade_session):
+                                            lot_context, trade_session):
                         hits.append("EXIT_INDICATOR_CONDITION")
                 if (self.rules.reverse_signal_exit is not None
                         and "REVERSE_SIGNAL_EXIT" in self.rules.exit_types):
                     if self._condition_true(self.rules.reverse_signal_exit,
-                                            condition_context, trade_session):
+                                            lot_context, trade_session):
                         hits.append("EXIT_REVERSE_SIGNAL")
 
             if not hits:
@@ -391,6 +453,24 @@ class DailyExitEvaluatorV2:
 
         return decisions
 
+    @staticmethod
+    def _context_for(condition_context, symbol: str):
+        """按 lot.symbol 取该证券的条件上下文。
+
+        支持两种形态：
+
+        - ``{symbol: ConditionContext}``（多证券，**必须**按 symbol 取）；
+        - 单个 ``ConditionContext``（仅当该请求只有一个证券时由调用方给出）。
+
+        多证券却拿到单一上下文即拒绝，绝不"取第一个"。
+        """
+        if isinstance(condition_context, Mapping):
+            context = condition_context.get(symbol)
+            if context is None:
+                raise ExitConfigError(f"CONDITION_CONTEXT_MISSING_FOR_SYMBOL:{symbol}")
+            return context
+        return condition_context
+
     def _condition_true(self, node, condition_context, trade_session: int) -> bool:
         """只有三值为 TRUE 才算命中；FALSE 与 UNKNOWN 都不触发。
 
@@ -405,6 +485,16 @@ class DailyExitEvaluatorV2:
         value = series.loc[session]
         return bool(np.isfinite(value) and value > 0)
 
+    def _blocked(self, lot: PositionLot, trade_session: int, rule: str, reason: str) -> None:
+        """记录"规则已启用但无法执行"的阻断。
+
+        这类情况**不得**被当作正常完成：调用方据此拒绝运行或披露未执行止损。
+        """
+        record = {"trade_session": int(trade_session), "lot_id": lot.lot_id,
+                  "symbol": lot.symbol, "rule": rule, "blocked_reason": reason}
+        if record not in self.blocked_lots:
+            self.blocked_lots.append(record)
+
     def _update_atr_trailing(self, lot: PositionLot, close: float,
                              atr_series: Mapping[str, pd.Series],
                              trade_session: int) -> Optional[AtrTrailingState]:
@@ -415,27 +505,28 @@ class DailyExitEvaluatorV2:
         if state is None:
             entry_atr = self._entry_atr.get(lot.lot_id)
             if entry_atr is None:
-                entry_atr = self._atr_at(atr_series, lot.symbol, int(lot.entry_session or trade_session))
-            if entry_atr is None:
                 return None
             state = AtrTrailingState(
                 entry_atr=entry_atr, line=float(lot.entry_price) - float(spec.multiple) * entry_atr,
                 peak_close=max(float(lot.entry_price), close),
             )
             self.atr_trailing[lot.lot_id] = state
-            return state
+            # 首次创建后**继续**走下面的更新逻辑，否则 DYNAMIC_CURRENT 在首根被跳过。
         if close > state.peak_close:
             state.peak_close = close
         if spec.anchor == "DYNAMIC_CURRENT":
             current_atr = self._atr_at(atr_series, lot.symbol, trade_session)
-            if current_atr is not None:
-                candidate = state.peak_close - float(spec.multiple) * current_atr
-                state.line = max(state.line, candidate) if spec.tighten_only else candidate
+            if current_atr is None:
+                # 显式选择 DYNAMIC_CURRENT 却拿不到当日 ATR：按合同拒绝，
+                # 不退化为入场锚（那会静默改变语义）。
+                raise ExitConfigError(
+                    f"DYNAMIC_ATR_UNAVAILABLE:{lot.symbol}:{trade_session}")
+            candidate = state.peak_close - float(spec.multiple) * current_atr
+            state.line = max(state.line, candidate) if spec.tighten_only else candidate
         else:
             candidate = state.peak_close - float(spec.multiple) * state.entry_atr
             state.line = max(state.line, candidate) if spec.tighten_only else candidate
         return state
-
     def _decision(self, lot: PositionLot, trade_session: int, trade_session_index: int,
                   state: str, reason: str, factor_values: Mapping[str, Any]) -> PortfolioExitDecision:
         return PortfolioExitDecision(

@@ -220,8 +220,22 @@ def _tri_not(series: pd.Series) -> pd.Series:
     return pd.Series(out, index=series.index, dtype=float)
 
 
+def _require_aligned(left: pd.Series, right: pd.Series, operation: str) -> None:
+    """两个操作数必须同一索引域。
+
+    截面结果以证券为索引、时序结果以时间为索引；两者直接组合是类型错误，
+    必须明确报错而不是让 numpy 广播出难以理解的结果。
+    """
+    if left.index.equals(right.index):
+        return
+    raise ConditionError(
+        f"CONDITION_OPERAND_INDEX_MISMATCH:{operation}:"
+        f"left={list(left.index)[:3]} right={list(right.index)[:3]}")
+
+
 def _tri_and(left: pd.Series, right: pd.Series) -> pd.Series:
     """三值 AND：任一 FALSE -> FALSE；否则任一 UNKNOWN -> UNKNOWN。"""
+    _require_aligned(left, right, "and")
     a = left.to_numpy(dtype=float)
     b = right.to_numpy(dtype=float)
     a_false = np.nan_to_num(a, nan=1.0) <= 0
@@ -233,6 +247,7 @@ def _tri_and(left: pd.Series, right: pd.Series) -> pd.Series:
 
 def _tri_or(left: pd.Series, right: pd.Series) -> pd.Series:
     """三值 OR：任一 TRUE -> TRUE；否则任一 UNKNOWN -> UNKNOWN。"""
+    _require_aligned(left, right, "or")
     a = left.to_numpy(dtype=float)
     b = right.to_numpy(dtype=float)
     either_true = (a > 0) | (b > 0)
@@ -244,6 +259,7 @@ def _tri_or(left: pd.Series, right: pd.Series) -> pd.Series:
 
 def _compare(left: pd.Series, right: pd.Series, operation: str) -> pd.Series:
     """比较：任一侧 UNKNOWN（NaN）-> UNKNOWN。"""
+    _require_aligned(left, right, operation)
     a = left.to_numpy(dtype=float)
     b = right.to_numpy(dtype=float)
     known = np.isfinite(a) & np.isfinite(b)
@@ -365,7 +381,6 @@ class ConditionEvaluator:
                 # 不能因为 NaN 比较或布尔强转变成买入资格。
                 series = series.where(ready.reindex(index).fillna(False))
             return series
-
         if operation in _LOGICAL:
             args = [self._evaluate_node(arg, context) for arg in node.args]
             if len(args) < 2:
@@ -441,7 +456,11 @@ class ConditionEvaluator:
         raise ConditionError(f"UNSUPPORTED_OPERATOR:{operation}")
 
     def _cross_sectional(self, node: Expr, context: ConditionContext) -> pd.Series:
-        """截面算子：只作用于**同一 bar** 的证券集合，绝不做全样本排名。"""
+        """截面算子：只作用于**同一 bar** 的证券集合，绝不做全样本排名。
+
+        返回的 Series 以**截面成员**（证券）为索引；调用方据此映射回
+        symbol/date。不与 context.index（时间轴）混用。
+        """
         if context.cross_section is None:
             raise ConditionError("CROSS_SECTION_REQUIRED")
         key = node.args[0]
@@ -455,23 +474,51 @@ class ConditionEvaluator:
         if column not in frame.columns:
             raise ConditionError(f"MISSING_CROSS_SECTION_COLUMN:{column}")
         values = pd.to_numeric(frame[column], errors="coerce")
-        if node.op == "rank":
-            return values.rank(method="average", pct=False)
-        if node.op == "percentile":
-            return values.rank(method="average", pct=True)
+
+        # 合法截面：绑定成员资格、ready、finite 与时间可见性。
+        # 只有**有限**数值才参与排名；NaN / Inf 一律不合格。
+        ready_column = None
+        if context.ready:
+            candidate = f"{column}__ready__"
+            ready_column = context.ready.get(candidate)
+        finite = values.notna() & np.isfinite(values.to_numpy(dtype=float))
+        eligible_mask = finite
+        if ready_column is not None:
+            eligible_mask = eligible_mask & ready_column.reindex(values.index).fillna(False).astype(bool)
+        eligible = values[eligible_mask]
+
+        if node.op in {"rank", "percentile"}:
+            out = pd.Series(np.nan, index=values.index, dtype=float)
+            if eligible.empty:
+                return out
+            ranked = eligible.rank(method="average", pct=(node.op == "percentile"))
+            out.loc[ranked.index] = ranked
+            return out
+
         top_n = int(node.params.get("n", 1))
         if top_n <= 0:
             raise ConditionError("INVALID_TOP_N")
+
+        out = pd.Series(np.nan, index=values.index, dtype=float)
+        if eligible.empty:
+            # 全 NaN / 全 Inf：没有任何合法成员 -> 全部 UNKNOWN，
+            # 不得"选中 A"，也不得填 FALSE（那会在 NOT 分支变成可买）。
+            return out
         # 同值顺序固定：按 (值降序, 证券代码升序) 稳定排序。
-        # 用位置数组而非名为 "symbol" 的列，避免与同名索引层级冲突。
         order = pd.DataFrame({
-            "value": values.to_numpy(dtype=float),
-            "label": [str(item) for item in values.index],
+            "value": eligible.to_numpy(dtype=float),
+            "label": [str(item) for item in eligible.index],
         })
         order = order.sort_values(["value", "label"], ascending=[False, True], na_position="last")
-        selected_positions = set(order.head(top_n).index)
-        selected = values.index.isin(values.index[sorted(selected_positions)])
-        return pd.Series(np.where(selected, TRUE, FALSE), index=values.index, dtype=float)
+        # 只有真正被选中的成员为 TRUE；其余**合法**成员为 FALSE；
+        # 不合格成员保持 UNKNOWN（不参与，也不被凑数）。
+        selected_labels = list(order.head(min(top_n, len(order))).index)
+        selected = set(order.loc[selected_labels, "label"])
+        for label in values.index:
+            if label not in eligible.index:
+                continue
+            out.loc[label] = TRUE if str(label) in selected else FALSE
+        return out
 
 
 def evaluate_condition(node: Expr, context: ConditionContext, *, registry=None) -> pd.Series:

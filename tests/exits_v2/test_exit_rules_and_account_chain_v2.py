@@ -200,14 +200,45 @@ def test_atr_distance_does_not_trigger_when_close_above_line():
 
 
 def test_atr_stop_requires_entry_atr_and_refuses_missing():
-    """缺少入场 ATR 锚且无可用 ATR 序列时，不得用替代值补齐。"""
+    """缺少入场 ATR 锚时**阻断并披露**，不得用替代值补齐，也不得生成退出意图。"""
     store = _store({CAL[2]: 8.0})
     rules = DailyExitRuleSetV2(atr_distance=AtrDistanceSpec(multiple=1.5))
     evaluator = DailyExitEvaluatorV2("C", "C", rules)
     decisions = evaluator.evaluate([_lot()], CAL[2], 2, store, session_index_of=_INDEX_OF)
-    assert decisions == [], "缺少 ATR 锚却触发了 ATR 退出"
+    assert decisions == [], "缺少 ATR 锚不得生成退出意图"
+    assert evaluator.blocked_lots, "必须留下阻断记录"
+    assert evaluator.blocked_lots[0]["blocked_reason"] == "ENTRY_ATR_ANCHOR_NOT_FROZEN"
     record = [e for e in evaluator.evaluations if e.get("state") == "OPEN"][0]
     assert "atr_distance_line" not in record
+
+
+def test_freeze_entry_anchor_uses_prior_session_not_entry_day():
+    """入场锚必须取**严格早于入场日**的最近可用 ATR，不得用入场当日 ATR。"""
+    store = _store({})
+    rules = DailyExitRuleSetV2(atr_distance=AtrDistanceSpec(multiple=2.0))
+    evaluator = DailyExitEvaluatorV2("C", "C", rules)
+    # 前日 ATR 0.2，入场日 ATR 2.0
+    atr_series = {SYMBOL: pd.Series({CAL[0]: 0.2, CAL[1]: 2.0, CAL[2]: 2.0,
+                                     CAL[3]: 2.0, CAL[4]: 2.0, CAL[5]: 2.0,
+                                     CAL[6]: 2.0, CAL[7]: 2.0})}
+    lot = _lot(entry_price=10.0)
+    frozen = evaluator.freeze_entry_anchor(lot.lot_id, SYMBOL, CAL[1], atr_series)
+    assert frozen == pytest.approx(0.2), "锚到了入场当日 ATR（前视）"
+    # 线 = 10 - 2*0.2 = 9.6，不是 10 - 2*2 = 6
+    decisions = evaluator.evaluate([lot], CAL[2], 2, store, session_index_of=_INDEX_OF,
+                                   atr_series=atr_series)
+    record = [e for e in evaluator.evaluations if "atr_distance_line" in e][0]
+    assert record["atr_distance_line"] == pytest.approx(9.6)
+    assert record["entry_atr"] == pytest.approx(0.2)
+
+
+def test_freeze_entry_anchor_returns_none_without_prior_history():
+    store = _store({})
+    evaluator = DailyExitEvaluatorV2("C", "C", DailyExitRuleSetV2(
+        atr_distance=AtrDistanceSpec(multiple=2.0)))
+    atr_series = {SYMBOL: pd.Series({CAL[1]: 2.0})}   # 只有入场当日
+    lot = _lot()
+    assert evaluator.freeze_entry_anchor(lot.lot_id, SYMBOL, CAL[1], atr_series) is None
 
 
 def test_atr_trailing_tightens_only_and_keeps_peak():
@@ -454,9 +485,9 @@ def test_full_chain_custom_fixture_reaches_account_chain():
     })
     assert result["signals"], "自定义突破条件应产生信号"
     assert [f for f in result["fills"] if f["side"] == "BUY"], "自定义条件必须能真实成交"
-    # 依赖指标自动补齐
+    # 依赖指标自动补齐；输出键使用完整实例身份（id@version#params 指纹）
     outputs = result["resolved_config"]["indicator_outputs"][SYMBOL]
-    assert "VOLUME_BREAKOUT_SCORE" in outputs
+    assert any(key.startswith("VOLUME_BREAKOUT_SCORE@") for key in outputs), outputs
 
 
 def test_full_chain_rejects_unknown_condition_and_mode():

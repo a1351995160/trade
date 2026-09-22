@@ -2,379 +2,443 @@
   "registry_version": "BT_INDICATOR_REGISTRY_V2",
   "minimum_set": {
     "required": 54,
-    "met": 54
+    "verified": 26,
+    "partial": 28,
+    "not_verified": 0
   },
+  "note": "VERIFIED 要求同时具备：实现 + 独立数值 oracle + 契约测试 + 公开入口测试。仅注册/映射完成标 PARTIAL，不外推为公式或账户已验证。",
   "families": [
     {
       "family": "基础算子",
       "required": 10,
-      "met": 10,
+      "verified": 5,
+      "partial": 5,
       "items": [
         {
           "requirement": "arithmetic",
           "target": "OPERATOR_LAYER",
-          "met": true,
-          "note": "既有 research/unified_factor.py 算子注册表（本轮未改）"
+          "status": "PARTIAL",
+          "met": false,
+          "evidence": "impl=research/unified_factor.py（既有，本轮未改）; 未接 V2 单证券公开链路与账户链"
         },
         {
           "requirement": "comparison",
           "target": "OPERATOR_LAYER",
-          "met": true,
-          "note": "既有 research/unified_factor.py 算子注册表（本轮未改）"
+          "status": "PARTIAL",
+          "met": false,
+          "evidence": "impl=research/unified_factor.py（既有，本轮未改）; 未接 V2 单证券公开链路与账户链"
         },
         {
           "requirement": "boolean",
           "target": "CONDITION_LAYER",
+          "status": "VERIFIED",
           "met": true,
-          "note": "本轮 engine/conditions_v2.py 条件层"
+          "evidence": "impl=engine/conditions_v2.py; tests=tests/conditions_v2"
         },
         {
           "requirement": "REF",
           "target": "CONDITION_LAYER",
+          "status": "VERIFIED",
           "met": true,
-          "note": "本轮 engine/conditions_v2.py 条件层"
+          "evidence": "impl=engine/conditions_v2.py; tests=tests/conditions_v2"
         },
         {
           "requirement": "rolling SUM/MEAN/STD/VAR",
           "target": "OPERATOR_LAYER",
-          "met": true,
-          "note": "既有 research/unified_factor.py 算子注册表（本轮未改）"
+          "status": "PARTIAL",
+          "met": false,
+          "evidence": "impl=research/unified_factor.py（既有，本轮未改）; 未接 V2 单证券公开链路与账户链"
         },
         {
           "requirement": "HHV/LLV",
           "target": "PRICE_EXTREMES",
-          "met": true,
-          "note": "PRICE_EXTREMES_V1"
+          "status": "PARTIAL",
+          "met": false,
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         },
         {
           "requirement": "COUNT",
           "target": "OPERATOR_LAYER",
-          "met": true,
-          "note": "既有 research/unified_factor.py 算子注册表（本轮未改）"
+          "status": "PARTIAL",
+          "met": false,
+          "evidence": "impl=research/unified_factor.py（既有，本轮未改）; 未接 V2 单证券公开链路与账户链"
         },
         {
           "requirement": "EVERY/EXIST",
           "target": "CONDITION_LAYER",
+          "status": "VERIFIED",
           "met": true,
-          "note": "本轮 engine/conditions_v2.py 条件层"
+          "evidence": "impl=engine/conditions_v2.py; tests=tests/conditions_v2"
         },
         {
           "requirement": "BARSLAST",
           "target": "CONDITION_LAYER",
+          "status": "VERIFIED",
           "met": true,
-          "note": "本轮 engine/conditions_v2.py 条件层"
+          "evidence": "impl=engine/conditions_v2.py; tests=tests/conditions_v2"
         },
         {
           "requirement": "CROSS_UP/CROSS_DOWN",
           "target": "CONDITION_LAYER",
+          "status": "VERIFIED",
           "met": true,
-          "note": "本轮 engine/conditions_v2.py 条件层"
+          "evidence": "impl=engine/conditions_v2.py; tests=tests/conditions_v2"
         }
       ]
     },
     {
       "family": "均线与趋势",
       "required": 10,
-      "met": 10,
+      "verified": 6,
+      "partial": 4,
       "items": [
         {
           "requirement": "MA/算术SMA",
           "target": "MA",
+          "status": "VERIFIED",
           "met": true,
-          "note": "MA_ARITHMETIC_V1"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; oracle=tests/indicators_v2/_oracle_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         },
         {
           "requirement": "EMA",
           "target": "EMA",
+          "status": "VERIFIED",
           "met": true,
-          "note": "EMA_V1"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; oracle=tests/indicators_v2/_oracle_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         },
         {
           "requirement": "WMA",
           "target": "WMA",
+          "status": "VERIFIED",
           "met": true,
-          "note": "WMA_V1"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; oracle=tests/indicators_v2/_oracle_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         },
         {
           "requirement": "RMA/Wilder",
           "target": "RMA",
+          "status": "VERIFIED",
           "met": true,
-          "note": "RMA_WILDER_V1"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; oracle=tests/indicators_v2/_oracle_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         },
         {
           "requirement": "通达信SMA(N,M)",
           "target": "SMA_TDX",
+          "status": "VERIFIED",
           "met": true,
-          "note": "SMA_TDX_V1"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; oracle=tests/indicators_v2/_oracle_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         },
         {
           "requirement": "DEMA",
           "target": "DEMA",
-          "met": true,
-          "note": "DEMA_V1"
+          "status": "PARTIAL",
+          "met": false,
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         },
         {
           "requirement": "TEMA",
           "target": "TEMA",
-          "met": true,
-          "note": "TEMA_V1"
+          "status": "PARTIAL",
+          "met": false,
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         },
         {
           "requirement": "MACD",
           "target": "MACD",
+          "status": "VERIFIED",
           "met": true,
-          "note": "MACD_V1"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v1.py; oracle=tests/indicators_v2/_oracle_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         },
         {
           "requirement": "DMI/ADX",
           "target": "DMI",
-          "met": true,
-          "note": "DMI_ADX_V1"
+          "status": "PARTIAL",
+          "met": false,
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         },
         {
           "requirement": "SAR",
           "target": "SAR",
-          "met": true,
-          "note": "SAR_V1"
+          "status": "PARTIAL",
+          "met": false,
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         }
       ]
     },
     {
       "family": "动量与震荡",
       "required": 8,
-      "met": 8,
+      "verified": 6,
+      "partial": 2,
       "items": [
         {
           "requirement": "KDJ",
           "target": "KDJ",
+          "status": "VERIFIED",
           "met": true,
-          "note": "KDJ_V1"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v1.py; oracle=tests/indicators_v2/_oracle_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         },
         {
           "requirement": "RSI",
           "target": "RSI",
+          "status": "VERIFIED",
           "met": true,
-          "note": "RSI_V1"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; oracle=tests/indicators_v2/_oracle_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         },
         {
           "requirement": "CCI",
           "target": "CCI",
-          "met": true,
-          "note": "CCI_V1"
+          "status": "PARTIAL",
+          "met": false,
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         },
         {
           "requirement": "Williams %R",
           "target": "WILLIAMS_R",
+          "status": "VERIFIED",
           "met": true,
-          "note": "WILLIAMS_R_V1"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; oracle=tests/indicators_v2/_oracle_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         },
         {
           "requirement": "ROC",
           "target": "ROC",
+          "status": "VERIFIED",
           "met": true,
-          "note": "ROC_V1"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; oracle=tests/indicators_v2/_oracle_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         },
         {
           "requirement": "MTM/MOM",
           "target": "MTM",
+          "status": "VERIFIED",
           "met": true,
-          "note": "MTM_V1"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; oracle=tests/indicators_v2/_oracle_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         },
         {
           "requirement": "BIAS",
           "target": "BIAS",
+          "status": "VERIFIED",
           "met": true,
-          "note": "BIAS_V1"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; oracle=tests/indicators_v2/_oracle_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         },
         {
           "requirement": "TRIX",
           "target": "TRIX",
-          "met": true,
-          "note": "TRIX_V1"
+          "status": "PARTIAL",
+          "met": false,
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         }
       ]
     },
     {
       "family": "波动与通道",
       "required": 6,
-      "met": 6,
+      "verified": 2,
+      "partial": 4,
       "items": [
         {
           "requirement": "TR",
           "target": "TRUE_RANGE",
-          "met": true,
-          "note": "TRUE_RANGE_V1"
+          "status": "PARTIAL",
+          "met": false,
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         },
         {
           "requirement": "ATR",
           "target": "ATR",
+          "status": "VERIFIED",
           "met": true,
-          "note": "ATR_V1"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; oracle=tests/indicators_v2/_oracle_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         },
         {
           "requirement": "NATR",
           "target": "NATR",
-          "met": true,
-          "note": "NATR_V1"
+          "status": "PARTIAL",
+          "met": false,
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         },
         {
           "requirement": "滚动波动率",
           "target": "ROLLING_VOLATILITY",
-          "met": true,
-          "note": "ROLLING_VOLATILITY_V1"
+          "status": "PARTIAL",
+          "met": false,
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         },
         {
           "requirement": "BOLL/BBANDS",
           "target": "BOLLINGER",
+          "status": "VERIFIED",
           "met": true,
-          "note": "BOLLINGER_V1"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; oracle=tests/indicators_v2/_oracle_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         },
         {
           "requirement": "Donchian",
           "target": "DONCHIAN",
-          "met": true,
-          "note": "DONCHIAN_V1"
+          "status": "PARTIAL",
+          "met": false,
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         }
       ]
     },
     {
       "family": "量价与资金代理",
       "required": 8,
-      "met": 8,
+      "verified": 1,
+      "partial": 7,
       "items": [
         {
           "requirement": "成交量均线",
           "target": "VOLUME_MA",
-          "met": true,
-          "note": "VOLUME_MA_V1"
+          "status": "PARTIAL",
+          "met": false,
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         },
         {
           "requirement": "成交额均线",
           "target": "AMOUNT_MA",
-          "met": true,
-          "note": "AMOUNT_MA_V1"
+          "status": "PARTIAL",
+          "met": false,
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         },
         {
           "requirement": "RVOL",
           "target": "RVOL_INCL_CURRENT",
-          "met": true,
-          "note": "RVOL_INCL_CURRENT_V1"
+          "status": "PARTIAL",
+          "met": false,
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         },
         {
           "requirement": "OBV",
           "target": "OBV",
+          "status": "VERIFIED",
           "met": true,
-          "note": "OBV_V1"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; oracle=tests/indicators_v2/_oracle_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         },
         {
           "requirement": "MFI",
           "target": "MFI",
-          "met": true,
-          "note": "MFI_V1"
+          "status": "PARTIAL",
+          "met": false,
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         },
         {
           "requirement": "A/D",
           "target": "ACCUMULATION_DISTRIBUTION",
-          "met": true,
-          "note": "ACCUMULATION_DISTRIBUTION_V1"
+          "status": "PARTIAL",
+          "met": false,
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         },
         {
           "requirement": "CMF",
           "target": "CHAIKIN_MONEY_FLOW",
-          "met": true,
-          "note": "CHAIKIN_MONEY_FLOW_V1"
+          "status": "PARTIAL",
+          "met": false,
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         },
         {
           "requirement": "PVT",
           "target": "PVT",
-          "met": true,
-          "note": "PVT_V1"
+          "status": "PARTIAL",
+          "met": false,
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         }
       ]
     },
     {
       "family": "价格结构",
       "required": 5,
-      "met": 5,
+      "verified": 2,
+      "partial": 3,
       "items": [
         {
           "requirement": "区间高低点",
           "target": "PRICE_EXTREMES",
-          "met": true,
-          "note": "PRICE_EXTREMES_V1"
+          "status": "PARTIAL",
+          "met": false,
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         },
         {
           "requirement": "前N根突破",
           "target": "PRIOR_BREAKOUT",
-          "met": true,
-          "note": "PRIOR_BREAKOUT_V1"
+          "status": "PARTIAL",
+          "met": false,
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         },
         {
           "requirement": "回撤/振幅",
           "target": "DRAWDOWN_FROM_PEAK",
-          "met": true,
-          "note": "DRAWDOWN_FROM_PEAK_V1"
+          "status": "PARTIAL",
+          "met": false,
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         },
         {
           "requirement": "实体/上下影线/缺口比例",
           "target": "BAR_SHAPE",
+          "status": "VERIFIED",
           "met": true,
-          "note": "BAR_SHAPE_V1"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; oracle=tests/indicators_v2/_oracle_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         },
         {
           "requirement": "连续上涨下跌",
           "target": "STREAK",
+          "status": "VERIFIED",
           "met": true,
-          "note": "STREAK_V1"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; oracle=tests/indicators_v2/_oracle_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         }
       ]
     },
     {
       "family": "统计与截面组合",
       "required": 7,
-      "met": 7,
+      "verified": 4,
+      "partial": 3,
       "items": [
         {
           "requirement": "历史收益",
           "target": "HISTORICAL_RETURN",
-          "met": true,
-          "note": "HISTORICAL_RETURN_V1"
+          "status": "PARTIAL",
+          "met": false,
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         },
         {
           "requirement": "线性斜率",
           "target": "ROLLING_SLOPE",
+          "status": "VERIFIED",
           "met": true,
-          "note": "ROLLING_SLOPE_V1"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; oracle=tests/indicators_v2/_oracle_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         },
         {
           "requirement": "时间序列标准化",
           "target": "TIME_SERIES_ZSCORE",
+          "status": "VERIFIED",
           "met": true,
-          "note": "TIME_SERIES_ZSCORE_V1"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; oracle=tests/indicators_v2/_oracle_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
         },
         {
           "requirement": "相关系数",
           "target": "OPERATOR_LAYER:correlation",
-          "met": true,
-          "note": "既有 research/unified_factor.py 算子注册表（本轮未改）"
+          "status": "PARTIAL",
+          "met": false,
+          "evidence": "impl=research/unified_factor.py（既有，本轮未改）; 未接 V2 单证券公开链路与账户链"
         },
         {
           "requirement": "Beta",
           "target": "OPERATOR_LAYER:beta",
-          "met": true,
-          "note": "既有 research/unified_factor.py 算子注册表（本轮未改）"
+          "status": "PARTIAL",
+          "met": false,
+          "evidence": "impl=research/unified_factor.py（既有，本轮未改）; 未接 V2 单证券公开链路与账户链"
         },
         {
           "requirement": "截面rank/percentile",
           "target": "CONDITION_LAYER:rank",
+          "status": "VERIFIED",
           "met": true,
-          "note": "本轮 engine/conditions_v2.py 条件层"
+          "evidence": "impl=engine/conditions_v2.py; tests=tests/conditions_v2"
         },
         {
           "requirement": "Top-N",
           "target": "CONDITION_LAYER:top_n",
+          "status": "VERIFIED",
           "met": true,
-          "note": "本轮 engine/conditions_v2.py 条件层"
+          "evidence": "impl=engine/conditions_v2.py; tests=tests/conditions_v2"
         }
       ]
     }

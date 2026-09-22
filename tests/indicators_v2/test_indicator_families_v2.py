@@ -321,6 +321,51 @@ def test_streak_matches_oracle():
     np.testing.assert_allclose(frame.value("down_streak").to_numpy(), np.array(down, dtype=float))
 
 
+def test_dmi_and_sar_match_independent_oracle():
+    """DMI/ADX 与 SAR 必须有独立数值 oracle，不能只测参数错误。"""
+    from tests.indicators_v2._oracle_v2 import naive_dmi, naive_sar
+
+    closes = _shape("roundtrip", 120)
+    highs = [c * 1.02 for c in closes]
+    lows = [c * 0.98 for c in closes]
+    data = _frame(closes, highs=highs, lows=lows)
+    prev = [None] + closes[:-1]
+
+    expected = naive_dmi(highs, lows, closes, prev, 14)
+    frame = dmi_adx(data, window=14)
+    for name in ("plus_di", "minus_di", "adx"):
+        np.testing.assert_allclose(
+            frame.value(name).to_numpy(), _nan(expected[name]), rtol=0, atol=1e-9,
+            equal_nan=True)
+
+    expected_sar = naive_sar(highs, lows, 0.02, 0.2)
+    sar_frame = sar(data, step=0.02, max_step=0.2)
+    np.testing.assert_allclose(
+        sar_frame.value("sar").to_numpy(), _nan(expected_sar["sar"]),
+        rtol=0, atol=1e-9, equal_nan=True)
+    np.testing.assert_allclose(
+        sar_frame.value("sar_trend").to_numpy(),
+        np.array([float(v) for v in expected_sar["trend"]]), rtol=0, atol=1e-9,
+        equal_nan=True)
+
+
+def test_dmi_adx_reacts_to_trend_strength():
+    """性质检查（补充，不替代 oracle）：强趋势的 ADX 应高于横盘。"""
+    trending = [10.0 + 0.2 * i for i in range(80)]
+    flat = [10.0 + 0.05 * (i % 2) for i in range(80)]
+    trend_frame = dmi_adx(_frame(trending, highs=[c * 1.01 for c in trending],
+                                 lows=[c * 0.99 for c in trending]), window=14)
+    flat_frame = dmi_adx(_frame(flat, highs=[c * 1.01 for c in flat],
+                                lows=[c * 0.99 for c in flat]), window=14)
+    assert float(trend_frame.value("adx").max()) > float(flat_frame.value("adx").max())
+    closes = _shape("roundtrip")
+    data = _frame(closes)
+    up, down = naive_streak(closes)
+    frame = streak(data)
+    np.testing.assert_allclose(frame.value("up_streak").to_numpy(), np.array(up, dtype=float))
+    np.testing.assert_allclose(frame.value("down_streak").to_numpy(), np.array(down, dtype=float))
+
+
 # --------------------------------------------------------------------------
 # 3. 参数实际生效 + 边界 + 非法值
 # --------------------------------------------------------------------------

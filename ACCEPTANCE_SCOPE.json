@@ -11,7 +11,10 @@
   "part_b_minimum_set": {
     "description": "第3节通用基础集合及统一链路",
     "required": 54,
-    "met": 54,
+    "verified": 26,
+    "partial": 28,
+    "not_verified": 0,
+    "verification_rule": "VERIFIED 要求同时具备实现 + 独立数值 oracle + 契约测试 + 公开入口测试；仅注册/映射完成标 PARTIAL。",
     "families": [
       "基础算子",
       "均线与趋势",
@@ -39,10 +42,12 @@
         "tests/indicators_v2",
         "tests/conditions_v2",
         "tests/exits_v2",
-        "tests/entrypoints_v2"
+        "tests/entrypoints_v2",
+        "tests/pr15_remediation"
       ],
-      "collected_and_passed": 116,
-      "junit": "reports/junit-v2-new.xml"
+      "collected_and_passed": 141,
+      "junit": "reports/junit-v2-new.xml",
+      "note": "tests/pr15_remediation 为定向复核（PR #15）的五类根因验收，全部经真实 API/CLI 取得 red/green。"
     },
     "v1_compatibility_regression": {
       "suites": [

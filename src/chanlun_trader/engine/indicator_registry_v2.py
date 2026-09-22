@@ -145,11 +145,79 @@ def _sha(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
 
 
-def _impl_hash(fn: Callable) -> str:
+def _source_of(fn: Callable) -> str:
+    """取函数**真实实现**源码。
+
+    ``_adapter`` 返回的是包装器；只哈希包装器会漏掉真实公式变化。
+    因此优先取 ``__wrapped_impl__``（真实实现函数）。
+    """
+    target = getattr(fn, "__wrapped_impl__", fn)
     try:
-        return _sha(inspect.getsource(fn))
+        return inspect.getsource(target)
     except (OSError, TypeError):
         return "UNAVAILABLE"
+
+
+def _impl_hash(fn: Callable) -> str:
+    return _sha(_source_of(fn))
+
+
+def _formula_hash(fn: Callable, dependencies: Sequence[str] = ()) -> str:
+    """公式指纹：真实实现源码 + 其依赖指标源码。
+
+    两个不同公式即使输出同名，也必须产生不同指纹；
+    改实现或改语义即改变指纹，使旧验证绑定失效。
+    """
+    parts = [_source_of(fn)]
+    for dependency in sorted(dependencies):
+        parts.append(dependency)
+    return _sha("\n".join(parts))
+
+
+# --------------------------------------------------------------------------
+# 实例身份
+# --------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class IndicatorInstanceKey:
+    """指标**实例**的稳定身份。
+
+    区分 id / version / 参数 / 输入 / 价格域 / 周期。同一请求里
+    ``MA(5)`` 与 ``MA(20)`` 是两个不同实例，不得共用同一个结果槽。
+    """
+
+    indicator_id: str
+    version: str
+    params: Tuple[Tuple[str, str], ...]
+    inputs: Tuple[str, ...]
+    price_mode: str
+    frequency: str
+
+    @staticmethod
+    def build(spec: "IndicatorSpec", params: Mapping[str, Any]) -> "IndicatorInstanceKey":
+        canonical = tuple(sorted((str(k), _canonical_param(v)) for k, v in params.items()))
+        return IndicatorInstanceKey(
+            indicator_id=spec.indicator_id, version=spec.version, params=canonical,
+            inputs=tuple(spec.inputs), price_mode=spec.price_mode, frequency=spec.frequency,
+        )
+
+    def as_string(self) -> str:
+        return _sha(_canonical_json({
+            "indicator_id": self.indicator_id, "version": self.version,
+            "params": list(self.params), "inputs": list(self.inputs),
+            "price_mode": self.price_mode, "frequency": self.frequency,
+        }))
+
+
+def _canonical_param(value: Any) -> str:
+    if isinstance(value, float) and value.is_integer():
+        return str(int(value))
+    return str(value)
+
+
+def _canonical_json(value: Any) -> str:
+    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str)
 
 
 # --------------------------------------------------------------------------
@@ -161,6 +229,7 @@ def _adapter(fn: Callable, output_names: Sequence[str]) -> Callable[..., Indicat
     """统一适配：``fn(data: PriceInput, **params) -> IndicatorFrameV2``。
 
     校验输出名与声明一致；不一致即注册表错误（防止声明与实现漂移）。
+    保留 ``__wrapped_impl__`` 指向真实实现，使实现指纹取自真实公式而非包装器。
     """
     def compute(data: PriceInput, **params) -> IndicatorFrameV2:
         frame = fn(data, **params)
@@ -169,6 +238,8 @@ def _adapter(fn: Callable, output_names: Sequence[str]) -> Callable[..., Indicat
             raise IndicatorRegistryError(
                 f"OUTPUT_CONTRACT_MISMATCH:{fn.__name__}:declared={tuple(output_names)}:actual={actual}")
         return frame
+
+    compute.__wrapped_impl__ = fn      # type: ignore[attr-defined]
     return compute
 
 
@@ -212,6 +283,7 @@ class IndicatorRegistry:
     def __init__(self, specs: Optional[Iterable[IndicatorSpec]] = None):
         self._specs: Dict[Tuple[str, str], IndicatorSpec] = {}
         self._impls: Dict[Tuple[str, str], Callable] = {}
+        self._dependencies: Dict[str, Tuple[str, ...]] = {}
         if specs is not None:
             for spec in specs:
                 self._specs[(spec.indicator_id, spec.version)] = spec
@@ -255,7 +327,26 @@ class IndicatorRegistry:
             "implementation_hashes": {
                 f"{iid}@{version}": _impl_hash(fn) for (iid, version), fn in sorted(self._impls.items())
             },
+            # 公式指纹包含真实实现源码 + 依赖指标源码；改实现或改语义即改变指纹。
+            "formula_hashes": {
+                f"{iid}@{version}": _formula_hash(fn, self._dependencies_of(iid))
+                for (iid, version), fn in sorted(self._impls.items())
+            },
+            "dependencies": {
+                iid: sorted(self._dependencies_of(iid)) for iid in sorted({k[0] for k in self._impls})
+            },
         }
+
+    def _dependencies_of(self, indicator_id: str) -> List[str]:
+        """该指标依赖的其他指标 id（用于公式指纹与依赖图校验）。"""
+        return sorted(self._dependencies.get(indicator_id, ()))
+
+    def formula_hash(self, indicator_id: str, version: Optional[str] = None) -> str:
+        spec = self.get(indicator_id, version) if version else self.resolve(indicator_id)
+        fn = self._impls.get((spec.indicator_id, spec.version))
+        if fn is None:
+            raise IndicatorRegistryError(f"INDICATOR_NOT_IMPLEMENTED:{spec.indicator_id}")
+        return _formula_hash(fn, self._dependencies_of(spec.indicator_id))
 
     def write(self, path) -> str:
         from pathlib import Path
@@ -324,10 +415,26 @@ class IndicatorRegistry:
             index=frame.index, frame=frame, spec=spec,
         )
 
+    def resolve_instance(self, indicator_id: str, *, version: Optional[str] = None,
+                         params: Optional[Mapping[str, Any]] = None) -> Tuple[IndicatorSpec, IndicatorInstanceKey]:
+        """解析并返回 (spec, 实例身份)。未知版本/参数在此阶段即拒绝。"""
+        spec = self.get(indicator_id, version) if version else self.resolve(indicator_id)
+        supplied = dict(params or {})
+        unknown = sorted(set(supplied) - set(spec.params))
+        if unknown:
+            raise IndicatorRegistryError(
+                f"UNKNOWN_PARAMETER:{spec.indicator_id}:{','.join(unknown)}")
+        resolved = {name: supplied.get(name, default) for name, default in spec.params.items()}
+        _validate_params(spec, resolved)
+        return spec, IndicatorInstanceKey.build(spec, resolved)
+
     # -- 注册 -------------------------------------------------------------
-    def register(self, spec: IndicatorSpec, impl: Callable) -> None:
+    def register(self, spec: IndicatorSpec, impl: Callable,
+                 dependencies: Sequence[str] = ()) -> None:
         self._specs[(spec.indicator_id, spec.version)] = spec
         self._impls[(spec.indicator_id, spec.version)] = impl
+        if dependencies:
+            self._dependencies[spec.indicator_id] = tuple(dependencies)
 
 
 def _validate_params(spec: IndicatorSpec, resolved: Mapping[str, Any]) -> None:

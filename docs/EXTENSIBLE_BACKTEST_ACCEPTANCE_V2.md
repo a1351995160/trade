@@ -246,17 +246,45 @@ registry.register(
 
 状态绑定具体周期、价格模式、参数域与来源。本轮全部为**合成工程证据**。
 
+### 5.1 覆盖矩阵口径（PR15-05 修正后）
+
+`VERIFIED` 要求**同时**具备四项证据：实现路径 + 独立数值 oracle + 契约测试 + 公开入口测试。
+仅完成注册/映射的项标 `PARTIAL`，**不**外推为公式或账户已验证。
+矩阵逐项给出 `status` 与 `evidence`，不再按名称前缀判定。
+
+| 家族 | VERIFIED | PARTIAL | 合计 |
+| --- | --- | --- | --- |
+| 基础算子 | 5 | 5 | 10 |
+| 均线与趋势 | 6 | 4 | 10 |
+| 动量与震荡 | 6 | 2 | 8 |
+| 波动与通道 | 2 | 4 | 6 |
+| 量价与资金代理 | 1 | 7 | 8 |
+| 价格结构 | 2 | 3 | 5 |
+| 统计与截面组合 | 4 | 3 | 7 |
+| **合计** | **26** | **28** | **54** |
+
+`PARTIAL` 的典型原因：尚无独立数值 oracle（如部分量价与通道指标），
+或既有面板级算子层本轮**未**接线到 V2 单证券公开链路。
+这些项**不计入** `FORMULA_VALIDATED`。
+
+### 5.2 维度状态
+
 | 维度 | 状态 |
 | --- | --- |
 | `IMPLEMENTED` | 51 项指标 + 表达式层 + 9 类退出 |
-| `FORMULA_VALIDATED` | 本轮最低集合全部（手算 + 独立 oracle 逐值） |
+| `FORMULA_VALIDATED` | 矩阵中 26 项 VERIFIED（含独立 oracle）；其余为 PARTIAL |
 | `CAUSALITY_VALIDATED` | 逐前缀一致 + 追加未来不改过去（多家族抽样） |
-| `REGISTERED` | 51 项（契约完整，含输出名/参数/预热/缺失政策） |
+| `REGISTERED` | 51 项（契约完整，含输出名/参数/预热/缺失政策/公式指纹） |
 | `ENTRYPOINT_WIRED` | API + CLI + Web 三入口同一服务 |
 | `EXECUTION_BEHAVIOR_VALIDATED` | 9 类退出实际触发并经过委托/成交/费用/现金/持仓 |
 | `ACCOUNTING_VALIDATED` | 现金/lot/费用/已实现盈亏/逐日权益经独立手算核对 |
 | `REAL_DATA_VALIDATED` | **否** |
 | `PROFITABILITY_VALIDATED` | **否**（且不在本轮目标内） |
+
+**116 项 V2 测试是真实证据，但不等于 51 项指标的所有行为均已验证**；
+未列入 VERIFIED 的项按 PARTIAL 如实披露。PR #15 定向复核后新增
+`tests/pr15_remediation`（25 项，全部经真实 API/CLI 取得 red/green），
+V2 新增测试合计 **141** 项。
 
 软件对齐：未做与通达信/TA-Lib 的同输入同复权逐值对照，故只声明
 "本版本公式验收通过"，不声明"与第三方软件完全一致"。
@@ -265,16 +293,37 @@ registry.register(
 
 ## 6. 本轮修复的缺陷
 
+### 6.1 定向复核（PR #15，reviewed HEAD `196e666`）关闭的五类根因
+
+| 编号 | 根因 | 处置 |
+| --- | --- | --- |
+| **PR15-01** | 同一请求里 `MA(5)` 与 `MA(20)` 共用 `results['MA']`，后者静默覆盖前者；表达式 `version` 未核验 | 引入 `IndicatorInstanceKey`（id/version/参数/输入/价格域/周期）与 `alias` 引用；重复与冲突身份**先拒绝**（`DUPLICATE_INDICATOR_INSTANCE` / `CONFLICTING_INDICATOR_INSTANCE`）；显式 `version` 精确解析，未知版本报错 |
+| **PR15-02** | ATR 入场锚回退到**入场当日** ATR（前视）；距离与跟踪共用一条未核验 ATR；`DYNAMIC_CURRENT` 接受参数后被忽略 | 新增 `AtrBinding`（窗口/版本/价格尺度/可用时间）；`freeze_entry_anchor` 取**严格早于入场日**的最近可用 ATR，在持仓创建时由 `fill_hook` 冻结；规则依赖必须显式声明（`ATR_DEPENDENCY_NOT_DECLARED`）；无法执行时**拒绝运行**（`EXIT_RULE_NOT_EXECUTABLE`）而非报成正常完成 |
+| **PR15-03** | 多证券共用一个条件上下文，或直接拒绝多证券 | 上下文改为**按 `lot.symbol`** 取；缺失某证券即拒绝（`CONDITION_CONTEXT_MISSING_FOR_SYMBOL`）；仅基础退出时**不构建**指标上下文 |
+| **PR15-04** | Top-N 在全 NaN 时"选中 A"、用 NaN 凑满、Inf 参与排名、UNKNOWN 填 FALSE 后在 NOT 分支变成可买 | 先构建每 session 合法截面（成员资格 + ready + finite + 时间可见性）再排序；不合格成员保持 **UNKNOWN**；Inf 被排除；截面与时序操作数索引不一致时明确报错（`CONDITION_OPERAND_INDEX_MISMATCH`） |
+| **PR15-05** | `build_matrix` 按字符串前缀判定 `met=True`；实现 hash 只哈希适配器包装器 | 逐项要求实现 + 独立 oracle + 契约测试 + 公开入口测试才算 `VERIFIED`，否则 `PARTIAL`；新增 `formula_hashes`（真实实现源码 + 依赖源码），两个不同公式的同名输出产生不同指纹 |
+
+### 6.2 本轮在修复过程中发现并关闭的额外真实缺陷
+
 | 缺陷 | 性质 | 处置 |
 | --- | --- | --- |
-| 条件退出在求值时取"上下文最后一根"而非当前 `trade_session` | **真实缺陷**（错误 + 前视风险） | 改为按 `trade_session` 取值；新增"FALSE/UNKNOWN 不触发"正反例测试 |
-| `DailyExitEvaluatorV2` 同一 lot 同一 session 产生两条评估记录 | **真实缺陷**（重复退出误判） | V1 委托记录不再重复并入；新增单条记录断言 |
-| 调用方显式指定的指标 `version` 被静默忽略 | **真实缺陷**（契约不生效） | `compute()` 改为按 version 精确解析；未知版本报错；新增回归测试 |
-| `TR` 首根因缺前收盘而丢弃 | 口径不一致（导致 ATR 预热偏移） | 段首按惯例取 `H-L`；oracle 同步 |
-| 截面 `top_n` 用名为 `symbol` 的列与同名索引冲突 | **真实缺陷**（运行时异常） | 改用位置数组，避免索引/列名歧义 |
+| `DMI/ADX` 的 ADX 放大约 N 倍（漏除 window） | **真实公式错误** | `_wilder_smooth` 返回累加和，ADX 是平均值；补除 `window`，并与独立 oracle 逐值对齐 |
+| `_wilder_smooth` 种子被段首 NaN 污染 | **真实缺陷** | 种子改为取前 N 个**有限**值之和 |
+| `DMI` 段首 TR 因缺前收盘而丢弃 | 口径不一致（预热偏移） | 段首按惯例取 `H-L`，与 `true_range` 一致 |
+| `DYNAMIC_CURRENT` 在首根被跳过（提前 return） | **真实缺陷**（参数被忽略） | 首次创建状态后继续走更新逻辑；取不到当日 ATR 时按合同拒绝 |
+
+### 6.3 更早（V2 主体）已修复的缺陷
+
+| 缺陷 | 性质 | 处置 |
+| --- | --- | --- |
+| 条件退出取"上下文最后一根"而非当前 `trade_session` | **真实缺陷**（错误 + 前视风险） | 改为按 `trade_session` 取值 |
+| `DailyExitEvaluatorV2` 同一 lot/session 产生两条评估记录 | **真实缺陷**（重复退出误判） | V1 委托记录不再重复并入 |
+| 调用方指定的指标 `version` 被静默忽略 | **真实缺陷**（契约不生效） | 按 version 精确解析 |
+| `TR` 首根因缺前收盘而丢弃 | 口径不一致 | 段首取 `H-L` |
+| 截面 `top_n` 用名为 `symbol` 的列与同名索引冲突 | **真实缺陷**（运行时异常） | 改用位置数组 |
 | `_series` 返回 RangeIndex 导致按日期 reindex 全 NaN | **真实缺陷**（指标全 UNKNOWN） | 显式把交易日整数键设为索引 |
-| RSI 边界用浮点相等判断零涨跌 | 稳健性缺陷（极小非零值误判） | 改为容差比较 |
-| CLI 结果写入未走服务层根约束 | **安全缺陷**（Sonar `S2083` 路径穿越） | 写入移入服务层 `write_result_v2`，与 V1 同一模式 |
+| RSI 边界用浮点相等判断零涨跌 | 稳健性缺陷 | 改为容差比较 |
+| CLI 结果写入未走服务层根约束 | **安全缺陷**（Sonar `S2083`） | 写入移入服务层 `write_result_v2` + 类型化结果对象 |
 
 以上均为 V2 新增代码中的缺陷，**不是** V1 收尾遗留问题。
 

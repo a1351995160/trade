@@ -136,6 +136,9 @@ class BacktestEngineV2:
         self._pending_exit_lots: Dict[str, str] = {}
         # sizing 为零而未生成订单的原因记录（可观测性；不改变交易行为）。
         self.sizing_skips: List[dict] = []
+        # 可选：新 lot 首次出现时的回调（默认未设置，不改变既有行为）。
+        self.fill_hook = None
+        self._fill_hook_seen: set = set()
 
     # ---------- setup ----------
     def add_signal(self, sig: Signal):
@@ -412,7 +415,12 @@ class BacktestEngineV2:
         return order
 
     def _sync_lot_contract_fields(self):
-        """Attach the shared market-session clock to every actual FIFO lot."""
+        """Attach the shared market-session clock to every actual FIFO lot.
+
+        新出现的 lot（首次成交）会触发可选的 ``fill_hook``，使调用方能在
+        **持仓创建时**冻结只依赖入场前信息的锚（例如入场 ATR）。
+        ``fill_hook`` 未设置时不改变任何既有行为。
+        """
         for lot in self.ledger.lots.values():
             entry_session = date_key(lot.buy_time)
             try:
@@ -427,6 +435,10 @@ class BacktestEngineV2:
                 lot.sellable_from_session_index = entry_index + 1
             if lot.entry_price <= 0 and lot.quantity > 0:
                 lot.entry_price = float(lot.cost / lot.quantity)
+            hook = getattr(self, "fill_hook", None)
+            if hook is not None and lot.lot_id not in self._fill_hook_seen:
+                self._fill_hook_seen.add(lot.lot_id)
+                hook(lot)
 
     def _submit_exit_decision(self, decision: PortfolioExitDecision, ts: pd.Timestamp):
         if decision.state == "SELL_PENDING":
