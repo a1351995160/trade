@@ -173,34 +173,57 @@ def _impl_hash(fn: Callable) -> str:
     return _sha(_source_of(fn))
 
 
+class DependencyResolutionError(IndicatorRegistryError):
+    """依赖解析失败：未支持 / 歧义 / 缺失 / 循环。不回退到第一个版本或仅名称。"""
+
+
+def _resolve_dependency(registry: "IndicatorRegistry", indicator_id: str,
+                        pinned: Optional[str] = None) -> Tuple["IndicatorSpec", str]:
+    """解析依赖指标的**确定版本**，与执行时使用同一套解析规则。
+
+    必须与 ``get(id)``（无版本时取最大版本）保持一致，否则会出现
+    "执行选 V2 却哈希 V1"。显式固定版本时以固定版本为准，且必须真实存在。
+    歧义（同 id 多版本且无法确定）或缺失时明确拒绝。
+    """
+    if pinned:
+        spec = registry.get(indicator_id, pinned)
+        return spec, spec.version
+    spec = registry.get(indicator_id)
+    return spec, spec.version
+
+
 def _formula_hash(fn: Callable, dependencies: Sequence[str] = (),
                   registry: Optional["IndicatorRegistry"] = None,
-                  seen: Optional[set] = None) -> str:
+                  seen: Optional[set] = None,
+                  pinned: Optional[Mapping[str, str]] = None) -> str:
     """公式指纹：**递归**绑定真实实现源码 + 依赖的 version + 依赖的源码指纹。
 
+    依赖版本与**实际执行时解析到的版本一致**（共享 ``_resolve_dependency``），
+    因此默认执行切到 V2 时指纹必须随之改变。
+
     只拼接依赖名称不足以证明依赖未变；必须把依赖的实现内容纳入。
-    ``seen`` 防止循环依赖导致无限递归。
+    ``seen`` 防止循环依赖导致无限递归（遇到环即明确拒绝，不伪报完整 DAG）。
     """
     seen = set(seen or ())
+    pinned = dict(pinned or {})
     parts = [_source_of(fn)]
     for dependency in sorted(dependencies):
         if dependency in seen:
-            continue
+            raise DependencyResolutionError(f"CIRCULAR_DEPENDENCY:{dependency}")
         seen.add(dependency)
         parts.append(f"dep:{dependency}")
-        if registry is not None:
-            spec = None
-            for candidate in registry.specs():
-                if candidate.indicator_id == dependency:
-                    spec = candidate
-                    break
-            if spec is not None:
-                parts.append(f"version:{spec.version}")
-                dep_fn = registry._impls.get((spec.indicator_id, spec.version))
-                if dep_fn is not None:
-                    parts.append(_source_of(dep_fn))
-                    parts.append(_formula_hash(
-                        dep_fn, registry._dependencies_of(dependency), registry, seen))
+        if registry is None:
+            continue
+        spec, resolved_version = _resolve_dependency(
+            registry, dependency, pinned.get(dependency))
+        parts.append(f"version:{resolved_version}")
+        dep_fn = registry._impls.get((spec.indicator_id, spec.version))
+        if dep_fn is None:
+            raise DependencyResolutionError(
+                f"DEPENDENCY_NOT_IMPLEMENTED:{spec.indicator_id}@{spec.version}")
+        parts.append(_source_of(dep_fn))
+        parts.append(_formula_hash(
+            dep_fn, registry._dependencies_of(dependency), registry, seen, pinned))
     return _sha("\n".join(parts))
 
 
@@ -314,6 +337,8 @@ class IndicatorRegistry:
         self._specs: Dict[Tuple[str, str], IndicatorSpec] = {}
         self._impls: Dict[Tuple[str, str], Callable] = {}
         self._dependencies: Dict[str, Tuple[str, ...]] = {}
+        # 显式固定的依赖版本：{indicator_id: {dependency_id: version}}
+        self._pinned: Dict[str, Dict[str, str]] = {}
         if specs is not None:
             for spec in specs:
                 self._specs[(spec.indicator_id, spec.version)] = spec
@@ -360,7 +385,8 @@ class IndicatorRegistry:
             # 公式指纹包含真实实现源码 + 依赖指标源码；改实现或改语义即改变指纹。
             "formula_hashes": {
                 f"{iid}@{version}": _formula_hash(
-                    fn, self._dependencies_of(iid), self)
+                    fn, self._dependencies_of(iid), self,
+                    pinned=self._pinned.get(iid))
                 for (iid, version), fn in sorted(self._impls.items())
             },
             "dependencies": {
@@ -377,7 +403,8 @@ class IndicatorRegistry:
         fn = self._impls.get((spec.indicator_id, spec.version))
         if fn is None:
             raise IndicatorRegistryError(f"INDICATOR_NOT_IMPLEMENTED:{spec.indicator_id}")
-        return _formula_hash(fn, self._dependencies_of(spec.indicator_id), self)
+        return _formula_hash(fn, self._dependencies_of(spec.indicator_id), self,
+                             pinned=self._pinned.get(spec.indicator_id))
 
     def write(self, path) -> str:
         from pathlib import Path
@@ -462,11 +489,19 @@ class IndicatorRegistry:
 
     # -- 注册 -------------------------------------------------------------
     def register(self, spec: IndicatorSpec, impl: Callable,
-                 dependencies: Sequence[str] = ()) -> None:
+                 dependencies: Sequence[str] = (),
+                 pinned_versions: Optional[Mapping[str, str]] = None) -> None:
+        """登记指标实现。
+
+        ``pinned_versions`` 可显式固定依赖版本（``{dependency_id: version}``），
+        使"明确版本固定"不会被默认最新版悄悄替换。
+        """
         self._specs[(spec.indicator_id, spec.version)] = spec
         self._impls[(spec.indicator_id, spec.version)] = impl
         if dependencies:
             self._dependencies[spec.indicator_id] = tuple(dependencies)
+        if pinned_versions:
+            self._pinned[spec.indicator_id] = dict(pinned_versions)
 
 
 def _validate_params(spec: IndicatorSpec, resolved: Mapping[str, Any]) -> None:

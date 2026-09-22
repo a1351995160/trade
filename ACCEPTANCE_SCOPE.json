@@ -11,8 +11,8 @@
   "part_b_minimum_set": {
     "description": "第3节通用基础集合及统一链路",
     "required": 54,
-    "verified": 28,
-    "partial": 26,
+    "verified": 10,
+    "partial": 44,
     "not_verified": 0,
     "verification_rule": "VERIFIED 要求同时具备实现 + 独立数值 oracle + 契约测试 + 公开入口测试；仅注册/映射完成标 PARTIAL。",
     "families": [
@@ -46,11 +46,11 @@
       },
       "v2_main_subtotal": 120,
       "pr15_targeted_suites": {
-        "tests/pr15_remediation": 26,
-        "tests/pr15_residual": 20
+        "tests/pr15_remediation": 30,
+        "tests/pr15_residual": 27
       },
-      "pr15_targeted_subtotal": 46,
-      "collected_and_passed": 166,
+      "pr15_targeted_subtotal": 57,
+      "collected_and_passed": 177,
       "junit": "reports/junit-v2-new.xml",
       "evidence_types": {
         "helper": "直接调用注册表/求值器（公式逐值 oracle）",
@@ -58,7 +58,7 @@
         "http": "FastAPI TestClient POST /api/backtest/behavior/v2",
         "cli": "真实子进程执行 scripts/run_behavior_backtest_v2.py"
       },
-      "note": "PR15 定向两轮合计 46 项（第一轮 26 + 残留 20），经真实 API/CLI 取得 red/green；分母按证据来源分开统计，不合并成单一数字宣称全部已验证公式。"
+      "note": "PR15 定向两轮合计 57 项（第一轮 30 + 残留与指纹 27），经真实 API/CLI 取得 red/green；分母按证据来源分开统计，不合并成单一数字宣称全部已验证公式。"
     },
     "v1_compatibility_regression": {
       "suites": [

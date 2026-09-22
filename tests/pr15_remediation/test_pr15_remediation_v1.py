@@ -673,6 +673,129 @@ def test_pr1505_contract_and_registry_and_matrix_agree(tmp_path: Path):
         assert target in registry_ids, f"矩阵引用了未注册指标：{target}"
 
 
+def test_pr1505_evidence_must_cover_the_dimension_not_just_exist():
+    """负向检查：入口证据错设为只消费 RSI/EMA 的测试，不得升格为 VERIFIED。
+
+    证据"存在"不等于"覆盖该项能力"。矩阵必须按**该测试实际消费的指标**判定，
+    因此除 RSI/EMA/MA/ATR/HISTORICAL_RETURN 外的指标不能有 ENTRYPOINT_VALIDATED。
+    """
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "emit_v2_scope_neg", REPO_ROOT / "scripts" / "emit_v2_acceptance_scope_v1.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    from chanlun_trader.engine.custom_indicators_v2 import register_custom_indicators
+    from chanlun_trader.engine.indicator_registry_v2 import default_registry
+
+    registry = default_registry()
+    register_custom_indicators(registry)
+    matrix = module.build_matrix(registry)
+
+    real_entrypoint_indicators = set(module.ENTRYPOINT_NODEIDS)
+    for family in matrix["families"]:
+        for item in family["items"]:
+            dimensions = item.get("dimensions") or {}
+            if dimensions.get("ENTRYPOINT_VALIDATED"):
+                assert item["target"] in real_entrypoint_indicators, (
+                    f"{item['target']} 被标记为入口已验证，但没有任何入口测试消费它")
+    for indicator_id in ("TRIX", "PSY", "KELTNER", "DONCHIAN", "PVT", "MFI"):
+        assert indicator_id not in real_entrypoint_indicators
+    verified_targets = {i["target"] for f in matrix["families"] for i in f["items"]
+                        if i["status"] == "VERIFIED"}
+    assert not ({"TRIX", "PSY", "KELTNER", "DONCHIAN"} & verified_targets), \
+        "未覆盖入口的指标被升格为 VERIFIED"
+
+
+def test_pr1505_condition_dimensions_use_their_own_positive_tests():
+    """负向检查：REF/boolean 等不得统一用 Top-N 同值测试作证。"""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "emit_v2_scope_cond", REPO_ROOT / "scripts" / "emit_v2_acceptance_scope_v1.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    from chanlun_trader.engine.custom_indicators_v2 import register_custom_indicators
+    from chanlun_trader.engine.indicator_registry_v2 import default_registry
+
+    registry = default_registry()
+    register_custom_indicators(registry)
+    matrix = module.build_matrix(registry)
+
+    nodeids = list(module.CONDITION_NODEIDS.values())
+    assert len(nodeids) == len(set(nodeids)), "多个条件维度共用了同一个测试 nodeid"
+    assert "top_n" not in module.CONDITION_NODEIDS["boolean"]
+    assert "top_n" not in module.CONDITION_NODEIDS["CROSS_UP/CROSS_DOWN"]
+    partial_reasons = module.CONDITION_PARTIAL_REASONS
+    assert "REF" in partial_reasons and "arithmetic" in partial_reasons
+    for family in matrix["families"]:
+        for item in family["items"]:
+            if item["requirement"] in ("REF", "arithmetic"):
+                assert item["status"] == "PARTIAL", f"{item['requirement']} 被误升为 VERIFIED"
+                assert "partial_reason=" in item["evidence"]
+
+
+def test_pr1505_macd_kdj_oracle_is_linked_to_v1_compat_junit():
+    """MACD/KDJ 的 oracle 真实位于 V1 兼容 JUnit，必须正确关联集合与参数化节点。"""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "emit_v2_scope_junit", REPO_ROOT / "scripts" / "emit_v2_acceptance_scope_v1.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    from chanlun_trader.engine.custom_indicators_v2 import register_custom_indicators
+    from chanlun_trader.engine.indicator_registry_v2 import default_registry
+
+    registry = default_registry()
+    register_custom_indicators(registry)
+    matrix = module.build_matrix(registry)
+
+    rows = {i["target"]: i for f in matrix["families"] for i in f["items"]}
+    for indicator_id in ("MACD", "KDJ"):
+        assert indicator_id in rows
+        evidence = rows[indicator_id]["evidence"]
+        assert module.V1_JUNIT in evidence, f"{indicator_id} 未关联 V1 兼容 JUnit"
+        assert module.V2_JUNIT not in evidence, f"{indicator_id} 错误关联到 V2 套件 JUnit"
+        assert "tests/indicators/test_indicator_formulas_v1.py" in evidence
+    assert module.V2_JUNIT in rows["RSI"]["evidence"]
+    assert module.V1_JUNIT not in rows["RSI"]["evidence"]
+
+
+def test_pr1505_verified_requires_every_declared_dimension():
+    """VERIFIED 必须在所有声明维度上为真；缺任一维度即 PARTIAL 且写明缺失维度。"""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "emit_v2_scope_dims", REPO_ROOT / "scripts" / "emit_v2_acceptance_scope_v1.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    from chanlun_trader.engine.custom_indicators_v2 import register_custom_indicators
+    from chanlun_trader.engine.indicator_registry_v2 import default_registry
+
+    registry = default_registry()
+    register_custom_indicators(registry)
+    matrix = module.build_matrix(registry)
+
+    assert "dimension_rule" in matrix
+    for family in matrix["families"]:
+        for item in family["items"]:
+            dimensions = item.get("dimensions") or {}
+            if item["status"] == "VERIFIED":
+                assert dimensions, f"VERIFIED 项缺少维度声明：{item['requirement']}"
+                assert all(dimensions.values()), \
+                    f"VERIFIED 项存在未通过维度：{item['requirement']} {dimensions}"
+            elif item["status"] == "PARTIAL" and dimensions:
+                assert not all(dimensions.values()), \
+                    f"PARTIAL 项所有维度都通过（应记为 VERIFIED）：{item['requirement']}"
+                assert "missing_dimensions=" in item["evidence"] or \
+                    "partial_reason=" in item["evidence"]
+    assert matrix["minimum_set"]["required"] == 54
+
+
 def test_pr1505_every_claimed_nodeid_actually_exists():
     """矩阵里声称的每个 nodeid 都必须能真实收集到，否则即为伪造证据。"""
     import importlib.util

@@ -2001,3 +2001,19 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 - tests/pr15_remediation、tests/exits_v2：同步按规则登记锚与 nodeid 校验。
 - .github/workflows/extensible-backtest-acceptance-v2.yml：残留测试纳入双平台 CI。
 - 回滚点 ae871ae；可 git revert 本次提交。
+
+### Testing（证据适用性与依赖指纹收尾）
+- 复现并修复依赖版本指纹缺陷：此前 _formula_hash 遍历 specs() 取第一个版本，而 get(id) 取最大版本，导致「执行选 V2 却哈希 V1」。现与执行共享同一解析，支持显式固定版本，缺依赖/歧义/循环明确拒绝。
+- 修正证据适用性：建立受审映射（指标→真实调用其实现的 oracle 测试；指标→真实消费其 indicator_id 的入口测试；条件维度→覆盖该维度正向语义的测试），逐维度分别判定。VERIFIED 从 28 项诚实降为 10 项——此前把所有 51 个指标名写进入口集合，等于用 RSI/EMA 的入口测试给其余 47 项作证。
+- MACD/KDJ 的 oracle 正确关联到 V1 兼容 JUnit（参数化节点），不再错误关联 V2 套件。
+- 新增负向检查：入口证据错设为只消费 RSI/EMA 的测试、条件维度共用 Top-N 测试、REF/arithmetic 仅有负向测试而误升 VERIFIED，均会被测试拒绝。
+- 强化排名换位测试：用明确两证券、日期与预期排名断言，替代原先的非空断言。
+- PR15 定向两轮 57 项通过；V2 主体 120 项通过；V1 兼容回归 139 项通过。
+- 完整套件在 BASE_SHA 干净工作树与本次 HEAD 分别运行：零新增失败 nodeid（基线 194 覆盖本次 193）；因果未确认，不声明全系统零回归。
+### Notes
+- src/chanlun_trader/engine/indicator_registry_v2.py：依赖解析与指纹共享同一确定结果；支持 pinned_versions；缺依赖/循环依赖抛 DependencyResolutionError。
+- scripts/emit_v2_acceptance_scope_v1.py：受审证据映射（ORACLE_NODEIDS / ENTRYPOINT_NODEIDS / CONDITION_NODEIDS / CONDITION_PARTIAL_REASONS / ASSERTION_SUMMARY），逐维度判定与断言内容登记。
+- tests/pr15_residual/test_pr15_residual_v1.py：依赖版本指纹六项测试、排名换位明确断言。
+- tests/pr15_remediation/test_pr15_remediation_v1.py：四项证据适用性负向检查。
+- docs/EXTENSIBLE_BACKTEST_ACCEPTANCE_V2.md、reports/v2_acceptance/、ACCEPTANCE_SCOPE.json：10/44、177/139、逐项原因与 OPEN 项同步。
+- 回滚点 204ccaa；可 git revert 本次提交。

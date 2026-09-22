@@ -243,10 +243,88 @@ def _conflict_note(indicator_id: str) -> str:
     return notes.get(indicator_id, "")
 
 
-# 每个指标对应的**真实存在**的独立数值 oracle 测试 nodeid。
-# 必须与 tests/indicators_v2 中的实际函数名一致；写错即等于伪造证据。
+# --------------------------------------------------------------------------
+# 受审证据映射
+#
+# 证据存在不等于覆盖该项能力。以下映射逐条来自测试源码的**实际调用**
+# （oracle 测试调用了哪个指标函数、入口测试消费了哪个 indicator_id），
+# 不是"只要 nodeid 存在就升格为 VERIFIED"。
+#
+# 未列入映射的维度保持 PARTIAL —— 不删需求分母、不凑 28、不把 PARTIAL
+# 统称"缺 oracle"（有的是缺正向正确性测试，见 REF/boolean/arithmetic）。
+# --------------------------------------------------------------------------
+
+CONTRACT_NODEID = ("tests/indicators_v2/test_indicator_families_v2.py"
+                   "::test_registry_snapshot_has_required_contract_fields")
+
+# 每个被引用的 nodeid 所断言的**内容**（人工受审，来自测试源码）。
+# 用于满足"函数存在/收集成功"与"执行通过/适用性"分别检查的要求。
+ASSERTION_SUMMARY = {
+    "tests/indicators_v2/test_indicator_families_v2.py::test_ma_matches_oracle":
+        "逐值比对独立 oracle（naive_sma），window 参数生效",
+    "tests/indicators_v2/test_indicator_families_v2.py"
+    "::test_sma_tdx_hand_computed_and_differs_from_arithmetic":
+        "手算 TDX 递推值，并断言与算术均值不同",
+    "tests/indicators_v2/test_indicator_families_v2.py::test_ema_wma_rma_match_oracle":
+        "逐值比对独立 oracle；EMA 与 RMA 初值不同",
+    "tests/indicators_v2/test_indicator_families_v2.py::test_rsi_matches_oracle":
+        "逐值比对独立 oracle（Wilder 平滑）",
+    "tests/indicators_v2/test_indicator_families_v2.py::test_williams_r_matches_oracle":
+        "逐值比对独立 oracle，且断言取值 0~100 非负",
+    "tests/indicators_v2/test_indicator_families_v2.py::test_bollinger_matches_oracle":
+        "逐值比对独立 oracle，ddof=0 与 ddof=1 分别验证",
+    "tests/indicators_v2/test_indicator_families_v2.py::test_atr_matches_oracle":
+        "逐值比对独立 oracle（Wilder TR 平滑）",
+    "tests/indicators_v2/test_indicator_families_v2.py::test_obv_roc_mtm_bias_match_oracle":
+        "OBV/ROC/MTM/BIAS 四项逐值比对独立 oracle",
+    "tests/indicators_v2/test_indicator_families_v2.py::test_hlc3_hand_computed":
+        "手算 HLC3 = (H+L+C)/3",
+    "tests/indicators_v2/test_indicator_families_v2.py"
+    "::test_hlc3_slope_zscore_shape_match_oracle":
+        "rolling_slope / time_series_zscore / bar_shape 逐值比对独立 oracle",
+    "tests/indicators_v2/test_indicator_families_v2.py::test_streak_matches_oracle":
+        "连续涨跌计数逐值比对独立 oracle",
+    "tests/indicators_v2/test_indicator_families_v2.py::test_dmi_and_sar_match_independent_oracle":
+        "DMI(+DI/-DI/ADX) 与 SAR 逐值比对独立 oracle（含 AF 递增与反转）",
+    "tests/indicators/test_indicator_formulas_v1.py::test_macd_v1_matches_independent_oracle":
+        "MACD(DIF/DEA/HIST) 逐值比对独立 oracle（V1 兼容套件，参数化）",
+    "tests/indicators/test_indicator_formulas_v1.py::test_kdj_v1_matches_independent_oracle":
+        "KDJ(K/D/J) 逐值比对独立 oracle（V1 兼容套件，参数化）",
+    "tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions":
+        "HTTP 入口真实消费 RSI+EMA 并产生成交，回显版本身份",
+    "tests/pr15_remediation/test_pr15_remediation_v1.py::test_pr1501_ma5_and_ma20_are_distinct_instances":
+        "MA(5)/MA(20) 为两个实例，声明顺序交换结果不变",
+    "tests/pr15_residual/test_pr15_residual_v1.py::test_pr1502_atr7_and_atr14_differ_and_are_consumed_separately":
+        "ATR7/ATR14 各自绑定不同规则，两条退出线不相等",
+    "tests/pr15_residual/test_pr15_residual_v1.py::test_pr1504_ranking_exit_produces_real_exit_in_public_service":
+        "排名条件经公开服务产生真实退出",
+    "tests/conditions_v2/test_condition_layer_v2.py::test_nan_comparison_yields_unknown_not_true":
+        "NaN 比较得 UNKNOWN 而非 TRUE",
+    "tests/conditions_v2/test_condition_layer_v2.py::test_and_truth_table":
+        "AND 三值真值表全覆盖",
+    "tests/conditions_v2/test_condition_layer_v2.py::test_cross_requires_adjacent_valid_observations":
+        "CROSS 要求前后两个合格且相邻观察点",
+    "tests/conditions_v2/test_condition_layer_v2.py::test_every_and_exist_semantics":
+        "EVERY/EXIST 窗口语义",
+    "tests/conditions_v2/test_condition_layer_v2.py::test_barslast_counts_since_last_true":
+        "BARSLAST 自上次 TRUE 的计数",
+    "tests/conditions_v2/test_condition_layer_v2.py::test_cross_sectional_percentile_ranks_within_bar_only":
+        "截面百分位只在同一 bar 内排名",
+    "tests/conditions_v2/test_condition_layer_v2.py::test_cross_sectional_top_n_stable_tie_break":
+        "Top-N 同值按证券代码稳定排序",
+    CONTRACT_NODEID: "注册表契约字段完整（输出/参数/预热/缺失政策等）",
+}
+
+
+def _assertion_for(nodeid: str) -> str:
+    return ASSERTION_SUMMARY.get(nodeid, "断言内容未登记")
+
+
+# 指标 -> 独立数值 oracle 测试 nodeid（该测试确实调用了该指标的实现函数）
 ORACLE_NODEIDS = {
     "MA": "tests/indicators_v2/test_indicator_families_v2.py::test_ma_matches_oracle",
+    "SMA_TDX": "tests/indicators_v2/test_indicator_families_v2.py"
+               "::test_sma_tdx_hand_computed_and_differs_from_arithmetic",
     "EMA": "tests/indicators_v2/test_indicator_families_v2.py::test_ema_wma_rma_match_oracle",
     "WMA": "tests/indicators_v2/test_indicator_families_v2.py::test_ema_wma_rma_match_oracle",
     "RMA": "tests/indicators_v2/test_indicator_families_v2.py::test_ema_wma_rma_match_oracle",
@@ -258,88 +336,122 @@ ORACLE_NODEIDS = {
     "ROC": "tests/indicators_v2/test_indicator_families_v2.py::test_obv_roc_mtm_bias_match_oracle",
     "MTM": "tests/indicators_v2/test_indicator_families_v2.py::test_obv_roc_mtm_bias_match_oracle",
     "BIAS": "tests/indicators_v2/test_indicator_families_v2.py::test_obv_roc_mtm_bias_match_oracle",
-    "HLC3": "tests/indicators_v2/test_indicator_families_v2.py::test_hlc3_slope_zscore_shape_match_oracle",
-    "ROLLING_SLOPE": "tests/indicators_v2/test_indicator_families_v2.py::test_hlc3_slope_zscore_shape_match_oracle",
-    "TIME_SERIES_ZSCORE": "tests/indicators_v2/test_indicator_families_v2.py::test_hlc3_slope_zscore_shape_match_oracle",
-    "BAR_SHAPE": "tests/indicators_v2/test_indicator_families_v2.py::test_hlc3_slope_zscore_shape_match_oracle",
+    "HLC3": "tests/indicators_v2/test_indicator_families_v2.py::test_hlc3_hand_computed",
+    "ROLLING_SLOPE": "tests/indicators_v2/test_indicator_families_v2.py"
+                     "::test_hlc3_slope_zscore_shape_match_oracle",
+    "TIME_SERIES_ZSCORE": "tests/indicators_v2/test_indicator_families_v2.py"
+                          "::test_hlc3_slope_zscore_shape_match_oracle",
+    "BAR_SHAPE": "tests/indicators_v2/test_indicator_families_v2.py"
+                 "::test_hlc3_slope_zscore_shape_match_oracle",
     "STREAK": "tests/indicators_v2/test_indicator_families_v2.py::test_streak_matches_oracle",
     "DMI": "tests/indicators_v2/test_indicator_families_v2.py::test_dmi_and_sar_match_independent_oracle",
     "SAR": "tests/indicators_v2/test_indicator_families_v2.py::test_dmi_and_sar_match_independent_oracle",
     "MACD": "tests/indicators/test_indicator_formulas_v1.py::test_macd_v1_matches_independent_oracle",
     "KDJ": "tests/indicators/test_indicator_formulas_v1.py::test_kdj_v1_matches_independent_oracle",
-    "SMA_TDX": "tests/indicators_v2/test_indicator_families_v2.py::test_sma_tdx_hand_computed_and_differs_from_arithmetic",
 }
-# 公开入口测试 nodeid（经真实 API/CLI 的端到端验收）。
-ENTRYPOINT_NODEID = ("tests/entrypoints_v2/test_public_entrypoints_v2.py"
-                     "::test_v2_endpoint_runs_and_reports_versions")
-CONTRACT_NODEID = ("tests/indicators_v2/test_indicator_families_v2.py"
-                   "::test_registry_snapshot_has_required_contract_fields")
+
+# MACD/KDJ 的 oracle 位于 **V1 兼容回归** 套件，不在 V2 新增套件里。
+V1_ORACLE_INDICATORS = {"MACD", "KDJ"}
+V1_JUNIT = "reports/junit-v1-compat.xml"
+V2_JUNIT = "reports/junit-v2-new.xml"
+
+# 指标 -> 公开入口测试 nodeid（该测试确实消费了该 indicator_id）
+ENTRYPOINT_NODEIDS = {
+    "RSI": "tests/entrypoints_v2/test_public_entrypoints_v2.py"
+           "::test_v2_endpoint_runs_and_reports_versions",
+    "EMA": "tests/entrypoints_v2/test_public_entrypoints_v2.py"
+           "::test_v2_endpoint_runs_and_reports_versions",
+    "MA": "tests/pr15_remediation/test_pr15_remediation_v1.py"
+          "::test_pr1501_ma5_and_ma20_are_distinct_instances",
+    "ATR": "tests/pr15_residual/test_pr15_residual_v1.py"
+           "::test_pr1502_atr7_and_atr14_differ_and_are_consumed_separately",
+    "HISTORICAL_RETURN": "tests/pr15_residual/test_pr15_residual_v1.py"
+                         "::test_pr1504_ranking_exit_produces_real_exit_in_public_service",
+}
+
+# 条件层维度 -> 正向正确性测试 nodeid。只有真正覆盖该维度的正向语义才计入。
+CONDITION_NODEIDS = {
+    "comparison": "tests/conditions_v2/test_condition_layer_v2.py"
+                  "::test_nan_comparison_yields_unknown_not_true",
+    "boolean": "tests/conditions_v2/test_condition_layer_v2.py::test_and_truth_table",
+    "CROSS_UP/CROSS_DOWN": "tests/conditions_v2/test_condition_layer_v2.py"
+                           "::test_cross_requires_adjacent_valid_observations",
+    "EVERY/EXIST": "tests/conditions_v2/test_condition_layer_v2.py"
+                   "::test_every_and_exist_semantics",
+    "BARSLAST": "tests/conditions_v2/test_condition_layer_v2.py"
+                "::test_barslast_counts_since_last_true",
+    "截面rank/percentile": "tests/conditions_v2/test_condition_layer_v2.py"
+                           "::test_cross_sectional_percentile_ranks_within_bar_only",
+    "Top-N": "tests/conditions_v2/test_condition_layer_v2.py"
+             "::test_cross_sectional_top_n_stable_tie_break",
+}
+# 无正向正确性测试的维度：如实标 PARTIAL 并写明原因（不统称"缺 oracle"）。
+CONDITION_PARTIAL_REASONS = {
+    "arithmetic": "仅有算子存在性/拒绝路径，无加减乘除的独立数值正向测试",
+    "REF": "仅有负周期拒绝测试（test_negative_lag_rejected），无 shift/ref 正向取值测试",
+}
 
 
-def _evidence_for(target: str, spec, oracle_verified: set, entrypoint_verified: set) -> tuple:
+def _impl_callable(registry, indicator_id: str):
+    """取指标的真实实现函数（穿透适配器），用于断言证据指向同一实现。"""
+    spec = registry.get(indicator_id)
+    fn = registry._impls.get((spec.indicator_id, spec.version))
+    if fn is None:
+        return None, spec
+    return getattr(fn, "__wrapped_impl__", fn), spec
+
+
+def _evidence_for(target: str, spec, registry) -> tuple:
     """逐项证据：状态 + 精确 nodeid / 适用域 / 同 HEAD JUnit。
 
-    ``VERIFIED`` 要求同时具备实现 + 独立数值 oracle + 契约测试 + 公开入口测试，
-    且每项都能指到**真实存在**的测试 nodeid（目录名不能充当验收证据）。
+    ``VERIFIED`` 要求**同时**具备：实现 + 独立数值 oracle + 契约测试 +
+    公开入口测试，且每项都指向**真实覆盖该指标**的测试（不是任意 nodeid）。
     """
-    has_oracle = target in oracle_verified
-    has_entrypoint = target in entrypoint_verified
-    status = "VERIFIED" if (has_oracle and has_entrypoint) else "PARTIAL"
+    oracle_node = ORACLE_NODEIDS.get(target)
+    entry_node = ENTRYPOINT_NODEIDS.get(target)
+    formula_ok = oracle_node is not None
+    entry_ok = entry_node is not None
+    status = "VERIFIED" if (formula_ok and entry_ok) else "PARTIAL"
+
+    junit = V1_JUNIT if target in V1_ORACLE_INDICATORS else V2_JUNIT
+    impl_fn, _ = _impl_callable(registry, target)
+    impl_name = getattr(impl_fn, "__name__", type(impl_fn).__name__)
+
+    dimensions = {
+        "FORMULA_VALIDATED": oracle_node is not None,
+        "ENTRYPOINT_VALIDATED": entry_node is not None,
+    }
+    missing = [name for name, ok in dimensions.items() if not ok]
     nodeids = [f"nodeid={CONTRACT_NODEID}"]
-    if has_oracle:
-        oracle_node = ORACLE_NODEIDS.get(target)
-        if oracle_node is None:
-            # 声称有 oracle 却给不出 nodeid -> 降为 PARTIAL，不伪造。
-            status = "PARTIAL"
-            has_oracle = False
-        else:
-            nodeids.append(f"nodeid={oracle_node}")
-    if has_entrypoint:
-        nodeids.append(f"nodeid={ENTRYPOINT_NODEID}")
-    if not has_oracle and not has_entrypoint:
-        nodeids.append("nodeid=无独立数值 oracle 且无入口测试")
+    assertions = [f"assert({CONTRACT_NODEID.split('::')[1]})="
+                  f"{_assertion_for(CONTRACT_NODEID)}"]
+    if oracle_node:
+        nodeids.append(f"nodeid={oracle_node}")
+        assertions.append(f"assert({oracle_node.split('::')[1]})={_assertion_for(oracle_node)}")
+    if entry_node:
+        nodeids.append(f"nodeid={entry_node}")
+        assertions.append(f"assert({entry_node.split('::')[1]})={_assertion_for(entry_node)}")
+    if missing:
+        nodeids.append("missing_dimensions=" + ",".join(missing))
     evidence = (
-        f"impl={spec.implementation_path}; "
+        f"impl={spec.implementation_path}::{impl_name}; "
         f"domain=outputs={list(spec.outputs)};params={sorted(spec.params)};"
         f"price_mode={spec.price_mode};warmup={spec.warmup_bars};unit={spec.unit}; "
-        f"junit=reports/junit-v2-new.xml; " + "; ".join(nodeids)
+        f"dimensions={{{','.join(f'{k}={v}' for k, v in dimensions.items())}}}; "
+        f"junit={junit}; " + "; ".join(nodeids) + "; " + "; ".join(assertions)
     )
-    return status, evidence
+    return status, evidence, dimensions
 
 
 def build_matrix(registry) -> dict:
     """覆盖矩阵：逐项给出实现、公开调用、独立 oracle、契约测试与同 SHA JUnit。
 
-    **不根据字符串前缀判定 met=True**。每项必须能指到具体证据；
-    缺证据即 PARTIAL / NOT_IMPLEMENTED，并如实登记。
+    **不根据字符串前缀判定 met=True**，也不因"nodeid 存在"就升格为 VERIFIED。
+    每项必须能指到**真实覆盖该项能力**的测试；缺证据即 PARTIAL 并写明原因。
     """
     by_id = {spec.indicator_id: spec for spec in registry.specs()}
-    # 独立数值 oracle 覆盖（tests/indicators_v2 中逐值对照，含 SAR/DMI）。
-    oracle_verified = {
-        "MA", "EMA", "WMA", "RMA", "RSI", "WILLIAMS_R", "BOLLINGER", "ATR",
-        "OBV", "ROC", "MTM", "BIAS", "HLC3", "ROLLING_SLOPE",
-        "TIME_SERIES_ZSCORE", "BAR_SHAPE", "STREAK", "MACD", "KDJ", "SMA_TDX",
-        "DMI", "SAR",
-    }
-    # 公开入口（API/CLI/Web）端到端覆盖：仅限真正经入口测试过的指标。
-    # GET 列表显示名字**不**构成该指标的账户链验收。
-    entrypoint_verified = {
-        "RSI", "EMA", "MA", "ATR", "BOLLINGER", "DMI", "SAR", "OBV", "MFI",
-        "CCI", "WILLIAMS_R", "ROC", "MTM", "BIAS", "TRIX", "PSY", "KDJ", "MACD",
-        "KELTNER", "DONCHIAN", "TRUE_RANGE", "NATR", "ROLLING_VOLATILITY",
-        "VOLUME_MA", "AMOUNT_MA", "RVOL_INCL_CURRENT", "RVOL_PRIOR",
-        "ACCUMULATION_DISTRIBUTION", "CHAIKIN_MONEY_FLOW", "PVT",
-        "VWAP_SESSION_PROXY", "HLC3", "ROLLING_VWAP", "PRICE_EXTREMES",
-        "PRIOR_BREAKOUT", "DRAWDOWN_FROM_PEAK", "BAR_SHAPE", "STREAK",
-        "HISTORICAL_RETURN", "ROLLING_SLOPE", "TIME_SERIES_ZSCORE",
-        "SMA_TDX", "WMA", "RMA", "DEMA", "TEMA", "MACD_HIST_RAW", "TURNOVER_RATE",
-        "VOLUME_BREAKOUT_SCORE", "TREND_STRENGTH_RATIO", "RSI_REGIME_FLAG",
-    }
-    # 条件层能力（由 tests/conditions_v2 与 tests/pr15_* 覆盖）。
-    condition_layer_verified = {
-        "arithmetic", "comparison", "boolean", "REF", "EVERY/EXIST", "BARSLAST",
-        "CROSS_UP/CROSS_DOWN", "截面rank/percentile", "Top-N",
-    }
+    # 契约测试：所有已注册指标共享（验证注册表契约字段完整）。
+    condition_layer_verified = set(CONDITION_NODEIDS)
 
     families = []
     total_required = total_met = total_partial = 0
@@ -348,28 +460,42 @@ def build_matrix(registry) -> dict:
         for label, target in required.items():
             status = "NOT_IMPLEMENTED"
             evidence = ""
+            dimensions = {}
             if target in by_id:
                 spec = by_id[target]
-                status, evidence = _evidence_for(
-                    target, spec, oracle_verified, entrypoint_verified)
+                status, evidence, dimensions = _evidence_for(target, spec, registry)
             elif target.startswith("OPERATOR_LAYER"):
                 # 既有面板级算子注册表：本轮**未**接线到 V2 单证券公开链路，标 PARTIAL。
                 status = "PARTIAL"
+                dimensions = {"FORMULA_VALIDATED": False, "ENTRYPOINT_VALIDATED": False}
                 evidence = ("impl=research/unified_factor.py（既有，本轮未改）; "
-                            "domain=面板级算子层; 未接 V2 单证券公开链路与账户链; "
+                            "domain=面板级算子层; dimensions={FORMULA_VALIDATED=False,"
+                            "ENTRYPOINT_VALIDATED=False}; "
+                            "partial_reason=未接 V2 单证券公开链路与账户链; "
                             "nodeid=无（本轮未接线）; junit=不适用")
             elif label in condition_layer_verified:
                 status = "VERIFIED"
-                evidence = ("impl=src/chanlun_trader/engine/conditions_v2.py; "
-                            "domain=条件层算子; "
-                            "nodeid=tests/conditions_v2/test_condition_layer_v2.py"
-                            "::test_cross_sectional_top_n_stable_tie_break; "
-                            "junit=reports/junit-v2-new.xml")
+                dimensions = {"FORMULA_VALIDATED": True}
+                evidence = (f"impl=src/chanlun_trader/engine/conditions_v2.py; "
+                            f"domain=条件层算子:{label}; "
+                            f"dimensions={{{','.join(f'{k}={v}' for k, v in dimensions.items())}}}; "
+                            f"junit={V2_JUNIT}; "
+                            f"nodeid={CONDITION_NODEIDS[label]}; "
+                            f"assert({CONDITION_NODEIDS[label].split('::')[1]})="
+                            f"{_assertion_for(CONDITION_NODEIDS[label])}")
+            elif label in CONDITION_PARTIAL_REASONS:
+                status = "PARTIAL"
+                dimensions = {"FORMULA_VALIDATED": False}
+                evidence = (f"impl=src/chanlun_trader/engine/conditions_v2.py; "
+                            f"domain=条件层算子:{label}; "
+                            f"dimensions={{{','.join(f'{k}={v}' for k, v in dimensions.items())}}}; "
+                            f"partial_reason={CONDITION_PARTIAL_REASONS[label]}; "
+                            f"junit={V2_JUNIT}; nodeid=无正向正确性测试")
             else:
                 evidence = f"NOT_FOUND:{target}"
             rows.append({"requirement": label, "target": target,
                          "status": status, "met": status == "VERIFIED",
-                         "evidence": evidence})
+                         "dimensions": dimensions, "evidence": evidence})
             total_required += 1
             if status == "VERIFIED":
                 total_met += 1
@@ -387,8 +513,11 @@ def build_matrix(registry) -> dict:
         "minimum_set": {"required": total_required, "verified": total_met,
                         "partial": total_partial,
                         "not_verified": total_required - total_met - total_partial},
+        "dimension_rule": ("逐维度分别判定：FORMULA_VALIDATED 需独立数值 oracle；"
+                           "ENTRYPOINT_VALIDATED 需真实消费该指标的公开入口测试。"
+                           "全部声明维度为真才记 VERIFIED；缺任一维度记 PARTIAL 并写明原因。"),
         "note": ("VERIFIED 要求同时具备：实现 + 独立数值 oracle + 契约测试 + 公开入口测试，"
-                 "并给出精确测试 nodeid、适用域与同 HEAD JUnit。"
+                 "且每项指向**真实覆盖该项能力**的测试 nodeid。"
                  "仅注册/映射完成标 PARTIAL，不外推为公式或账户已验证。"),
         "unsupported_combinations": {
             "MIXED_CROSS_SECTIONAL_AND_SERIES_CONDITION": (
@@ -452,11 +581,11 @@ def build_acceptance_scope(registry, matrix) -> dict:
                 },
                 "v2_main_subtotal": 120,
                 "pr15_targeted_suites": {
-                    "tests/pr15_remediation": 26,
-                    "tests/pr15_residual": 20,
+                    "tests/pr15_remediation": 30,
+                    "tests/pr15_residual": 27,
                 },
-                "pr15_targeted_subtotal": 46,
-                "collected_and_passed": 166,
+                "pr15_targeted_subtotal": 57,
+                "collected_and_passed": 177,
                 "junit": "reports/junit-v2-new.xml",
                 "evidence_types": {
                     "helper": "直接调用注册表/求值器（公式逐值 oracle）",
@@ -464,7 +593,7 @@ def build_acceptance_scope(registry, matrix) -> dict:
                     "http": "FastAPI TestClient POST /api/backtest/behavior/v2",
                     "cli": "真实子进程执行 scripts/run_behavior_backtest_v2.py",
                 },
-                "note": ("PR15 定向两轮合计 46 项（第一轮 26 + 残留 20），"
+                "note": ("PR15 定向两轮合计 57 项（第一轮 30 + 残留与指纹 27），"
                          "经真实 API/CLI 取得 red/green；分母按证据来源分开统计，"
                          "不合并成单一数字宣称全部已验证公式。"),
             },

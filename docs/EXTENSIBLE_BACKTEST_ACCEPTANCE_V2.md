@@ -246,26 +246,50 @@ registry.register(
 
 状态绑定具体周期、价格模式、参数域与来源。本轮全部为**合成工程证据**。
 
-### 5.1 覆盖矩阵口径（PR15-05 修正后）
+### 5.1 覆盖矩阵口径（证据适用性修正后）
 
-`VERIFIED` 要求**同时**具备四项证据：实现路径 + 独立数值 oracle + 契约测试 + 公开入口测试。
-仅完成注册/映射的项标 `PARTIAL`，**不**外推为公式或账户已验证。
-矩阵逐项给出 `status` 与 `evidence`，不再按名称前缀判定。
+**逐维度分别判定**，全部声明维度为真才记 `VERIFIED`：
+
+| 维度 | 判定依据 |
+| --- | --- |
+| `FORMULA_VALIDATED` | 有独立数值 oracle，且该测试**确实调用**了此指标的实现函数 |
+| `ENTRYPOINT_VALIDATED` | 有公开入口测试，且该测试**确实消费**了此 `indicator_id` |
+
+关键约束：**证据存在不等于覆盖该项能力**。入口测试若只消费 `RSI`/`EMA`，
+就不能给其它指标作入口证明；条件层各维度必须用**覆盖该维度正向语义**的测试，
+不能用同一个 Top-N 测试给所有维度作证。每项证据记录适用域
+（输出名/参数/价格模式/预热）、断言内容与同 HEAD JUnit。
 
 | 家族 | VERIFIED | PARTIAL | 合计 |
 | --- | --- | --- | --- |
-| 基础算子 | 5 | 5 | 10 |
-| 均线与趋势 | 6 | 4 | 10 |
-| 动量与震荡 | 6 | 2 | 8 |
-| 波动与通道 | 2 | 4 | 6 |
-| 量价与资金代理 | 1 | 7 | 8 |
-| 价格结构 | 2 | 3 | 5 |
-| 统计与截面组合 | 4 | 3 | 7 |
-| **合计** | **26** | **28** | **54** |
+| 基础算子 | 4 | 6 | 10 |
+| 均线与趋势 | 2 | 8 | 10 |
+| 动量与震荡 | 1 | 7 | 8 |
+| 波动与通道 | 1 | 5 | 6 |
+| 量价与资金代理 | 0 | 8 | 8 |
+| 价格结构 | 0 | 5 | 5 |
+| 统计与截面组合 | 2 | 5 | 7 |
+| **合计** | **10** | **44** | **54** |
 
-`PARTIAL` 的典型原因：尚无独立数值 oracle（如部分量价与通道指标），
-或既有面板级算子层本轮**未**接线到 V2 单证券公开链路。
-这些项**不计入** `FORMULA_VALIDATED`。
+**10 项 VERIFIED**（同时具备公式与入口证据）：
+`MA`、`EMA`、`RSI`、`ATR`，以及条件层的 `boolean`、`EVERY/EXIST`、`BARSLAST`、
+`CROSS_UP/CROSS_DOWN`、`截面rank/percentile`、`Top-N`。
+
+`PARTIAL` 的原因**不是统一的"缺 oracle"**，逐项写明：
+
+| 原因 | 典型项 |
+| --- | --- |
+| 有独立 oracle，但无公开入口测试消费它 | `WMA`、`RMA`、`SMA_TDX`、`MACD`、`KDJ`、`DMI`、`SAR`、`WILLIAMS_R`、`ROC`、`MTM`、`BIAS`、`BOLLINGER`、`OBV`、`BAR_SHAPE`、`STREAK`、`ROLLING_SLOPE`、`TIME_SERIES_ZSCORE` |
+| 只有负向测试，无正向正确性测试 | `REF`（仅 `test_negative_lag_rejected`）、`arithmetic`（仅算子存在性/拒绝路径） |
+| 未接线到 V2 单证券公开链路 | `OPERATOR_LAYER:*`（既有面板级算子层） |
+| 尚无独立数值 oracle | 其余未列入 oracle 映射的指标 |
+
+`MACD`/`KDJ` 的 oracle 位于 **V1 兼容回归**套件
+（`tests/indicators/test_indicator_formulas_v1.py`，参数化节点），
+因此其证据关联 `reports/junit-v1-compat.xml`，而非 V2 新增套件。
+
+矩阵中声称的每个 nodeid 都由测试**实际收集**验证存在；曾有 2 个 nodeid
+（MACD/KDJ）写错测试函数名，已由该检查发现并修正。
 
 ### 5.2 本轮仍未关闭的基础能力（保留 OPEN）
 
@@ -273,7 +297,7 @@ registry.register(
 
 | 项 | 状态 | 说明 |
 | --- | --- | --- |
-| 28 项 PARTIAL 的独立数值 oracle | OPEN | 已实现并注册，但缺逐值 oracle；在补上之前不标 `FORMULA_VALIDATED` |
+| 44 项 PARTIAL 的独立数值 oracle / 入口覆盖 | OPEN | 逐项原因见 §5.1：缺 oracle、缺入口消费、或仅有负向测试 |
 | 既有面板级算子层接入 V2 单证券公开链路 | OPEN | `research/unified_factor.py` 本轮未改，也未接线 |
 | 截面与时序算子的混合表达式 | 不支持 | 运行前显式拒绝，矩阵已标出 |
 | 多周期精确执行 | 不支持 | 请求即拒绝 |
@@ -288,7 +312,7 @@ registry.register(
 | 维度 | 状态 |
 | --- | --- |
 | `IMPLEMENTED` | 51 项指标 + 表达式层 + 9 类退出 |
-| `FORMULA_VALIDATED` | 矩阵中 26 项 VERIFIED（含独立 oracle）；其余为 PARTIAL |
+| `FORMULA_VALIDATED` | 矩阵中 10 项 VERIFIED（含独立 oracle 与入口证据）；其余为 PARTIAL |
 | `CAUSALITY_VALIDATED` | 逐前缀一致 + 追加未来不改过去（多家族抽样） |
 | `REGISTERED` | 51 项（契约完整，含输出名/参数/预热/缺失政策/公式指纹） |
 | `ENTRYPOINT_WIRED` | API + CLI + Web 三入口同一服务 |
@@ -297,10 +321,9 @@ registry.register(
 | `REAL_DATA_VALIDATED` | **否** |
 | `PROFITABILITY_VALIDATED` | **否**（且不在本轮目标内） |
 
-**116 项 V2 测试是真实证据，但不等于 51 项指标的所有行为均已验证**；
-未列入 VERIFIED 的项按 PARTIAL 如实披露。PR #15 定向复核后新增
-`tests/pr15_remediation`（25 项，全部经真实 API/CLI 取得 red/green），
-V2 新增测试合计 **141** 项。
+**177 项 V2 测试是真实证据，但不等于 51 项指标的所有行为均已验证**；
+未列入 VERIFIED 的项按 PARTIAL 如实披露。分母按来源分开：
+V2 主体 120、PR15 定向 57（第一轮 30 + 残留与指纹 27）。
 
 软件对齐：未做与通达信/TA-Lib 的同输入同复权逐值对照，故只声明
 "本版本公式验收通过"，不声明"与第三方软件完全一致"。
@@ -317,7 +340,7 @@ V2 新增测试合计 **141** 项。
 | **PR15-02** | ATR 入场锚回退到**入场当日** ATR（前视）；距离与跟踪共用一条未核验 ATR；`DYNAMIC_CURRENT` 接受参数后被忽略 | 新增 `AtrBinding`（窗口/版本/价格尺度/可用时间）；`freeze_entry_anchor` 取**严格早于入场日**的最近可用 ATR，在持仓创建时由 `fill_hook` 冻结；规则依赖必须显式声明（`ATR_DEPENDENCY_NOT_DECLARED`）；无法执行时**拒绝运行**（`EXIT_RULE_NOT_EXECUTABLE`）而非报成正常完成 |
 | **PR15-03** | 多证券共用一个条件上下文，或直接拒绝多证券 | 上下文改为**按 `lot.symbol`** 取；缺失某证券即拒绝（`CONDITION_CONTEXT_MISSING_FOR_SYMBOL`）；仅基础退出时**不构建**指标上下文 |
 | **PR15-04** | Top-N 在全 NaN 时"选中 A"、用 NaN 凑满、Inf 参与排名、UNKNOWN 填 FALSE 后在 NOT 分支变成可买 | 先构建每 session 合法截面（成员资格 + ready + finite + 时间可见性）再排序；不合格成员保持 **UNKNOWN**；Inf 被排除；截面与时序操作数索引不一致时明确报错（`CONDITION_OPERAND_INDEX_MISMATCH`） |
-| **PR15-05** | `build_matrix` 按字符串前缀判定 `met=True`；实现 hash 只哈希适配器包装器 | 逐项要求实现 + 独立 oracle + 契约测试 + 公开入口测试才算 `VERIFIED`，否则 `PARTIAL`；新增 `formula_hashes`（真实实现源码 + 依赖源码），两个不同公式的同名输出产生不同指纹 |
+| **PR15-05** | `build_matrix` 按字符串前缀判定 `met=True`；实现 hash 只哈希适配器包装器 | 逐项按维度判定证据适用性（见 §5.1）；指纹**递归**绑定依赖 version 与源码 |
 
 ### 6.2 本轮在修复过程中发现并关闭的额外真实缺陷
 
@@ -327,6 +350,23 @@ V2 新增测试合计 **141** 项。
 | `_wilder_smooth` 种子被段首 NaN 污染 | **真实缺陷** | 种子改为取前 N 个**有限**值之和 |
 | `DMI` 段首 TR 因缺前收盘而丢弃 | 口径不一致（预热偏移） | 段首按惯例取 `H-L`，与 `true_range` 一致 |
 | `DYNAMIC_CURRENT` 在首根被跳过（提前 return） | **真实缺陷**（参数被忽略） | 首次创建状态后继续走更新逻辑；取不到当日 ATR 时按合同拒绝 |
+
+### 6.5 证据适用性与依赖版本指纹（reviewed HEAD `204ccaa`）
+
+| 编号 | 问题 | 处置 |
+| --- | --- | --- |
+| **A** | 证据**存在**不等于覆盖该项能力：入口 nodeid 统一用只消费 RSI/EMA 的测试给所有指标作证；条件层各维度统一用 Top-N 测试作证 | 建立受审映射：指标 → 真实调用其实现函数的 oracle 测试；指标 → 真实消费其 `indicator_id` 的入口测试；条件维度 → 覆盖该维度正向语义的测试。逐维度分别判定，全部为真才 `VERIFIED`。MACD/KDJ 的 oracle 正确关联到 **V1 兼容** JUnit。每项记录适用域、断言内容与同源树 JUnit |
+| **B** | `_formula_hash` 从 `registry.specs()` 取**第一个**版本，而 `get(id)` 取**最大**版本 → 执行选 V2 却哈希 V1 | 指纹与执行共享同一解析（`_resolve_dependency`）：绑定 id、version、实现内容与递归依赖；支持显式固定版本且不被默认最新版替换；缺依赖/歧义/循环明确拒绝 |
+
+**A 的量化后果**：`VERIFIED` 从 28 项**降到 10 项**。此前把所有 51 个指标名都写进
+`entrypoint_verified` 集合，等于用 RSI/EMA 的入口测试给 47 个指标作证。
+现在只有 4 个指标同时具备公式与入口证据（`MA`/`EMA`/`RSI`/`ATR`），
+加条件层 6 个维度。
+
+**B 的复现与验证**：仅 `DEP_V1` 时父公式指纹为 X；新增 `DEP_V2` 后默认执行切到
+V2，指纹必须随之改变。修复前指纹不变（选 V2 哈希 V1），修复后正确改变。
+配套测试覆盖：固定版本不被替换、改**未选中**版本不改变指纹、
+改**选中**版本改变指纹、缺依赖拒绝、循环依赖拒绝、注册顺序正对照。
 
 ### 6.4 残留修正（reviewed HEAD `ae871ae`）
 
@@ -418,15 +458,15 @@ V2 新增测试合计 **141** 项。
 | 退出规则与账户链 | `tests/exits_v2` | 28 | 9 类退出、完整账户正反例 |
 | 公共入口一致性 | `tests/entrypoints_v2` | 9 | API/CLI 同语义、边界拒绝 |
 | **V2 主体小计** | | **120** | |
-| PR15 定向复核（第一轮） | `tests/pr15_remediation` | 26 | 五类根因，经真实 API/CLI |
-| PR15 定向复核（残留） | `tests/pr15_residual` | 20 | 版本绑定、ATR 规则身份、排名退出 |
-| **PR15 定向小计** | | **46** | |
-| **合计** | | **166** | |
+| PR15 定向复核（第一轮 + 证据负向检查） | `tests/pr15_remediation` | 30 | 五类根因与证据适用性负向检查 |
+| PR15 定向复核（残留 + 指纹） | `tests/pr15_residual` | 27 | 版本绑定、ATR 规则身份、排名退出、依赖版本指纹 |
+| **PR15 定向小计** | | **57** | |
+| **合计** | | **177** | |
 
 V1 兼容回归单独统计：`tests/behavior`、`tests/indicators`、`tests/legacy_entry`、
 `tests/engine`、`tests/golden`、`tests/lookahead`、`tests/regression` 共 **139** 项。
 
-证据类型分开记录，不混为"166 项都验证了公式"：
+证据类型分开记录，不混为"177 项都验证了公式"：
 
 - **helper 级**：直接调用注册表/求值器（如公式逐值 oracle）；
 - **直接服务级**：调用 `run_behavior_backtest_v2`；

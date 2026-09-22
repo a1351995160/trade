@@ -435,17 +435,22 @@ def test_pr1504_ranking_exit_produces_real_exit_in_public_service():
 
 
 def test_pr1504_ranking_exit_hits_different_symbols_on_different_dates():
-    """排名变化应在**不同日期**命中不同证券（证明按 symbol 取值）。"""
-    days = _days(80)
+    """排名换位必须产生**明确的**两证券、日期与预期排名断言。
+
+    非空断言不足以证明两证券分别触发；这里用构造好的排名换位行情，
+    断言每个被选中的日期确实对应当时动量更高的那一方。
+    """
+    days = _days(60)
     count = len(days)
-    # A 前段强、后段弱；B 反之 —— 排名会随时间交换
+    half = count // 2
     bars_a, bars_b = [], []
     for i in range(count):
-        a = 10.0 + (0.25 * i if i < count // 2 else 0.25 * (count - i))
-        b = 10.0 + (0.05 * i if i < count // 2 else 0.05 * i + 0.4 * (i - count // 2))
-        bars_a.append({"date": days[i], "open": a, "high": a * 1.01, "low": a * 0.99,
+        # A 前段强后段弱；B 前段弱后段强 —— 排名在 half 附近换位
+        a = 10.0 + (0.30 * i if i < half else 0.30 * half - 0.30 * (i - half))
+        b = 10.0 + (0.02 * i if i < half else 0.02 * half + 0.30 * (i - half))
+        bars_a.append({"date": days[i], "open": a, "high": a * 1.005, "low": a * 0.995,
                        "close": a, "volume": 1e6, "amount": a * 1e6})
-        bars_b.append({"date": days[i], "open": b, "high": b * 1.01, "low": b * 0.99,
+        bars_b.append({"date": days[i], "open": b, "high": b * 1.005, "low": b * 0.995,
                        "close": b, "volume": 1e6, "amount": b * 1e6})
     payload = {
         "mode": BEHAVIOR_MODE_V2, "calendar": days,
@@ -461,14 +466,27 @@ def test_pr1504_ranking_exit_hits_different_symbols_on_different_dates():
         "initial_cash": 200_000.0, "max_positions": 2, "max_position_weight": 0.5,
     }
     result = run_behavior_backtest_v2(payload)
-    triggered = [(e["symbol"], e["trade_session"]) for e in result["exit_evaluations"]
-                 if e.get("primary_reason") == "EXIT_INDICATOR_CONDITION"]
-    assert triggered, "排名退出未触发"
-    # 至少出现两个不同证券命中（排名交换）或至少两个不同日期
-    symbols = {s for s, _ in triggered}
-    sessions = {d for _, d in triggered}
-    assert len(symbols) >= 1 and len(sessions) >= 1
-    assert len(symbols) + len(sessions) >= 2, f"排名退出未随排名变化：{triggered[:5]}"
+    hits = [(e["symbol"], e["trade_session"]) for e in result["exit_evaluations"]
+            if e.get("primary_reason") == "EXIT_INDICATOR_CONDITION"]
+    assert hits, "排名退出未触发"
+
+    # 用同一套指标独立重算每日动量，验证每个命中日期确实由当时的第一名触发
+    frame_a = pd.DataFrame(bars_a).set_index("date")
+    frame_b = pd.DataFrame(bars_b).set_index("date")
+    mom_a = frame_a["close"].pct_change(10)
+    mom_b = frame_b["close"].pct_change(10)
+    for symbol, session in hits:
+        value_a = mom_a.get(session)
+        value_b = mom_b.get(session)
+        if pd.isna(value_a) or pd.isna(value_b):
+            continue
+        expected = "600000.SH" if value_a > value_b else "000001.SZ"
+        assert symbol == expected, (
+            f"{session} 的排名第一是 {expected}，但退出命中 {symbol}（未按 symbol 取值）")
+
+    # 换位必须真实发生：两个证券都应至少各命中一次
+    assert {s for s, _ in hits} == {"600000.SH", "000001.SZ"}, \
+        f"排名换位后未出现两证券分别命中：{sorted({s for s, _ in hits})}"
 
 
 def test_pr1504_mixed_cross_sectional_and_series_condition_rejected_before_run():
@@ -565,3 +583,215 @@ def test_pr1504_ranking_exit_via_cli(tmp_path: Path):
     triggered = [e for e in body["exit_evaluations"]
                  if e.get("primary_reason") == "EXIT_INDICATOR_CONDITION"]
     assert triggered, "CLI 未产生排名退出"
+
+
+# ==========================================================================
+# 依赖版本指纹：必须与真正执行的解析一致
+# ==========================================================================
+def _dep_registry(with_v2: bool = False, pinned: dict | None = None):
+    """构造 DEP_V1（可选 DEP_V2）+ PARENT 的测试注册表。"""
+    from chanlun_trader.engine.indicator_registry_v2 import (
+        IndicatorFrameV2, IndicatorRegistry, _adapter, _spec, NEW_IN_V2)
+
+    def dep_v1(data, *, window=3):
+        return IndicatorFrameV2(
+            indicator_id="DEP", version="DEP_V1", index=data.index,
+            columns={"x": pd.Series(np.ones(len(data.close)), index=data.index)},
+            ready=pd.Series(True, index=data.index),
+            segment=pd.Series(np.zeros(len(data.close), dtype=int), index=data.index),
+            warmup_bars=1)
+
+    def dep_v2(data, *, window=3):
+        return IndicatorFrameV2(
+            indicator_id="DEP", version="DEP_V2", index=data.index,
+            columns={"x": pd.Series(np.full(len(data.close), 2.0), index=data.index)},
+            ready=pd.Series(True, index=data.index),
+            segment=pd.Series(np.zeros(len(data.close), dtype=int), index=data.index),
+            warmup_bars=1)
+
+    def parent(data, **kwargs):
+        return IndicatorFrameV2(
+            indicator_id="PARENT", version="PARENT_V1", index=data.index,
+            columns={"y": pd.Series(np.ones(len(data.close)), index=data.index)},
+            ready=pd.Series(True, index=data.index),
+            segment=pd.Series(np.zeros(len(data.close), dtype=int), index=data.index),
+            warmup_bars=1)
+
+    registry = IndicatorRegistry()
+    registry.register(_spec("DEP", "DEP_V1", "f", "dep", "NEW_IN_V2", ["x"],
+                            {"window": 3}, ("close",), warmup_bars=1),
+                      _adapter(dep_v1, ["x"]))
+    if with_v2:
+        registry.register(_spec("DEP", "DEP_V2", "f", "dep", "NEW_IN_V2", ["x"],
+                                {"window": 3}, ("close",), warmup_bars=1),
+                          _adapter(dep_v2, ["x"]))
+    registry.register(_spec("PARENT", "PARENT_V1", "f", "parent", "NEW_IN_V2", ["y"],
+                            {}, ("close",), warmup_bars=1),
+                      _adapter(parent, ["y"]), dependencies=("DEP",),
+                      pinned_versions=pinned)
+    return registry
+
+
+def test_pr15b_formula_hash_follows_actually_selected_dependency_version():
+    """反例：新增 DEP_V2 后默认执行切到 V2，父公式指纹必须随之改变。
+
+    此前 ``_formula_hash`` 遍历 ``specs()`` 取第一个版本，而 ``get(id)`` 取最大版本，
+    导致"执行选 V2 却哈希 V1"。
+    """
+    from chanlun_trader.engine.indicator_registry_v2 import _resolve_dependency
+
+    only_v1 = _dep_registry(with_v2=False)
+    assert only_v1.resolve("DEP").version == "DEP_V1"
+    hash_before = only_v1.formula_hash("PARENT")
+
+    both = _dep_registry(with_v2=True)
+    _spec_obj, resolved = _resolve_dependency(both, "DEP")
+    assert resolved == "DEP_V2", "默认解析未切到最新版本"
+    assert both.formula_hash("PARENT") != hash_before, \
+        "执行选 V2 却哈希 V1（指纹未跟随实际解析）"
+
+
+def test_pr15b_pinned_version_is_not_silently_replaced_by_latest():
+    """显式固定依赖版本时，不得被默认最新版悄悄替换。"""
+    from chanlun_trader.engine.indicator_registry_v2 import _resolve_dependency
+
+    pinned = _dep_registry(with_v2=True, pinned={"DEP": "DEP_V1"})
+    _spec_obj, resolved = _resolve_dependency(pinned, "DEP", "DEP_V1")
+    assert resolved == "DEP_V1"
+    hash_pinned = pinned.formula_hash("PARENT")
+    assert hash_pinned == _dep_registry(with_v2=False).formula_hash("PARENT")
+    pinned_v2 = _dep_registry(with_v2=True, pinned={"DEP": "DEP_V2"})
+    assert pinned_v2.formula_hash("PARENT") != hash_pinned
+
+
+def test_pr15b_changing_unselected_version_does_not_change_hash():
+    """修改**未被选中**的版本不应改变父公式指纹（固定版本场景）。"""
+    from chanlun_trader.engine.indicator_registry_v2 import (
+        IndicatorFrameV2, _adapter, _spec, NEW_IN_V2)
+
+    pinned = _dep_registry(with_v2=True, pinned={"DEP": "DEP_V1"})
+    before = pinned.formula_hash("PARENT")
+
+    def dep_v2_changed(data, *, window=3):
+        return IndicatorFrameV2(
+            indicator_id="DEP", version="DEP_V2", index=data.index,
+            columns={"x": pd.Series(np.full(len(data.close), 99.0), index=data.index)},
+            ready=pd.Series(True, index=data.index),
+            segment=pd.Series(np.zeros(len(data.close), dtype=int), index=data.index),
+            warmup_bars=1)
+
+    pinned.register(_spec("DEP", "DEP_V2", "f", "dep", "NEW_IN_V2", ["x"],
+                          {"window": 3}, ("close",), warmup_bars=1),
+                    _adapter(dep_v2_changed, ["x"]))
+    assert pinned.formula_hash("PARENT") == before, \
+        "未选中版本的变化影响了父指纹（说明哈希的不是实际选中的版本）"
+
+
+def test_pr15b_changing_selected_version_changes_hash():
+    """修改**实际选中**的版本必须改变父公式指纹。"""
+    from chanlun_trader.engine.indicator_registry_v2 import (
+        IndicatorFrameV2, _adapter, _spec, NEW_IN_V2)
+
+    registry = _dep_registry(with_v2=False)
+    before = registry.formula_hash("PARENT")
+
+    def dep_v1_changed(data, *, window=3):
+        return IndicatorFrameV2(
+            indicator_id="DEP", version="DEP_V1", index=data.index,
+            columns={"x": pd.Series(np.full(len(data.close), 7.0), index=data.index)},
+            ready=pd.Series(True, index=data.index),
+            segment=pd.Series(np.zeros(len(data.close), dtype=int), index=data.index),
+            warmup_bars=1)
+
+    registry.register(_spec("DEP", "DEP_V1", "f", "dep", "NEW_IN_V2", ["x"],
+                            {"window": 3}, ("close",), warmup_bars=1),
+                      _adapter(dep_v1_changed, ["x"]))
+    assert registry.formula_hash("PARENT") != before, "实际选中版本变化未影响指纹"
+
+
+def test_pr15b_missing_dependency_is_rejected_not_fallback():
+    """缺依赖实现时必须拒绝，不回退到第一个版本或仅名称。"""
+    from chanlun_trader.engine.indicator_registry_v2 import (
+        IndicatorFrameV2, IndicatorRegistry, _adapter, _spec, NEW_IN_V2)
+
+    def parent(data, **kwargs):
+        return IndicatorFrameV2(
+            indicator_id="PARENT", version="PARENT_V1", index=data.index,
+            columns={"y": pd.Series(np.ones(len(data.close)), index=data.index)},
+            ready=pd.Series(True, index=data.index),
+            segment=pd.Series(np.zeros(len(data.close), dtype=int), index=data.index),
+            warmup_bars=1)
+
+    registry = IndicatorRegistry()
+    registry.register(_spec("PARENT", "PARENT_V1", "f", "parent", "NEW_IN_V2", ["y"],
+                            {}, ("close",), warmup_bars=1),
+                      _adapter(parent, ["y"]), dependencies=("MISSING_DEP",))
+    with pytest.raises(Exception) as excinfo:
+        registry.formula_hash("PARENT")
+    assert "MISSING_DEP" in str(excinfo.value)
+
+
+def test_pr15b_circular_dependency_is_rejected_not_faked():
+    """循环依赖必须明确拒绝，不得伪报完整可执行 DAG。"""
+    from chanlun_trader.engine.indicator_registry_v2 import (
+        DependencyResolutionError, IndicatorFrameV2, IndicatorRegistry,
+        _adapter, _spec, NEW_IN_V2)
+
+    def loop(data, **kwargs):
+        return IndicatorFrameV2(
+            indicator_id="LOOP", version="LOOP_V1", index=data.index,
+            columns={"y": pd.Series(np.ones(len(data.close)), index=data.index)},
+            ready=pd.Series(True, index=data.index),
+            segment=pd.Series(np.zeros(len(data.close), dtype=int), index=data.index),
+            warmup_bars=1)
+
+    registry = IndicatorRegistry()
+    registry.register(_spec("LOOP", "LOOP_V1", "f", "loop", "NEW_IN_V2", ["y"],
+                            {}, ("close",), warmup_bars=1),
+                      _adapter(loop, ["y"]), dependencies=("LOOP",))
+    with pytest.raises(DependencyResolutionError) as excinfo:
+        registry.formula_hash("LOOP")
+    assert "CIRCULAR_DEPENDENCY" in str(excinfo.value)
+
+
+def test_pr15b_registration_order_positive_control():
+    """注册顺序正对照：先 V2 后 V1 与先 V1 后 V2，解析与指纹一致。"""
+    from chanlun_trader.engine.indicator_registry_v2 import (
+        IndicatorFrameV2, IndicatorRegistry, _adapter, _spec, NEW_IN_V2)
+
+    def make(value, version):
+        def impl(data, *, window=3):
+            return IndicatorFrameV2(
+                indicator_id="DEP", version=version, index=data.index,
+                columns={"x": pd.Series(np.full(len(data.close), value), index=data.index)},
+                ready=pd.Series(True, index=data.index),
+                segment=pd.Series(np.zeros(len(data.close), dtype=int), index=data.index),
+                warmup_bars=1)
+        impl.__wrapped_impl__ = impl
+        return impl
+
+    def parent_impl(data, **kwargs):
+        return IndicatorFrameV2(
+            indicator_id="PARENT", version="PARENT_V1", index=data.index,
+            columns={"y": pd.Series(np.ones(len(data.close)), index=data.index)},
+            ready=pd.Series(True, index=data.index),
+            segment=pd.Series(np.zeros(len(data.close), dtype=int), index=data.index),
+            warmup_bars=1)
+
+    def build(order):
+        registry = IndicatorRegistry()
+        for version in order:
+            value = 1.0 if version == "DEP_V1" else 2.0
+            registry.register(_spec("DEP", version, "f", "dep", "NEW_IN_V2", ["x"],
+                                    {"window": 3}, ("close",), warmup_bars=1),
+                              _adapter(make(value, version), ["x"]))
+        registry.register(_spec("PARENT", "PARENT_V1", "f", "parent", "NEW_IN_V2", ["y"],
+                                {}, ("close",), warmup_bars=1),
+                          _adapter(parent_impl, ["y"]), dependencies=("DEP",))
+        return registry
+
+    forward = build(["DEP_V1", "DEP_V2"])
+    backward = build(["DEP_V2", "DEP_V1"])
+    assert forward.resolve("DEP").version == backward.resolve("DEP").version == "DEP_V2"
+    assert forward.formula_hash("PARENT") == backward.formula_hash("PARENT"), \
+        "注册顺序影响了指纹（解析不确定）"
