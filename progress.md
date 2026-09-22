@@ -2017,3 +2017,21 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 - tests/pr15_remediation/test_pr15_remediation_v1.py：四项证据适用性负向检查。
 - docs/EXTENSIBLE_BACKTEST_ACCEPTANCE_V2.md、reports/v2_acceptance/、ACCEPTANCE_SCOPE.json：10/44、177/139、逐项原因与 OPEN 项同步。
 - 回滚点 204ccaa；可 git revert 本次提交。
+
+### Testing（依赖执行与指纹一致）
+- 复现并修复 B1：pinned_versions 只影响指纹、不约束计算——父公式内部 compute('DEP') 仍取默认最新版，父输出 1→2→99 而父 hash 不变。新增 DependencyScope 与 registry.compute_dependency，父实现取依赖走同一解析结果，固定版本真实约束计算；作用域按调用栈嵌套，嵌套固定版本不被其他节点默认值覆盖。
+- 复现并修复 B2：判环用单一 seen 集合，把合法共享依赖 PARENT→A、PARENT→B、B→A 误判为 CIRCULAR_DEPENDENCY:A。改为只针对当前递归路径判环，已完成节点缓存；共享依赖通过，真自循环与回边仍拒绝。
+- 父公式真实消费依赖（compute_dependency 并把值写入自身输出），不用常数或伪造 trace。
+- A 文字修正：10 VERIFIED 明确为 4 个指标 + 6 个条件函数维度，不是 10 项完整账户认证；补 cross_down 最小正例，CROSS 双向子维度分别记录；每条证据记录自己的 suite 与 JUnit（MACD/KDJ 在 V1 套件，共享契约测试在 V2 套件）；明确受审映射不能自动识别任意无关测试。
+- 新增 tests/pr15_dependency（10 项）；条件层补 cross_down 正例。
+- V2 新增 188 项通过；V1 兼容回归 139 项通过。
+- 完整套件：失败总数与 BASE_SHA 基线一致（各 194）；差异项单独运行通过且未引用 V2 模块；因果未确认，不声明全系统零回归。
+### Notes
+- src/chanlun_trader/engine/indicator_registry_v2.py：新增 DependencyScope 与 compute_dependency（固定版本真实约束计算）；_formula_hash 判环只针对当前递归路径并缓存已完成节点；_source_of 支持合成源码覆盖。
+- tests/pr15_dependency/test_dependency_execution_v1.py：B1/B2 定点验收（固定版本约束计算、默认解析驱动输出与指纹、嵌套固定、共享 DAG、真循环拒绝、注册顺序）。
+- tests/conditions_v2/test_condition_layer_v2.py：补 cross_down 正向用例。
+- tests/pr15_remediation/test_pr15_remediation_v1.py：适配每条证据自己的 suite 与 JUnit。
+- scripts/emit_v2_acceptance_scope_v1.py、reports/v2_acceptance/、ACCEPTANCE_SCOPE.json：CONDITION_EVIDENCE 子维度与 per-suite JUnit；分母 188/139。
+- docs/EXTENSIBLE_BACKTEST_ACCEPTANCE_V2.md：§6.6 依赖执行与指纹；10 VERIFIED 含义澄清。
+- .github/workflows/extensible-backtest-acceptance-v2.yml：纳入 tests/pr15_dependency。
+- 回滚点 c9a63ed；可 git revert 本次提交。

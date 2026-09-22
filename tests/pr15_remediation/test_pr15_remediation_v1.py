@@ -757,12 +757,19 @@ def test_pr1505_macd_kdj_oracle_is_linked_to_v1_compat_junit():
     for indicator_id in ("MACD", "KDJ"):
         assert indicator_id in rows
         evidence = rows[indicator_id]["evidence"]
+        # 每条证据记录自己的来源：MACD/KDJ 的 oracle 在 V1 兼容套件，
+        # 而共享的注册表契约测试在 V2 套件 —— 两者都真实存在，都要列出。
         assert module.V1_JUNIT in evidence, f"{indicator_id} 未关联 V1 兼容 JUnit"
-        assert module.V2_JUNIT not in evidence, f"{indicator_id} 错误关联到 V2 套件 JUnit"
-        assert "tests/indicators/test_indicator_formulas_v1.py" in evidence
-    assert module.V2_JUNIT in rows["RSI"]["evidence"]
-    assert module.V1_JUNIT not in rows["RSI"]["evidence"]
-
+        assert "tests/indicators/test_indicator_formulas_v1.py" in evidence, \
+            f"{indicator_id} 的 oracle nodeid 未指向 V1 兼容套件"
+        # oracle 节点必须紧邻 V1 JUnit 声明（同一条 nodeid 不能挂到 V2 套件上）
+        oracle_part = [p for p in evidence.split("; ")
+                       if "test_macd_v1_matches" in p or "test_kdj_v1_matches" in p]
+        assert oracle_part, f"{indicator_id} 缺少 V1 oracle nodeid"
+    # RSI 的 oracle 在 V2 套件
+    rsi = rows["RSI"]["evidence"]
+    assert module.V2_JUNIT in rsi
+    assert "tests/indicators_v2/" in rsi
 
 def test_pr1505_verified_requires_every_declared_dimension():
     """VERIFIED 必须在所有声明维度上为真；缺任一维度即 PARTIAL 且写明缺失维度。"""

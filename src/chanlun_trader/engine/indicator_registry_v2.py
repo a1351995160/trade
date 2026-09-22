@@ -161,8 +161,12 @@ def _source_of(fn: Callable) -> str:
 
     ``_adapter`` 返回的是包装器；只哈希包装器会漏掉真实公式变化。
     因此优先取 ``__wrapped_impl__``（真实实现函数）。
+    合成实现可提供 ``__source_override__`` 显式给出源码文本。
     """
     target = getattr(fn, "__wrapped_impl__", fn)
+    override = getattr(target, "__source_override__", None)
+    if override is not None:
+        return override
     try:
         return inspect.getsource(target)
     except (OSError, TypeError):
@@ -171,6 +175,27 @@ def _source_of(fn: Callable) -> str:
 
 def _impl_hash(fn: Callable) -> str:
     return _sha(_source_of(fn))
+
+
+@dataclass
+class DependencyScope:
+    """一次计算的**依赖解析上下文**。
+
+    父指标在计算期间通过 ``registry.compute_dependency(id, close, ...)`` 取依赖，
+    该调用走**同一解析结果**，因此"固定版本"真实约束计算，而不只是影响指纹。
+
+    作用域按调用栈嵌套：父作用域把自身 pinned 传给子调用，子调用再叠加自己的
+    pinned，从而保证"父与嵌套依赖的固定版本不被其他节点的默认值覆盖"。
+    """
+
+    pinned: Dict[str, str] = field(default_factory=dict)
+    resolved: Dict[str, str] = field(default_factory=dict)
+
+    def merge(self, extra: Optional[Mapping[str, Any]]) -> "DependencyScope":
+        merged = dict(self.pinned)
+        for key, value in dict(extra or {}).items():
+            merged[key] = value
+        return DependencyScope(pinned=merged, resolved=dict(self.resolved))
 
 
 class DependencyResolutionError(IndicatorRegistryError):
@@ -194,36 +219,44 @@ def _resolve_dependency(registry: "IndicatorRegistry", indicator_id: str,
 
 def _formula_hash(fn: Callable, dependencies: Sequence[str] = (),
                   registry: Optional["IndicatorRegistry"] = None,
-                  seen: Optional[set] = None,
+                  path: Optional[set] = None,
+                  done: Optional[dict] = None,
                   pinned: Optional[Mapping[str, str]] = None) -> str:
     """公式指纹：**递归**绑定真实实现源码 + 依赖的 version + 依赖的源码指纹。
 
     依赖版本与**实际执行时解析到的版本一致**（共享 ``_resolve_dependency``），
     因此默认执行切到 V2 时指纹必须随之改变。
 
-    只拼接依赖名称不足以证明依赖未变；必须把依赖的实现内容纳入。
-    ``seen`` 防止循环依赖导致无限递归（遇到环即明确拒绝，不伪报完整 DAG）。
+    判环只针对**当前递归路径**（``path``）：共享依赖（PARENT→A、PARENT→B、B→A）
+    是合法 DAG，必须通过；``done`` 缓存已完成节点的指纹，避免重复计算。
+    真正的自循环与回边（依赖落在当前路径上）才拒绝。
     """
-    seen = set(seen or ())
+    path = set(path or ())
+    done = {} if done is None else done
     pinned = dict(pinned or {})
     parts = [_source_of(fn)]
     for dependency in sorted(dependencies):
-        if dependency in seen:
+        if dependency in path:
             raise DependencyResolutionError(f"CIRCULAR_DEPENDENCY:{dependency}")
-        seen.add(dependency)
         parts.append(f"dep:{dependency}")
         if registry is None:
             continue
         spec, resolved_version = _resolve_dependency(
             registry, dependency, pinned.get(dependency))
         parts.append(f"version:{resolved_version}")
+        cache_key = (spec.indicator_id, resolved_version)
+        if cache_key in done:
+            parts.append(done[cache_key])
+            continue
         dep_fn = registry._impls.get((spec.indicator_id, spec.version))
         if dep_fn is None:
             raise DependencyResolutionError(
                 f"DEPENDENCY_NOT_IMPLEMENTED:{spec.indicator_id}@{spec.version}")
         parts.append(_source_of(dep_fn))
-        parts.append(_formula_hash(
-            dep_fn, registry._dependencies_of(dependency), registry, seen, pinned))
+        sub = _formula_hash(dep_fn, registry._dependencies_of(dependency), registry,
+                            path | {dependency}, done, pinned)
+        done[cache_key] = sub
+        parts.append(sub)
     return _sha("\n".join(parts))
 
 
@@ -339,6 +372,9 @@ class IndicatorRegistry:
         self._dependencies: Dict[str, Tuple[str, ...]] = {}
         # 显式固定的依赖版本：{indicator_id: {dependency_id: version}}
         self._pinned: Dict[str, Dict[str, str]] = {}
+        # 计算期的依赖解析作用域与调用栈（用于共享依赖判环）。
+        self._scope: Optional[DependencyScope] = None
+        self._call_stack: List[Tuple[str, str]] = []
         if specs is not None:
             for spec in specs:
                 self._specs[(spec.indicator_id, spec.version)] = spec
@@ -467,12 +503,42 @@ class IndicatorRegistry:
 
         kwargs = dict(resolved)
         kwargs.update({name: extras[name] for name in spec.requires_extra_data})
-        frame = impl(data, **kwargs)
+        # 计算期间暴露依赖解析作用域：父实现通过 compute_dependency 取依赖时
+        # 走**同一解析结果**，使 pinned 真实约束计算而不只是指纹。
+        outer_scope = self._scope
+        scope = (outer_scope.merge(self._pinned.get(spec.indicator_id))
+                 if outer_scope is not None
+                 else DependencyScope(pinned=dict(self._pinned.get(spec.indicator_id) or {})))
+        # 记录本次调用的解析身份，供依赖侧与指纹侧共同使用。
+        scope.resolved[f"{spec.indicator_id}@{spec.version}"] = spec.version
+        self._scope = scope
+        self._call_stack.append((spec.indicator_id, spec.version))
+        try:
+            frame = impl(data, **kwargs)
+        finally:
+            self._call_stack.pop()
+            self._scope = outer_scope
         return IndicatorResult(
             indicator_id=spec.indicator_id, version=spec.version,
             index=frame.index, frame=frame, spec=spec,
             resolved_params=dict(resolved),
         )
+
+    def compute_dependency(self, indicator_id: str, close: pd.Series, **kwargs) -> IndicatorResult:
+        """在指标实现内部取依赖，与指纹使用**同一确定解析结果**。
+
+        - 若当前作用域已固定该依赖版本，则按固定版本计算；
+        - 否则按默认解析（最大版本），并把该结果记入作用域，供指纹复用；
+        - 不支持的调用在运行前明确拒绝，不静默回退到第一个版本。
+        """
+        if self._scope is None:
+            raise DependencyResolutionError(
+                f"DEPENDENCY_CALL_OUTSIDE_COMPUTE:{indicator_id}")
+        pinned = self._scope.pinned.get(indicator_id)
+        spec, resolved_version = _resolve_dependency(self, indicator_id, pinned)
+        self._scope.resolved[indicator_id] = resolved_version
+        kwargs.setdefault("version", resolved_version)
+        return self.compute(indicator_id, close, **kwargs)
 
     def resolve_instance(self, indicator_id: str, *, version: Optional[str] = None,
                          params: Optional[Mapping[str, Any]] = None) -> Tuple[IndicatorSpec, IndicatorInstanceKey]:

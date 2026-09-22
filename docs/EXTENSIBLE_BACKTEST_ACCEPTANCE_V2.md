@@ -271,9 +271,20 @@ registry.register(
 | 统计与截面组合 | 2 | 5 | 7 |
 | **合计** | **10** | **44** | **54** |
 
-**10 项 VERIFIED**（同时具备公式与入口证据）：
-`MA`、`EMA`、`RSI`、`ATR`，以及条件层的 `boolean`、`EVERY/EXIST`、`BARSLAST`、
-`CROSS_UP/CROSS_DOWN`、`截面rank/percentile`、`Top-N`。
+**10 项 VERIFIED = 4 个指标 + 6 个条件函数维度**，含义不同，不可混称"10 项完整认证"：
+
+| 类别 | 项 | 已验证的是 |
+| --- | --- | --- |
+| 指标（公式 + 入口） | `MA`、`EMA`、`RSI`、`ATR` | 公式逐值正确，且经公开入口真实消费 |
+| 条件函数维度 | `boolean`、`EVERY/EXIST`、`BARSLAST`、`CROSS_UP/CROSS_DOWN`、`截面rank/percentile`、`Top-N` | 该算子正向语义正确 |
+
+这**不是** 10 项完整账户链认证。`FORMULA_VALIDATED` 只表示公式经独立数值 oracle 验证；
+`ENTRYPOINT_VALIDATED` 只表示有公开入口测试真实消费了该指标；
+`ACCOUNTING_VALIDATED` 是**独立维度**，仅 `ATR`（经 ATR 规则账户链）等少数项间接覆盖，
+不随本表自动成立。
+
+条件维度的子维度分别记录：`CROSS_UP` 与 `CROSS_DOWN` 各有正向测试；
+`rank` 目前只有"需要截面视图"的拒绝测试，因此标 `PARTIAL`，仅 `percentile` 为 `VALIDATED`。
 
 `PARTIAL` 的原因**不是统一的"缺 oracle"**，逐项写明：
 
@@ -290,6 +301,12 @@ registry.register(
 
 矩阵中声称的每个 nodeid 都由测试**实际收集**验证存在；曾有 2 个 nodeid
 （MACD/KDJ）写错测试函数名，已由该检查发现并修正。
+
+**范围声明**：受审映射是**人工登记**的显式对应关系，只能保证"已登记的映射"
+指向真实覆盖该能力的测试；它**不能**自动识别任意无关测试的映射。
+因此不宣称无限范围的自动认证。每条证据记录自己的 suite 与 JUnit 文件，
+不用单一字段指代不同来源（`MACD`/`KDJ` 的 oracle 在 V1 兼容套件，
+共享的注册表契约测试在 V2 套件）。
 
 ### 5.2 本轮仍未关闭的基础能力（保留 OPEN）
 
@@ -321,9 +338,9 @@ registry.register(
 | `REAL_DATA_VALIDATED` | **否** |
 | `PROFITABILITY_VALIDATED` | **否**（且不在本轮目标内） |
 
-**177 项 V2 测试是真实证据，但不等于 51 项指标的所有行为均已验证**；
+**188 项 V2 测试是真实证据，但不等于 51 项指标的所有行为均已验证**；
 未列入 VERIFIED 的项按 PARTIAL 如实披露。分母按来源分开：
-V2 主体 120、PR15 定向 57（第一轮 30 + 残留与指纹 27）。
+V2 主体 121、PR15 定向 67（第一轮 30 + 残留与指纹 27 + 依赖执行 10）。
 
 软件对齐：未做与通达信/TA-Lib 的同输入同复权逐值对照，故只声明
 "本版本公式验收通过"，不声明"与第三方软件完全一致"。
@@ -350,6 +367,20 @@ V2 主体 120、PR15 定向 57（第一轮 30 + 残留与指纹 27）。
 | `_wilder_smooth` 种子被段首 NaN 污染 | **真实缺陷** | 种子改为取前 N 个**有限**值之和 |
 | `DMI` 段首 TR 因缺前收盘而丢弃 | 口径不一致（预热偏移） | 段首按惯例取 `H-L`，与 `true_range` 一致 |
 | `DYNAMIC_CURRENT` 在首根被跳过（提前 return） | **真实缺陷**（参数被忽略） | 首次创建状态后继续走更新逻辑；取不到当日 ATR 时按合同拒绝 |
+
+### 6.6 依赖执行与指纹一致（reviewed HEAD `c9a63ed`）
+
+| 编号 | 问题 | 处置 |
+| --- | --- | --- |
+| **B1** | `pinned_versions` 只影响指纹，**不约束计算**：父公式内部 `compute('DEP')` 仍取默认最新版，父输出随依赖升级漂移（复现：1 → 2 → 99），而父 hash 不变 | 新增 `DependencyScope` 与 `registry.compute_dependency`：父实现取依赖时走**同一解析结果**，固定版本真实约束计算；作用域按调用栈嵌套，父与嵌套固定版本不被其他节点默认值覆盖；缺版本/缺实现/作用域外调用明确拒绝 |
+| **B2** | 判环用单一 `seen` 集合，把**合法共享依赖**（PARENT→A、PARENT→B、B→A）误判为 `CIRCULAR_DEPENDENCY:A` | 判环只针对**当前递归路径**（`path`），已完成节点进 `done` 缓存；共享依赖通过，真自循环与回边仍拒绝 |
+
+**B1 的验证方式**：父公式**真实消费**依赖（调用 `compute_dependency` 并把值写入自身输出），
+不用常数或手工伪造 trace。固定 `DEP_V1` 后加入/修改 `DEP_V2`（值 2 → 99），
+父输出恒为 1.0、父 hash 恒等；未固定时默认解析同时决定父输出与父 hash。
+
+**B2 的验证方式**：合法共享 DAG 通过且指纹确定；自循环与回边（A→B→A）仍抛
+`CIRCULAR_DEPENDENCY`；注册顺序不改变结果。
 
 ### 6.5 证据适用性与依赖版本指纹（reviewed HEAD `204ccaa`）
 
@@ -454,19 +485,20 @@ V2，指纹必须随之改变。修复前指纹不变（选 V2 哈希 V1），�
 | 来源 | 目录 | 项数 | 说明 |
 | --- | --- | --- | --- |
 | 指标公式/因果/边界 | `tests/indicators_v2` | 58 | 独立数值 oracle + 手算 |
-| 条件层三值逻辑与安全 | `tests/conditions_v2` | 25 | 真值表、CROSS 边界、安全拒绝 |
+| 条件层三值逻辑与安全 | `tests/conditions_v2` | 26 | 真值表、CROSS 双向、安全拒绝 |
 | 退出规则与账户链 | `tests/exits_v2` | 28 | 9 类退出、完整账户正反例 |
 | 公共入口一致性 | `tests/entrypoints_v2` | 9 | API/CLI 同语义、边界拒绝 |
-| **V2 主体小计** | | **120** | |
-| PR15 定向复核（第一轮 + 证据负向检查） | `tests/pr15_remediation` | 30 | 五类根因与证据适用性负向检查 |
-| PR15 定向复核（残留 + 指纹） | `tests/pr15_residual` | 27 | 版本绑定、ATR 规则身份、排名退出、依赖版本指纹 |
-| **PR15 定向小计** | | **57** | |
-| **合计** | | **177** | |
+| **V2 主体小计** | | **121** | |
+| PR15 定向（第一轮 + 证据负向检查） | `tests/pr15_remediation` | 30 | 五类根因与证据适用性负向检查 |
+| PR15 定向（残留 + 指纹） | `tests/pr15_residual` | 27 | 版本绑定、ATR 规则身份、排名退出 |
+| PR15 定向（依赖执行一致性） | `tests/pr15_dependency` | 10 | 固定版本约束计算、共享依赖 DAG |
+| **PR15 定向小计** | | **67** | |
+| **合计** | | **188** | |
 
 V1 兼容回归单独统计：`tests/behavior`、`tests/indicators`、`tests/legacy_entry`、
 `tests/engine`、`tests/golden`、`tests/lookahead`、`tests/regression` 共 **139** 项。
 
-证据类型分开记录，不混为"177 项都验证了公式"：
+证据类型分开记录，不混为"188 项都验证了公式"：
 
 - **helper 级**：直接调用注册表/求值器（如公式逐值 oracle）；
 - **直接服务级**：调用 `run_behavior_backtest_v2`；

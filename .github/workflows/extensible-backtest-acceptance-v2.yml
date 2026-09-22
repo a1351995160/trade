@@ -69,6 +69,7 @@ jobs:
           tests/entrypoints_v2
           tests/pr15_remediation
           tests/pr15_residual
+          tests/pr15_dependency
           -q
           --junitxml=junit/v2-new-${{ matrix.os }}.xml
 

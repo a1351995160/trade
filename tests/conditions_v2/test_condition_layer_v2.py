@@ -151,6 +151,33 @@ def test_cross_requires_adjacent_valid_observations():
     assert up.iloc[5] == TRUE
 
 
+def test_cross_down_positive_case():
+    """cross_down 的正向取值（与 cross_up 方向相反）。
+
+    此前 CROSS_UP/CROSS_DOWN 维度只有 cross_up 的正向测试；
+    下穿方向必须有独立正例，不能靠标题声称双向均验收。
+    """
+    days = _days(6)
+    a = pd.Series([3.0, 2.0, 1.0, 1.0, 2.0, 0.5], index=days)
+    b = pd.Series([2.0, 2.0, 2.0, 2.0, 2.0, 2.0], index=days)
+    context = ConditionContext(indicator_values={"A.x": a, "B.y": b}, fields={},
+                               index=pd.Index(days, name="date"))
+    down = evaluate_condition(op("cross_down", ind("A", "x"), ind("B", "y")), context)
+    # 第 0 根无前一根 -> UNKNOWN
+    assert np.isnan(down.iloc[0])
+    # 第 1 根：3>=2 且 2<2 不成立 -> FALSE
+    assert down.iloc[1] == FALSE
+    # 第 2 根：2>=2 且 1<2 -> 下穿 TRUE
+    assert down.iloc[2] == TRUE
+    # 第 3 根：2>=2 不成立（1<2）-> FALSE
+    assert down.iloc[3] == FALSE
+    # 第 5 根：2>=2 且 0.5<2 -> 下穿 TRUE
+    assert down.iloc[5] == TRUE
+    # 方向不得混淆：同输入下 cross_up 不应在第 2 根为 TRUE
+    up = evaluate_condition(op("cross_up", ind("A", "x"), ind("B", "y")), context)
+    assert up.iloc[2] == FALSE
+
+
 def test_cross_does_not_bridge_gap():
     """缺口（NaN）处不得捏造交叉。"""
     days = _days(4)

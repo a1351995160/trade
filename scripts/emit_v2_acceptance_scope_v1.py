@@ -370,26 +370,65 @@ ENTRYPOINT_NODEIDS = {
 }
 
 # 条件层维度 -> 正向正确性测试 nodeid。只有真正覆盖该维度的正向语义才计入。
-CONDITION_NODEIDS = {
-    "comparison": "tests/conditions_v2/test_condition_layer_v2.py"
+# 每条记录**自己的 suite**，不能用一个 row-level junit 字段指代所有来源。
+CONDITION_EVIDENCE = {
+    "comparison": {
+        "nodeid": "tests/conditions_v2/test_condition_layer_v2.py"
                   "::test_nan_comparison_yields_unknown_not_true",
-    "boolean": "tests/conditions_v2/test_condition_layer_v2.py::test_and_truth_table",
-    "CROSS_UP/CROSS_DOWN": "tests/conditions_v2/test_condition_layer_v2.py"
-                           "::test_cross_requires_adjacent_valid_observations",
-    "EVERY/EXIST": "tests/conditions_v2/test_condition_layer_v2.py"
-                   "::test_every_and_exist_semantics",
-    "BARSLAST": "tests/conditions_v2/test_condition_layer_v2.py"
-                "::test_barslast_counts_since_last_true",
-    "截面rank/percentile": "tests/conditions_v2/test_condition_layer_v2.py"
-                           "::test_cross_sectional_percentile_ranks_within_bar_only",
-    "Top-N": "tests/conditions_v2/test_condition_layer_v2.py"
-             "::test_cross_sectional_top_n_stable_tie_break",
+        "suite": "V2",
+        "sub_dimensions": {"comparison": "VALIDATED"},
+    },
+    "boolean": {
+        "nodeid": "tests/conditions_v2/test_condition_layer_v2.py::test_and_truth_table",
+        "suite": "V2",
+        "sub_dimensions": {"AND": "VALIDATED", "OR": "VALIDATED", "NOT": "VALIDATED"},
+    },
+    "CROSS_UP/CROSS_DOWN": {
+        "nodeid": "tests/conditions_v2/test_condition_layer_v2.py"
+                  "::test_cross_requires_adjacent_valid_observations",
+        "suite": "V2",
+        # 双向分别记录：cross_up 有正向测试；cross_down 另有独立正例。
+        "sub_dimensions": {
+            "CROSS_UP": "VALIDATED",
+            "CROSS_DOWN": "VALIDATED",
+            "cross_down_nodeid": "tests/conditions_v2/test_condition_layer_v2.py"
+                                 "::test_cross_down_positive_case",
+        },
+    },
+    "EVERY/EXIST": {
+        "nodeid": "tests/conditions_v2/test_condition_layer_v2.py"
+                  "::test_every_and_exist_semantics",
+        "suite": "V2",
+        "sub_dimensions": {"EVERY": "VALIDATED", "EXIST": "VALIDATED"},
+    },
+    "BARSLAST": {
+        "nodeid": "tests/conditions_v2/test_condition_layer_v2.py"
+                  "::test_barslast_counts_since_last_true",
+        "suite": "V2",
+        "sub_dimensions": {"BARSLAST": "VALIDATED"},
+    },
+    "截面rank/percentile": {
+        "nodeid": "tests/conditions_v2/test_condition_layer_v2.py"
+                  "::test_cross_sectional_percentile_ranks_within_bar_only",
+        "suite": "V2",
+        "sub_dimensions": {"rank": "PARTIAL", "percentile": "VALIDATED"},
+    },
+    "Top-N": {
+        "nodeid": "tests/conditions_v2/test_condition_layer_v2.py"
+                  "::test_cross_sectional_top_n_stable_tie_break",
+        "suite": "V2",
+        "sub_dimensions": {"top_n": "VALIDATED"},
+    },
 }
+# 兼容旧引用名
+CONDITION_NODEIDS = {label: spec["nodeid"] for label, spec in CONDITION_EVIDENCE.items()}
 # 无正向正确性测试的维度：如实标 PARTIAL 并写明原因（不统称"缺 oracle"）。
 CONDITION_PARTIAL_REASONS = {
     "arithmetic": "仅有算子存在性/拒绝路径，无加减乘除的独立数值正向测试",
     "REF": "仅有负周期拒绝测试（test_negative_lag_rejected），无 shift/ref 正向取值测试",
 }
+# suite 标识 -> JUnit 文件（每条证据记录自己的来源）
+SUITE_JUNIT = {"V1": "reports/junit-v1-compat.xml", "V2": "reports/junit-v2-new.xml"}
 
 
 def _impl_callable(registry, indicator_id: str):
@@ -413,7 +452,6 @@ def _evidence_for(target: str, spec, registry) -> tuple:
     entry_ok = entry_node is not None
     status = "VERIFIED" if (formula_ok and entry_ok) else "PARTIAL"
 
-    junit = V1_JUNIT if target in V1_ORACLE_INDICATORS else V2_JUNIT
     impl_fn, _ = _impl_callable(registry, target)
     impl_name = getattr(impl_fn, "__name__", type(impl_fn).__name__)
 
@@ -423,14 +461,18 @@ def _evidence_for(target: str, spec, registry) -> tuple:
     }
     missing = [name for name, ok in dimensions.items() if not ok]
     nodeids = [f"nodeid={CONTRACT_NODEID}"]
+    suites = {V2_JUNIT}
     assertions = [f"assert({CONTRACT_NODEID.split('::')[1]})="
                   f"{_assertion_for(CONTRACT_NODEID)}"]
     if oracle_node:
         nodeids.append(f"nodeid={oracle_node}")
         assertions.append(f"assert({oracle_node.split('::')[1]})={_assertion_for(oracle_node)}")
+        # oracle 可能位于 V1 兼容套件（MACD/KDJ）；每条证据记录自己的 JUnit
+        suites.add(V1_JUNIT if target in V1_ORACLE_INDICATORS else V2_JUNIT)
     if entry_node:
         nodeids.append(f"nodeid={entry_node}")
         assertions.append(f"assert({entry_node.split('::')[1]})={_assertion_for(entry_node)}")
+        suites.add(V2_JUNIT)
     if missing:
         nodeids.append("missing_dimensions=" + ",".join(missing))
     evidence = (
@@ -438,7 +480,9 @@ def _evidence_for(target: str, spec, registry) -> tuple:
         f"domain=outputs={list(spec.outputs)};params={sorted(spec.params)};"
         f"price_mode={spec.price_mode};warmup={spec.warmup_bars};unit={spec.unit}; "
         f"dimensions={{{','.join(f'{k}={v}' for k, v in dimensions.items())}}}; "
-        f"junit={junit}; " + "; ".join(nodeids) + "; " + "; ".join(assertions)
+        # 每条证据记录自己的 suite 与 JUnit，不用单一字段指代不同来源
+        f"junit={';'.join(sorted(suites))}; "
+        + "; ".join(nodeids) + "; " + "; ".join(assertions)
     )
     return status, evidence, dimensions
 
@@ -476,13 +520,22 @@ def build_matrix(registry) -> dict:
             elif label in condition_layer_verified:
                 status = "VERIFIED"
                 dimensions = {"FORMULA_VALIDATED": True}
+                entry = CONDITION_EVIDENCE[label]
+                sub = entry.get("sub_dimensions", {})
+                sub_text = ",".join(f"{k}={v}" for k, v in sub.items())
+                # 每条证据记录自己的 suite 与 JUnit 文件
+                nodeids = [f"nodeid={entry['nodeid']}",
+                           f"nodeid={CONTRACT_NODEID}"]
+                if sub.get("cross_down_nodeid"):
+                    nodeids.append(f"nodeid={sub['cross_down_nodeid']}")
                 evidence = (f"impl=src/chanlun_trader/engine/conditions_v2.py; "
                             f"domain=条件层算子:{label}; "
+                            f"sub_dimensions={{{sub_text}}}; "
                             f"dimensions={{{','.join(f'{k}={v}' for k, v in dimensions.items())}}}; "
-                            f"junit={V2_JUNIT}; "
-                            f"nodeid={CONDITION_NODEIDS[label]}; "
-                            f"assert({CONDITION_NODEIDS[label].split('::')[1]})="
-                            f"{_assertion_for(CONDITION_NODEIDS[label])}")
+                            f"suite={entry['suite']}; junit={SUITE_JUNIT[entry['suite']]}; "
+                            + "; ".join(nodeids) + "; "
+                            + "; ".join(f"assert({nid.split('::')[-1]})={_assertion_for(nid)}"
+                                        for nid in nodeids if nid.startswith("nodeid=tests/")))
             elif label in CONDITION_PARTIAL_REASONS:
                 status = "PARTIAL"
                 dimensions = {"FORMULA_VALIDATED": False}
@@ -575,17 +628,18 @@ def build_acceptance_scope(registry, matrix) -> dict:
             "v2_new_tests": {
                 "suites": {
                     "tests/indicators_v2": 58,
-                    "tests/conditions_v2": 25,
+                    "tests/conditions_v2": 26,
                     "tests/exits_v2": 28,
                     "tests/entrypoints_v2": 9,
                 },
-                "v2_main_subtotal": 120,
+                "v2_main_subtotal": 121,
                 "pr15_targeted_suites": {
                     "tests/pr15_remediation": 30,
                     "tests/pr15_residual": 27,
+                    "tests/pr15_dependency": 10,
                 },
-                "pr15_targeted_subtotal": 57,
-                "collected_and_passed": 177,
+                "pr15_targeted_subtotal": 67,
+                "collected_and_passed": 188,
                 "junit": "reports/junit-v2-new.xml",
                 "evidence_types": {
                     "helper": "直接调用注册表/求值器（公式逐值 oracle）",
@@ -593,9 +647,9 @@ def build_acceptance_scope(registry, matrix) -> dict:
                     "http": "FastAPI TestClient POST /api/backtest/behavior/v2",
                     "cli": "真实子进程执行 scripts/run_behavior_backtest_v2.py",
                 },
-                "note": ("PR15 定向两轮合计 57 项（第一轮 30 + 残留与指纹 27），"
-                         "经真实 API/CLI 取得 red/green；分母按证据来源分开统计，"
-                         "不合并成单一数字宣称全部已验证公式。"),
+                "note": ("PR15 定向三轮合计 67 项（第一轮 30 + 残留与指纹 27 + 依赖执行 10），"
+                         "经真实 API/CLI 与真实注册表入口取得 red/green；"
+                         "分母按证据来源分开统计，不合并成单一数字宣称全部已验证公式。"),
             },
             "v1_compatibility_regression": {
                 "suites": ["tests/behavior", "tests/indicators", "tests/legacy_entry",

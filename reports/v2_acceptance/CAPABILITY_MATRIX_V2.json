@@ -48,7 +48,7 @@
           "dimensions": {
             "FORMULA_VALIDATED": true
           },
-          "evidence": "impl=src/chanlun_trader/engine/conditions_v2.py; domain=条件层算子:boolean; dimensions={FORMULA_VALIDATED=True}; junit=reports/junit-v2-new.xml; nodeid=tests/conditions_v2/test_condition_layer_v2.py::test_and_truth_table; assert(test_and_truth_table)=AND 三值真值表全覆盖"
+          "evidence": "impl=src/chanlun_trader/engine/conditions_v2.py; domain=条件层算子:boolean; sub_dimensions={AND=VALIDATED,OR=VALIDATED,NOT=VALIDATED}; dimensions={FORMULA_VALIDATED=True}; suite=V2; junit=reports/junit-v2-new.xml; nodeid=tests/conditions_v2/test_condition_layer_v2.py::test_and_truth_table; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; assert(test_and_truth_table)=断言内容未登记; assert(test_registry_snapshot_has_required_contract_fields)=断言内容未登记"
         },
         {
           "requirement": "REF",
@@ -101,7 +101,7 @@
           "dimensions": {
             "FORMULA_VALIDATED": true
           },
-          "evidence": "impl=src/chanlun_trader/engine/conditions_v2.py; domain=条件层算子:EVERY/EXIST; dimensions={FORMULA_VALIDATED=True}; junit=reports/junit-v2-new.xml; nodeid=tests/conditions_v2/test_condition_layer_v2.py::test_every_and_exist_semantics; assert(test_every_and_exist_semantics)=EVERY/EXIST 窗口语义"
+          "evidence": "impl=src/chanlun_trader/engine/conditions_v2.py; domain=条件层算子:EVERY/EXIST; sub_dimensions={EVERY=VALIDATED,EXIST=VALIDATED}; dimensions={FORMULA_VALIDATED=True}; suite=V2; junit=reports/junit-v2-new.xml; nodeid=tests/conditions_v2/test_condition_layer_v2.py::test_every_and_exist_semantics; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; assert(test_every_and_exist_semantics)=断言内容未登记; assert(test_registry_snapshot_has_required_contract_fields)=断言内容未登记"
         },
         {
           "requirement": "BARSLAST",
@@ -111,7 +111,7 @@
           "dimensions": {
             "FORMULA_VALIDATED": true
           },
-          "evidence": "impl=src/chanlun_trader/engine/conditions_v2.py; domain=条件层算子:BARSLAST; dimensions={FORMULA_VALIDATED=True}; junit=reports/junit-v2-new.xml; nodeid=tests/conditions_v2/test_condition_layer_v2.py::test_barslast_counts_since_last_true; assert(test_barslast_counts_since_last_true)=BARSLAST 自上次 TRUE 的计数"
+          "evidence": "impl=src/chanlun_trader/engine/conditions_v2.py; domain=条件层算子:BARSLAST; sub_dimensions={BARSLAST=VALIDATED}; dimensions={FORMULA_VALIDATED=True}; suite=V2; junit=reports/junit-v2-new.xml; nodeid=tests/conditions_v2/test_condition_layer_v2.py::test_barslast_counts_since_last_true; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; assert(test_barslast_counts_since_last_true)=断言内容未登记; assert(test_registry_snapshot_has_required_contract_fields)=断言内容未登记"
         },
         {
           "requirement": "CROSS_UP/CROSS_DOWN",
@@ -121,7 +121,7 @@
           "dimensions": {
             "FORMULA_VALIDATED": true
           },
-          "evidence": "impl=src/chanlun_trader/engine/conditions_v2.py; domain=条件层算子:CROSS_UP/CROSS_DOWN; dimensions={FORMULA_VALIDATED=True}; junit=reports/junit-v2-new.xml; nodeid=tests/conditions_v2/test_condition_layer_v2.py::test_cross_requires_adjacent_valid_observations; assert(test_cross_requires_adjacent_valid_observations)=CROSS 要求前后两个合格且相邻观察点"
+          "evidence": "impl=src/chanlun_trader/engine/conditions_v2.py; domain=条件层算子:CROSS_UP/CROSS_DOWN; sub_dimensions={CROSS_UP=VALIDATED,CROSS_DOWN=VALIDATED,cross_down_nodeid=tests/conditions_v2/test_condition_layer_v2.py::test_cross_down_positive_case}; dimensions={FORMULA_VALIDATED=True}; suite=V2; junit=reports/junit-v2-new.xml; nodeid=tests/conditions_v2/test_condition_layer_v2.py::test_cross_requires_adjacent_valid_observations; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/conditions_v2/test_condition_layer_v2.py::test_cross_down_positive_case; assert(test_cross_requires_adjacent_valid_observations)=断言内容未登记; assert(test_registry_snapshot_has_required_contract_fields)=断言内容未登记; assert(test_cross_down_positive_case)=断言内容未登记"
         }
       ]
     },
@@ -217,7 +217,7 @@
             "FORMULA_VALIDATED": true,
             "ENTRYPOINT_VALIDATED": false
           },
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v1.py::_v1_macd; domain=outputs=['ema_fast', 'ema_slow', 'dif', 'dea', 'hist'];params=['fast', 'signal', 'slow'];price_mode=CALLER_DECLARED;warmup=34;unit=PRICE; dimensions={FORMULA_VALIDATED=True,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v1-compat.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators/test_indicator_formulas_v1.py::test_macd_v1_matches_independent_oracle; missing_dimensions=ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）; assert(test_macd_v1_matches_independent_oracle)=MACD(DIF/DEA/HIST) 逐值比对独立 oracle（V1 兼容套件，参数化）"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v1.py::_v1_macd; domain=outputs=['ema_fast', 'ema_slow', 'dif', 'dea', 'hist'];params=['fast', 'signal', 'slow'];price_mode=CALLER_DECLARED;warmup=34;unit=PRICE; dimensions={FORMULA_VALIDATED=True,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v1-compat.xml;reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators/test_indicator_formulas_v1.py::test_macd_v1_matches_independent_oracle; missing_dimensions=ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）; assert(test_macd_v1_matches_independent_oracle)=MACD(DIF/DEA/HIST) 逐值比对独立 oracle（V1 兼容套件，参数化）"
         },
         {
           "requirement": "DMI/ADX",
@@ -258,7 +258,7 @@
             "FORMULA_VALIDATED": true,
             "ENTRYPOINT_VALIDATED": false
           },
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v1.py::_v1_kdj; domain=outputs=['rsv', 'k', 'd', 'j'];params=['d_period', 'k_period', 'n'];price_mode=CALLER_DECLARED;warmup=9;unit=INDEX_0_100; dimensions={FORMULA_VALIDATED=True,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v1-compat.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators/test_indicator_formulas_v1.py::test_kdj_v1_matches_independent_oracle; missing_dimensions=ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）; assert(test_kdj_v1_matches_independent_oracle)=KDJ(K/D/J) 逐值比对独立 oracle（V1 兼容套件，参数化）"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v1.py::_v1_kdj; domain=outputs=['rsv', 'k', 'd', 'j'];params=['d_period', 'k_period', 'n'];price_mode=CALLER_DECLARED;warmup=9;unit=INDEX_0_100; dimensions={FORMULA_VALIDATED=True,ENTRYPOINT_VALIDATED=False}; junit=reports/junit-v1-compat.xml;reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators/test_indicator_formulas_v1.py::test_kdj_v1_matches_independent_oracle; missing_dimensions=ENTRYPOINT_VALIDATED; assert(test_registry_snapshot_has_required_contract_fields)=注册表契约字段完整（输出/参数/预热/缺失政策等）; assert(test_kdj_v1_matches_independent_oracle)=KDJ(K/D/J) 逐值比对独立 oracle（V1 兼容套件，参数化）"
         },
         {
           "requirement": "RSI",
@@ -641,7 +641,7 @@
           "dimensions": {
             "FORMULA_VALIDATED": true
           },
-          "evidence": "impl=src/chanlun_trader/engine/conditions_v2.py; domain=条件层算子:截面rank/percentile; dimensions={FORMULA_VALIDATED=True}; junit=reports/junit-v2-new.xml; nodeid=tests/conditions_v2/test_condition_layer_v2.py::test_cross_sectional_percentile_ranks_within_bar_only; assert(test_cross_sectional_percentile_ranks_within_bar_only)=截面百分位只在同一 bar 内排名"
+          "evidence": "impl=src/chanlun_trader/engine/conditions_v2.py; domain=条件层算子:截面rank/percentile; sub_dimensions={rank=PARTIAL,percentile=VALIDATED}; dimensions={FORMULA_VALIDATED=True}; suite=V2; junit=reports/junit-v2-new.xml; nodeid=tests/conditions_v2/test_condition_layer_v2.py::test_cross_sectional_percentile_ranks_within_bar_only; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; assert(test_cross_sectional_percentile_ranks_within_bar_only)=断言内容未登记; assert(test_registry_snapshot_has_required_contract_fields)=断言内容未登记"
         },
         {
           "requirement": "Top-N",
@@ -651,7 +651,7 @@
           "dimensions": {
             "FORMULA_VALIDATED": true
           },
-          "evidence": "impl=src/chanlun_trader/engine/conditions_v2.py; domain=条件层算子:Top-N; dimensions={FORMULA_VALIDATED=True}; junit=reports/junit-v2-new.xml; nodeid=tests/conditions_v2/test_condition_layer_v2.py::test_cross_sectional_top_n_stable_tie_break; assert(test_cross_sectional_top_n_stable_tie_break)=Top-N 同值按证券代码稳定排序"
+          "evidence": "impl=src/chanlun_trader/engine/conditions_v2.py; domain=条件层算子:Top-N; sub_dimensions={top_n=VALIDATED}; dimensions={FORMULA_VALIDATED=True}; suite=V2; junit=reports/junit-v2-new.xml; nodeid=tests/conditions_v2/test_condition_layer_v2.py::test_cross_sectional_top_n_stable_tie_break; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; assert(test_cross_sectional_top_n_stable_tie_break)=断言内容未登记; assert(test_registry_snapshot_has_required_contract_fields)=断言内容未登记"
         }
       ]
     }
