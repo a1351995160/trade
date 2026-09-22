@@ -1,0 +1,66 @@
+name: Backtest Behavior Acceptance V1
+
+on:
+  pull_request:
+  push:
+    branches:
+      - "codex/**"
+
+permissions:
+  contents: read
+
+jobs:
+  behavior-acceptance:
+    name: BT behavior acceptance (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python: "3.11"
+            pythonpath: tests/isolation:src
+          - os: windows-latest
+            python: "3.13"
+            pythonpath: tests/isolation;src
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    env:
+      PYTHONPATH: ${{ matrix.pythonpath }}
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUTF8: "1"
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+
+      - name: Install deterministic test dependencies
+        run: python -m pip install --disable-pip-version-check pytest -r requirements.txt
+
+      - name: BT behavior acceptance suite
+        run: >
+          python -m pytest
+          tests/behavior
+          tests/indicators
+          tests/legacy_entry
+          tests/engine
+          tests/golden
+          tests/lookahead
+          tests/regression
+          -q
+          --junitxml=junit/bt-behavior-${{ matrix.os }}.xml
+
+      - name: Upload JUnit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-bt-behavior-${{ matrix.os }}
+          path: junit/
+          if-no-files-found: warn

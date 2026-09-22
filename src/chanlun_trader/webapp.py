@@ -26,6 +26,17 @@ from fastapi.staticfiles import StaticFiles
 from .backtest import BacktestRunner
 from .chan import analyze_stock
 from .config import PROJECT_ROOT, load_config
+from .engine.behavior_service_v1 import (
+    BEHAVIOR_MODE,
+    RESERVED_MODES,
+    SUPPORTED_MODES,
+    BehaviorRequestError,
+    BehaviorRequestV1,
+    ConditionError,
+    ExitConfigError,
+    IndicatorInputError,
+    run_behavior_backtest_v1,
+)
 from .metrics import compute_metrics
 from .report import write_report
 from .research_console import AIInvocationModeServiceV1, ResearchConsoleReadError, ResearchConsoleReadService
@@ -52,6 +63,10 @@ from .screener import scan_all
 from .tdx_data import TdxData
 
 FRONTEND_DIST = PROJECT_ROOT / "frontend" / "dist"
+
+# 只读计算端点白名单：对请求体内合成数据做纯计算，不写研究状态。
+# 仅在 ExecutionPolicy.allow_readonly_compute=True 时放行；默认只读策略下仍拒绝。
+READ_ONLY_COMPUTE_PATHS = ("/api/backtest/behavior",)
 
 app = FastAPI(title="缠论选股交易系统")
 
@@ -246,6 +261,56 @@ def backtest_status(request: Request, task_id: str) -> dict:
     if task is None:
         raise HTTPException(status_code=404, detail="任务不存在")
     return task
+
+
+@app.get("/api/backtest/behavior/contracts")
+def behavior_contracts() -> dict:
+    """公开已验证行为模式的合同标识与支持范围（只读）。"""
+    from .engine.conditions_v1 import condition_registry
+    from .engine.daily_exit_v1 import RESERVED_EXIT_TYPES, SUPPORTED_EXIT_TYPES
+    from .engine.indicators_v1 import INDICATOR_CONTRACT_VERSION
+
+    return {
+        "supported_modes": list(SUPPORTED_MODES),
+        "reserved_modes": list(RESERVED_MODES),
+        "legacy_endpoint": {
+            "path": "/api/backtest",
+            "engine_version": "legacy-v1",
+            "certification": "LEGACY_NOT_CERTIFIED_BY_BT_BEHAVIOR_DAILY_V1",
+        },
+        "indicator_contract": INDICATOR_CONTRACT_VERSION,
+        "conditions": condition_registry(),
+        "supported_exit_types": list(SUPPORTED_EXIT_TYPES),
+        "reserved_exit_types": list(RESERVED_EXIT_TYPES),
+    }
+
+
+@app.post("/api/backtest/behavior")
+def run_behavior_backtest(body: dict | None = None) -> dict:
+    """BT_BEHAVIOR_DAILY_V1 回测入口（合成内存行情）。
+
+    与 CLI ``scripts/run_behavior_backtest_v1.py`` 调用同一服务函数，
+    因此同一请求必须得到相同的语义事件与账户结果。
+
+    本入口只接受请求体内的合成行情：不接受 ``dataset_path``，
+    也不写任何研究目录（``persist_run_manifest`` 强制为 False）。
+    """
+    payload = dict(body or {})
+    if payload.get("dataset_path"):
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "FILE_ENTRY_NOT_AVAILABLE_OVER_HTTP",
+                    "message_zh": "HTTP 入口只接受请求体内的合成行情；文件入口请使用 CLI。"},
+        )
+    payload["persist_run_manifest"] = False
+    try:
+        request_model = BehaviorRequestV1.from_mapping(payload)
+        result = run_behavior_backtest_v1(request_model)
+    except BehaviorRequestError as exc:
+        raise HTTPException(status_code=400, detail={"code": str(exc), "message_zh": "请求不受支持"}) from exc
+    except (ExitConfigError, ConditionError, IndicatorInputError) as exc:
+        raise HTTPException(status_code=400, detail={"code": str(exc), "message_zh": "请求不受支持"}) from exc
+    return result.to_dict()
 
 
 @app.get("/api/kline/{code}")
@@ -1193,6 +1258,11 @@ def create_app(research_root: str | Path | None = None, execution_policy: Execut
                 return deny("UNSAFE_RESEARCH_ROOT")
         if path.startswith("/api/kline/") or path in {"/api/screener", "/api/backtest"}:
             return deny("LEGACY_EXECUTION_DISABLED")
+        # 唯一例外：显式开启的只读计算端点。它对请求体内的合成行情做纯计算——
+        # 不读研究目录、不写盘、不启动进程、不改任何研究状态。
+        # allow_readonly_compute 默认为 False，因此默认只读策略下本端点同样被拒绝。
+        if path in READ_ONLY_COMPUTE_PATHS and request.method == "POST" and policy.allow_readonly_compute:
+            return await call_next(request)
         if request.method not in {"GET", "HEAD", "OPTIONS"}:
             dry_tick = False
             if path.endswith("/autonomous-control-plane/tick"):

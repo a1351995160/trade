@@ -1,0 +1,55 @@
+{
+  "note": "全部为合成工程合同的独立预期值，不代表真实行情或收益。",
+  "signal": {
+    "condition": "ABOVE_ZERO_GOLDEN_CROSS",
+    "signal_index": 33,
+    "signal_date": 20241017,
+    "expected_unique": true,
+    "macd_dif_at_signal": 0.22746822409921563,
+    "macd_dea_at_signal": 0.22612333736556828,
+    "kdj_k_at_signal": 82.7468263877037,
+    "kdj_d_at_signal": 79.55097044676279,
+    "kdj_j_at_signal": 89.13853826958552
+  },
+  "entry": {
+    "entry_index": 34,
+    "entry_date": 20241018,
+    "reference_open": 10.0,
+    "expected_fill_price": 10.01,
+    "expected_quantity": 9900,
+    "expected_fee": 24.7748,
+    "expected_cash_after_buy": 876.2252
+  },
+  "manual_account_case": {
+    "initial_cash": 10000.0,
+    "buy_price": 10.0,
+    "buy_quantity": 100,
+    "buy_commission": 5.0,
+    "sell_price": 11.0,
+    "sell_commission": 5.0,
+    "stamp_tax_rate": 0.0005,
+    "cash_after_buy": 8995.0,
+    "sell_net_proceeds": 1094.45,
+    "final_cash": 10089.45,
+    "net_profit": 89.45,
+    "buy_fee": 5.0,
+    "sell_fee": 5.55,
+    "expected_cash_after_buy": 8995.0,
+    "expected_sell_proceeds": 1094.45,
+    "expected_final_cash": 10089.45,
+    "expected_net_profit": 89.45000000000073
+  },
+  "condition_semantics": {
+    "DIF_ABOVE_ZERO": "DIF > 0（仅 DIF 站上零轴，DEA 不作要求）",
+    "BOTH_LINES_ABOVE_ZERO": "DIF > 0 且 DEA > 0（双线水上）",
+    "GOLDEN_CROSS": "前一有效相邻 bar DIF <= DEA，当前 DIF > DEA",
+    "DEATH_CROSS": "前一有效相邻 bar DIF >= DEA，当前 DIF < DEA",
+    "ABOVE_ZERO_GOLDEN_CROSS": "BOTH_LINES_ABOVE_ZERO 且 GOLDEN_CROSS"
+  },
+  "kdj_condition_semantics": {
+    "KDJ_GOLDEN_CROSS": "前一有效相邻 bar K <= D，当前 K > D",
+    "KDJ_DEATH_CROSS": "前一有效相邻 bar K >= D，当前 K < D",
+    "KDJ_K_ABOVE_D": "K > D（持续位于线上，无新交叉要求）",
+    "KDJ_OVERSOLD_GOLDEN_CROSS": "KDJ_GOLDEN_CROSS 且前一有效 bar K < 20"
+  }
+}

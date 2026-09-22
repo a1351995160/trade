@@ -273,15 +273,28 @@ class BacktestRunner:
                 self.index_filter_enabled = False
 
     def _index_allows_buy(self, date: int) -> bool:
-        """大盘环境过滤：上一交易日上证指数收盘价 >= MA。"""
+        """大盘环境过滤：严格早于 date 的最后一个已完成指数收盘价 >= 其 MA。
+
+        时点口径（修复前视缺陷）：d 日开盘决策只能使用 d 日**之前**已完成的
+        指数收盘。原实现用 `searchsorted(date, side="right") - 1`，在 d 日开盘
+        调用时会取到 d 日当天收盘（未来数据），导致开盘许可被当天未来行情改变。
+
+        边界一律 fail-closed：
+        - d 之前没有任何已完成收盘 -> 不放行；
+        - 均线预热不足（历史不足 ma_period）-> 不放行。
+        """
         if not self.index_filter_enabled or self.index_close is None or self.index_ma is None:
             return True
-        pos = self.index_close.index.searchsorted(date, side="right") - 1
+        if len(self.index_close) == 0:
+            return False
+        # side="left" 定位第一个 >= date 的位置，其前一位即严格早于 date 的最后一个交易日。
+        pos = self.index_close.index.searchsorted(date, side="left") - 1
         if pos < 0:
-            return True
-        prev_date = int(self.index_close.index[pos])
-        close_val = float(self.index_close.iloc[pos])
+            return False
         ma_val = float(self.index_ma.iloc[pos])
+        if not np.isfinite(ma_val):
+            return False
+        close_val = float(self.index_close.iloc[pos])
         return close_val >= ma_val
 
     def _max_positions_for_date(self, date: int) -> int:
