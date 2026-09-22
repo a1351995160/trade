@@ -227,10 +227,13 @@ def test_pr15b2_shared_dependency_dag_is_accepted():
 
 
 def test_pr15b2_shared_dependency_hash_is_deterministic():
-    """共享依赖的指纹必须确定（重复调用一致）。"""
-    registry = _shared_dag_registry()
-    assert registry.formula_hash("PARENT") == registry.formula_hash("PARENT")
-    assert registry.formula_hash("PARENT") == _shared_dag_registry().formula_hash("PARENT")
+    """共享依赖的指纹必须确定（独立构建的等价注册表给出相同结果）。"""
+    first = _shared_dag_registry().formula_hash("PARENT")
+    second = _shared_dag_registry().formula_hash("PARENT")
+    third = _shared_dag_registry().formula_hash("PARENT")
+    assert first == second == third, "同一图重复构建产生了不同指纹"
+    # 指纹必须真实非空且为 hex 摘要
+    assert len(first) == 16 and all(ch in "0123456789abcdef" for ch in first)
 
 
 def test_pr15b2_real_cycle_still_rejected():
