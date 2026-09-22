@@ -1,25 +1,26 @@
 {
-  "note": "V1 兼容回归对比：BASE_SHA 干净工作树 vs V2 HEAD，CI 同等隔离环境。",
+  "note": "BASE_SHA 干净工作树 vs 本次 HEAD，CI 同等隔离环境，逐 nodeid 对账。",
   "base_sha": "c498ee217e1f4e84eca398d690fce21beca22088",
+  "reviewed_head": "ae871ae7d21d8d395b82473d214480cedd804674",
   "isolated_env": {
     "CHANLUN_TEST_ISOLATION": "1"
   },
   "baseline": {
     "failed_incl_errors": 194
   },
-  "v2_head": {
-    "failed_incl_errors": 194
+  "head": {
+    "failed_incl_errors": 193
   },
-  "new_failures": [
-    "tests/research_factory/test_train_search_batch_v1.py::test_sixty_session_compounding_and_amount_units"
-  ],
+  "new_failures": [],
   "no_longer_failing": [
     "tests/research_factory/test_objective_execution_binding.py::test_formal_creation_persists_binding_and_original_transaction"
   ],
+  "causality": "UNCONFIRMED",
   "classification": {
-    "new_failures_nature": "既有顺序相关不稳定（Windows GBK 解码/共享状态），非 V2 引入",
-    "evidence": "两个 flaky 用例各自单独运行均通过；且两棵树失败总数相同（各 170 failed）",
-    "v2_modules_imported_by_research_factory": false
+    "new_failures_nature": "本次 HEAD 无新增失败 nodeid；差异项为既有顺序相关不稳定（Windows GBK 解码/共享状态）",
+    "evidence": "两个 flaky 用例各自单独运行均通过；V2 模块未被 research_factory 引用",
+    "claim": "仅声明本次 HEAD 未出现新增失败 nodeid，不声明全系统零回归"
   },
+  "historical_numbers_note": "文档 194/193、归档 194/194、早期 170/170 来自不同阶段与隔离设置，不可互相替代。",
   "environment_failures_reference": "reports/behavior_acceptance_v1/ENVIRONMENT_FAILURES.json"
 }

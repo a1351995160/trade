@@ -114,13 +114,24 @@ class IndicatorSpec:
 
 @dataclass(frozen=True)
 class IndicatorResult:
-    """统一计算结果：稳定输出名 + ready + 版本身份 + 契约快照。"""
+    """统一计算结果：稳定输出名 + ready + 版本身份 + 契约快照 + **解析后的实际参数**。
+
+    ``resolved_params`` 是本次计算真正使用的参数（已合并默认值）。
+    调用方必须读它，不得再从 ``spec.params``（契约默认值）重新推断，
+    否则 ``ATR(window=7)`` 会被误判成默认的 14。
+    """
 
     indicator_id: str
     version: str
     index: pd.Index
     frame: IndicatorFrameV2
     spec: IndicatorSpec
+    resolved_params: Mapping[str, Any] = field(default_factory=dict)
+
+    def param(self, name: str, default: Any = None) -> Any:
+        if name in self.resolved_params:
+            return self.resolved_params[name]
+        return self.spec.params.get(name, default)
 
     def output(self, name: str) -> pd.Series:
         if name not in self.spec.outputs:
@@ -162,15 +173,34 @@ def _impl_hash(fn: Callable) -> str:
     return _sha(_source_of(fn))
 
 
-def _formula_hash(fn: Callable, dependencies: Sequence[str] = ()) -> str:
-    """公式指纹：真实实现源码 + 其依赖指标源码。
+def _formula_hash(fn: Callable, dependencies: Sequence[str] = (),
+                  registry: Optional["IndicatorRegistry"] = None,
+                  seen: Optional[set] = None) -> str:
+    """公式指纹：**递归**绑定真实实现源码 + 依赖的 version + 依赖的源码指纹。
 
-    两个不同公式即使输出同名，也必须产生不同指纹；
-    改实现或改语义即改变指纹，使旧验证绑定失效。
+    只拼接依赖名称不足以证明依赖未变；必须把依赖的实现内容纳入。
+    ``seen`` 防止循环依赖导致无限递归。
     """
+    seen = set(seen or ())
     parts = [_source_of(fn)]
     for dependency in sorted(dependencies):
-        parts.append(dependency)
+        if dependency in seen:
+            continue
+        seen.add(dependency)
+        parts.append(f"dep:{dependency}")
+        if registry is not None:
+            spec = None
+            for candidate in registry.specs():
+                if candidate.indicator_id == dependency:
+                    spec = candidate
+                    break
+            if spec is not None:
+                parts.append(f"version:{spec.version}")
+                dep_fn = registry._impls.get((spec.indicator_id, spec.version))
+                if dep_fn is not None:
+                    parts.append(_source_of(dep_fn))
+                    parts.append(_formula_hash(
+                        dep_fn, registry._dependencies_of(dependency), registry, seen))
     return _sha("\n".join(parts))
 
 
@@ -329,7 +359,8 @@ class IndicatorRegistry:
             },
             # 公式指纹包含真实实现源码 + 依赖指标源码；改实现或改语义即改变指纹。
             "formula_hashes": {
-                f"{iid}@{version}": _formula_hash(fn, self._dependencies_of(iid))
+                f"{iid}@{version}": _formula_hash(
+                    fn, self._dependencies_of(iid), self)
                 for (iid, version), fn in sorted(self._impls.items())
             },
             "dependencies": {
@@ -346,7 +377,7 @@ class IndicatorRegistry:
         fn = self._impls.get((spec.indicator_id, spec.version))
         if fn is None:
             raise IndicatorRegistryError(f"INDICATOR_NOT_IMPLEMENTED:{spec.indicator_id}")
-        return _formula_hash(fn, self._dependencies_of(spec.indicator_id))
+        return _formula_hash(fn, self._dependencies_of(spec.indicator_id), self)
 
     def write(self, path) -> str:
         from pathlib import Path
@@ -413,6 +444,7 @@ class IndicatorRegistry:
         return IndicatorResult(
             indicator_id=spec.indicator_id, version=spec.version,
             index=frame.index, frame=frame, spec=spec,
+            resolved_params=dict(resolved),
         )
 
     def resolve_instance(self, indicator_id: str, *, version: Optional[str] = None,

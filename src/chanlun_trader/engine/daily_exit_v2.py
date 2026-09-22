@@ -281,35 +281,42 @@ class DailyExitEvaluatorV2:
         return value if np.isfinite(value) and value > 0 else None
 
     def register_entry_atr(self, lot_id: str, atr_value: float, *,
+                           rule: str = "atr_distance",
                            binding: Optional[AtrBinding] = None) -> None:
-        """登记该 lot 的**入场前已可用** ATR 锚。
+        """登记该 lot 在**某条规则**下的入场前已可用 ATR 锚。
 
-        调用方必须在成交发生时（或之前）用当时可见的 ATR 调用本方法；
-        不得传入入场当天未完成的 ATR。
+        按 ``(lot_id, rule)`` 存储：距离止损与跟踪止损窗口不同时，
+        两者的锚各自独立，不会互相覆盖。
         """
         value = float(atr_value)
         if not np.isfinite(value) or value <= 0:
             raise ExitConfigError(f"INVALID_ENTRY_ATR:{atr_value!r}")
-        self._entry_atr[lot_id] = value
+        self._entry_atr[(lot_id, rule)] = value
         if binding is not None:
-            self._entry_atr_binding[lot_id] = binding
+            self._entry_atr_binding[(lot_id, rule)] = binding
 
     def freeze_entry_anchor(self, lot_id: str, symbol: str, entry_session: int,
-                            atr_series: Mapping[str, pd.Series]) -> Optional[float]:
-        """在**持仓创建时**冻结入场 ATR 锚：取严格早于入场日的最近可用 ATR。
+                            atr_series: Mapping[str, pd.Series],
+                            *, rule: str = "atr_distance",
+                            binding: Optional[AtrBinding] = None) -> Optional[float]:
+        """在**持仓创建时**冻结某条规则的入场 ATR 锚。
 
-        绝不回退到入场当天的最终 ATR —— 那是入场之后才知道的信息。
-        无可用历史 ATR 时返回 None（调用方必须据此拒绝或阻断入场）。
+        取严格早于入场日的最近可用 ATR；绝不回退到入场当天的最终 ATR
+        （那是入场之后才知道的信息）。无可用历史 ATR 时返回 None。
+        ``binding`` 记录该锚来自哪个 ATR 实例，供 trace 溯源。
         """
         series = atr_series.get(symbol)
         if series is None:
             return None
-        history = series[series.index < int(entry_session)]
-        history = history[np.isfinite(history.to_numpy(dtype=float)) & (history.to_numpy(dtype=float) > 0)]
-        if history.empty:
+        values = series.to_numpy(dtype=float)
+        finite = np.isfinite(values) & (values > 0)
+        positions = np.flatnonzero((series.index < int(entry_session)) & finite)
+        if positions.size == 0:
             return None
-        value = float(history.iloc[-1])
-        self._entry_atr[lot_id] = value
+        value = float(values[positions[-1]])
+        self._entry_atr[(lot_id, rule)] = value
+        if binding is not None:
+            self._entry_atr_binding[(lot_id, rule)] = binding
         return value
 
     # -- 评估 -------------------------------------------------------------
@@ -377,7 +384,7 @@ class DailyExitEvaluatorV2:
 
             # 2) ATR 距离止损（固定距离，锚为**入场前已冻结**的 ATR）
             if self.rules.atr_distance is not None and "ATR_DISTANCE_STOP" in self.rules.exit_types:
-                entry_atr = self._entry_atr.get(lot.lot_id)
+                entry_atr = self._entry_atr.get((lot.lot_id, "atr_distance"))
                 if entry_atr is None:
                     # 规则启用但缺少冻结锚：**阻断并披露**，不回退到入场当日 ATR，
                     # 也不生成退出意图（那会卖出而非阻断入场）。
@@ -387,25 +394,31 @@ class DailyExitEvaluatorV2:
                     line = anchor - float(self.rules.atr_distance.multiple) * entry_atr
                     extra["atr_distance_line"] = round(line, 6)
                     extra["entry_atr"] = round(entry_atr, 6)
-                    binding = self._entry_atr_binding.get(lot.lot_id)
+                    binding = self._entry_atr_binding.get((lot.lot_id, "atr_distance"))
                     if binding is not None:
                         extra["entry_atr_binding"] = binding.to_dict()
                     if close <= line:
                         hits.append("EXIT_ATR_DISTANCE_STOP")
 
-            # 3) ATR 跟踪止损（只收紧）
+            # 3) ATR 跟踪止损（只收紧）；使用**该规则自己的**序列与锚
             if self.rules.atr_trailing is not None and "ATR_TRAILING_STOP" in self.rules.exit_types:
-                if self._entry_atr.get(lot.lot_id) is None and self.rules.atr_trailing.anchor == "ENTRY_LAST_KNOWN":
+                trailing_series = self._series_for(atr_series, "atr_trailing")
+                entry_atr = self._entry_atr.get((lot.lot_id, "atr_trailing"))
+                if entry_atr is None:
                     self._blocked(lot, trade_session, "ATR_TRAILING_STOP",
                                   "ENTRY_ATR_ANCHOR_NOT_FROZEN")
                 else:
-                    state = self._update_atr_trailing(lot, close, atr_series, trade_session)
+                    state = self._update_atr_trailing(lot, close, trailing_series,
+                                                      trade_session)
                     if state is None:
                         self._blocked(lot, trade_session, "ATR_TRAILING_STOP",
                                       "ATR_SERIES_UNAVAILABLE")
                     else:
                         extra["atr_trailing_line"] = round(state.line, 6)
                         extra["atr_trailing_peak"] = round(state.peak_close, 6)
+                        binding = self._entry_atr_binding.get((lot.lot_id, "atr_trailing"))
+                        if binding is not None:
+                            extra["atr_trailing_binding"] = binding.to_dict()
                         if close <= state.line:
                             hits.append("EXIT_ATR_TRAILING_STOP")
 
@@ -423,12 +436,12 @@ class DailyExitEvaluatorV2:
                 if (self.rules.indicator_condition_exit is not None
                         and "INDICATOR_CONDITION_EXIT" in self.rules.exit_types):
                     if self._condition_true(self.rules.indicator_condition_exit,
-                                            lot_context, trade_session):
+                                            lot_context, lot, trade_session):
                         hits.append("EXIT_INDICATOR_CONDITION")
                 if (self.rules.reverse_signal_exit is not None
                         and "REVERSE_SIGNAL_EXIT" in self.rules.exit_types):
                     if self._condition_true(self.rules.reverse_signal_exit,
-                                            lot_context, trade_session):
+                                            lot_context, lot, trade_session):
                         hits.append("EXIT_REVERSE_SIGNAL")
 
             if not hits:
@@ -471,19 +484,50 @@ class DailyExitEvaluatorV2:
             return context
         return condition_context
 
-    def _condition_true(self, node, condition_context, trade_session: int) -> bool:
+    def _condition_true(self, node, condition_context, lot: PositionLot,
+                        trade_session: int) -> bool:
         """只有三值为 TRUE 才算命中；FALSE 与 UNKNOWN 都不触发。
 
-        必须按**当前 trade_session** 取值，不能用上下文最后一根（那会造成前视）。
+        取值口径按结果的**索引域**决定：
+
+        - 截面算子（``rank``/``percentile``/``top_n``）返回**证券**索引，
+          按 ``lot.symbol`` 取值；
+        - 时序算子返回**时间**索引，按当前 ``trade_session`` 取值。
+
+        一律按 session 查会让排名类退出永远取不到值（静默不退出），
+        这是本函数此前消费端的缺陷。UNKNOWN 保持未知、不触发。
         """
         if self._condition_evaluator is None:
             raise ExitConfigError("CONDITION_EVALUATOR_REQUIRED")
         series = self._condition_evaluator.evaluate(node, condition_context)
-        session = int(trade_session)
-        if session not in series.index:
+        key = self._lookup_key(series, lot.symbol, int(trade_session))
+        if key is None:
             return False
-        value = series.loc[session]
+        value = series.loc[key]
         return bool(np.isfinite(value) and value > 0)
+
+    @staticmethod
+    def _lookup_key(series: pd.Series, symbol: str, session: int):
+        """按索引域选择取值键：优先精确匹配该 lot 的 symbol，其次 session。"""
+        if symbol in series.index:
+            return symbol
+        if session in series.index:
+            return session
+        return None
+
+    @staticmethod
+    def _series_for(atr_series, rule: str):
+        """取某条规则自己的 ATR 序列映射。
+
+        支持两种形态：``{rule: {symbol: series}}``（每条规则独立）或
+        ``{symbol: series}``（单规则兼容）。
+        """
+        if not atr_series:
+            return {}
+        first = next(iter(atr_series.values()))
+        if isinstance(first, Mapping):
+            return atr_series.get(rule, {})
+        return atr_series
 
     def _blocked(self, lot: PositionLot, trade_session: int, rule: str, reason: str) -> None:
         """记录"规则已启用但无法执行"的阻断。
@@ -503,7 +547,7 @@ class DailyExitEvaluatorV2:
             return None
         state = self.atr_trailing.get(lot.lot_id)
         if state is None:
-            entry_atr = self._entry_atr.get(lot.lot_id)
+            entry_atr = self._entry_atr.get((lot.lot_id, "atr_trailing"))
             if entry_atr is None:
                 return None
             state = AtrTrailingState(

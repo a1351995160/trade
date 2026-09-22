@@ -245,7 +245,7 @@ def test_atr_trailing_tightens_only_and_keeps_peak():
     store = _store({CAL[2]: 11.0, CAL[3]: 12.0, CAL[4]: 11.5})
     rules = DailyExitRuleSetV2(atr_trailing=AtrDistanceSpec(multiple=2.0, anchor="DYNAMIC_CURRENT"))
     evaluator = DailyExitEvaluatorV2("C", "C", rules)
-    evaluator.register_entry_atr("lot-1", 0.5)
+    evaluator.register_entry_atr("lot-1", 0.5, rule="atr_trailing")
     atr_series = {SYMBOL: pd.Series({day: 0.5 for day in CAL})}
     lot = _lot()
     for index, day in enumerate(CAL[2:5], start=2):
@@ -261,7 +261,7 @@ def test_atr_trailing_triggers_on_close_below_line():
     store = _store({CAL[2]: 11.0, CAL[3]: 12.0, CAL[4]: 10.5})
     rules = DailyExitRuleSetV2(atr_trailing=AtrDistanceSpec(multiple=2.0, anchor="DYNAMIC_CURRENT"))
     evaluator = DailyExitEvaluatorV2("C", "C", rules)
-    evaluator.register_entry_atr("lot-1", 0.5)
+    evaluator.register_entry_atr("lot-1", 0.5, rule="atr_trailing")
     atr_series = {SYMBOL: pd.Series({day: 0.5 for day in CAL})}
     lot = _lot()
     # 先按 session 顺序推进以建立峰值（11.0 -> 12.0）

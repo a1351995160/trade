@@ -243,6 +243,70 @@ def _conflict_note(indicator_id: str) -> str:
     return notes.get(indicator_id, "")
 
 
+# 每个指标对应的**真实存在**的独立数值 oracle 测试 nodeid。
+# 必须与 tests/indicators_v2 中的实际函数名一致；写错即等于伪造证据。
+ORACLE_NODEIDS = {
+    "MA": "tests/indicators_v2/test_indicator_families_v2.py::test_ma_matches_oracle",
+    "EMA": "tests/indicators_v2/test_indicator_families_v2.py::test_ema_wma_rma_match_oracle",
+    "WMA": "tests/indicators_v2/test_indicator_families_v2.py::test_ema_wma_rma_match_oracle",
+    "RMA": "tests/indicators_v2/test_indicator_families_v2.py::test_ema_wma_rma_match_oracle",
+    "RSI": "tests/indicators_v2/test_indicator_families_v2.py::test_rsi_matches_oracle",
+    "WILLIAMS_R": "tests/indicators_v2/test_indicator_families_v2.py::test_williams_r_matches_oracle",
+    "BOLLINGER": "tests/indicators_v2/test_indicator_families_v2.py::test_bollinger_matches_oracle",
+    "ATR": "tests/indicators_v2/test_indicator_families_v2.py::test_atr_matches_oracle",
+    "OBV": "tests/indicators_v2/test_indicator_families_v2.py::test_obv_roc_mtm_bias_match_oracle",
+    "ROC": "tests/indicators_v2/test_indicator_families_v2.py::test_obv_roc_mtm_bias_match_oracle",
+    "MTM": "tests/indicators_v2/test_indicator_families_v2.py::test_obv_roc_mtm_bias_match_oracle",
+    "BIAS": "tests/indicators_v2/test_indicator_families_v2.py::test_obv_roc_mtm_bias_match_oracle",
+    "HLC3": "tests/indicators_v2/test_indicator_families_v2.py::test_hlc3_slope_zscore_shape_match_oracle",
+    "ROLLING_SLOPE": "tests/indicators_v2/test_indicator_families_v2.py::test_hlc3_slope_zscore_shape_match_oracle",
+    "TIME_SERIES_ZSCORE": "tests/indicators_v2/test_indicator_families_v2.py::test_hlc3_slope_zscore_shape_match_oracle",
+    "BAR_SHAPE": "tests/indicators_v2/test_indicator_families_v2.py::test_hlc3_slope_zscore_shape_match_oracle",
+    "STREAK": "tests/indicators_v2/test_indicator_families_v2.py::test_streak_matches_oracle",
+    "DMI": "tests/indicators_v2/test_indicator_families_v2.py::test_dmi_and_sar_match_independent_oracle",
+    "SAR": "tests/indicators_v2/test_indicator_families_v2.py::test_dmi_and_sar_match_independent_oracle",
+    "MACD": "tests/indicators/test_indicator_formulas_v1.py::test_macd_v1_matches_independent_oracle",
+    "KDJ": "tests/indicators/test_indicator_formulas_v1.py::test_kdj_v1_matches_independent_oracle",
+    "SMA_TDX": "tests/indicators_v2/test_indicator_families_v2.py::test_sma_tdx_hand_computed_and_differs_from_arithmetic",
+}
+# 公开入口测试 nodeid（经真实 API/CLI 的端到端验收）。
+ENTRYPOINT_NODEID = ("tests/entrypoints_v2/test_public_entrypoints_v2.py"
+                     "::test_v2_endpoint_runs_and_reports_versions")
+CONTRACT_NODEID = ("tests/indicators_v2/test_indicator_families_v2.py"
+                   "::test_registry_snapshot_has_required_contract_fields")
+
+
+def _evidence_for(target: str, spec, oracle_verified: set, entrypoint_verified: set) -> tuple:
+    """逐项证据：状态 + 精确 nodeid / 适用域 / 同 HEAD JUnit。
+
+    ``VERIFIED`` 要求同时具备实现 + 独立数值 oracle + 契约测试 + 公开入口测试，
+    且每项都能指到**真实存在**的测试 nodeid（目录名不能充当验收证据）。
+    """
+    has_oracle = target in oracle_verified
+    has_entrypoint = target in entrypoint_verified
+    status = "VERIFIED" if (has_oracle and has_entrypoint) else "PARTIAL"
+    nodeids = [f"nodeid={CONTRACT_NODEID}"]
+    if has_oracle:
+        oracle_node = ORACLE_NODEIDS.get(target)
+        if oracle_node is None:
+            # 声称有 oracle 却给不出 nodeid -> 降为 PARTIAL，不伪造。
+            status = "PARTIAL"
+            has_oracle = False
+        else:
+            nodeids.append(f"nodeid={oracle_node}")
+    if has_entrypoint:
+        nodeids.append(f"nodeid={ENTRYPOINT_NODEID}")
+    if not has_oracle and not has_entrypoint:
+        nodeids.append("nodeid=无独立数值 oracle 且无入口测试")
+    evidence = (
+        f"impl={spec.implementation_path}; "
+        f"domain=outputs={list(spec.outputs)};params={sorted(spec.params)};"
+        f"price_mode={spec.price_mode};warmup={spec.warmup_bars};unit={spec.unit}; "
+        f"junit=reports/junit-v2-new.xml; " + "; ".join(nodeids)
+    )
+    return status, evidence
+
+
 def build_matrix(registry) -> dict:
     """覆盖矩阵：逐项给出实现、公开调用、独立 oracle、契约测试与同 SHA JUnit。
 
@@ -250,7 +314,15 @@ def build_matrix(registry) -> dict:
     缺证据即 PARTIAL / NOT_IMPLEMENTED，并如实登记。
     """
     by_id = {spec.indicator_id: spec for spec in registry.specs()}
-    # 公开入口证据：这些 id 已通过 API/CLI 端到端测试（见 tests/entrypoints_v2）。
+    # 独立数值 oracle 覆盖（tests/indicators_v2 中逐值对照，含 SAR/DMI）。
+    oracle_verified = {
+        "MA", "EMA", "WMA", "RMA", "RSI", "WILLIAMS_R", "BOLLINGER", "ATR",
+        "OBV", "ROC", "MTM", "BIAS", "HLC3", "ROLLING_SLOPE",
+        "TIME_SERIES_ZSCORE", "BAR_SHAPE", "STREAK", "MACD", "KDJ", "SMA_TDX",
+        "DMI", "SAR",
+    }
+    # 公开入口（API/CLI/Web）端到端覆盖：仅限真正经入口测试过的指标。
+    # GET 列表显示名字**不**构成该指标的账户链验收。
     entrypoint_verified = {
         "RSI", "EMA", "MA", "ATR", "BOLLINGER", "DMI", "SAR", "OBV", "MFI",
         "CCI", "WILLIAMS_R", "ROC", "MTM", "BIAS", "TRIX", "PSY", "KDJ", "MACD",
@@ -263,13 +335,7 @@ def build_matrix(registry) -> dict:
         "SMA_TDX", "WMA", "RMA", "DEMA", "TEMA", "MACD_HIST_RAW", "TURNOVER_RATE",
         "VOLUME_BREAKOUT_SCORE", "TREND_STRENGTH_RATIO", "RSI_REGIME_FLAG",
     }
-    # 独立数值 oracle 覆盖（tests/indicators_v2 中逐值对照）。
-    oracle_verified = {
-        "MA", "EMA", "WMA", "RMA", "RSI", "WILLIAMS_R", "BOLLINGER", "ATR",
-        "OBV", "ROC", "MTM", "BIAS", "HLC3", "ROLLING_SLOPE",
-        "TIME_SERIES_ZSCORE", "BAR_SHAPE", "STREAK", "MACD", "KDJ", "SMA_TDX",
-    }
-    # 条件层能力（由 tests/conditions_v2 覆盖）。
+    # 条件层能力（由 tests/conditions_v2 与 tests/pr15_* 覆盖）。
     condition_layer_verified = {
         "arithmetic", "comparison", "boolean", "REF", "EVERY/EXIST", "BARSLAST",
         "CROSS_UP/CROSS_DOWN", "截面rank/percentile", "Top-N",
@@ -284,26 +350,21 @@ def build_matrix(registry) -> dict:
             evidence = ""
             if target in by_id:
                 spec = by_id[target]
-                parts = [f"impl={spec.implementation_path}"]
-                if target in oracle_verified:
-                    parts.append("oracle=tests/indicators_v2/_oracle_v2.py")
-                if target in entrypoint_verified:
-                    parts.append("entrypoint=tests/entrypoints_v2")
-                parts.append("contract=tests/indicators_v2")
-                if target in oracle_verified and target in entrypoint_verified:
-                    status = "VERIFIED"
-                else:
-                    status = "PARTIAL"
-                evidence = "; ".join(parts)
+                status, evidence = _evidence_for(
+                    target, spec, oracle_verified, entrypoint_verified)
             elif target.startswith("OPERATOR_LAYER"):
                 # 既有面板级算子注册表：本轮**未**接线到 V2 单证券公开链路，标 PARTIAL。
-                # 必须优先于按 label 判定，否则会误标 VERIFIED。
                 status = "PARTIAL"
                 evidence = ("impl=research/unified_factor.py（既有，本轮未改）; "
-                            "未接 V2 单证券公开链路与账户链")
+                            "domain=面板级算子层; 未接 V2 单证券公开链路与账户链; "
+                            "nodeid=无（本轮未接线）; junit=不适用")
             elif label in condition_layer_verified:
                 status = "VERIFIED"
-                evidence = "impl=engine/conditions_v2.py; tests=tests/conditions_v2"
+                evidence = ("impl=src/chanlun_trader/engine/conditions_v2.py; "
+                            "domain=条件层算子; "
+                            "nodeid=tests/conditions_v2/test_condition_layer_v2.py"
+                            "::test_cross_sectional_top_n_stable_tie_break; "
+                            "junit=reports/junit-v2-new.xml")
             else:
                 evidence = f"NOT_FOUND:{target}"
             rows.append({"requirement": label, "target": target,
@@ -326,8 +387,15 @@ def build_matrix(registry) -> dict:
         "minimum_set": {"required": total_required, "verified": total_met,
                         "partial": total_partial,
                         "not_verified": total_required - total_met - total_partial},
-        "note": ("VERIFIED 要求同时具备：实现 + 独立数值 oracle + 契约测试 + 公开入口测试。"
+        "note": ("VERIFIED 要求同时具备：实现 + 独立数值 oracle + 契约测试 + 公开入口测试，"
+                 "并给出精确测试 nodeid、适用域与同 HEAD JUnit。"
                  "仅注册/映射完成标 PARTIAL，不外推为公式或账户已验证。"),
+        "unsupported_combinations": {
+            "MIXED_CROSS_SECTIONAL_AND_SERIES_CONDITION": (
+                "截面算子与时序算子在同一逻辑节点下混用：运行前显式拒绝"
+                "（MIXED_CROSS_SECTIONAL_AND_SERIES_CONDITION_NOT_SUPPORTED），"
+                "不做静默不退出。"),
+        },
         "families": families,
         "exit_rules": {
             "v1_reused": list(V1_EXIT_TYPES),
@@ -376,13 +444,29 @@ def build_acceptance_scope(registry, matrix) -> dict:
         "test_denominator": {
             "note": "实际分母（测试执行后回填）；V1 兼容回归与 V2 新增分别统计。",
             "v2_new_tests": {
-                "suites": ["tests/indicators_v2", "tests/conditions_v2",
-                           "tests/exits_v2", "tests/entrypoints_v2",
-                           "tests/pr15_remediation"],
-                "collected_and_passed": 141,
+                "suites": {
+                    "tests/indicators_v2": 58,
+                    "tests/conditions_v2": 25,
+                    "tests/exits_v2": 28,
+                    "tests/entrypoints_v2": 9,
+                },
+                "v2_main_subtotal": 120,
+                "pr15_targeted_suites": {
+                    "tests/pr15_remediation": 26,
+                    "tests/pr15_residual": 20,
+                },
+                "pr15_targeted_subtotal": 46,
+                "collected_and_passed": 166,
                 "junit": "reports/junit-v2-new.xml",
-                "note": ("tests/pr15_remediation 为定向复核（PR #15）的五类根因验收，"
-                         "全部经真实 API/CLI 取得 red/green。"),
+                "evidence_types": {
+                    "helper": "直接调用注册表/求值器（公式逐值 oracle）",
+                    "service": "调用 run_behavior_backtest_v2",
+                    "http": "FastAPI TestClient POST /api/backtest/behavior/v2",
+                    "cli": "真实子进程执行 scripts/run_behavior_backtest_v2.py",
+                },
+                "note": ("PR15 定向两轮合计 46 项（第一轮 26 + 残留 20），"
+                         "经真实 API/CLI 取得 red/green；分母按证据来源分开统计，"
+                         "不合并成单一数字宣称全部已验证公式。"),
             },
             "v1_compatibility_regression": {
                 "suites": ["tests/behavior", "tests/indicators", "tests/legacy_entry",

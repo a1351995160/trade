@@ -279,7 +279,7 @@ def test_pr1502_dynamic_current_anchor_is_honoured():
                       buy_time=tz_aware(2025, 1, 3, 9, 30), quantity=100, remaining_quantity=100,
                       cost=1000.0, sellable_from=tz_aware(2025, 1, 4, 9, 30),
                       entry_session=cal[1], entry_session_index=1, entry_price=10.0)
-    evaluator.register_entry_atr("L1", 0.5)
+    evaluator.register_entry_atr("L1", 0.5, rule="atr_trailing")
     idx = {d: i for i, d in enumerate(cal)}
     # 当日 ATR 变大 -> 线应随之变化（证明参数真的生效）
     atr_small = {sym: pd.Series({d: 0.5 for d in cal})}
@@ -287,7 +287,7 @@ def test_pr1502_dynamic_current_anchor_is_honoured():
     evaluator.evaluate([lot], cal[2], 2, store, session_index_of=idx, atr_series=atr_small)
     line_small = evaluator.atr_trailing["L1"].line
     evaluator2 = DailyExitEvaluatorV2("C", "C", rules)
-    evaluator2.register_entry_atr("L1", 0.5)
+    evaluator2.register_entry_atr("L1", 0.5, rule="atr_trailing")
     lot2 = PositionLot(lot_id="L1", position_id="P1", symbol=sym, strategy_id="S",
                        buy_time=tz_aware(2025, 1, 3, 9, 30), quantity=100, remaining_quantity=100,
                        cost=1000.0, sellable_from=tz_aware(2025, 1, 4, 9, 30),
@@ -573,27 +573,159 @@ def test_pr1505_matrix_requires_evidence_not_name_prefix():
         "未接线的算子层被标成了 VERIFIED"
 
 
-def test_pr1505_formula_hash_uses_real_implementation_not_wrapper():
-    """公式指纹必须取自真实实现；两个不同公式的同名输出要产生不同指纹。"""
+def test_pr1505_formula_hash_recurses_into_dependencies():
+    """只改**依赖实现**、父函数文字不变时，父函数指纹必须改变。"""
+    from chanlun_trader.engine import indicator_registry_v2 as regmod
+    from chanlun_trader.engine.custom_indicators_v2 import register_custom_indicators
     from chanlun_trader.engine.indicator_registry_v2 import default_registry
 
     registry = default_registry()
-    payload = registry.to_dict()
-    assert "formula_hashes" in payload
-    assert "MACD@MACD_V1" in payload["formula_hashes"]
-    assert "MACD_HIST_RAW@MACD_HIST_RAW_V1" in payload["formula_hashes"]
-    assert payload["formula_hashes"]["MACD@MACD_V1"] != \
-        payload["formula_hashes"]["MACD_HIST_RAW@MACD_HIST_RAW_V1"], \
-        "两个不同公式产生了相同指纹"
-    # 指纹必须来自真实实现（包装器不含公式源码）
-    macd_hash = registry.formula_hash("MACD")
-    assert macd_hash == payload["formula_hashes"]["MACD@MACD_V1"]
-    # 依赖参与指纹
-    from chanlun_trader.engine.custom_indicators_v2 import register_custom_indicators
     register_custom_indicators(registry)
-    payload2 = registry.to_dict()
-    assert "RSI" in payload2["dependencies"].get("RSI_REGIME_FLAG", []) or \
-        payload2["dependencies"].get("RSI_REGIME_FLAG") == []
+    before = registry.formula_hash("RSI_REGIME_FLAG")
+
+    def mutated_rsi(data, *, window=14, price="close"):
+        """变异版 RSI（仅用于指纹测试）。"""
+        return regmod.IndicatorFrameV2(
+            indicator_id="RSI", version="RSI_V1", index=data.index,
+            columns={"rsi": pd.Series(np.zeros(len(data.close)), index=data.index)},
+            ready=pd.Series(True, index=data.index),
+            segment=pd.Series(np.zeros(len(data.close), dtype=int), index=data.index),
+            warmup_bars=1)
+
+    mutated_rsi.__wrapped_impl__ = mutated_rsi
+    original = registry._impls[("RSI", "RSI_V1")]
+    try:
+        registry._impls[("RSI", "RSI_V1")] = mutated_rsi
+        after = registry.formula_hash("RSI_REGIME_FLAG")
+    finally:
+        registry._impls[("RSI", "RSI_V1")] = original
+    assert before != after, "依赖实现改变未影响父函数指纹（指纹未递归绑定依赖）"
+    assert registry.formula_hash("RSI_REGIME_FLAG") == before, "恢复后指纹不稳定"
+
+
+def test_pr1505_formula_hash_is_stable_for_unchanged_source():
+    from chanlun_trader.engine.indicator_registry_v2 import default_registry
+
+    first = default_registry().to_dict()["formula_hashes"]
+    second = default_registry().to_dict()["formula_hashes"]
+    assert first == second, "同一源码两次构建产生了不同指纹"
+    assert all(value for value in first.values()), "存在空指纹"
+
+
+def test_pr1505_matrix_entries_carry_real_nodeids():
+    """每个 VERIFIED 项必须给出精确测试 nodeid 与适用域，不能只写目录名。"""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "emit_v2_scope_nodeids", REPO_ROOT / "scripts" / "emit_v2_acceptance_scope_v1.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    from chanlun_trader.engine.custom_indicators_v2 import register_custom_indicators
+    from chanlun_trader.engine.indicator_registry_v2 import default_registry
+
+    registry = default_registry()
+    register_custom_indicators(registry)
+    matrix = module.build_matrix(registry)
+
+    assert matrix["minimum_set"]["required"] == 54, "分母被改动"
+    for family in matrix["families"]:
+        for item in family["items"]:
+            if item["status"] != "VERIFIED":
+                continue
+            evidence = item["evidence"]
+            assert "nodeid=" in evidence, f"缺少精确 nodeid：{item['requirement']}"
+            assert "domain=" in evidence, f"缺少适用域：{item['requirement']}"
+            assert "nodeid=tests/" in evidence
+            assert "junit=" in evidence, f"缺少同 HEAD JUnit 关联：{item['requirement']}"
+    # 未接线的算子层必须保持 PARTIAL
+    operator_items = [i for f in matrix["families"] for i in f["items"]
+                      if i["target"].startswith("OPERATOR_LAYER")]
+    assert operator_items and all(i["status"] == "PARTIAL" for i in operator_items)
+
+
+def test_pr1505_contract_and_registry_and_matrix_agree(tmp_path: Path):
+    """生产 registry、HTTP 契约与生成矩阵必须一致。"""
+    import importlib.util
+
+    from chanlun_trader.engine.custom_indicators_v2 import register_custom_indicators
+    from chanlun_trader.engine.indicator_registry_v2 import default_registry
+
+    registry = default_registry()
+    register_custom_indicators(registry)
+    registry_ids = {spec.indicator_id for spec in registry.specs()}
+
+    root = tmp_path / "synthetic_root"
+    root.mkdir()
+    app = create_app(root, ExecutionPolicy(
+        mode="READ_ONLY", workspace_kind="SYNTHETIC", allow_readonly_compute=True))
+    body = TestClient(app).get("/api/backtest/behavior/contracts").json()
+    assert registry_ids == {item["indicator_id"] for item in body["indicators"]}
+
+    spec = importlib.util.spec_from_file_location(
+        "emit_v2_scope_agree", REPO_ROOT / "scripts" / "emit_v2_acceptance_scope_v1.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    matrix = module.build_matrix(registry)
+    for target in {i["target"] for f in matrix["families"] for i in f["items"]}:
+        if target.startswith(("OPERATOR_LAYER", "CONDITION_LAYER", "NOT_FOUND")):
+            continue
+        assert target in registry_ids, f"矩阵引用了未注册指标：{target}"
+
+
+def test_pr1505_every_claimed_nodeid_actually_exists():
+    """矩阵里声称的每个 nodeid 都必须能真实收集到，否则即为伪造证据。"""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "emit_v2_scope_nodes", REPO_ROOT / "scripts" / "emit_v2_acceptance_scope_v1.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    from chanlun_trader.engine.custom_indicators_v2 import register_custom_indicators
+    from chanlun_trader.engine.indicator_registry_v2 import default_registry
+
+    registry = default_registry()
+    register_custom_indicators(registry)
+    matrix = module.build_matrix(registry)
+
+    nodeids = set()
+    for family in matrix["families"]:
+        for item in family["items"]:
+            for part in item["evidence"].split("; "):
+                if part.startswith("nodeid=tests/"):
+                    nodeids.add(part[len("nodeid="):])
+    assert nodeids, "矩阵未给出任何 nodeid"
+
+    missing = []
+    for nodeid in sorted(nodeids):
+        completed = subprocess.run(
+            [sys.executable, "-m", "pytest", nodeid, "--collect-only", "-q"],
+            cwd=str(REPO_ROOT), capture_output=True, text=True,
+            encoding="utf-8", errors="replace")
+        if completed.returncode != 0:
+            missing.append(nodeid)
+    assert not missing, f"矩阵声称了不存在的测试 nodeid：{missing}"
+
+
+def test_pr1505_unsupported_combination_is_declared_in_matrix():
+    """不支持的组合必须在能力矩阵里显式标出，而不是运行完成却静默不退出。"""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "emit_v2_scope_unsupported", REPO_ROOT / "scripts" / "emit_v2_acceptance_scope_v1.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    from chanlun_trader.engine.custom_indicators_v2 import register_custom_indicators
+    from chanlun_trader.engine.indicator_registry_v2 import default_registry
+
+    registry = default_registry()
+    register_custom_indicators(registry)
+    matrix = module.build_matrix(registry)
+    declared = matrix.get("unsupported_combinations", {})
+    assert "MIXED_CROSS_SECTIONAL_AND_SERIES_CONDITION" in declared
+    assert "拒绝" in declared["MIXED_CROSS_SECTIONAL_AND_SERIES_CONDITION"]
 
 
 def test_pr1505_cli_reports_scope_consistently(tmp_path: Path):

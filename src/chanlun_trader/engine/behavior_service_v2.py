@@ -435,9 +435,10 @@ def build_entry_signals_v2(
     trace: Dict[str, Any] = {}
     calendar_set = {int(d) for d in calendar}
 
-    # 表达式里的 alias 解析为实例键（多实例引用必须精确）。
+    # 表达式里的引用解析为精确实例键（多实例引用必须精确），并核验显式版本。
     alias_map = _alias_map(indicator_results, indicator_requests)
-    entry_condition = _bind_aliases(entry_condition, alias_map)
+    version_map = _instance_versions(indicator_results)
+    entry_condition = _bind_expression_references(entry_condition, alias_map, version_map)
 
     prepared_frames: Dict[str, pd.DataFrame] = {}
     for symbol in sorted(frames):
@@ -579,6 +580,11 @@ def run_behavior_backtest_v2(
     reverse_condition = (parse_expression(request.reverse_signal_condition)
                          if request.reverse_signal_condition is not None else None)
 
+    # 混合截面/时序条件在运行前拒绝（能力矩阵同步标为不支持）。
+    _assert_expression_domain_supported(entry_condition, "entry_condition")
+    _assert_expression_domain_supported(exit_condition, "exit_condition")
+    _assert_expression_domain_supported(reverse_condition, "reverse_signal_condition")
+
     indicator_requests = [IndicatorRequest.from_mapping(item) for item in request.indicators]
     aliases = {item.alias for item in indicator_requests if item.alias}
     # 条件里引用的指标若未显式请求（且不是已声明的别名），自动补上。
@@ -596,13 +602,11 @@ def run_behavior_backtest_v2(
         registry=reg, strategy_id=request.strategy_id,
     )
 
-    # 把表达式里的 alias 解析为实例键（在拿到实例列表之后）。
+    # 把表达式里的引用解析为精确实例键，并核验显式版本（在拿到实例列表之后）。
     alias_map = _alias_map(indicator_results, indicator_requests)
-    for alias, instance_key in alias_map.items():
-        if alias == instance_key:
-            continue
-    exit_condition = _bind_aliases(exit_condition, alias_map)
-    reverse_condition = _bind_aliases(reverse_condition, alias_map)
+    version_map = _instance_versions(indicator_results)
+    exit_condition = _bind_expression_references(exit_condition, alias_map, version_map)
+    reverse_condition = _bind_expression_references(reverse_condition, alias_map, version_map)
 
     store = MarketDataStore(feature_price_mode="raw")
     for symbol in request.symbols:
@@ -683,19 +687,24 @@ def run_behavior_backtest_v2(
             return None
         return dict(per_symbol)
 
-    atr_series, atr_bindings = _resolve_atr_dependencies(
+    atr_bindings = _resolve_atr_dependencies(
         reg, request, rules, indicator_results, indicator_requests)
     _assert_atr_dependencies_satisfied(rules, request, atr_bindings)
+    atr_series = _atr_series_for(atr_bindings, indicator_results, request.symbols)
 
     def on_fill_hook(lot) -> None:
-        """持仓创建时冻结入场 ATR 锚（严格早于入场日的最近可用值）。"""
-        if not atr_series:
-            return
-        frozen = evaluator.freeze_entry_anchor(
-            lot.lot_id, lot.symbol, int(lot.entry_session or 0), atr_series)
-        if frozen is None and (rules.atr_distance is not None or rules.atr_trailing is not None):
-            evaluator._blocked(lot, int(lot.entry_session or 0), "ATR_ENTRY_ANCHOR",
-                               "NO_PRIOR_AVAILABLE_ATR")
+        """持仓创建时按**每条规则各自的窗口**冻结入场 ATR 锚。
+
+        严格取早于入场日的最近可用值；不同窗口各自冻结，互不覆盖。
+        绑定身份一并登记，使 trace 能溯源到具体 ATR 实例。
+        """
+        for label, per_symbol in atr_series.items():
+            frozen = evaluator.freeze_entry_anchor(
+                lot.lot_id, lot.symbol, int(lot.entry_session or 0),
+                per_symbol, rule=label, binding=atr_bindings.get(label))
+            if frozen is None:
+                evaluator._blocked(lot, int(lot.entry_session or 0), label,
+                                   "NO_PRIOR_AVAILABLE_ATR")
 
     engine.fill_hook = on_fill_hook
     exit_callback = (daily_exit_fn_v2(evaluator, store, calendar,
@@ -838,8 +847,12 @@ def run_behavior_backtest_v2(
 def _resolve_atr_dependencies(reg, request, rules, indicator_results, indicator_requests):
     """从规则建立 ATR 依赖：按 atr_window、版本、价格尺度分别绑定。
 
-    距离止损与跟踪止损若窗口不同，必须各自解析到**不同的** ATR 实例，
-    不能共用一条未核验的 ATR。
+    每条规则（距离/跟踪）各自持有**实际使用的序列与绑定身份**；
+    窗口不同时必须解析到不同实例，绝不共用一条未核验的 ATR。
+
+    窗口取自**本次计算实际使用的参数**（``IndicatorResult.resolved_params``），
+    不从 ``spec.params``（契约默认值）重新推断——否则无 alias 的
+    ``ATR(window=7)`` 会被误判成默认的 14。
     """
     from .daily_exit_v2 import AtrBinding
 
@@ -849,57 +862,63 @@ def _resolve_atr_dependencies(reg, request, rules, indicator_results, indicator_
             continue
         needed[label] = spec
     if not needed:
-        return {}, {}
+        return {}
 
-    # 找该窗口对应的已请求 ATR 实例；缺则明确报错，不静默取任意一条。
-    # 窗口取自**请求实际声明的参数**（ATR 契约里窗口参数名为 ``window``）。
-    declared_window: Dict[str, int] = {}
-    for item in indicator_requests:
-        try:
-            spec, _key = reg.resolve_instance(item.indicator_id, version=item.version,
-                                              params=item.params)
-        except IndicatorRegistryError:
-            continue
-        if spec.indicator_id != "ATR":
-            continue
-        merged = {name: dict(item.params).get(name, default)
-                  for name, default in spec.params.items()}
-        declared_window[item.alias or spec.indicator_id] = int(
-            merged.get("atr_window", merged.get("window", 14)))
-
-    atr_instances: Dict[int, List[str]] = {}
+    # 每个实例的**实际**窗口（来自计算结果，不来自契约默认值）。
+    actual_window: Dict[str, int] = {}
     for symbol in request.symbols:
         for instance_key, result in indicator_results[symbol].items():
             if result.indicator_id != "ATR":
                 continue
-            window = declared_window.get(instance_key)
-            if window is None:
-                declared = result.spec.params
-                window = int(declared.get("atr_window", declared.get("window", 14)))
-            if instance_key not in atr_instances.setdefault(window, []):
-                atr_instances[window].append(instance_key)
+            actual_window.setdefault(
+                instance_key, int(result.param("window", result.param("atr_window", 14))))
 
-    series: Dict[str, pd.Series] = {}
+    # 每个窗口对应的实例集合（按证券并集，保证多证券一致）。
+    by_window: Dict[int, List[str]] = {}
+    for instance_key, window in actual_window.items():
+        by_window.setdefault(window, []).append(instance_key)
+
     bindings: Dict[str, AtrBinding] = {}
     for label, spec in needed.items():
         window = int(spec.atr_window)
-        candidates = atr_instances.get(window, [])
+        candidates = sorted(by_window.get(window, []))
         if not candidates:
+            available = ", ".join(f"{key}(window={actual_window[key]})"
+                                  for key in sorted(actual_window)) or "无"
             raise BehaviorRequestError(
                 f"ATR_DEPENDENCY_NOT_DECLARED:{label}:atr_window={window}:"
-                f"请显式请求 ATR 并设置 params.atr_window={window}")
-        instance_key = sorted(candidates)[0]
+                f"已请求的 ATR 实例：{available}；请显式请求 window={window} 的 ATR")
+        instance_key = candidates[0]
+        sample = None
         for symbol in request.symbols:
             result = indicator_results[symbol].get(instance_key)
             if result is None:
                 raise BehaviorRequestError(f"ATR_INSTANCE_MISSING:{symbol}:{instance_key}")
-            series[symbol] = result.output("atr")
+            sample = result
         bindings[label] = AtrBinding(
-            instance_key=instance_key, atr_window=window, version=result.version,
-            price_mode=result.spec.price_mode,
-            available_at_rule=result.spec.available_at_rule,
+            instance_key=instance_key, atr_window=window, version=sample.version,
+            price_mode=sample.spec.price_mode,
+            available_at_rule=sample.spec.available_at_rule,
         )
-    return series, bindings
+    return bindings
+
+
+def _atr_series_for(bindings: Mapping[str, Any], indicator_results, symbols) -> Dict[str, Dict[str, pd.Series]]:
+    """``规则标签 -> {symbol: 实际 ATR 序列}``。
+
+    两条规则各自保留自己的序列，不再互相覆盖。
+    """
+    series: Dict[str, Dict[str, pd.Series]] = {}
+    for label, binding in bindings.items():
+        per_symbol: Dict[str, pd.Series] = {}
+        for symbol in symbols:
+            result = indicator_results[symbol].get(binding.instance_key)
+            if result is None:
+                raise BehaviorRequestError(
+                    f"ATR_INSTANCE_MISSING:{symbol}:{binding.instance_key}")
+            per_symbol[symbol] = result.output("atr")
+        series[label] = per_symbol
+    return series
 
 
 def _assert_atr_dependencies_satisfied(rules, request, bindings) -> None:
@@ -913,35 +932,120 @@ def _assert_atr_dependencies_satisfied(rules, request, bindings) -> None:
 
 def _alias_map(indicator_results: Mapping[str, Mapping[str, IndicatorResult]],
                requests: Sequence[IndicatorRequest]) -> Dict[str, str]:
-    """构造 ``alias -> instance_key`` 映射（用于表达式按 alias 引用实例）。
+    """构造 ``引用名 -> instance_key`` 映射。
 
-    别名解析到**唯一**实例；未声明别名时也允许用完整实例键引用。
+    允许的引用名：
+    - 声明的 ``alias``；
+    - 完整实例键；
+    - **仅当该 indicator_id 只有单一实例时**的裸 id（兼容旧配置）。
+
+    同一 id 有多个实例时，裸 id **不**进入映射，调用方必须用 alias 或完整实例键；
+    含糊引用在运行前被拒绝，而不是悄悄指向某一个实例。
     """
     mapping: Dict[str, str] = {}
-    keys = {key for results in indicator_results.values() for key in results}
+    for results in indicator_results.values():
+        counts: Dict[str, int] = {}
+        for result in results.values():
+            counts[result.indicator_id] = counts.get(result.indicator_id, 0) + 1
+        for instance_key, result in results.items():
+            mapping.setdefault(instance_key, instance_key)
+            if counts[result.indicator_id] == 1:
+                mapping.setdefault(result.indicator_id, instance_key)
     for request in requests:
         if not request.alias:
             continue
-        spec, instance = None, None
-        for key in keys:
-            if key.startswith(f"{request.alias}@") or key.endswith(f"#{request.alias}"):
-                mapping[request.alias] = key
-                break
-    for key in keys:
-        mapping.setdefault(key, key)
+        for results in indicator_results.values():
+            for instance_key, result in results.items():
+                if instance_key == request.alias:
+                    mapping[request.alias] = instance_key
     return mapping
 
 
-def _bind_aliases(node: Optional[Expr], aliases: Mapping[str, str]) -> Optional[Expr]:
-    """把表达式里的 ``indicator`` 引用从 alias 解析为实例键。"""
+CROSS_SECTIONAL_OPS = frozenset({"rank", "percentile", "top_n"})
+
+
+def _expression_domain(node: Optional[Expr]) -> Optional[str]:
+    """判定表达式的结果索引域：``symbol``（截面）/ ``session``（时序）/ None（混合）。
+
+    混合（同一逻辑节点下同时出现截面与时序操作数）在当前求值器里
+    无法对齐，必须在**运行前**拒绝，而不是运行完成但静默不退出。
+    """
+    if node is None or not isinstance(node, Expr):
+        return None
+    if node.op in CROSS_SECTIONAL_OPS:
+        return "symbol"
+    domains = {_expression_domain(arg) for arg in node.args if isinstance(arg, Expr)}
+    domains.discard(None)
+    if len(domains) > 1:
+        return None
+    return next(iter(domains)) if domains else "session"
+
+
+def _assert_expression_domain_supported(node: Optional[Expr], label: str) -> None:
+    """混合截面/时序表达式在运行前显式拒绝。"""
+    if node is None:
+        return
+    has_cross = _contains_cross_sectional(node)
+    has_series = _contains_series(node)
+    if has_cross and has_series:
+        raise BehaviorRequestError(
+            f"MIXED_CROSS_SECTIONAL_AND_SERIES_CONDITION_NOT_SUPPORTED:{label}")
+
+
+def _contains_cross_sectional(node: Optional[Expr]) -> bool:
+    if node is None or not isinstance(node, Expr):
+        return False
+    if node.op in CROSS_SECTIONAL_OPS:
+        return True
+    return any(_contains_cross_sectional(arg) for arg in node.args if isinstance(arg, Expr))
+
+
+def _contains_series(node: Optional[Expr]) -> bool:
+    if node is None or not isinstance(node, Expr):
+        return False
+    if node.op in CROSS_SECTIONAL_OPS:
+        return False
+    if node.op in {"indicator", "field", "const"}:
+        return True
+    return any(_contains_series(arg) for arg in node.args if isinstance(arg, Expr))
+
+
+def _instance_versions(
+    indicator_results: Mapping[str, Mapping[str, IndicatorResult]],
+) -> Dict[str, str]:
+    """``instance_key -> 解析后的 canonical version``（用于表达式版本核验）。"""
+    versions: Dict[str, str] = {}
+    for results in indicator_results.values():
+        for instance_key, result in results.items():
+            versions.setdefault(instance_key, result.version)
+    return versions
+
+
+def _bind_expression_references(node: Optional[Expr],
+                                aliases: Mapping[str, str],
+                                versions: Mapping[str, str]) -> Optional[Expr]:
+    """把表达式里的 ``indicator`` 引用解析为**精确实例键**，并核验版本。
+
+    - 引用名必须在映射中（否则 UNKNOWN_INDICATOR_REFERENCE，运行前拒绝）；
+    - 表达式里显式给出的 ``version`` 必须与该实例解析后的 version 一致，
+      否则 VERSION_MISMATCH（运行前拒绝），不得静默消费其他版本的结果。
+    """
     if node is None or not isinstance(node, Expr):
         return node
-    args = tuple(_bind_aliases(arg, aliases) for arg in node.args)
+    args = tuple(_bind_expression_references(arg, aliases, versions) for arg in node.args)
     params = dict(node.params)
     if node.op == "indicator" and args:
         reference = str(args[0])
-        if reference in aliases:
-            return Expr(node.op, (aliases[reference],), params)
+        if reference not in aliases:
+            raise BehaviorRequestError(f"UNKNOWN_INDICATOR_REFERENCE:{reference}")
+        instance_key = aliases[reference]
+        declared_version = params.pop("version", None)
+        actual_version = versions.get(instance_key)
+        if declared_version is not None and str(declared_version) != str(actual_version):
+            raise BehaviorRequestError(
+                f"VERSION_MISMATCH:{reference}:declared={declared_version}:"
+                f"resolved={actual_version}")
+        return Expr(node.op, (instance_key,), params)
     return Expr(node.op, args, params)
 
 

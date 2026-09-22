@@ -267,7 +267,23 @@ registry.register(
 或既有面板级算子层本轮**未**接线到 V2 单证券公开链路。
 这些项**不计入** `FORMULA_VALIDATED`。
 
-### 5.2 维度状态
+### 5.2 本轮仍未关闭的基础能力（保留 OPEN）
+
+以下项**确实缺失**，本轮不以补齐它们为前置，如实保留为 OPEN：
+
+| 项 | 状态 | 说明 |
+| --- | --- | --- |
+| 28 项 PARTIAL 的独立数值 oracle | OPEN | 已实现并注册，但缺逐值 oracle；在补上之前不标 `FORMULA_VALIDATED` |
+| 既有面板级算子层接入 V2 单证券公开链路 | OPEN | `research/unified_factor.py` 本轮未改，也未接线 |
+| 截面与时序算子的混合表达式 | 不支持 | 运行前显式拒绝，矩阵已标出 |
+| 多周期精确执行 | 不支持 | 请求即拒绝 |
+| 盘中触价 / Tick / 盘口 | 不支持 | 请求即拒绝 |
+| `TURNOVER_RATE` 历史流通股本 | 数据依赖未满足 | 明确拒绝，不生成替代值 |
+
+**总目标未全部完成**：本轮关闭的是"已实现部分的实际消费端正确性"与"证据不过度声明"，
+不是全部 51 项指标的公式认证。
+
+### 5.3 维度状态
 
 | 维度 | 状态 |
 | --- | --- |
@@ -312,6 +328,17 @@ V2 新增测试合计 **141** 项。
 | `DMI` 段首 TR 因缺前收盘而丢弃 | 口径不一致（预热偏移） | 段首按惯例取 `H-L`，与 `true_range` 一致 |
 | `DYNAMIC_CURRENT` 在首根被跳过（提前 return） | **真实缺陷**（参数被忽略） | 首次创建状态后继续走更新逻辑；取不到当日 ATR 时按合同拒绝 |
 
+### 6.4 残留修正（reviewed HEAD `ae871ae`）
+
+第一轮定向修正后仍有四处残留会改变**实际条件与止损含义**，本轮集中关闭：
+
+| 编号 | 残留 | 处置 |
+| --- | --- | --- |
+| **PR15-01** | 未知 `version` 只校验 `indicators[].version`；写在 `entry_condition`/`exit_condition`/`reverse_signal_condition` 内的版本被静默忽略 | 表达式引用解析为**精确实例键**并核验版本：未知引用 `UNKNOWN_INDICATOR_REFERENCE`，版本不符 `VERSION_MISMATCH`，均在运行前拒绝；多实例时裸 id 引用同样拒绝，单实例保持兼容 |
+| **PR15-02** | `series[symbol]` 被最后一条规则覆盖；`_entry_atr[lot_id]` 无法区分规则/窗口；窗口从 `spec.params` 默认值重推，无 alias 的 `ATR(7)` 被误配到 14 | 每条规则各自持有序列与绑定身份（`rule -> {symbol: series}`）；锚按 `(lot_id, rule)` 存储；窗口取自 `IndicatorResult.resolved_params`（**本次实际使用值**），并随 trace 输出绑定身份 |
+| **PR15-04** | 排名结果为 symbol 索引，退出端一律按 session 查，导致排名退出**永不触发** | 按结果索引域取值：截面结果按 `lot.symbol`，时序结果按 `trade_session`；混合表达式在运行前显式拒绝并在矩阵标出 |
+| **PR15-05** | 矩阵证据只写目录名；公式指纹只拼接依赖**名称** | 逐项给出精确 nodeid + 适用域 + 同 HEAD JUnit，且测试会**实际收集**每个 nodeid（不存在即失败）；指纹**递归**绑定依赖的 version 与源码，附"只改依赖实现"的变异测试 |
+
 ### 6.3 更早（V2 主体）已修复的缺陷
 
 | 缺陷 | 性质 | 处置 |
@@ -322,7 +349,7 @@ V2 新增测试合计 **141** 项。
 | `TR` 首根因缺前收盘而丢弃 | 口径不一致 | 段首取 `H-L` |
 | 截面 `top_n` 用名为 `symbol` 的列与同名索引冲突 | **真实缺陷**（运行时异常） | 改用位置数组 |
 | `_series` 返回 RangeIndex 导致按日期 reindex 全 NaN | **真实缺陷**（指标全 UNKNOWN） | 显式把交易日整数键设为索引 |
-| RSI 边界用浮点相等判断零涨跌 | 稳健性缺陷 | 改为容差比较 |
+| RSI 边界用浮点相等判断零涨跌 | 稳健性缺陷 | 改为容差比较（`NaN == NaN` 为 False，`isfinite` 另行排除 Inf） |
 | CLI 结果写入未走服务层根约束 | **安全缺陷**（Sonar `S2083`） | 写入移入服务层 `write_result_v2` + 类型化结果对象 |
 
 以上均为 V2 新增代码中的缺陷，**不是** V1 收尾遗留问题。
@@ -382,9 +409,43 @@ V2 新增测试合计 **141** 项。
 | V2 CLI | `scripts/run_behavior_backtest_v2.py` |
 | 双平台 CI | `.github/workflows/extensible-backtest-acceptance-v2.yml` |
 
-测试：`tests/indicators_v2`（公式/因果/边界）、`tests/conditions_v2`（三值逻辑/安全）、
-`tests/exits_v2`（退出/账户链）、`tests/entrypoints_v2`（API/CLI/Web 一致）。
-V1 兼容回归单独统计（`tests/behavior`、`tests/indicators`、`tests/legacy_entry` 等）。
+### 8.1 测试分母（按证据来源分开统计，不合并成一个数字）
+
+| 来源 | 目录 | 项数 | 说明 |
+| --- | --- | --- | --- |
+| 指标公式/因果/边界 | `tests/indicators_v2` | 58 | 独立数值 oracle + 手算 |
+| 条件层三值逻辑与安全 | `tests/conditions_v2` | 25 | 真值表、CROSS 边界、安全拒绝 |
+| 退出规则与账户链 | `tests/exits_v2` | 28 | 9 类退出、完整账户正反例 |
+| 公共入口一致性 | `tests/entrypoints_v2` | 9 | API/CLI 同语义、边界拒绝 |
+| **V2 主体小计** | | **120** | |
+| PR15 定向复核（第一轮） | `tests/pr15_remediation` | 26 | 五类根因，经真实 API/CLI |
+| PR15 定向复核（残留） | `tests/pr15_residual` | 20 | 版本绑定、ATR 规则身份、排名退出 |
+| **PR15 定向小计** | | **46** | |
+| **合计** | | **166** | |
+
+V1 兼容回归单独统计：`tests/behavior`、`tests/indicators`、`tests/legacy_entry`、
+`tests/engine`、`tests/golden`、`tests/lookahead`、`tests/regression` 共 **139** 项。
+
+证据类型分开记录，不混为"166 项都验证了公式"：
+
+- **helper 级**：直接调用注册表/求值器（如公式逐值 oracle）；
+- **直接服务级**：调用 `run_behavior_backtest_v2`；
+- **HTTP 级**：经 FastAPI `TestClient` 的 `POST /api/backtest/behavior/v2`；
+- **CLI 级**：真实子进程执行 `scripts/run_behavior_backtest_v2.py`。
+
+矩阵中的 `VERIFIED` 同时要求 oracle 与**公开入口**证据，且给出精确 nodeid。
+
+### 8.2 回归对账口径
+
+BASE_SHA 干净工作树与本次 HEAD 各跑完整套件，逐条对账失败 nodeid：
+
+- 三处历史记录数字（文档 194/193、归档 194/194、早期 170/170）来自不同阶段与不同
+  隔离设置，**不能互相替代**；本文件只声明本次 HEAD 的对账结果。
+- 差异项为既有顺序相关不稳定（Windows GBK 解码/共享状态），两个 flaky 用例
+  单独运行均通过，且 V2 模块未被 `research_factory` 引用。
+- **因果未确认**：无法证明该不稳定的触发条件，因此只声明"本次 HEAD 未出现新增
+  失败 nodeid"，**不**声明"全系统零回归"。
+- 既有环境失败与 BASE_SHA 逐条一致，按 nodeid 对账，不计为通过。
 
 ---
 

@@ -1985,3 +1985,19 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 - scripts/emit_v2_acceptance_scope_v1.py、docs/EXTENSIBLE_BACKTEST_ACCEPTANCE_V2.md、reports/v2_acceptance/：逐项证据矩阵与口径更新。
 - .github/workflows/extensible-backtest-acceptance-v2.yml：V2 新增测试纳入双平台 CI。
 - 回滚点 196e666；可 git revert 本次提交。
+
+### Testing（PR15 残留修正追加）
+- 复现并关闭四处残留：表达式内版本未核验、ATR 序列被最后一条规则覆盖且窗口从契约默认值重推、排名退出因按 session 取值而永不触发、矩阵证据只写目录名且指纹只拼依赖名称。
+- 另修一处真实缺陷：服务路径未把 ATR 绑定身份传给冻结锚，导致 trace 无法溯源实例。
+- 新增 tests/pr15_residual（20 项），全部经真实 API/CLI 取得 red/green；PR15 定向两轮合计 46 项通过，V2 主体 120 项通过，V1 兼容回归 139 项通过。
+- 矩阵新增 nodeid 实存校验测试：矩阵声称的 16 个 nodeid 全部能被 pytest 真实收集，写错即测试失败（发现并修正了 MACD/KDJ 两个错误 nodeid）。
+- 完整套件在 BASE_SHA 干净工作树与本次 HEAD 分别运行：零新增失败 nodeid（基线 194 项失败集合覆盖本次 193 项）；因果未确认，不声明全系统零回归。
+### Notes
+- src/chanlun_trader/engine/behavior_service_v2.py：表达式引用解析为精确实例键并核验版本；每条 ATR 规则各自持有序列与绑定身份；窗口取实际使用值；混合截面/时序条件运行前拒绝。
+- src/chanlun_trader/engine/daily_exit_v2.py：入场锚按 (lot_id, rule) 存储；排名退出按结果索引域取值（symbol 或 session）；绑定身份随 trace 输出。
+- src/chanlun_trader/engine/indicator_registry_v2.py：IndicatorResult 携带 resolved_params；公式指纹递归绑定依赖 version 与源码。
+- scripts/emit_v2_acceptance_scope_v1.py、docs/EXTENSIBLE_BACKTEST_ACCEPTANCE_V2.md、reports/v2_acceptance/：逐项精确 nodeid + 适用域 + JUnit，测试分母按来源分开，OPEN 项与因果未确认如实登记。
+- tests/pr15_residual/test_pr15_residual_v1.py：残留验收（版本绑定、双 ATR 规则、排名退出、指纹变异、nodeid 实存）。
+- tests/pr15_remediation、tests/exits_v2：同步按规则登记锚与 nodeid 校验。
+- .github/workflows/extensible-backtest-acceptance-v2.yml：残留测试纳入双平台 CI。
+- 回滚点 ae871ae；可 git revert 本次提交。

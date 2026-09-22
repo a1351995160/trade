@@ -2,11 +2,14 @@
   "registry_version": "BT_INDICATOR_REGISTRY_V2",
   "minimum_set": {
     "required": 54,
-    "verified": 26,
-    "partial": 28,
+    "verified": 28,
+    "partial": 26,
     "not_verified": 0
   },
-  "note": "VERIFIED 要求同时具备：实现 + 独立数值 oracle + 契约测试 + 公开入口测试。仅注册/映射完成标 PARTIAL，不外推为公式或账户已验证。",
+  "note": "VERIFIED 要求同时具备：实现 + 独立数值 oracle + 契约测试 + 公开入口测试，并给出精确测试 nodeid、适用域与同 HEAD JUnit。仅注册/映射完成标 PARTIAL，不外推为公式或账户已验证。",
+  "unsupported_combinations": {
+    "MIXED_CROSS_SECTIONAL_AND_SERIES_CONDITION": "截面算子与时序算子在同一逻辑节点下混用：运行前显式拒绝（MIXED_CROSS_SECTIONAL_AND_SERIES_CONDITION_NOT_SUPPORTED），不做静默不退出。"
+  },
   "families": [
     {
       "family": "基础算子",
@@ -19,148 +22,148 @@
           "target": "OPERATOR_LAYER",
           "status": "PARTIAL",
           "met": false,
-          "evidence": "impl=research/unified_factor.py（既有，本轮未改）; 未接 V2 单证券公开链路与账户链"
+          "evidence": "impl=research/unified_factor.py（既有，本轮未改）; domain=面板级算子层; 未接 V2 单证券公开链路与账户链; nodeid=无（本轮未接线）; junit=不适用"
         },
         {
           "requirement": "comparison",
           "target": "OPERATOR_LAYER",
           "status": "PARTIAL",
           "met": false,
-          "evidence": "impl=research/unified_factor.py（既有，本轮未改）; 未接 V2 单证券公开链路与账户链"
+          "evidence": "impl=research/unified_factor.py（既有，本轮未改）; domain=面板级算子层; 未接 V2 单证券公开链路与账户链; nodeid=无（本轮未接线）; junit=不适用"
         },
         {
           "requirement": "boolean",
           "target": "CONDITION_LAYER",
           "status": "VERIFIED",
           "met": true,
-          "evidence": "impl=engine/conditions_v2.py; tests=tests/conditions_v2"
+          "evidence": "impl=src/chanlun_trader/engine/conditions_v2.py; domain=条件层算子; nodeid=tests/conditions_v2/test_condition_layer_v2.py::test_cross_sectional_top_n_stable_tie_break; junit=reports/junit-v2-new.xml"
         },
         {
           "requirement": "REF",
           "target": "CONDITION_LAYER",
           "status": "VERIFIED",
           "met": true,
-          "evidence": "impl=engine/conditions_v2.py; tests=tests/conditions_v2"
+          "evidence": "impl=src/chanlun_trader/engine/conditions_v2.py; domain=条件层算子; nodeid=tests/conditions_v2/test_condition_layer_v2.py::test_cross_sectional_top_n_stable_tie_break; junit=reports/junit-v2-new.xml"
         },
         {
           "requirement": "rolling SUM/MEAN/STD/VAR",
           "target": "OPERATOR_LAYER",
           "status": "PARTIAL",
           "met": false,
-          "evidence": "impl=research/unified_factor.py（既有，本轮未改）; 未接 V2 单证券公开链路与账户链"
+          "evidence": "impl=research/unified_factor.py（既有，本轮未改）; domain=面板级算子层; 未接 V2 单证券公开链路与账户链; nodeid=无（本轮未接线）; junit=不适用"
         },
         {
           "requirement": "HHV/LLV",
           "target": "PRICE_EXTREMES",
           "status": "PARTIAL",
           "met": false,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; domain=outputs=['hhv', 'llv'];params=['window'];price_mode=CALLER_DECLARED;warmup=20;unit=PRICE; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         },
         {
           "requirement": "COUNT",
           "target": "OPERATOR_LAYER",
           "status": "PARTIAL",
           "met": false,
-          "evidence": "impl=research/unified_factor.py（既有，本轮未改）; 未接 V2 单证券公开链路与账户链"
+          "evidence": "impl=research/unified_factor.py（既有，本轮未改）; domain=面板级算子层; 未接 V2 单证券公开链路与账户链; nodeid=无（本轮未接线）; junit=不适用"
         },
         {
           "requirement": "EVERY/EXIST",
           "target": "CONDITION_LAYER",
           "status": "VERIFIED",
           "met": true,
-          "evidence": "impl=engine/conditions_v2.py; tests=tests/conditions_v2"
+          "evidence": "impl=src/chanlun_trader/engine/conditions_v2.py; domain=条件层算子; nodeid=tests/conditions_v2/test_condition_layer_v2.py::test_cross_sectional_top_n_stable_tie_break; junit=reports/junit-v2-new.xml"
         },
         {
           "requirement": "BARSLAST",
           "target": "CONDITION_LAYER",
           "status": "VERIFIED",
           "met": true,
-          "evidence": "impl=engine/conditions_v2.py; tests=tests/conditions_v2"
+          "evidence": "impl=src/chanlun_trader/engine/conditions_v2.py; domain=条件层算子; nodeid=tests/conditions_v2/test_condition_layer_v2.py::test_cross_sectional_top_n_stable_tie_break; junit=reports/junit-v2-new.xml"
         },
         {
           "requirement": "CROSS_UP/CROSS_DOWN",
           "target": "CONDITION_LAYER",
           "status": "VERIFIED",
           "met": true,
-          "evidence": "impl=engine/conditions_v2.py; tests=tests/conditions_v2"
+          "evidence": "impl=src/chanlun_trader/engine/conditions_v2.py; domain=条件层算子; nodeid=tests/conditions_v2/test_condition_layer_v2.py::test_cross_sectional_top_n_stable_tie_break; junit=reports/junit-v2-new.xml"
         }
       ]
     },
     {
       "family": "均线与趋势",
       "required": 10,
-      "verified": 6,
-      "partial": 4,
+      "verified": 8,
+      "partial": 2,
       "items": [
         {
           "requirement": "MA/算术SMA",
           "target": "MA",
           "status": "VERIFIED",
           "met": true,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; oracle=tests/indicators_v2/_oracle_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; domain=outputs=['ma'];params=['price', 'window'];price_mode=CALLER_DECLARED;warmup=20;unit=PRICE; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_ma_matches_oracle; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         },
         {
           "requirement": "EMA",
           "target": "EMA",
           "status": "VERIFIED",
           "met": true,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; oracle=tests/indicators_v2/_oracle_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; domain=outputs=['ema'];params=['price', 'window'];price_mode=CALLER_DECLARED;warmup=12;unit=PRICE; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_ema_wma_rma_match_oracle; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         },
         {
           "requirement": "WMA",
           "target": "WMA",
           "status": "VERIFIED",
           "met": true,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; oracle=tests/indicators_v2/_oracle_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; domain=outputs=['wma'];params=['price', 'window'];price_mode=CALLER_DECLARED;warmup=20;unit=PRICE; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_ema_wma_rma_match_oracle; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         },
         {
           "requirement": "RMA/Wilder",
           "target": "RMA",
           "status": "VERIFIED",
           "met": true,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; oracle=tests/indicators_v2/_oracle_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; domain=outputs=['rma'];params=['price', 'window'];price_mode=CALLER_DECLARED;warmup=14;unit=PRICE; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_ema_wma_rma_match_oracle; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         },
         {
           "requirement": "通达信SMA(N,M)",
           "target": "SMA_TDX",
           "status": "VERIFIED",
           "met": true,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; oracle=tests/indicators_v2/_oracle_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; domain=outputs=['sma_tdx'];params=['price', 'weight', 'window'];price_mode=CALLER_DECLARED;warmup=9;unit=PRICE; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_sma_tdx_hand_computed_and_differs_from_arithmetic; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         },
         {
           "requirement": "DEMA",
           "target": "DEMA",
           "status": "PARTIAL",
           "met": false,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; domain=outputs=['dema', 'ema1', 'ema2'];params=['price', 'window'];price_mode=CALLER_DECLARED;warmup=39;unit=PRICE; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         },
         {
           "requirement": "TEMA",
           "target": "TEMA",
           "status": "PARTIAL",
           "met": false,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; domain=outputs=['tema', 'ema1', 'ema2', 'ema3'];params=['price', 'window'];price_mode=CALLER_DECLARED;warmup=58;unit=PRICE; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         },
         {
           "requirement": "MACD",
           "target": "MACD",
           "status": "VERIFIED",
           "met": true,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v1.py; oracle=tests/indicators_v2/_oracle_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v1.py; domain=outputs=['ema_fast', 'ema_slow', 'dif', 'dea', 'hist'];params=['fast', 'signal', 'slow'];price_mode=CALLER_DECLARED;warmup=34;unit=PRICE; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators/test_indicator_formulas_v1.py::test_macd_v1_matches_independent_oracle; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         },
         {
           "requirement": "DMI/ADX",
           "target": "DMI",
-          "status": "PARTIAL",
-          "met": false,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "status": "VERIFIED",
+          "met": true,
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; domain=outputs=['plus_di', 'minus_di', 'adx', 'atr'];params=['window'];price_mode=CALLER_DECLARED;warmup=28;unit=INDEX_0_100; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_dmi_and_sar_match_independent_oracle; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         },
         {
           "requirement": "SAR",
           "target": "SAR",
-          "status": "PARTIAL",
-          "met": false,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "status": "VERIFIED",
+          "met": true,
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; domain=outputs=['sar', 'sar_trend'];params=['max_step', 'step'];price_mode=CALLER_DECLARED;warmup=2;unit=PRICE; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_dmi_and_sar_match_independent_oracle; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         }
       ]
     },
@@ -175,56 +178,56 @@
           "target": "KDJ",
           "status": "VERIFIED",
           "met": true,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v1.py; oracle=tests/indicators_v2/_oracle_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v1.py; domain=outputs=['rsv', 'k', 'd', 'j'];params=['d_period', 'k_period', 'n'];price_mode=CALLER_DECLARED;warmup=9;unit=INDEX_0_100; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators/test_indicator_formulas_v1.py::test_kdj_v1_matches_independent_oracle; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         },
         {
           "requirement": "RSI",
           "target": "RSI",
           "status": "VERIFIED",
           "met": true,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; oracle=tests/indicators_v2/_oracle_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; domain=outputs=['rsi'];params=['price', 'window'];price_mode=CALLER_DECLARED;warmup=15;unit=INDEX_0_100; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_rsi_matches_oracle; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         },
         {
           "requirement": "CCI",
           "target": "CCI",
           "status": "PARTIAL",
           "met": false,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; domain=outputs=['cci', 'typical_price'];params=['window'];price_mode=CALLER_DECLARED;warmup=14;unit=PRICE; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         },
         {
           "requirement": "Williams %R",
           "target": "WILLIAMS_R",
           "status": "VERIFIED",
           "met": true,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; oracle=tests/indicators_v2/_oracle_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; domain=outputs=['wr', 'hhv', 'llv'];params=['window'];price_mode=CALLER_DECLARED;warmup=14;unit=INDEX_0_100; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_williams_r_matches_oracle; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         },
         {
           "requirement": "ROC",
           "target": "ROC",
           "status": "VERIFIED",
           "met": true,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; oracle=tests/indicators_v2/_oracle_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; domain=outputs=['roc', 'ref_close'];params=['price', 'window'];price_mode=CALLER_DECLARED;warmup=13;unit=PERCENT; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_obv_roc_mtm_bias_match_oracle; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         },
         {
           "requirement": "MTM/MOM",
           "target": "MTM",
           "status": "VERIFIED",
           "met": true,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; oracle=tests/indicators_v2/_oracle_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; domain=outputs=['mtm', 'ref_close'];params=['price', 'window'];price_mode=CALLER_DECLARED;warmup=13;unit=PRICE; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_obv_roc_mtm_bias_match_oracle; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         },
         {
           "requirement": "BIAS",
           "target": "BIAS",
           "status": "VERIFIED",
           "met": true,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; oracle=tests/indicators_v2/_oracle_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; domain=outputs=['bias', 'ma'];params=['price', 'window'];price_mode=CALLER_DECLARED;warmup=6;unit=PERCENT; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_obv_roc_mtm_bias_match_oracle; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         },
         {
           "requirement": "TRIX",
           "target": "TRIX",
           "status": "PARTIAL",
           "met": false,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; domain=outputs=['trix', 'trix_ma'];params=['price', 'signal', 'window'];price_mode=CALLER_DECLARED;warmup=45;unit=PERCENT; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         }
       ]
     },
@@ -239,42 +242,42 @@
           "target": "TRUE_RANGE",
           "status": "PARTIAL",
           "met": false,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; domain=outputs=['tr'];params=[];price_mode=CALLER_DECLARED;warmup=1;unit=PRICE; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         },
         {
           "requirement": "ATR",
           "target": "ATR",
           "status": "VERIFIED",
           "met": true,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; oracle=tests/indicators_v2/_oracle_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; domain=outputs=['atr', 'tr'];params=['window'];price_mode=CALLER_DECLARED;warmup=14;unit=PRICE; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_atr_matches_oracle; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         },
         {
           "requirement": "NATR",
           "target": "NATR",
           "status": "PARTIAL",
           "met": false,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; domain=outputs=['natr', 'atr'];params=['window'];price_mode=CALLER_DECLARED;warmup=14;unit=PERCENT; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         },
         {
           "requirement": "滚动波动率",
           "target": "ROLLING_VOLATILITY",
           "status": "PARTIAL",
           "met": false,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; domain=outputs=['volatility', 'return'];params=['annualize', 'ddof', 'price', 'window'];price_mode=CALLER_DECLARED;warmup=21;unit=RATIO; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         },
         {
           "requirement": "BOLL/BBANDS",
           "target": "BOLLINGER",
           "status": "VERIFIED",
           "met": true,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; oracle=tests/indicators_v2/_oracle_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; domain=outputs=['middle', 'upper', 'lower', 'bandwidth', 'percent_b', 'std'];params=['ddof', 'multiplier', 'price', 'window'];price_mode=CALLER_DECLARED;warmup=20;unit=PRICE; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_bollinger_matches_oracle; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         },
         {
           "requirement": "Donchian",
           "target": "DONCHIAN",
           "status": "PARTIAL",
           "met": false,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; domain=outputs=['upper', 'lower', 'middle'];params=['shift', 'window'];price_mode=CALLER_DECLARED;warmup=20;unit=PRICE; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         }
       ]
     },
@@ -289,56 +292,56 @@
           "target": "VOLUME_MA",
           "status": "PARTIAL",
           "met": false,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; domain=outputs=['volume_ma'];params=['window'];price_mode=CALLER_DECLARED;warmup=20;unit=SHARES; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         },
         {
           "requirement": "成交额均线",
           "target": "AMOUNT_MA",
           "status": "PARTIAL",
           "met": false,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; domain=outputs=['amount_ma'];params=['window'];price_mode=CALLER_DECLARED;warmup=20;unit=CURRENCY; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         },
         {
           "requirement": "RVOL",
           "target": "RVOL_INCL_CURRENT",
           "status": "PARTIAL",
           "met": false,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; domain=outputs=['rvol', 'volume_ma'];params=['window'];price_mode=CALLER_DECLARED;warmup=20;unit=RATIO; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         },
         {
           "requirement": "OBV",
           "target": "OBV",
           "status": "VERIFIED",
           "met": true,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; oracle=tests/indicators_v2/_oracle_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; domain=outputs=['obv'];params=[];price_mode=CALLER_DECLARED;warmup=1;unit=SHARES; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_obv_roc_mtm_bias_match_oracle; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         },
         {
           "requirement": "MFI",
           "target": "MFI",
           "status": "PARTIAL",
           "met": false,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; domain=outputs=['mfi', 'typical_price'];params=['window'];price_mode=CALLER_DECLARED;warmup=15;unit=INDEX_0_100; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         },
         {
           "requirement": "A/D",
           "target": "ACCUMULATION_DISTRIBUTION",
           "status": "PARTIAL",
           "met": false,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; domain=outputs=['ad_line', 'money_flow_volume'];params=[];price_mode=CALLER_DECLARED;warmup=1;unit=SHARES; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         },
         {
           "requirement": "CMF",
           "target": "CHAIKIN_MONEY_FLOW",
           "status": "PARTIAL",
           "met": false,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; domain=outputs=['cmf', 'mfv_sum', 'volume_sum'];params=['window'];price_mode=CALLER_DECLARED;warmup=20;unit=RATIO; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         },
         {
           "requirement": "PVT",
           "target": "PVT",
           "status": "PARTIAL",
           "met": false,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; domain=outputs=['pvt'];params=[];price_mode=CALLER_DECLARED;warmup=1;unit=SHARES; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         }
       ]
     },
@@ -353,35 +356,35 @@
           "target": "PRICE_EXTREMES",
           "status": "PARTIAL",
           "met": false,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; domain=outputs=['hhv', 'llv'];params=['window'];price_mode=CALLER_DECLARED;warmup=20;unit=PRICE; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         },
         {
           "requirement": "前N根突破",
           "target": "PRIOR_BREAKOUT",
           "status": "PARTIAL",
           "met": false,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; domain=outputs=['prior_high', 'prior_low', 'break_up', 'break_down'];params=['window'];price_mode=CALLER_DECLARED;warmup=21;unit=PRICE; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         },
         {
           "requirement": "回撤/振幅",
           "target": "DRAWDOWN_FROM_PEAK",
           "status": "PARTIAL",
           "met": false,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; domain=outputs=['drawdown', 'peak'];params=['price', 'window'];price_mode=CALLER_DECLARED;warmup=60;unit=RATIO; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         },
         {
           "requirement": "实体/上下影线/缺口比例",
           "target": "BAR_SHAPE",
           "status": "VERIFIED",
           "met": true,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; oracle=tests/indicators_v2/_oracle_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; domain=outputs=['body_ratio', 'upper_shadow_ratio', 'lower_shadow_ratio', 'range_pct', 'gap_pct'];params=['window'];price_mode=CALLER_DECLARED;warmup=1;unit=RATIO; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_hlc3_slope_zscore_shape_match_oracle; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         },
         {
           "requirement": "连续上涨下跌",
           "target": "STREAK",
           "status": "VERIFIED",
           "met": true,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; oracle=tests/indicators_v2/_oracle_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; domain=outputs=['up_streak', 'down_streak'];params=['price'];price_mode=CALLER_DECLARED;warmup=1;unit=BARS; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_streak_matches_oracle; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         }
       ]
     },
@@ -396,49 +399,49 @@
           "target": "HISTORICAL_RETURN",
           "status": "PARTIAL",
           "met": false,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; domain=outputs=['return', 'ref_close'];params=['log', 'price', 'window'];price_mode=CALLER_DECLARED;warmup=21;unit=RATIO; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         },
         {
           "requirement": "线性斜率",
           "target": "ROLLING_SLOPE",
           "status": "VERIFIED",
           "met": true,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; oracle=tests/indicators_v2/_oracle_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; domain=outputs=['slope'];params=['price', 'window'];price_mode=CALLER_DECLARED;warmup=20;unit=PRICE_PER_BAR; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_hlc3_slope_zscore_shape_match_oracle; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         },
         {
           "requirement": "时间序列标准化",
           "target": "TIME_SERIES_ZSCORE",
           "status": "VERIFIED",
           "met": true,
-          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; oracle=tests/indicators_v2/_oracle_v2.py; entrypoint=tests/entrypoints_v2; contract=tests/indicators_v2"
+          "evidence": "impl=src/chanlun_trader/engine/indicators_v2.py; domain=outputs=['ts_zscore', 'mean', 'std'];params=['ddof', 'price', 'window'];price_mode=CALLER_DECLARED;warmup=60;unit=RATIO; junit=reports/junit-v2-new.xml; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_registry_snapshot_has_required_contract_fields; nodeid=tests/indicators_v2/test_indicator_families_v2.py::test_hlc3_slope_zscore_shape_match_oracle; nodeid=tests/entrypoints_v2/test_public_entrypoints_v2.py::test_v2_endpoint_runs_and_reports_versions"
         },
         {
           "requirement": "相关系数",
           "target": "OPERATOR_LAYER:correlation",
           "status": "PARTIAL",
           "met": false,
-          "evidence": "impl=research/unified_factor.py（既有，本轮未改）; 未接 V2 单证券公开链路与账户链"
+          "evidence": "impl=research/unified_factor.py（既有，本轮未改）; domain=面板级算子层; 未接 V2 单证券公开链路与账户链; nodeid=无（本轮未接线）; junit=不适用"
         },
         {
           "requirement": "Beta",
           "target": "OPERATOR_LAYER:beta",
           "status": "PARTIAL",
           "met": false,
-          "evidence": "impl=research/unified_factor.py（既有，本轮未改）; 未接 V2 单证券公开链路与账户链"
+          "evidence": "impl=research/unified_factor.py（既有，本轮未改）; domain=面板级算子层; 未接 V2 单证券公开链路与账户链; nodeid=无（本轮未接线）; junit=不适用"
         },
         {
           "requirement": "截面rank/percentile",
           "target": "CONDITION_LAYER:rank",
           "status": "VERIFIED",
           "met": true,
-          "evidence": "impl=engine/conditions_v2.py; tests=tests/conditions_v2"
+          "evidence": "impl=src/chanlun_trader/engine/conditions_v2.py; domain=条件层算子; nodeid=tests/conditions_v2/test_condition_layer_v2.py::test_cross_sectional_top_n_stable_tie_break; junit=reports/junit-v2-new.xml"
         },
         {
           "requirement": "Top-N",
           "target": "CONDITION_LAYER:top_n",
           "status": "VERIFIED",
           "met": true,
-          "evidence": "impl=engine/conditions_v2.py; tests=tests/conditions_v2"
+          "evidence": "impl=src/chanlun_trader/engine/conditions_v2.py; domain=条件层算子; nodeid=tests/conditions_v2/test_condition_layer_v2.py::test_cross_sectional_top_n_stable_tie_break; junit=reports/junit-v2-new.xml"
         }
       ]
     }
