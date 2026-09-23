@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
@@ -23,6 +24,9 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 
 OUT_DIR = REPO_ROOT / "reports" / "price_only_validation_v1"
 TARGET_JUNIT_NAME = "junit-price-only-v1.xml"
+
+# Windows 盘符前缀：在 POSIX 上会被误当仓库内相对路径，直接拒绝
+_DRIVE_PREFIX_RE = re.compile(r"^[a-zA-Z]:[\\/]")
 
 # 条件消费与账户接线的适用 nodeid（同一套件内）
 CONDITION_NODEID = ("tests/conditions_v2/test_price_only_condition_consumption_v1.py"
@@ -304,7 +308,12 @@ def resolve_within_repo(candidate: str, *, label: str) -> Path:
     安全说明：``--junit``/``--out`` 是外部输入，直接当作文件路径会产生
     路径穿越（Sonar ``pythonsecurity:S8707``）。本函数是唯一允许把外部
     字符串转成文件路径的入口：解析后必须落在 ``REPO_ROOT`` 之内。
+
+    另拒绝含盘符的 Windows 风格写法（如 ``E:/x``）：在 POSIX 上它会被
+    当作仓库内的相对路径，语义易混淆，直接拒绝更安全。
     """
+    if _DRIVE_PREFIX_RE.match(candidate.strip()):
+        raise ValueError(f"{label}_DRIVE_PATH_NOT_ALLOWED:{candidate}")
     root = REPO_ROOT.resolve()
     raw = Path(candidate)
     resolved = (root / raw).resolve() if not raw.is_absolute() else raw.resolve()

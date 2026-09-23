@@ -18,6 +18,7 @@ parse_junit_outcomes / resolve_dimension / _indicator_evidence，
 from __future__ import annotations
 
 import importlib.util
+import os
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -211,10 +212,15 @@ def test_cli_out_path_traversal_is_rejected(capsys):
 
 
 def test_cli_junit_path_traversal_is_rejected(capsys):
-    """--junit 绝对路径越界必须被拒。"""
+    """--junit 越界路径必须被拒（用平台无关的仓库外路径）。
+
+    注意不能用 ``E:/evil.xml``：该写法在 POSIX 上是仓库内的相对路径，
+    会被正确解析为仓库内路径而非越界，跨平台断言会假失败。
+    """
     module = _load_module()
-    code = module.main(["--junit", "E:/evil.xml"])
-    assert code != 0
+    outside = ".." + os.sep + "evil.xml" if os.sep == "/" else "../../evil.xml"
+    code = module.main(["--junit", outside])
+    assert code != 0, "越界 junit 路径未被拒绝"
     assert "PATH_OUTSIDE_REPO" in capsys.readouterr().err
 
 
