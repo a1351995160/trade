@@ -2072,3 +2072,21 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 - reports/price_only_validation_v1/{PRICE_ONLY_VALIDATION_V1.md,INVENTORY_CORRECTIONS_V1.json,PRICE_ONLY_CAPABILITY_MATRIX_V1.json,REGRESSION_RECONCILIATION_V1.json}、reports/junit-price-only-v1.xml：交付文档、十项更正、能力矩阵、回归对账与脱敏 JUnit。
 - .github/workflows/price-only-indicator-validation-v1.yml：双平台 CI。
 - 回滚点 f5acb0317719a42eb7071504048e341b50a7ac12；可 git revert 本分支提交，不影响 main 与旧工作区。
+
+### Testing（PR #16 定点收尾追加）
+- PR16-01：以合成哨兵复现五类绕过（相对/绝对不一致、.. 遍历、符号链接别名、显式清单被 basename 白名单早退、Windows 扩展路径）；修复为基于可信组合根的绝对身份判定，覆盖实际入口 TdxData._load_gbbq，open 探针证明拒绝先于打开；新增 19 项身份绕过测试。
+- PR16-02：模块级无条件 skip 改为工作区级任务激活条件（离开本任务语义不变、环境变量不能放开真实数据）；合成可证 QFQ 性质拆出并实际执行 4 项，真实集成标 real_data_integration 并在任务激活时 skip 2 项；未删断言、未扩大 skip、未吞异常。
+- PR16-03：修复 naive_wilder_rma 跨缺口继承旧段状态（[1,1,NaN,10,10,10] window=2 由 [NaN,2,NaN,11,15.5,17.75] 改为 [NaN,2,NaN,NaN,20,20]）；补 NATR/Keltner 缺口等值断言与无缺口正对照；证据口径由 230/20 修正为 226（162+41+8+19+4+11）。
+- 目标套件 517 项通过、3 项分类 skip；完整套件零新增失败 nodeid（基线 194 覆盖本次 193）；5 项 skip 已逐项分类；因果未确认，不用数量相同冒充零回归。
+- 双平台 CI 与 SonarCloud 全部通过（ubuntu 与 windows 各两次运行）。
+### Notes
+- src/chanlun_trader/price_only_scope.py：身份判定重写（解析 . / .. / 符号链接 / Windows 扩展前缀；清单先于白名单；无法解析 fail closed）。
+- tests/price_only_scope/task_scope.py：任务激活条件（工作区级标记，非环境变量）。
+- tests/price_only_scope/test_gbbq_identity_bypass_v1.py：19 项绕过测试（含 open 探针与实际入口）。
+- tests/pit/test_qfq_pit_synthetic_v1.py：4 项合成可证 QFQ 性质（实际执行）。
+- tests/pit/test_qfq_pit_safety.py：改为 real_data_integration 分类 + 任务激活 skip。
+- tests/indicators_v2/_oracle_price_only_v1.py：naive_wilder_rma 按段独立播种。
+- tests/indicators_v2/test_price_only_formula_increment_v1.py：补 RMA 缺口反例与 NATR/Keltner 缺口等值断言（162 项）。
+- pyproject.toml：注册 real_data_integration 标记。
+- reports/price_only_validation_v1/{PRICE_ONLY_CAPABILITY_MATRIX_V1.json,REGRESSION_RECONCILIATION_V1.json}、reports/junit-price-only-v1.xml：三项关闭矩阵、逐 nodeid 对账与脱敏 JUnit。
+- 回滚点 3bcd5f7dd38519d83f0d3551575d888c8cf28ba7；可 git revert 本次提交。
