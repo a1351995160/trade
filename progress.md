@@ -2124,3 +2124,29 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 - scripts/emit_price_only_evidence_v1.py：纳入全部新增文件；CollectionError；NOT_ESTABLISHED；逐项精确 nodeid 与证明强度。
 - reports/price_only_validation_v1/{EVIDENCE_COUNTS_V1.json,PRICE_ONLY_CAPABILITY_MATRIX_V1.json}、reports/junit-price-only-v1.xml：派生计数、运行时关闭矩阵、脱敏 JUnit。
 - 回滚点 b63cb1b6f843cfc54306602c0756d2b4a1c994d4；可 git revert 本次提交。
+
+## 2026-09-23 - Task: PR #16 合并前定点收尾（作用域恢复、受控 reader、证据推导）
+### What was done
+在 PR #16 原分支完成三项残留的代码、测试与证据收尾。任务作用域新增完整政策快照与恢复，修复了第二个 fixture（vendor 入口测试）在 finally 中无条件 deactivate 会关闭外层任务的同类缺陷，并补 pytest 顺序回归。gbbq 受控入口拆分为间接（TdxData）与直接（受控 wrapper）两条路径各自作证，新增静态检查发现并整改了两处绕过 wrapper 的直接调用点；裸 vendor 调用如实标为不支持。证据生成器原地改造为按 JUnit testcase outcome 推导状态，参数化按最差聚合，并补输入变异测试。过程中修复了 CI 暴露的三个真实缺陷。
+### Testing
+- 目标套件 558 passed / 2 skipped；price_only_scope 82 passed。
+- 作用域：外层激活→受保护合成缓存拒绝→内部清理→仍拒绝；pytest 顺序回归（子会话内两用例顺序执行）；正常/异常退出恢复；原未激活保持原状。
+- 受控 reader：路径 A 间接（open 探针 + vendor get_df 未执行）；路径 B 直接（open/decode 前拒绝）；正对照（未受保护输入确实到达 vendor）。
+- 证据变异：删映射、改 failure/error/skip、删 testcase、混合参数、缺失/损坏 JUnit 均降级；无关变异不误伤；空 JUnit 全降级。
+- CI 暴露并修复的真实缺陷：①脱敏用 `<workspace>` 破坏 XML；②node_diff_vs_base 引用未定义常量 NOT_ESTABLISHED；③Sonar S8707 路径穿越（--junit/--out 直接当路径）+ 盘符路径跨平台语义差异。
+- 完整套件零新增失败 nodeid（基线 194 覆盖本次 193）；因果未确认。
+- 双平台 CI 与 SonarCloud 全部通过。
+### Notes
+- src/chanlun_trader/price_only_scope.py：新增 snapshot/restore_task_scope（含 reason、冻结禁止集合、环境清单）、controlled_gbbq_reader 与 CONTROLLED_READER_POLICY；移除重复的 is_forbidden_gbbq_path 定义。
+- src/chanlun_trader/tdx_data.py：改用受控 wrapper；清理因本轮改动产生的未用导入。
+- src/chanlun_trader/data/tdx/owner_export_v1.py：直接 vendor 调用改经受控 wrapper。
+- scripts/emit_price_only_evidence_v1.py：状态由 JUnit outcome 推导、参数化最差聚合、resolve_within_repo 路径限制、--junit/--out 参数、node_diff_vs_base。
+- tests/price_only_scope/test_task_scope_v1.py：保存/恢复完整政策、外层任务保护、monkeypatch 化。
+- tests/price_only_scope/test_vendor_entry_guard_v1.py：路径 A/B 分开作证、正对照、junction 两方向、monkeypatch 化。
+- tests/price_only_scope/test_controlled_reader_boundary_v1.py（新增）：AST 静态检查防调用点绕过。
+- tests/price_only_scope/test_scope_order_regression_v1.py（新增）：完整 pytest 顺序回归。
+- tests/price_only_scope/test_evidence_mutation_v1.py（新增）：输入变异测试与路径穿越回归。
+- tests/price_only_scope/test_evidence_regression_v1.py（删除）：其断言方式正是本轮禁止的模式，已被变异测试取代。
+- .github/workflows/price-only-indicator-validation-v1.yml：新增用本次 CI 实际 JUnit 运行生成器的步骤。
+- reports/price_only_validation_v1/{EVIDENCE_COUNTS_V1.json,PRICE_ONLY_CAPABILITY_MATRIX_V1.json}、reports/junit-price-only-v1.xml：派生证据、关闭矩阵、脱敏 JUnit。
+- 回滚点 1b03623b39f08ef4f947b72e24f714897aaca308；可 git revert 本轮提交。
