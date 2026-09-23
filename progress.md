@@ -2150,3 +2150,13 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 - .github/workflows/price-only-indicator-validation-v1.yml：新增用本次 CI 实际 JUnit 运行生成器的步骤。
 - reports/price_only_validation_v1/{EVIDENCE_COUNTS_V1.json,PRICE_ONLY_CAPABILITY_MATRIX_V1.json}、reports/junit-price-only-v1.xml：派生证据、关闭矩阵、脱敏 JUnit。
 - 回滚点 1b03623b39f08ef4f947b72e24f714897aaca308；可 git revert 本轮提交。
+
+### Testing（补充：A1 重读门控与边界自查）
+- 边界自查发现：审计日志累计 73 条真实数据根读取（E:\new_tdx_mock\vipdoc，全部在 A1 授权窗口 20240102-20240731，未触碰封存期），原因是目标套件包含真实样本测试且本轮多次运行套件。
+- 已用任务作用域门控：test_real_raw_sample_v1.py 标 real_data_integration，任务激活时显式 skip。
+- 验证：运行前后真实数据根读取计数均为 73，新增 0；目标套件 547 passed / 13 skipped。
+- 历史 73 条读取如实保留在审计日志，不抹除。
+### Notes
+- tests/price_only_scope/test_real_raw_sample_v1.py：加 real_data_integration 标记与任务作用域门控，停止重复真实采样。
+- reports/price_only_validation_v1/EVIDENCE_COUNTS_V1.json、reports/junit-price-only-v1.xml：按门控后状态重生成并脱敏。
+- 回滚点 f45488c07a7195f8323d25f9ec97c80988ad5aa7。
