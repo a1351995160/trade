@@ -2090,3 +2090,21 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 - pyproject.toml：注册 real_data_integration 标记。
 - reports/price_only_validation_v1/{PRICE_ONLY_CAPABILITY_MATRIX_V1.json,REGRESSION_RECONCILIATION_V1.json}、reports/junit-price-only-v1.xml：三项关闭矩阵、逐 nodeid 对账与脱敏 JUnit。
 - 回滚点 3bcd5f7dd38519d83f0d3551575d888c8cf28ba7；可 git revert 本次提交。
+
+### Testing（PR #16 残留收尾追加）
+- PR16-01：复现 cwd 反例（相对清单 + 同一绝对路径，cwd 变化使判定由拒绝翻转为放行）；改为在组合根一次性解析并冻结禁止身份，检查时不读 cwd；环境变量至多追加约束、真实 gbbq 根身份始终保留；无法解析则 fail closed。新增 10 项作用域与冻结身份测试。
+- PR16-02：改用显式激活（tests/conftest.py 组合根），生产 _load_gbbq 与真实测试分类消费同一 task_scope_active()；报告文件存在性不再作为激活开关；退出恢复原有权限。junction 改为 Windows 临时目录原生 mklink /J 实际创建并检查入口拦截（本机实际执行通过）；POSIX 标 NOT_APPLICABLE。
+- PR16-03：新增 scripts/emit_price_only_evidence_v1.py，从实际 collect-only 与 JUnit 自动派生计数；修正 226 -> 249（六部分 245 + 合成 QFQ 4）；errors 与 failures 分开、skipped 不计 passed；移除 PENDING_COMMIT 占位；25 项逐行证据含证明强度分级；完整套件 JUnit 含本机路径，加入 .gitignore 不推送。
+- 目标套件 528 项通过、2 项分类 skip；完整套件失败集合与基线逐条完全一致（各 194 含 errors），零新增零消除；因果未确认。
+- 双平台 CI 与 SonarCloud 全部通过。
+### Notes
+- src/chanlun_trader/price_only_scope.py：冻结禁止身份（_build_frozen_denylist / rebuild_frozen_denylist / frozen_denylist）；显式任务作用域（activate_task_scope / deactivate_task_scope / task_scope_active）。
+- src/chanlun_trader/tdx_data.py：_load_gbbq 按作用域启用守卫。
+- tests/conftest.py：组合根显式激活任务作用域。
+- tests/price_only_scope/test_task_scope_v1.py：10 项作用域/冻结身份/不串扰测试。
+- tests/price_only_scope/test_gbbq_identity_bypass_v1.py：junction 原生创建测试；清单测试适配冻结入口。
+- tests/pit/test_qfq_pit_safety.py、tests/test_tdx_data.py：统一消费 task_scope_active()。
+- scripts/emit_price_only_evidence_v1.py：自动计数与逐项证据生成。
+- reports/price_only_validation_v1/{EVIDENCE_COUNTS_V1.json,PRICE_ONLY_CAPABILITY_MATRIX_V1.json}、reports/junit-price-only-v1.xml：计数证据、残留关闭矩阵、脱敏 JUnit。
+- .gitignore：排除含本机路径的完整套件 JUnit。
+- 回滚点 8f94f503816282d0a05949c807d4ad63d0e7ab06；可 git revert 本次提交。
