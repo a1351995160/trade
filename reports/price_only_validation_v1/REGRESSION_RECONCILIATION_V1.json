@@ -1,6 +1,7 @@
 {
-  "note": "BASE_SHA 干净工作树 vs 本次 HEAD，CI 同等隔离环境，逐 nodeid 对账。",
+  "note": "BASE_SHA 干净工作树 vs 本次 HEAD，CI 同等隔离环境，逐 nodeid 对账。按 nodeid 分列失败/skip/未执行/因果。",
   "base_sha": "f5acb0317719a42eb7071504048e341b50a7ac12",
+  "reviewed_head": "3bcd5f7dd38519d83f0d3551575d888c8cf28ba7",
   "isolated_env": {
     "CHANLUN_TEST_ISOLATION": "1"
   },
@@ -11,19 +12,52 @@
   },
   "head": {
     "failed_incl_errors": 193,
-    "passed": 2375,
-    "skipped": 4
+    "passed": 2401,
+    "skipped": 5
   },
-  "new_failures": [],
-  "no_longer_failing": [
+  "new_failures_by_nodeid": [],
+  "no_longer_failing_by_nodeid": [
     "tests/research_factory/test_train_search_batch_v1.py::test_sixty_session_compounding_and_amount_units"
   ],
-  "causality": "UNCONFIRMED",
-  "classification": {
-    "new_failures_nature": "本次 HEAD 无新增失败 nodeid",
-    "skipped_delta": "新增 3 项 skip 均为本任务 gbbq 访问禁令导致的显式跳过（tests/pit/test_qfq_pit_safety.py 2 项 + tests/test_tdx_data.py 1 项），非伪装通过",
-    "claim": "仅声明本次 HEAD 未出现新增失败 nodeid，不声明全系统零回归"
+  "skip_classification": {
+    "head_skips": [
+      {
+        "file": "tests\\research_factory\\test_raw_bootstrap_validation_audit_v1.py",
+        "line": 11,
+        "count": 1
+      },
+      {
+        "file": "tests\\pit\\test_qfq_pit_safety.py",
+        "line": 36,
+        "count": 1
+      },
+      {
+        "file": "tests\\pit\\test_qfq_pit_safety.py",
+        "line": 63,
+        "count": 1
+      },
+      {
+        "file": "tests\\price_only_scope\\test_gbbq_identity_bypass_v1.py",
+        "line": 110,
+        "count": 1
+      },
+      {
+        "file": "tests\\test_tdx_data.py",
+        "line": 59,
+        "count": 1
+      }
+    ],
+    "reasons": {
+      "tests/pit/test_qfq_pit_safety.py": "REAL_DATA_INTEGRATION 分类；合成可证性质已拆到 test_qfq_pit_synthetic_v1.py 并实际执行",
+      "tests/price_only_scope/test_gbbq_identity_bypass_v1.py": "junction 别名需 Windows 管理员权限，本机未覆盖（已标注范围）"
+    },
+    "not_counted_as_pass": true
   },
-  "passing_delta": "+220 项通过（本轮新增 230 项测试，减去 3 项因禁令跳过与基线 flaky 差异）",
-  "environment_failures_reference": "上一轮 reports/actual_data_inventory_20260922/ACTUAL_DATA_CAPABILITY.json"
+  "not_executed": [
+    "真实 gbbq 集成（本任务禁止）",
+    "封存期数据（硬锁）",
+    "junction 别名形式"
+  ],
+  "causality": "UNCONFIRMED",
+  "claim": "仅声明本次 HEAD 未出现新增失败 nodeid；不用数量相同冒充零回归"
 }

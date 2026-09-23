@@ -117,19 +117,34 @@ def naive_true_range(highs, lows, closes, prev_closes) -> List[float]:
 
 
 def naive_wilder_rma(values: Sequence[float], window: int) -> List[Optional[float]]:
-    """Wilder RMA：段首 = 前 N 个有限值之和，其后 prev - prev/N + value。"""
+    """Wilder RMA：**按连续段独立播种**。
+
+    段首 = 该段前 N 个有限值之和，其后 ``prev - prev/N + value``。
+    缺口（非有限值）切断段，**不得跨缺口继承旧段状态** ——
+    否则会把缺口前的累加量带到缺口后，产生错误的递推值。
+    """
     arr = _finite(values)
-    out: List[Optional[float]] = [None] * len(arr)
-    usable = [i for i in range(len(arr)) if np.isfinite(arr[i])]
-    if len(usable) < window:
-        return out
-    seed = float(np.sum(arr[usable[:window]]))
-    out[usable[window - 1]] = seed
-    previous = seed
-    for offset in range(window, len(usable)):
-        i = usable[offset]
-        previous = previous - previous / window + arr[i]
-        out[i] = previous
+    n = len(arr)
+    out: List[Optional[float]] = [None] * n
+    segment_start = 0
+    while segment_start < n:
+        # 找本段结束位置（连续有限区间）
+        if not np.isfinite(arr[segment_start]):
+            segment_start += 1
+            continue
+        segment_end = segment_start
+        while segment_end < n and np.isfinite(arr[segment_end]):
+            segment_end += 1
+        positions = list(range(segment_start, segment_end))
+        if len(positions) >= window:
+            seed = float(np.sum(arr[positions[:window]]))
+            out[positions[window - 1]] = seed
+            previous = seed
+            for offset in range(window, len(positions)):
+                i = positions[offset]
+                previous = previous - previous / window + arr[i]
+                out[i] = previous
+        segment_start = segment_end
     return out
 
 

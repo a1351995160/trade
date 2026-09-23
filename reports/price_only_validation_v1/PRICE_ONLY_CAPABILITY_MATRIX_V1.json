@@ -13,11 +13,31 @@
     "ACCOUNT_WIRED": "经公开服务进入合成账户链并产生真实成交"
   },
   "this_round_added_oracles": [
-    "DEMA", "TEMA", "CCI", "NATR", "PSY", "DONCHIAN", "KELTNER", "ROLLING_VOLATILITY",
-    "HISTORICAL_RETURN", "PRICE_EXTREMES", "PRIOR_BREAKOUT", "DRAWDOWN_FROM_PEAK",
-    "MACD_HIST_RAW", "TRIX", "VOLUME_MA", "AMOUNT_MA", "RVOL_PRIOR", "RVOL_INCL_CURRENT",
-    "ACCUMULATION_DISTRIBUTION", "CHAIKIN_MONEY_FLOW", "PVT", "VWAP_SESSION_PROXY",
-    "MFI", "ROLLING_SLOPE", "TRUE_RANGE"
+    "DEMA",
+    "TEMA",
+    "CCI",
+    "NATR",
+    "PSY",
+    "DONCHIAN",
+    "KELTNER",
+    "ROLLING_VOLATILITY",
+    "HISTORICAL_RETURN",
+    "PRICE_EXTREMES",
+    "PRIOR_BREAKOUT",
+    "DRAWDOWN_FROM_PEAK",
+    "MACD_HIST_RAW",
+    "TRIX",
+    "VOLUME_MA",
+    "AMOUNT_MA",
+    "RVOL_PRIOR",
+    "RVOL_INCL_CURRENT",
+    "ACCUMULATION_DISTRIBUTION",
+    "CHAIKIN_MONEY_FLOW",
+    "PVT",
+    "VWAP_SESSION_PROXY",
+    "MFI",
+    "ROLLING_SLOPE",
+    "TRUE_RANGE"
   ],
   "real_defect_found_and_fixed": {
     "indicator": "PSY",
@@ -32,16 +52,22 @@
     "note": "既有测试全部通过，说明原测试未覆盖振荡序列下的 PSY。"
   },
   "a0_results": {
-    "formula_oracle_tests": 158,
+    "formula_oracle_tests": 162,
     "condition_consumption_tests": 41,
+    "note": "25 个账户服务用例属于 41 条条件套件内部，不重复累加",
     "indicators_with_new_oracle": 25,
-    "indicators_reaching_account_chain": 25,
     "all_passed": true
   },
   "a1_results": {
     "status": "PASS",
-    "symbols": ["600000.SH", "000001.SZ"],
-    "window": [20240102, 20240731],
+    "symbols": [
+      "600000.SH",
+      "000001.SZ"
+    ],
+    "window": [
+      20240102,
+      20240731
+    ],
     "rows_per_symbol": 140,
     "source": "TDX .day 经 read_day_file_range 有界读取",
     "max_date_materialized": 20240731,
@@ -50,7 +76,16 @@
     "corporate_action_normalized": false,
     "historical_trade_eligibility_certified": false,
     "profitability_validated": false,
-    "verified_indicators": ["EMA", "DEMA", "TEMA", "TRUE_RANGE", "NATR", "PSY", "CCI", "MACD_HIST_RAW"],
+    "verified_indicators": [
+      "EMA",
+      "DEMA",
+      "TEMA",
+      "TRUE_RANGE",
+      "NATR",
+      "PSY",
+      "CCI",
+      "MACD_HIST_RAW"
+    ],
     "prohibited_actions_performed": {
       "strategy_signal_search": false,
       "return_ranking": false,
@@ -62,7 +97,11 @@
   },
   "access_incident_prevention": {
     "guard_module": "src/chanlun_trader/price_only_scope.py",
-    "covers": ["TdxData._load_gbbq", "TdxData 构造传入的 gbbq 路径", "真实全量缓存 data/cache/gbbq.csv"],
+    "covers": [
+      "TdxData._load_gbbq",
+      "TdxData 构造传入的 gbbq 路径",
+      "真实全量缓存 data/cache/gbbq.csv"
+    ],
     "rejection_point": "真实文件 open 之前（由 open 探针证明）",
     "test_nodeid": "tests/price_only_scope/test_gbbq_access_guard_v1.py",
     "tests": 8,
@@ -78,7 +117,9 @@
     "ST/停牌落盘（账户级交易资格）",
     "复权落盘或受控事件转换",
     "全库列结构扫描",
-    "数据供应商服务可用性"
+    "数据供应商服务可用性",
+    "gbbq 日期索引/解码/物理限窗（本轮明确不实现）",
+    "junction 别名（Windows 需管理员，本机未覆盖）"
   ],
   "capability_ceiling": {
     "formula_and_condition": "SUPPORTED",
@@ -87,5 +128,60 @@
     "real_account_backtest": "NOT_ESTABLISHED",
     "formal_trial": "NOT_ESTABLISHED",
     "real_performance_experiments": 0
+  },
+  "new_sha": "PENDING_COMMIT",
+  "access_boundary_tests": {
+    "gbbq_access_guard": 8,
+    "gbbq_identity_bypass": 19,
+    "bounded_read_boundary": 4,
+    "subtotal": 31,
+    "note": "上一轮旧口径写作 20 项访问边界，实际为 31 项（本轮新增 19 项身份绕过测试）。"
+  },
+  "real_raw_sample_tests": 11,
+  "new_tests_actual_total": 226,
+  "new_tests_breakdown": {
+    "formula": 162,
+    "condition_and_service": 41,
+    "gbbq_guard": 8,
+    "gbbq_identity_bypass": 19,
+    "bounded_read": 4,
+    "real_raw_sample": 11
+  },
+  "qfq_synthetic_split": {
+    "synthetic_executed": "tests/pit/test_qfq_pit_synthetic_v1.py (4 项，实际执行)",
+    "real_integration_not_executed": "tests/pit/test_qfq_pit_safety.py (2 项，任务激活时 skip)",
+    "marker": "real_data_integration"
+  },
+  "skip_classification": {
+    "gbbq_access_guard_junction": 1,
+    "qfq_real_data_integration": 2,
+    "note": "全部为显式分类 skip，非伪装通过；不用数量相同冒充零回归"
+  },
+  "pr16_remediation": {
+    "PR16-01": {
+      "status": "CLOSED",
+      "bypasses_reproduced_and_fixed": [
+        "相对与绝对路径不一致（绝对被放行）",
+        "scratch/../ 父目录遍历别名被放行",
+        "符号链接别名指向禁止目标被放行",
+        "显式清单因 basename 白名单早退失效",
+        "Windows 扩展路径 \\\\?\\ 与父目录别名被放行"
+      ],
+      "fix": "改为基于可信组合根的绝对身份判定：解析 . / .. / 符号链接与 Windows 扩展前缀，相对与绝对一致拒绝；显式清单先于白名单；无法解析则 fail closed。",
+      "scope_note": "junction 需 Windows 管理员权限，本机未覆盖并已标注。",
+      "entry_covered": "TdxData._load_gbbq（实际调用入口，非仅 guard helper）"
+    },
+    "PR16-02": {
+      "status": "CLOSED",
+      "skip_scope_fix": "改用工作区级任务激活条件（结果根标记），离开本任务不产生永久影响；不接受环境变量放开真实数据。",
+      "qfq_split": "合成可证性质拆到 test_qfq_pit_synthetic_v1.py 并实际执行（4 项）；真实本机集成标 real_data_integration 且任务激活时 skip（2 项）。",
+      "no_assertions_removed": true
+    },
+    "PR16-03": {
+      "status": "CLOSED",
+      "oracle_fix": "naive_wilder_rma 改为按连续段独立播种；[1,1,NaN,10,10,10] window=2 -> [NaN,2,NaN,NaN,20,20]",
+      "evidence_counts_corrected": "新增 226 项（162 公式 + 41 条件/服务 + 8 guard + 19 身份绕过 + 4 bounded + 11 A1）；上一轮 230/20 口径已修正",
+      "note": "25 个账户服务用例属于 41 条条件套件内部，不重复累加"
+    }
   }
 }

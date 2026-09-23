@@ -536,6 +536,52 @@ def test_appending_future_does_not_change_past(shape):
                 err_msg=f"{fn.__name__}:{name} 追加未来改变了历史值")
 
 
+def test_wilder_rma_oracle_reseeds_after_gap():
+    """参考实现必须按连续段重新播种，不得跨缺口继承旧段状态。
+
+    反例（复核给定）：window=2，[1,1,NaN,10,10,10]
+    应为 [NaN, 2, NaN, NaN, 20, 20]，不是 [NaN, 2, NaN, 11, 15.5, 17.75]。
+    """
+    values = [1.0, 1.0, float("nan"), 10.0, 10.0, 10.0]
+    got = oracle.naive_wilder_rma(values, 2)
+    assert got[0] is None and got[1] == pytest.approx(2.0)
+    assert got[2] is None
+    assert got[3] is None, "缺口后第一个位置应重新预热"
+    assert got[4] == pytest.approx(20.0), "缺口后应按新段播种"
+    assert got[5] == pytest.approx(20.0)
+    # 明确排除旧的错误行为
+    assert got[4] != pytest.approx(15.5), "仍跨缺口继承旧段状态"
+
+
+@pytest.mark.parametrize("shape", ["gap", "nonfinite"])
+def test_natr_and_keltner_match_oracle_across_gaps(shape):
+    """NATR/Keltner 在缺口与非有限输入上必须与参考实现等值（分段一致）。"""
+    closes = _series(shape, n=80)
+    frame = _frame(closes)
+    data = _input(frame)
+
+    got_natr = natr(data, window=14).value("natr").to_numpy()
+    want_natr = _nan(oracle.naive_natr(frame["high"], frame["low"], closes,
+                                       frame["prev_close"], 14))
+    np.testing.assert_allclose(got_natr, want_natr, rtol=0, atol=1e-9, equal_nan=True)
+
+    got_keltner = keltner(data, window=20, atr_window=10).value("upper").to_numpy()
+    want_keltner = _nan(oracle.naive_keltner(frame["high"], frame["low"], closes,
+                                             frame["prev_close"], 20, 10, 2.0)["upper"])
+    np.testing.assert_allclose(got_keltner, want_keltner, rtol=0, atol=1e-9, equal_nan=True)
+
+
+def test_natr_normal_control_without_gaps():
+    """正对照：无缺口序列上 NATR 仍与参考一致（修复未破坏正常路径）。"""
+    closes = _series("osc", n=80)
+    frame = _frame(closes)
+    got = natr(_input(frame), window=14).value("natr").to_numpy()
+    want = _nan(oracle.naive_natr(frame["high"], frame["low"], closes,
+                                  frame["prev_close"], 14))
+    np.testing.assert_allclose(got, want, rtol=0, atol=1e-9, equal_nan=True)
+    assert np.isfinite(got).sum() > 0, "正对照无有效值"
+
+
 def test_gap_breaks_segment_and_does_not_backfill():
     """缺口处不得回填：缺口之后必须重新预热。"""
     closes = _series("gap")
