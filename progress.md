@@ -2160,3 +2160,22 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 - tests/price_only_scope/test_real_raw_sample_v1.py：加 real_data_integration 标记与任务作用域门控，停止重复真实采样。
 - reports/price_only_validation_v1/EVIDENCE_COUNTS_V1.json、reports/junit-price-only-v1.xml：按门控后状态重生成并脱敏。
 - 回滚点 f45488c07a7195f8323d25f9ec97c80988ad5aa7。
+
+## 2026-09-23 - Task: PR #16 相对链接绑定、证据逐项适用、顺序回归接真实 fixture
+### What was done
+修复相对符号链接按 cwd 而非组合根解析的绕过；把证据生成器从"函数全体参数替单项作证"改为逐项适用，结果诚实收缩；把顺序回归接到仓库真实 fixture 并补防退化变异。过程中修复 Sonar 阻断的 5 个 CRITICAL 与 1 个 BUG。
+### Testing
+- 相对链接：复现 cwd != 组合根时目标本体可读；修复后 cwd 等于/不同于组合根、冻结后改 cwd 三种情况判定一致。新增 9 项交叉覆盖（绝对/相对 × 列别名/列目标 × cwd 位置），受保护情况经受控 wrapper 与 TdxData 入口验证 open=0，允许夹具保留正对照。
+- 证据逐项适用：复现条件套件实际只覆盖 11 个指标而生成器签 25 项；修复后 11 VERIFIED / 14 PARTIAL。17 项变异测试（删 DEMA 条件/账户节点、仅留单参数、账户 failure/error/skip、缺期望节点、错指标节点、缺/损坏 JUnit、有效输入正对照、CLI 穿越）。
+- 顺序回归：改为加载真实 _restore_scope 并驱动 setup/teardown；下一测试经受控 wrapper 验证 opened=[]；变异用例证明坏 fixture 下回归会失败。
+- Sonar：S1192×2、S3776×3、S4143（重复字典赋值 BUG）全部修复；质量门通过。
+- 目标套件 558 passed / 13 skipped；完整套件零新增失败 nodeid（基线 194 覆盖本次 193），因果 UNCONFIRMED；真实读取新增 0。
+- 双平台 CI 与 SonarCloud 全部通过。
+### Notes
+- src/chanlun_trader/price_only_scope.py：新增 _anchored_path/_resolve_real_paths 统一以组合根为解析基准；拆出 _split_drive/_fold_segments/_matches_root_basename/_windows_form_normalised 降低复杂度。
+- scripts/emit_price_only_evidence_v1.py：新增 build_expected_coverage/collect_parameterized_nodeids；resolve_dimension 改为按期望覆盖判定；拆出 _case_outcome/_merge_worst；提取 CONDITION_MODULE/FORMULA_MODULE；删除重复字典赋值；加 CLI --junit/--out 与路径限制。
+- tests/price_only_scope/test_relative_link_binding_v1.py（新增）：9 项相对链接交叉覆盖。
+- tests/price_only_scope/test_evidence_mutation_v1.py：重写为复核指定的 5 类输入变异。
+- tests/price_only_scope/test_scope_order_regression_v1.py：改为加载真实 fixture + 防退化变异。
+- reports/price_only_validation_v1/{EVIDENCE_COUNTS_V1.json,PRICE_ONLY_CAPABILITY_MATRIX_V1.json}、reports/junit-price-only-v1.xml：逐项证据、关闭矩阵、脱敏 JUnit。
+- 回滚点 8e4e20386b4970d1bfca7e35a1d1ae53acee0380。
