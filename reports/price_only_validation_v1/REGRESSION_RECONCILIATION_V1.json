@@ -1,0 +1,29 @@
+{
+  "note": "BASE_SHA 干净工作树 vs 本次 HEAD，CI 同等隔离环境，逐 nodeid 对账。",
+  "base_sha": "f5acb0317719a42eb7071504048e341b50a7ac12",
+  "isolated_env": {
+    "CHANLUN_TEST_ISOLATION": "1"
+  },
+  "baseline": {
+    "failed_incl_errors": 194,
+    "passed": 2155,
+    "skipped": 1
+  },
+  "head": {
+    "failed_incl_errors": 193,
+    "passed": 2375,
+    "skipped": 4
+  },
+  "new_failures": [],
+  "no_longer_failing": [
+    "tests/research_factory/test_train_search_batch_v1.py::test_sixty_session_compounding_and_amount_units"
+  ],
+  "causality": "UNCONFIRMED",
+  "classification": {
+    "new_failures_nature": "本次 HEAD 无新增失败 nodeid",
+    "skipped_delta": "新增 3 项 skip 均为本任务 gbbq 访问禁令导致的显式跳过（tests/pit/test_qfq_pit_safety.py 2 项 + tests/test_tdx_data.py 1 项），非伪装通过",
+    "claim": "仅声明本次 HEAD 未出现新增失败 nodeid，不声明全系统零回归"
+  },
+  "passing_delta": "+220 项通过（本轮新增 230 项测试，减去 3 项因禁令跳过与基线 flaky 差异）",
+  "environment_failures_reference": "上一轮 reports/actual_data_inventory_20260922/ACTUAL_DATA_CAPABILITY.json"
+}

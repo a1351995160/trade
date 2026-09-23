@@ -1,0 +1,90 @@
+name: Price Only Indicator Validation V1
+
+on:
+  pull_request:
+  push:
+    branches:
+      - "codex/**"
+
+permissions:
+  contents: read
+
+jobs:
+  price-only:
+    name: Price-only indicator acceptance (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python: "3.11"
+            pythonpath: tests/isolation:src
+          - os: windows-latest
+            python: "3.13"
+            pythonpath: tests/isolation;src
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    env:
+      PYTHONPATH: ${{ matrix.pythonpath }}
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUTF8: "1"
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+
+      - name: Install deterministic test dependencies
+        run: >
+          python -m pip install --disable-pip-version-check
+          --only-binary ":all:" --no-binary "pytdx"
+          --require-hashes -r .github/workflows/requirements-p3b.txt
+
+      - name: Access boundary (gbbq guard + bounded read)
+        run: >
+          python -m pytest
+          tests/price_only_scope
+          -q
+          --junitxml=junit/price-only-scope-${{ matrix.os }}.xml
+
+      - name: A0 formula increment
+        run: >
+          python -m pytest
+          tests/indicators_v2
+          tests/conditions_v2
+          -q
+          --junitxml=junit/price-only-a0-${{ matrix.os }}.xml
+
+      - name: A0 account chain and entrypoints
+        run: >
+          python -m pytest
+          tests/exits_v2
+          tests/entrypoints_v2
+          -q
+          --junitxml=junit/price-only-a0-chain-${{ matrix.os }}.xml
+
+      - name: Existing V1/V2 regression
+        run: >
+          python -m pytest
+          tests/indicators
+          tests/pr15_remediation
+          tests/pr15_residual
+          tests/pr15_dependency
+          tests/pit
+          -q
+          --junitxml=junit/price-only-regression-${{ matrix.os }}.xml
+
+      - name: Upload JUnit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-price-only-${{ matrix.os }}
+          path: junit/
+          if-no-files-found: warn

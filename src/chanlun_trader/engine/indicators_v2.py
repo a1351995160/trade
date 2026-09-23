@@ -756,17 +756,23 @@ def _rolling_values(values: np.ndarray, window: int, min_periods: int, method: s
 
 
 def psy(data: PriceInput, *, window: int = 12, price: str = "close") -> IndicatorFrameV2:
-    """PSY：N 根中上涨根数占比（%）。"""
+    """PSY：N 根中上涨根数占比（%）。
+
+    分子 = 窗口内上涨根数（`sum(up)`），分母 = 窗口内**可比较根数**
+    （`count(up)`，含上涨与下跌）。
+    注意不能用 `count(up)` 与 `sum(isfinite(up))` 相除——两者恒等，
+    会使结果恒为 100%，丢失"上涨占比"语义。
+    """
     window = _require_positive_int(window, "window")
     values = _price_field(data, price)
     segments = segment_ids(np.isfinite(values) & (values > 0))
     previous = np.concatenate(([np.nan], values[:-1]))
-    up = np.where(np.isfinite(previous) & (values > previous), 1.0, 0.0)
-    up[~np.isfinite(previous)] = np.nan
-    counts = _rolling_in_segments(up, segments, window, window, "count")
-    totals = _rolling_in_segments(np.where(np.isfinite(up), 1.0, np.nan), segments, window, window, "sum")
+    comparable = np.isfinite(previous) & np.isfinite(values)
+    up = np.where(comparable, np.where(values > previous, 1.0, 0.0), np.nan)
+    ups = _rolling_in_segments(up, segments, window, window, "sum")
+    observations = _rolling_in_segments(up, segments, window, window, "count")
     with np.errstate(divide="ignore", invalid="ignore"):
-        out = np.where(totals > 0, counts / totals * 100.0, np.nan)
+        out = np.where(observations > 0, ups / observations * 100.0, np.nan)
     return _frame("PSY", "PSY_V1", data.index, {"psy": out}, np.isfinite(out), segments, window + 1)
 
 

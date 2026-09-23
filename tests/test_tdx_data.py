@@ -11,6 +11,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from chanlun_trader.tdx_data import TdxData, list_a_stocks, read_day_file
+from chanlun_trader.price_only_scope import is_forbidden_gbbq_path
 
 
 def _write_day(path: Path, rows):
@@ -52,6 +53,10 @@ def test_tdx_real_data_optional():
     gbbq = Path(r"E:\new_tdx_mock\T0002\hq_cache\gbbq")
     if not vipdoc.exists() or not gbbq.exists():
         pytest.skip("本机没有通达信数据，跳过")
+    if is_forbidden_gbbq_path(gbbq):
+        # price-only 验收任务禁止打开真实 gbbq（get_qfq_day 需要它）。
+        # 显式跳过，不伪装通过；守卫由 tests/price_only_scope 验证。
+        pytest.skip("TASK_FORBIDS_REAL_GBBQ_ACCESS: price-only 验收任务禁止打开真实 gbbq")
     tdx = TdxData(str(vipdoc), str(gbbq), str(Path(__file__).resolve().parents[1] / "data" / "cache"))
     stocks = list_a_stocks(tdx.vipdoc)
     assert len(stocks) > 0

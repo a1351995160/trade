@@ -120,9 +120,17 @@ class TdxData:
         self._qfq_cache: dict[str, pd.DataFrame] = {}
 
     def _load_gbbq(self) -> pd.DataFrame:
+        # 本任务禁止打开真实 gbbq 原件与全量缓存：在**任何 open 之前**拒绝。
+        # 该守卫覆盖直接 _load_gbbq 与经 TdxData 构造的间接调用。
+        from .price_only_scope import assert_gbbq_read_disabled, guard_gbbq_path
+
+        assert_gbbq_read_disabled()
+        guard_gbbq_path(self.gbbq_path, label="TdxData.gbbq_path")
         if self._gbbq_df is not None:
             return self._gbbq_df
         cache_file = self.cache_dir / "gbbq.csv" if self.cache_dir else None
+        if cache_file is not None:
+            guard_gbbq_path(cache_file, label="TdxData.gbbq_cache")
         if cache_file is not None and cache_file.exists():
             self._gbbq_df = pd.read_csv(cache_file, dtype={"code": str})
         else:

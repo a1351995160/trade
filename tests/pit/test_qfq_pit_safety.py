@@ -2,9 +2,26 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
+import pytest
+
 from chanlun_trader.config import load_config
 from chanlun_trader.tdx_data import TdxData, list_a_stocks
 from chanlun_trader.research.qfq import qfq_pit_acceptance, qfq_columns_asof
+from chanlun_trader.price_only_scope import is_forbidden_gbbq_path
+
+# 本任务（price-only 指标验收）禁止打开真实 gbbq 与其全量缓存。
+# 这两个用例依赖真实 gbbq 事件，故在本任务下显式跳过，而不是伪装通过。
+# 守卫本身由 tests/price_only_scope/test_gbbq_access_guard_v1.py 验证。
+
+
+def _gbbq_forbidden_in_this_task() -> bool:
+    cfg = load_config()
+    return is_forbidden_gbbq_path(cfg["tdx"]["gbbq"])
+
+
+pytestmark = pytest.mark.skipif(
+    _gbbq_forbidden_in_this_task(),
+    reason="TASK_FORBIDS_REAL_GBBQ_ACCESS: price-only 验收任务禁止打开真实 gbbq")
 
 
 def test_qfq_pit_acceptance_future_mutation():

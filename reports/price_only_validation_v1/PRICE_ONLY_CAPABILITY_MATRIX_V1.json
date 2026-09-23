@@ -1,0 +1,91 @@
+{
+  "matrix_id": "PRICE_ONLY_CAPABILITY_MATRIX_V1",
+  "generated_at": "2026-09-22",
+  "base_sha": "f5acb0317719a42eb7071504048e341b50a7ac12",
+  "workspace": "E:/llmwiki/trade-price-only-validation-v1",
+  "branch": "codex/price-only-indicator-validation-v1",
+  "scope": "现有 OHLC(VA) 指标的公式、参数、条件消费与合成入口验收。不开展盈利搜索。",
+  "dimension_rule": "逐维度分别判定。四项维度：公式实现存在 / 独立数值预期符合 / 条件或退出实际消费 / 合成账户接线验证。全部为真才记 VERIFIED。",
+  "dimensions": {
+    "FORMULA_IMPLEMENTED": "指标实现存在于当前 main 源码",
+    "FORMULA_VALIDATED": "有独立朴素参考或手算序列逐值对照，且参数/边界符合",
+    "CONDITION_CONSUMED": "条件层实际消费该输出，TRUE/FALSE/UNKNOWN 正反例齐备",
+    "ACCOUNT_WIRED": "经公开服务进入合成账户链并产生真实成交"
+  },
+  "this_round_added_oracles": [
+    "DEMA", "TEMA", "CCI", "NATR", "PSY", "DONCHIAN", "KELTNER", "ROLLING_VOLATILITY",
+    "HISTORICAL_RETURN", "PRICE_EXTREMES", "PRIOR_BREAKOUT", "DRAWDOWN_FROM_PEAK",
+    "MACD_HIST_RAW", "TRIX", "VOLUME_MA", "AMOUNT_MA", "RVOL_PRIOR", "RVOL_INCL_CURRENT",
+    "ACCUMULATION_DISTRIBUTION", "CHAIKIN_MONEY_FLOW", "PVT", "VWAP_SESSION_PROXY",
+    "MFI", "ROLLING_SLOPE", "TRUE_RANGE"
+  ],
+  "real_defect_found_and_fixed": {
+    "indicator": "PSY",
+    "defect": "分子 counts(窗口内非 NaN 计数) 与分母 totals(isfinite 的 1/NaN 之和) 数学恒等，导致 counts/totals 恒为 1.0，PSY 恒输出 100%，丢失『上涨根数占比』语义。",
+    "reproduction": "交替涨跌序列（约 50% 上涨）下 PSY 恒为 100.0；期望约 50%。",
+    "fix": "分子改为 sum(up)（上涨根数），分母改为 count(up)（可比较根数，含上涨与下跌）。",
+    "regression_tests": [
+      "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_psy_is_not_constant_one_hundred",
+      "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_psy_monotonic_up_is_one_hundred",
+      "tests/price_only_scope/test_real_raw_sample_v1.py::test_psy_on_real_raw_is_not_constant_one_hundred"
+    ],
+    "note": "既有测试全部通过，说明原测试未覆盖振荡序列下的 PSY。"
+  },
+  "a0_results": {
+    "formula_oracle_tests": 158,
+    "condition_consumption_tests": 41,
+    "indicators_with_new_oracle": 25,
+    "indicators_reaching_account_chain": 25,
+    "all_passed": true
+  },
+  "a1_results": {
+    "status": "PASS",
+    "symbols": ["600000.SH", "000001.SZ"],
+    "window": [20240102, 20240731],
+    "rows_per_symbol": 140,
+    "source": "TDX .day 经 read_day_file_range 有界读取",
+    "max_date_materialized": 20240731,
+    "sealed_period_touched": false,
+    "price_view": "RAW_CALLER_SERIES",
+    "corporate_action_normalized": false,
+    "historical_trade_eligibility_certified": false,
+    "profitability_validated": false,
+    "verified_indicators": ["EMA", "DEMA", "TEMA", "TRUE_RANGE", "NATR", "PSY", "CCI", "MACD_HIST_RAW"],
+    "prohibited_actions_performed": {
+      "strategy_signal_search": false,
+      "return_ranking": false,
+      "parameter_optimization": false,
+      "live_signal_list": false,
+      "real_account_backtest": false,
+      "performance_or_winrate": false
+    }
+  },
+  "access_incident_prevention": {
+    "guard_module": "src/chanlun_trader/price_only_scope.py",
+    "covers": ["TdxData._load_gbbq", "TdxData 构造传入的 gbbq 路径", "真实全量缓存 data/cache/gbbq.csv"],
+    "rejection_point": "真实文件 open 之前（由 open 探针证明）",
+    "test_nodeid": "tests/price_only_scope/test_gbbq_access_guard_v1.py",
+    "tests": 8,
+    "scope_limitation": "进程内路径守卫，不是 OS 沙箱，不能约束任意恶意 Python。",
+    "affected_existing_tests": {
+      "tests/pit/test_qfq_pit_safety.py": "显式 skip（TASK_FORBIDS_REAL_GBBQ_ACCESS），不伪装通过"
+    }
+  },
+  "open_items": [
+    "5m 196 行差异对账（OPEN_NOT_IN_THIS_SCOPE）",
+    "gbbq 物理限窗读取实现（后续独立范围）",
+    "历史流通股本（换手率/容量模型）",
+    "ST/停牌落盘（账户级交易资格）",
+    "复权落盘或受控事件转换",
+    "全库列结构扫描",
+    "数据供应商服务可用性"
+  ],
+  "capability_ceiling": {
+    "formula_and_condition": "SUPPORTED",
+    "public_synthetic_consumption": "SUPPORTED",
+    "real_raw_numeric_sample": "PASS（两证券、单一窗口）",
+    "real_account_backtest": "NOT_ESTABLISHED",
+    "formal_trial": "NOT_ESTABLISHED",
+    "real_performance_experiments": 0
+  }
+}
