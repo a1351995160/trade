@@ -2050,3 +2050,25 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 - tests/pr15_dependency/test_dependency_execution_v1.py：新增四项防护测试（共 14 项）。
 - scripts/emit_v2_acceptance_scope_v1.py、reports/v2_acceptance/、ACCEPTANCE_SCOPE.json、docs/EXTENSIBLE_BACKTEST_ACCEPTANCE_V2.md：分母 192/139、§6.7 防误用与风险降级说明。
 - 回滚点 c6af41a；可 git revert 本次提交。
+
+## 2026-09-23 - Task: 纯指标验收 V1（公式/条件/合成入口 + 真实 RAW 小样本）
+### What was done
+按五份盘点材料推进现有 OHLC(VA) 指标的公式、参数、条件消费与合成入口验收，不开展盈利搜索。先在含 V1/V2 的 main（f5acb03）新建干净工作区，旧工作区与数据未动。实现 gbbq 访问边界并在真实访问链上证明拒绝先于文件打开；更正上一轮盘点的十项互相矛盾声明（原件保留）。A0 为 25 项此前缺 oracle 的指标补独立朴素参考与逐值对照，并补齐条件消费与合成账户接线；A1 在两证券、单一窗口上做真实 RAW 数值小样本。过程中复现并修复一个真实公式缺陷（PSY 恒为 100%）。
+### Testing
+- 访问边界：8 项守卫测试（open 探针证明拒绝在打开前、覆盖直接与间接调用、全量缓存同样禁止、合成夹具不误伤、环境变量不能放开、正常价格路径正对照）；4 项有界读取边界测试（合成 .day 上证明物理限窗、拒绝越过封存期、物化量不随文件增长）。实际生效证据：原会真实读取 gbbq 的测试从 29.85s 通过变为 0.56s 内失败于 FORBIDDEN_GBBQ_ACCESS，未读取文件，已改为显式 skip。
+- A0：公式增量 158 项 + 条件消费 41 项全部通过；覆盖两个以上参数、常数/递增/递减/振荡/跳变/缺口/零量/非有限/短于预热、追加未来不改历史、条件 TRUE/FALSE/UNKNOWN 正反例、不可能条件不产生成交、25 项经公开服务进入合成账户链产生真实成交。
+- 真实缺陷：PSY 分子 counts 与分母 totals 数学恒等导致恒输出 100%；交替涨跌序列复现（期望约 50%）；修复后新增三项回归测试；既有测试全部通过说明原测试未覆盖振荡序列。
+- A1：600000.SH / 000001.SZ，2024-01-02..2024-07-31，每证券物化 140 行，max_date_materialized=20240731 未触碰封存期；8 个指标与独立参考逐值一致。
+- 跨平台：修复 Linux 下 Path("E:/") 被当作相对路径导致守卫失效（Ubuntu 曾 fail、Windows pass），现双平台均通过。
+- 本轮目标套件 491 项通过（另 2 项因 gbbq 禁令显式跳过）；完整套件零新增失败 nodeid（基线 194 覆盖本次 193）；因果未确认，不声明全系统零回归。
+### Notes
+- src/chanlun_trader/price_only_scope.py：新增 gbbq 路径边界（按真实路径身份、跨平台规范化、拒绝先于 open）。
+- src/chanlun_trader/tdx_data.py：_load_gbbq 接入守卫。
+- src/chanlun_trader/engine/indicators_v2.py：修复 PSY 分子/分母语义。
+- tests/indicators_v2/_oracle_price_only_v1.py、test_price_only_formula_increment_v1.py：28 个独立 oracle 与 158 项公式验收。
+- tests/conditions_v2/test_price_only_condition_consumption_v1.py：41 项条件消费与合成账户接线。
+- tests/price_only_scope/{test_gbbq_access_guard_v1,test_bounded_read_boundary_v1,test_real_raw_sample_v1}.py：访问边界与真实 RAW 小样本。
+- tests/pit/test_qfq_pit_safety.py、tests/test_tdx_data.py：因 gbbq 禁令显式 skip，不伪装通过。
+- reports/price_only_validation_v1/{PRICE_ONLY_VALIDATION_V1.md,INVENTORY_CORRECTIONS_V1.json,PRICE_ONLY_CAPABILITY_MATRIX_V1.json,REGRESSION_RECONCILIATION_V1.json}、reports/junit-price-only-v1.xml：交付文档、十项更正、能力矩阵、回归对账与脱敏 JUnit。
+- .github/workflows/price-only-indicator-validation-v1.yml：双平台 CI。
+- 回滚点 f5acb0317719a42eb7071504048e341b50a7ac12；可 git revert 本分支提交，不影响 main 与旧工作区。
