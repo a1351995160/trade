@@ -26,6 +26,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tests"))
 
+from chanlun_trader.price_only_scope import task_scope_active  # noqa: E402
 from chanlun_trader.research.guard import RESEARCH_END  # noqa: E402
 from chanlun_trader.research.io_safety import read_day_file_range  # noqa: E402
 
@@ -35,9 +36,18 @@ SYMBOLS = {"600000.SH": TDX_ROOT / "sh" / "lday" / "sh600000.day",
 START = 20240102
 END = 20240731
 
-pytestmark = pytest.mark.skipif(
-    not all(p.exists() for p in SYMBOLS.values()),
-    reason="A1_BLOCKED: 本机缺少 .day 样本文件（真实数据不在预期根）")
+# 本模块读取**真实行情**，属 real_data_integration 分类。
+# 任务作用域激活时不再重跑：A1 证据已在本任务早期采集并记录，
+# 后续轮次重复执行会造成无意义的真实数据重读。
+pytestmark = [
+    pytest.mark.real_data_integration,
+    pytest.mark.skipif(
+        task_scope_active(),
+        reason="TASK_SCOPE_ACTIVE: A1 证据已采集；本任务不重跑真实行情采样"),
+    pytest.mark.skipif(
+        not all(p.exists() for p in SYMBOLS.values()),
+        reason="A1_BLOCKED: 本机缺少 .day 样本文件（真实数据不在预期根）"),
+]
 
 
 def _read(symbol: str) -> pd.DataFrame:
