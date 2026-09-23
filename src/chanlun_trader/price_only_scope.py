@@ -32,62 +32,69 @@ class ForbiddenDataAccess(RuntimeError):
     """试图打开本任务禁止的数据（真实 gbbq 或其全量缓存）。"""
 
 
-def _resolve(path) -> Path | None:
-    if path is None:
-        return None
-    try:
-        return Path(str(path)).resolve()
-    except (OSError, ValueError):
-        return None
-
-
-def _extra_forbidden_paths() -> tuple[Path, ...]:
-    """显式追加的禁止路径（分号分隔的绝对路径）。"""
+def _extra_forbidden_paths() -> tuple[str, ...]:
+    """显式追加的禁止路径（分号分隔），规范化后返回。"""
     raw = os.environ.get("CHANLUN_FORBIDDEN_GBBQ_PATHS", "")
     out = []
     for item in raw.split(";"):
         item = item.strip()
-        if item:
-            resolved = _resolve(item)
-            if resolved is not None:
-                out.append(resolved)
+        if not item:
+            continue
+        normalised = _normalise(item)
+        if normalised:
+            out.append(normalised)
     return tuple(out)
 
 
-def _under(child: Path | None, parent: Path) -> bool:
-    if child is None:
+def _normalise(path) -> str | None:
+    """把路径规范化为可比字符串（跨平台）。
+
+    在 Linux 上 ``Path("E:/x")`` 会被当作相对路径，``resolve()`` 也不会
+    变成 Windows 语义。因此这里统一：反斜杠转正斜杠、去掉冗余分隔、
+    统一小写（Windows 路径大小写不敏感）。
+    """
+    if path is None:
+        return None
+    text = str(path).replace("\\", "/").strip()
+    if not text:
+        return None
+    # 折叠重复分隔符，保留盘符与 UNC 前缀
+    parts = [p for p in text.split("/") if p not in ("", ".")]
+    normalised = "/".join(parts)
+    return normalised.lower()
+
+
+def _norm_root(root: Path) -> str | None:
+    value = _normalise(root)
+    return value
+
+
+def _is_under(child: str, parent: str) -> bool:
+    if child is None or parent is None:
         return False
-    try:
-        root = parent.resolve()
-    except (OSError, ValueError):
-        root = parent
-    try:
-        child.relative_to(root)
-        return True
-    except ValueError:
-        return False
+    return child == parent or child.startswith(parent + "/")
 
 
 def is_forbidden_gbbq_path(path) -> bool:
     """判断路径是否指向真实 gbbq 原件或其全量缓存。
 
-    按真实路径身份判定：
+    按真实路径身份判定（跨平台，不依赖 os.path 语义）：
     - 落在真实 gbbq 根之下且基名为 gbbq/gbbq.map/gbbq.csv；
     - 落在真实缓存根之下且基名为 gbbq.csv；
     - 命中 ``CHANLUN_FORBIDDEN_GBBQ_PATHS`` 显式清单。
     """
-    resolved = _resolve(path)
-    if resolved is None:
+    normalised = _normalise(path)
+    if normalised is None:
         return False
-    name = resolved.name.lower()
+    name = normalised.rsplit("/", 1)[-1]
     if name not in GBBQ_BASENAMES:
         return False
-    if _under(resolved, REAL_GBBQ_ROOT):
+    if _is_under(normalised, _norm_root(REAL_GBBQ_ROOT)):
         return True
-    if name == "gbbq.csv" and _under(resolved, REAL_CACHE_ROOT):
+    if name == "gbbq.csv" and _is_under(normalised, _norm_root(REAL_CACHE_ROOT)):
         return True
     for extra in _extra_forbidden_paths():
-        if resolved == extra:
+        if normalised == extra:
             return True
     return False
 
