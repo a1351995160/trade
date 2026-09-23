@@ -2108,3 +2108,19 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 - reports/price_only_validation_v1/{EVIDENCE_COUNTS_V1.json,PRICE_ONLY_CAPABILITY_MATRIX_V1.json}、reports/junit-price-only-v1.xml：计数证据、残留关闭矩阵、脱敏 JUnit。
 - .gitignore：排除含本机路径的完整套件 JUnit。
 - 回滚点 8f94f503816282d0a05949c807d4ad63d0e7ab06；可 git revert 本次提交。
+
+### Testing（PR #16 运行时政策与证据收尾）
+- 身份两方向：在 C 盘 NTFS 临时目录原生 mklink /J 复现"清单列别名、访问目标本体"放行；修复为冻结身份闭包（realpath + 父目录解析），两方向一致拒绝；保留 cwd/绝对/相对/.. /basename 正反例。
+- 外层任务保护：修复 _restore_scope 无条件 deactivate 缺陷；新增验收序列（外层激活 → 受保护缓存拒绝 → 内部清理 → 仍拒绝）与"外层未激活时正常/异常退出均恢复"测试。
+- vendor 入口：新增 test_vendor_entry_guard_v1.py，用受保护合成目标驱动真实 GbbqReader 与 TdxData，open 探针证明拒绝先于打开且 vendor get_df 未被调用；junction 在 NTFS 原生创建并验证 opened=[]；POSIX 标 NOT_APPLICABLE；硬链接如实列限制。
+- 证据：计数纳入新增文件，由实际 collection 派生为 262 + 合成 QFQ 4 = 266；收集失败抛 CollectionError 并让 main 返回非零；JUnit 缺失标 NOT_ESTABLISHED；新增证据回归测试（删映射/失败状态降级、nodeid 实存校验）。
+- 目标套件 542 项通过、2 项分类 skip；完整套件零新增失败 nodeid（基线 194 覆盖本次 193）；因果未确认。
+- 双平台 CI 与 SonarCloud 全部通过。
+### Notes
+- src/chanlun_trader/price_only_scope.py：冻结身份闭包（含 realpath 与父目录解析），两方向一致拒绝。
+- tests/price_only_scope/test_task_scope_v1.py：保存/恢复进入前政策；外层任务保护验收序列（13 项）。
+- tests/price_only_scope/test_vendor_entry_guard_v1.py：vendor 入口拒绝证据与 junction 两方向（4 项）。
+- tests/price_only_scope/test_evidence_regression_v1.py：证据回归（7 项）。
+- scripts/emit_price_only_evidence_v1.py：纳入全部新增文件；CollectionError；NOT_ESTABLISHED；逐项精确 nodeid 与证明强度。
+- reports/price_only_validation_v1/{EVIDENCE_COUNTS_V1.json,PRICE_ONLY_CAPABILITY_MATRIX_V1.json}、reports/junit-price-only-v1.xml：派生计数、运行时关闭矩阵、脱敏 JUnit。
+- 回滚点 b63cb1b6f843cfc54306602c0756d2b4a1c994d4；可 git revert 本次提交。
