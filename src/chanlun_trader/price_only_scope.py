@@ -119,42 +119,41 @@ def _to_absolute_normalised(path) -> str | None:
 
 
 def _identity_variants(path) -> set:
-    """返回路径的**身份别名集合**（绝对规范化 + 符号链接解析结果）。
+    """返回路径的**身份闭包**（原样 + 绝对化 + 符号链接/junction 解析）。
 
     空/``None`` 或无法解析 → 返回空集，由调用方 fail closed。
     注意不能把空串交给 ``realpath``（它会返回 cwd，把空路径伪装成合法身份）。
     """
-    if path is None:
-        return set()
-    raw_text = str(path).strip()
-    if not raw_text:
-        return set()
-    variants = set()
+    return _freeze_identity_closure(path)
 
-    absolute_norm = _to_absolute_normalised(raw_text)
-    if absolute_norm:
-        variants.add(absolute_norm)
-    relative_norm = _normalise(raw_text)
-    if relative_norm:
-        variants.add(relative_norm)
 
-    try:
-        resolved = os.path.realpath(str(Path(raw_text)))
-        resolved_norm = _normalise(resolved)
-        if resolved_norm:
-            variants.add(resolved_norm)
-    except (OSError, ValueError):
-        pass
+def is_forbidden_gbbq_path(path) -> bool:
+    """判断路径是否指向真实 gbbq 原件或其全量缓存（含身份别名两方向）。
 
-    if _DRIVE_RE.match(raw_text):
-        try:
-            from pathlib import PureWindowsPath
-            win_norm = _normalise(str(PureWindowsPath(raw_text)))
-            if win_norm:
-                variants.add(win_norm)
-        except (ImportError, ValueError):
-            pass
-    return variants
+    判定基于**冻结集合**与**查询身份闭包**的交集，检查时不重新读取 cwd。
+    两个方向都成立：清单列目标访问别名、清单列别名访问目标本体。
+    """
+    variants = _identity_variants(path)
+    if not variants:
+        return True  # 无法解析 → fail closed
+
+    deny = _FROZEN_DENYLIST
+    if variants & deny:
+        return True
+
+    # 根之下任意 gbbq 类文件（覆盖未逐一列出的同目录文件）
+    for variant in variants:
+        name = variant.rsplit("/", 1)[-1]
+        if name not in GBBQ_BASENAMES:
+            continue
+        for root_id in _root_identities(REAL_GBBQ_ROOT):
+            if variant == f"{root_id}/{name}":
+                return True
+        if name == "gbbq.csv":
+            for root_id in _root_identities(REAL_CACHE_ROOT):
+                if variant == f"{root_id}/{name}":
+                    return True
+    return False
 
 
 # --------------------------------------------------------------------------
@@ -179,12 +178,65 @@ def _root_identities(root: Path) -> tuple[str, ...]:
     return tuple(sorted(variants))
 
 
-def _build_frozen_denylist() -> frozenset:
-    """建立**冻结**的禁止身份集合。
+def _freeze_identity_closure(path) -> set:
+    """把一个受保护路径解析为**身份闭包**（含别名两个方向）。
 
-    - 真实 gbbq 根与真实缓存根下的 gbbq 类文件（按基名 + 根身份）；
-    - 显式清单 ``CHANLUN_FORBIDDEN_GBBQ_PATHS``：相对项以 COMPOSITION_ROOT
-      为基准一次性解析为绝对身份。
+    需求（PR16-01）：清单列目标、访问别名 → 拒绝；**清单列别名、访问目标本体
+    也必须拒绝**。因此冻结时不能只做词法拼接，必须解析该路径的
+    真实指向，并把"别名 → 真实目标"与"真实目标 → 别名"两侧都纳入。
+
+    - ``os.path.realpath`` 解析符号链接/junction 到真实路径；
+    - 反向：若清单项本身是别名，则其指向的真实路径也加入闭包；
+    - 受支持平台上无法解析时返回空集，由调用方 fail closed。
+    """
+    if path is None:
+        return set()
+    raw = str(path).strip()
+    if not raw:
+        return set()
+    closure: set[str] = set()
+
+    for candidate in (raw, str(Path(raw))):
+        absolute = _to_absolute_normalised(candidate)
+        if absolute:
+            closure.add(absolute)
+        relative = _normalise(candidate)
+        if relative:
+            closure.add(relative)
+
+    # 真实指向（解析符号链接/junction）；同时把父目录解析后拼接基名，
+    # 使"清单列别名目录下的文件"也能对应到目标目录下的同一文件。
+    try:
+        resolved = os.path.realpath(raw)
+        resolved_norm = _to_absolute_normalised(resolved)
+        if resolved_norm:
+            closure.add(resolved_norm)
+        parent_resolved = os.path.realpath(str(Path(raw).parent))
+        name = Path(raw).name
+        if name:
+            parent_norm = _to_absolute_normalised(str(Path(parent_resolved) / name))
+            if parent_norm:
+                closure.add(parent_norm)
+    except (OSError, ValueError):
+        pass
+
+    # Windows 盘符语义（POSIX 上 realpath 不处理盘符）
+    if _DRIVE_RE.match(raw):
+        try:
+            from pathlib import PureWindowsPath
+            win_norm = _normalise(str(PureWindowsPath(raw)))
+            if win_norm:
+                closure.add(win_norm)
+        except (ImportError, ValueError):
+            pass
+    return closure
+
+
+def _build_frozen_denylist() -> frozenset:
+    """建立**冻结**的禁止身份集合（含别名闭包）。
+
+    - 真实 gbbq 根与真实缓存根下的 gbbq 类文件（按基名 + 根身份闭包）；
+    - 显式清单 ``CHANLUN_FORBIDDEN_GBBQ_PATHS``：每项解析为身份闭包。
     """
     frozen: set[str] = set()
 
@@ -198,12 +250,7 @@ def _build_frozen_denylist() -> frozenset:
         item = item.strip()
         if not item:
             continue
-        absolute = _to_absolute_normalised(item)
-        if absolute:
-            frozen.add(absolute)
-        relative = _normalise(item)
-        if relative:
-            frozen.add(relative)
+        frozen |= _freeze_identity_closure(item)
     return frozenset(frozen)
 
 

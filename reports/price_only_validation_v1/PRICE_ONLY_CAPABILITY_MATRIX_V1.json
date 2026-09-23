@@ -137,7 +137,7 @@
     "note": "上一轮旧口径写作 20 项访问边界，实际为 31 项（本轮新增 19 项身份绕过测试）。"
   },
   "real_raw_sample_tests": 11,
-  "new_tests_actual_total": 249,
+  "new_tests_actual_total": 266,
   "new_tests_breakdown": {
     "formula": 162,
     "condition_and_service": 41,
@@ -208,5 +208,28 @@
       "full_suite_accounting": "errors 与 failures 分开记录；skipped 不计为 passed",
       "indicator_evidence": "25 项逐行含 indicator/outputs/params/input-domain/formula/condition/account/nodeid/JUnit/status 与证明强度"
     }
+  },
+  "new_tests_note": "由 scripts/emit_price_only_evidence_v1.py 从实际 collection 派生，不硬编码",
+  "pr16_runtime_closure": {
+    "identity_two_directions": {
+      "status": "CLOSED",
+      "reproduced": "清单列别名、访问目标本体 -> False（放行）",
+      "fix": "冻结时解析身份闭包（含 realpath 与父目录解析后拼基名），两方向一致拒绝"
+    },
+    "outer_task_not_closed_by_cleanup": {
+      "status": "CLOSED",
+      "defect": "_restore_scope yield 后无条件 deactivate，会关闭外层仍在运行的任务",
+      "fix": "保存/恢复进入前政策；新增验收序列（外层激活 → 缓存拒绝 → 内部清理 → 仍拒绝）"
+    },
+    "vendor_entry_evidence": {
+      "status": "CLOSED",
+      "note": "用受保护合成目标驱动真实 GbbqReader 与 TdxData 入口，open 探针证明拒绝先于打开，且 vendor get_df 从未被调用"
+    },
+    "junction": {
+      "status": "CLOSED_WITH_PLATFORM_NOTE",
+      "note": "E 盘为 exFAT 不支持 junction；在 C 盘 NTFS 临时目录原生创建并验证两方向拒绝与 opened=[]"
+    },
+    "hardlink": "LIMITATION（未测试，如实列出，不扩展 OS 级隔离）",
+    "evidence_regression": "CLOSED（删映射/失败状态降级；收集失败停止签证）"
   }
 }

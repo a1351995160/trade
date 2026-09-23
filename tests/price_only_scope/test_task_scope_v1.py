@@ -37,9 +37,102 @@ REAL_GBBQ = "E:/new_tdx_mock/T0002/hq_cache/gbbq"
 
 @pytest.fixture(autouse=True)
 def _restore_scope():
-    """每个用例后复位作用域，避免测试间串扰。"""
-    yield
+    """保存进入前的政策并在退出时**恢复**，不无条件关闭外层任务。
+
+    缺陷（PR16-02 复核）：原实现 ``yield`` 后无条件 ``deactivate_task_scope()``，
+    会关闭外层仍在运行的任务（把别人的激活状态清成 False）。
+    正确做法是记录进入前的状态，退出时原样恢复。
+    """
+    before_active = task_scope_active()
+    before_reason = task_scope_reason()
+    try:
+        yield
+    finally:
+        if before_active:
+            activate_task_scope(before_reason)
+        else:
+            deactivate_task_scope()
+
+
+# ==========================================================================
+# 上层任务不能被测试清理关闭（PR16-02 复核的最低验收序列）
+# ==========================================================================
+def _protected_synthetic_cache(tmp_path: Path) -> Path:
+    """构造一个受保护的合成缓存（列入禁止集合）。"""
+    cache = tmp_path / "external" / "cache"
+    cache.mkdir(parents=True)
+    target = cache / "gbbq.csv"
+    target.write_text("code,datetime,category\n", encoding="utf-8")
+    os.environ["CHANLUN_FORBIDDEN_GBBQ_PATHS"] = str(target)
+    rebuild_frozen_denylist()
+    return target
+
+
+def test_outer_activation_survives_inner_scope_cleanup(tmp_path: Path):
+    """验收序列：外层激活 → 受保护缓存拒绝 → 内部清理 → 仍拒绝。
+
+    防止 `_restore_scope` 这类清理把外层任务的作用域关掉。
+    """
+    os.environ.pop("CHANLUN_FORBIDDEN_GBBQ_PATHS", None)
+    rebuild_frozen_denylist()
+    try:
+        target = _protected_synthetic_cache(tmp_path)
+        activate_task_scope("outer_task")
+        assert task_scope_active()
+        assert is_forbidden_gbbq_path(target), "外层激活下受保护缓存未被拒"
+
+        # 模拟一次内部作用域测试 / 异常清理
+        before = task_scope_active()
+        before_reason = task_scope_reason()
+        try:
+            raise RuntimeError("inner scope failure")
+        except RuntimeError:
+            # 正确的清理：恢复进入前状态（而不是无条件 deactivate）
+            if before:
+                activate_task_scope(before_reason)
+            else:
+                deactivate_task_scope()
+
+        # 外层仍必须处于激活，且同一缓存仍被拒
+        assert task_scope_active(), "内部清理关闭了外层任务作用域"
+        assert is_forbidden_gbbq_path(target), "内部清理后受保护缓存不再被拒"
+    finally:
+        os.environ.pop("CHANLUN_FORBIDDEN_GBBQ_PATHS", None)
+        rebuild_frozen_denylist()
+
+
+def test_outer_inactive_restores_previous_state(tmp_path: Path):
+    """外层未激活时，局部任务正常退出/异常后都返回此前状态。"""
+    os.environ.pop("CHANLUN_FORBIDDEN_GBBQ_PATHS", None)
+    rebuild_frozen_denylist()
     deactivate_task_scope()
+    assert not task_scope_active()
+
+    # 正常退出
+    activate_task_scope("local")
+    deactivate_task_scope()
+    assert not task_scope_active(), "正常退出后未恢复此前状态"
+
+    # 异常退出
+    try:
+        activate_task_scope("local")
+        raise RuntimeError("boom")
+    except RuntimeError:
+        deactivate_task_scope()
+    assert not task_scope_active(), "异常退出后未恢复此前状态"
+
+
+def test_inner_scope_does_not_grant_real_permissions(tmp_path: Path):
+    """局部任务退出后不得新授予真实权限（真实 gbbq 仍被拒）。"""
+    os.environ.pop("CHANLUN_FORBIDDEN_GBBQ_PATHS", None)
+    rebuild_frozen_denylist()
+    try:
+        activate_task_scope("inner")
+        deactivate_task_scope()
+        # 即使作用域未激活，真实 gbbq 根身份仍在冻结集合中
+        assert is_forbidden_gbbq_path(REAL_GBBQ), "局部任务退出后真实 gbbq 不再被拒"
+    finally:
+        rebuild_frozen_denylist()
 
 
 # ==========================================================================
