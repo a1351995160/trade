@@ -1,0 +1,753 @@
+{
+  "generated_from": "实际 pytest --collect-only 与 JUnit XML（自动生成）",
+  "note": "计数由脚本自动派生，不硬编码；本机与 CI 分列。",
+  "new_tests": {
+    "by_part": {
+      "formula": 162,
+      "condition_and_service": 41,
+      "gbbq_guard": 8,
+      "gbbq_identity_bypass": 19,
+      "bounded_read": 4,
+      "real_raw_sample": 11
+    },
+    "six_part_total": 245,
+    "qfq_synthetic": 4,
+    "total_vs_base": 249,
+    "note": "六部分合计 + 合成 QFQ = 相对 BASE 的新增；25 个账户服务用例属于 condition_and_service 内部，不重复累加"
+  },
+  "local_target_suite": {
+    "tests": 530,
+    "errors": 0,
+    "failures": 0,
+    "skipped": 2,
+    "passed": 528,
+    "failed_including_errors": 0
+  },
+  "local_full_suite": {
+    "tests": 2599,
+    "errors": 24,
+    "failures": 170,
+    "skipped": 4,
+    "passed": 2401,
+    "failed_including_errors": 194
+  },
+  "accounting_rules": {
+    "skipped_is_not_passed": true,
+    "errors_and_failures_separated": true,
+    "causality": "UNCONFIRMED"
+  },
+  "indicator_evidence": [
+    {
+      "indicator": "DEMA",
+      "version": "DEMA_V1",
+      "outputs": [
+        "dema",
+        "ema1",
+        "ema2"
+      ],
+      "params": {
+        "window": 20,
+        "price": "close"
+      },
+      "input_domain": [
+        "close"
+      ],
+      "price_mode": "CALLER_DECLARED",
+      "warmup_bars": 39,
+      "unit": "PRICE",
+      "formula_nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py",
+      "condition_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py",
+      "account_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+      "junit": "reports/junit-price-only-v1.xml",
+      "strength": {
+        "formula": "NUMERIC_ORACLE（独立朴素参考逐值）",
+        "condition": "CONDITION_INJECTED（手工注入上下文）",
+        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
+      },
+      "status": "VERIFIED"
+    },
+    {
+      "indicator": "TEMA",
+      "version": "TEMA_V1",
+      "outputs": [
+        "tema",
+        "ema1",
+        "ema2",
+        "ema3"
+      ],
+      "params": {
+        "window": 20,
+        "price": "close"
+      },
+      "input_domain": [
+        "close"
+      ],
+      "price_mode": "CALLER_DECLARED",
+      "warmup_bars": 58,
+      "unit": "PRICE",
+      "formula_nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py",
+      "condition_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py",
+      "account_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+      "junit": "reports/junit-price-only-v1.xml",
+      "strength": {
+        "formula": "NUMERIC_ORACLE（独立朴素参考逐值）",
+        "condition": "CONDITION_INJECTED（手工注入上下文）",
+        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
+      },
+      "status": "VERIFIED"
+    },
+    {
+      "indicator": "CCI",
+      "version": "CCI_V1",
+      "outputs": [
+        "cci",
+        "typical_price"
+      ],
+      "params": {
+        "window": 14
+      },
+      "input_domain": [
+        "close",
+        "high",
+        "low"
+      ],
+      "price_mode": "CALLER_DECLARED",
+      "warmup_bars": 14,
+      "unit": "PRICE",
+      "formula_nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py",
+      "condition_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py",
+      "account_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+      "junit": "reports/junit-price-only-v1.xml",
+      "strength": {
+        "formula": "NUMERIC_ORACLE（独立朴素参考逐值）",
+        "condition": "CONDITION_INJECTED（手工注入上下文）",
+        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
+      },
+      "status": "VERIFIED"
+    },
+    {
+      "indicator": "NATR",
+      "version": "NATR_V1",
+      "outputs": [
+        "natr",
+        "atr"
+      ],
+      "params": {
+        "window": 14
+      },
+      "input_domain": [
+        "close",
+        "high",
+        "low"
+      ],
+      "price_mode": "CALLER_DECLARED",
+      "warmup_bars": 14,
+      "unit": "PERCENT",
+      "formula_nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py",
+      "condition_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py",
+      "account_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+      "junit": "reports/junit-price-only-v1.xml",
+      "strength": {
+        "formula": "NUMERIC_ORACLE（独立朴素参考逐值）",
+        "condition": "CONDITION_INJECTED（手工注入上下文）",
+        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
+      },
+      "status": "VERIFIED"
+    },
+    {
+      "indicator": "PSY",
+      "version": "PSY_V1",
+      "outputs": [
+        "psy"
+      ],
+      "params": {
+        "window": 12,
+        "price": "close"
+      },
+      "input_domain": [
+        "close"
+      ],
+      "price_mode": "CALLER_DECLARED",
+      "warmup_bars": 13,
+      "unit": "PERCENT",
+      "formula_nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py",
+      "condition_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py",
+      "account_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+      "junit": "reports/junit-price-only-v1.xml",
+      "strength": {
+        "formula": "NUMERIC_ORACLE（独立朴素参考逐值）",
+        "condition": "CONDITION_INJECTED（手工注入上下文）",
+        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
+      },
+      "status": "VERIFIED"
+    },
+    {
+      "indicator": "DONCHIAN",
+      "version": "DONCHIAN_V1",
+      "outputs": [
+        "upper",
+        "lower",
+        "middle"
+      ],
+      "params": {
+        "window": 20,
+        "shift": 0
+      },
+      "input_domain": [
+        "close",
+        "high",
+        "low"
+      ],
+      "price_mode": "CALLER_DECLARED",
+      "warmup_bars": 20,
+      "unit": "PRICE",
+      "formula_nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py",
+      "condition_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py",
+      "account_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+      "junit": "reports/junit-price-only-v1.xml",
+      "strength": {
+        "formula": "NUMERIC_ORACLE（独立朴素参考逐值）",
+        "condition": "CONDITION_INJECTED（手工注入上下文）",
+        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
+      },
+      "status": "VERIFIED"
+    },
+    {
+      "indicator": "KELTNER",
+      "version": "KELTNER_V1",
+      "outputs": [
+        "upper",
+        "middle",
+        "lower",
+        "atr"
+      ],
+      "params": {
+        "window": 20,
+        "atr_window": 10,
+        "multiplier": 2.0
+      },
+      "input_domain": [
+        "close",
+        "high",
+        "low"
+      ],
+      "price_mode": "CALLER_DECLARED",
+      "warmup_bars": 20,
+      "unit": "PRICE",
+      "formula_nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py",
+      "condition_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py",
+      "account_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+      "junit": "reports/junit-price-only-v1.xml",
+      "strength": {
+        "formula": "NUMERIC_ORACLE（独立朴素参考逐值）",
+        "condition": "CONDITION_INJECTED（手工注入上下文）",
+        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
+      },
+      "status": "VERIFIED"
+    },
+    {
+      "indicator": "ROLLING_VOLATILITY",
+      "version": "ROLLING_VOLATILITY_V1",
+      "outputs": [
+        "volatility",
+        "return"
+      ],
+      "params": {
+        "window": 20,
+        "price": "close",
+        "annualize": 0,
+        "ddof": 1
+      },
+      "input_domain": [
+        "close"
+      ],
+      "price_mode": "CALLER_DECLARED",
+      "warmup_bars": 21,
+      "unit": "RATIO",
+      "formula_nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py",
+      "condition_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py",
+      "account_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+      "junit": "reports/junit-price-only-v1.xml",
+      "strength": {
+        "formula": "NUMERIC_ORACLE（独立朴素参考逐值）",
+        "condition": "CONDITION_INJECTED（手工注入上下文）",
+        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
+      },
+      "status": "VERIFIED"
+    },
+    {
+      "indicator": "HISTORICAL_RETURN",
+      "version": "HISTORICAL_RETURN_V1",
+      "outputs": [
+        "return",
+        "ref_close"
+      ],
+      "params": {
+        "window": 20,
+        "price": "close",
+        "log": false
+      },
+      "input_domain": [
+        "close"
+      ],
+      "price_mode": "CALLER_DECLARED",
+      "warmup_bars": 21,
+      "unit": "RATIO",
+      "formula_nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py",
+      "condition_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py",
+      "account_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+      "junit": "reports/junit-price-only-v1.xml",
+      "strength": {
+        "formula": "NUMERIC_ORACLE（独立朴素参考逐值）",
+        "condition": "CONDITION_INJECTED（手工注入上下文）",
+        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
+      },
+      "status": "VERIFIED"
+    },
+    {
+      "indicator": "PRICE_EXTREMES",
+      "version": "PRICE_EXTREMES_V1",
+      "outputs": [
+        "hhv",
+        "llv"
+      ],
+      "params": {
+        "window": 20
+      },
+      "input_domain": [
+        "close",
+        "high",
+        "low"
+      ],
+      "price_mode": "CALLER_DECLARED",
+      "warmup_bars": 20,
+      "unit": "PRICE",
+      "formula_nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py",
+      "condition_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py",
+      "account_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+      "junit": "reports/junit-price-only-v1.xml",
+      "strength": {
+        "formula": "NUMERIC_ORACLE（独立朴素参考逐值）",
+        "condition": "CONDITION_INJECTED（手工注入上下文）",
+        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
+      },
+      "status": "VERIFIED"
+    },
+    {
+      "indicator": "PRIOR_BREAKOUT",
+      "version": "PRIOR_BREAKOUT_V1",
+      "outputs": [
+        "prior_high",
+        "prior_low",
+        "break_up",
+        "break_down"
+      ],
+      "params": {
+        "window": 20
+      },
+      "input_domain": [
+        "close",
+        "high",
+        "low"
+      ],
+      "price_mode": "CALLER_DECLARED",
+      "warmup_bars": 21,
+      "unit": "PRICE",
+      "formula_nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py",
+      "condition_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py",
+      "account_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+      "junit": "reports/junit-price-only-v1.xml",
+      "strength": {
+        "formula": "NUMERIC_ORACLE（独立朴素参考逐值）",
+        "condition": "CONDITION_INJECTED（手工注入上下文）",
+        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
+      },
+      "status": "VERIFIED"
+    },
+    {
+      "indicator": "DRAWDOWN_FROM_PEAK",
+      "version": "DRAWDOWN_FROM_PEAK_V1",
+      "outputs": [
+        "drawdown",
+        "peak"
+      ],
+      "params": {
+        "window": 60,
+        "price": "close"
+      },
+      "input_domain": [
+        "close"
+      ],
+      "price_mode": "CALLER_DECLARED",
+      "warmup_bars": 60,
+      "unit": "RATIO",
+      "formula_nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py",
+      "condition_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py",
+      "account_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+      "junit": "reports/junit-price-only-v1.xml",
+      "strength": {
+        "formula": "NUMERIC_ORACLE（独立朴素参考逐值）",
+        "condition": "CONDITION_INJECTED（手工注入上下文）",
+        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
+      },
+      "status": "VERIFIED"
+    },
+    {
+      "indicator": "MACD_HIST_RAW",
+      "version": "MACD_HIST_RAW_V1",
+      "outputs": [
+        "dif",
+        "dea",
+        "hist_raw"
+      ],
+      "params": {
+        "fast": 12,
+        "slow": 26,
+        "signal": 9
+      },
+      "input_domain": [
+        "close"
+      ],
+      "price_mode": "CALLER_DECLARED",
+      "warmup_bars": 34,
+      "unit": "PRICE",
+      "formula_nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py",
+      "condition_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py",
+      "account_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+      "junit": "reports/junit-price-only-v1.xml",
+      "strength": {
+        "formula": "NUMERIC_ORACLE（独立朴素参考逐值）",
+        "condition": "CONDITION_INJECTED（手工注入上下文）",
+        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
+      },
+      "status": "VERIFIED"
+    },
+    {
+      "indicator": "TRIX",
+      "version": "TRIX_V1",
+      "outputs": [
+        "trix",
+        "trix_ma"
+      ],
+      "params": {
+        "window": 12,
+        "signal": 9,
+        "price": "close"
+      },
+      "input_domain": [
+        "close"
+      ],
+      "price_mode": "CALLER_DECLARED",
+      "warmup_bars": 45,
+      "unit": "PERCENT",
+      "formula_nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py",
+      "condition_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py",
+      "account_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+      "junit": "reports/junit-price-only-v1.xml",
+      "strength": {
+        "formula": "NUMERIC_ORACLE（独立朴素参考逐值）",
+        "condition": "CONDITION_INJECTED（手工注入上下文）",
+        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
+      },
+      "status": "VERIFIED"
+    },
+    {
+      "indicator": "VOLUME_MA",
+      "version": "VOLUME_MA_V1",
+      "outputs": [
+        "volume_ma"
+      ],
+      "params": {
+        "window": 20
+      },
+      "input_domain": [
+        "volume"
+      ],
+      "price_mode": "CALLER_DECLARED",
+      "warmup_bars": 20,
+      "unit": "SHARES",
+      "formula_nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py",
+      "condition_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py",
+      "account_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+      "junit": "reports/junit-price-only-v1.xml",
+      "strength": {
+        "formula": "NUMERIC_ORACLE（独立朴素参考逐值）",
+        "condition": "CONDITION_INJECTED（手工注入上下文）",
+        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
+      },
+      "status": "VERIFIED"
+    },
+    {
+      "indicator": "AMOUNT_MA",
+      "version": "AMOUNT_MA_V1",
+      "outputs": [
+        "amount_ma"
+      ],
+      "params": {
+        "window": 20
+      },
+      "input_domain": [
+        "amount"
+      ],
+      "price_mode": "CALLER_DECLARED",
+      "warmup_bars": 20,
+      "unit": "CURRENCY",
+      "formula_nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py",
+      "condition_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py",
+      "account_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+      "junit": "reports/junit-price-only-v1.xml",
+      "strength": {
+        "formula": "NUMERIC_ORACLE（独立朴素参考逐值）",
+        "condition": "CONDITION_INJECTED（手工注入上下文）",
+        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
+      },
+      "status": "VERIFIED"
+    },
+    {
+      "indicator": "RVOL_PRIOR",
+      "version": "RVOL_PRIOR_V1",
+      "outputs": [
+        "rvol",
+        "volume_ma_prior"
+      ],
+      "params": {
+        "window": 20
+      },
+      "input_domain": [
+        "volume"
+      ],
+      "price_mode": "CALLER_DECLARED",
+      "warmup_bars": 21,
+      "unit": "RATIO",
+      "formula_nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py",
+      "condition_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py",
+      "account_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+      "junit": "reports/junit-price-only-v1.xml",
+      "strength": {
+        "formula": "NUMERIC_ORACLE（独立朴素参考逐值）",
+        "condition": "CONDITION_INJECTED（手工注入上下文）",
+        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
+      },
+      "status": "VERIFIED"
+    },
+    {
+      "indicator": "RVOL_INCL_CURRENT",
+      "version": "RVOL_INCL_CURRENT_V1",
+      "outputs": [
+        "rvol",
+        "volume_ma"
+      ],
+      "params": {
+        "window": 20
+      },
+      "input_domain": [
+        "volume"
+      ],
+      "price_mode": "CALLER_DECLARED",
+      "warmup_bars": 20,
+      "unit": "RATIO",
+      "formula_nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py",
+      "condition_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py",
+      "account_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+      "junit": "reports/junit-price-only-v1.xml",
+      "strength": {
+        "formula": "NUMERIC_ORACLE（独立朴素参考逐值）",
+        "condition": "CONDITION_INJECTED（手工注入上下文）",
+        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
+      },
+      "status": "VERIFIED"
+    },
+    {
+      "indicator": "ACCUMULATION_DISTRIBUTION",
+      "version": "ACCUMULATION_DISTRIBUTION_V1",
+      "outputs": [
+        "ad_line",
+        "money_flow_volume"
+      ],
+      "params": {},
+      "input_domain": [
+        "close",
+        "high",
+        "low",
+        "volume"
+      ],
+      "price_mode": "CALLER_DECLARED",
+      "warmup_bars": 1,
+      "unit": "SHARES",
+      "formula_nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py",
+      "condition_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py",
+      "account_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+      "junit": "reports/junit-price-only-v1.xml",
+      "strength": {
+        "formula": "NUMERIC_ORACLE（独立朴素参考逐值）",
+        "condition": "CONDITION_INJECTED（手工注入上下文）",
+        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
+      },
+      "status": "VERIFIED"
+    },
+    {
+      "indicator": "CHAIKIN_MONEY_FLOW",
+      "version": "CHAIKIN_MONEY_FLOW_V1",
+      "outputs": [
+        "cmf",
+        "mfv_sum",
+        "volume_sum"
+      ],
+      "params": {
+        "window": 20
+      },
+      "input_domain": [
+        "close",
+        "high",
+        "low",
+        "volume"
+      ],
+      "price_mode": "CALLER_DECLARED",
+      "warmup_bars": 20,
+      "unit": "RATIO",
+      "formula_nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py",
+      "condition_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py",
+      "account_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+      "junit": "reports/junit-price-only-v1.xml",
+      "strength": {
+        "formula": "NUMERIC_ORACLE（独立朴素参考逐值）",
+        "condition": "CONDITION_INJECTED（手工注入上下文）",
+        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
+      },
+      "status": "VERIFIED"
+    },
+    {
+      "indicator": "PVT",
+      "version": "PVT_V1",
+      "outputs": [
+        "pvt"
+      ],
+      "params": {},
+      "input_domain": [
+        "close",
+        "volume"
+      ],
+      "price_mode": "CALLER_DECLARED",
+      "warmup_bars": 1,
+      "unit": "SHARES",
+      "formula_nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py",
+      "condition_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py",
+      "account_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+      "junit": "reports/junit-price-only-v1.xml",
+      "strength": {
+        "formula": "NUMERIC_ORACLE（独立朴素参考逐值）",
+        "condition": "CONDITION_INJECTED（手工注入上下文）",
+        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
+      },
+      "status": "VERIFIED"
+    },
+    {
+      "indicator": "VWAP_SESSION_PROXY",
+      "version": "VWAP_SESSION_PROXY_V1",
+      "outputs": [
+        "vwap_session_proxy"
+      ],
+      "params": {},
+      "input_domain": [
+        "amount",
+        "volume"
+      ],
+      "price_mode": "CALLER_DECLARED",
+      "warmup_bars": 1,
+      "unit": "PRICE",
+      "formula_nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py",
+      "condition_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py",
+      "account_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+      "junit": "reports/junit-price-only-v1.xml",
+      "strength": {
+        "formula": "NUMERIC_ORACLE（独立朴素参考逐值）",
+        "condition": "CONDITION_INJECTED（手工注入上下文）",
+        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
+      },
+      "status": "VERIFIED"
+    },
+    {
+      "indicator": "MFI",
+      "version": "MFI_V1",
+      "outputs": [
+        "mfi",
+        "typical_price"
+      ],
+      "params": {
+        "window": 14
+      },
+      "input_domain": [
+        "close",
+        "high",
+        "low",
+        "volume"
+      ],
+      "price_mode": "CALLER_DECLARED",
+      "warmup_bars": 15,
+      "unit": "INDEX_0_100",
+      "formula_nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py",
+      "condition_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py",
+      "account_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+      "junit": "reports/junit-price-only-v1.xml",
+      "strength": {
+        "formula": "NUMERIC_ORACLE（独立朴素参考逐值）",
+        "condition": "CONDITION_INJECTED（手工注入上下文）",
+        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
+      },
+      "status": "VERIFIED"
+    },
+    {
+      "indicator": "ROLLING_SLOPE",
+      "version": "ROLLING_SLOPE_V1",
+      "outputs": [
+        "slope"
+      ],
+      "params": {
+        "window": 20,
+        "price": "close"
+      },
+      "input_domain": [
+        "close"
+      ],
+      "price_mode": "CALLER_DECLARED",
+      "warmup_bars": 20,
+      "unit": "PRICE_PER_BAR",
+      "formula_nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py",
+      "condition_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py",
+      "account_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+      "junit": "reports/junit-price-only-v1.xml",
+      "strength": {
+        "formula": "NUMERIC_ORACLE（独立朴素参考逐值）",
+        "condition": "CONDITION_INJECTED（手工注入上下文）",
+        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
+      },
+      "status": "VERIFIED"
+    },
+    {
+      "indicator": "TRUE_RANGE",
+      "version": "TRUE_RANGE_V1",
+      "outputs": [
+        "tr"
+      ],
+      "params": {},
+      "input_domain": [
+        "close",
+        "high",
+        "low"
+      ],
+      "price_mode": "CALLER_DECLARED",
+      "warmup_bars": 1,
+      "unit": "PRICE",
+      "formula_nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py",
+      "condition_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py",
+      "account_nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+      "junit": "reports/junit-price-only-v1.xml",
+      "strength": {
+        "formula": "NUMERIC_ORACLE（独立朴素参考逐值）",
+        "condition": "CONDITION_INJECTED（手工注入上下文）",
+        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
+      },
+      "status": "VERIFIED"
+    }
+  ]
+}

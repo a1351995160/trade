@@ -19,7 +19,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
-from chanlun_trader.price_only_scope import (  # noqa: E402
+from chanlun_trader.price_only_scope import (
+    rebuild_frozen_denylist,  # noqa: E402
     ForbiddenDataAccess,
     assert_gbbq_read_disabled,
     guard_gbbq_path,
@@ -122,6 +123,7 @@ def test_extra_forbidden_paths_env(tmp_path: Path, monkeypatch):
     decoy.write_bytes(b"")
     assert not is_forbidden_gbbq_path(decoy)
     monkeypatch.setenv("CHANLUN_FORBIDDEN_GBBQ_PATHS", str(decoy))
+    rebuild_frozen_denylist()
     assert is_forbidden_gbbq_path(decoy)
     with pytest.raises(ForbiddenDataAccess):
         guard_gbbq_path(decoy)

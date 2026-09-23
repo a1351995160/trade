@@ -23,7 +23,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
-from chanlun_trader.price_only_scope import (  # noqa: E402
+from chanlun_trader.price_only_scope import (
+    rebuild_frozen_denylist,  # noqa: E402
     ForbiddenDataAccess,
     _normalise,
     is_forbidden_gbbq_path,
@@ -102,12 +103,53 @@ def test_symlink_alias_to_forbidden_cache_is_rejected(tmp_path: Path):
             sentinel.unlink()
 
 
-def test_symlink_junction_scope_is_documented():
-    """junction 在 Windows 需特权；本机不支持时明确标注范围，不伪称已覆盖。"""
+def test_junction_alias_in_temp_dir(tmp_path: Path):
+    """Windows 上在临时目录**原生创建 junction** 并检查入口拦截。
+
+    任务要求：不能无条件 skip 并声称尝试失败；只有**实际权限或文件系统错误**
+    才记录失败并 skip。POSIX 以"不适用"单列。
+    """
     if os.name != "nt":
-        pytest.skip("junction 仅 Windows 可用；本机为 POSIX，未覆盖该形式")
-    # Windows 上符号链接已覆盖；junction 需管理员，若无法创建则标注
-    pytest.skip("junction 创建需管理员权限；本机未覆盖该形式（已在文档标注）")
+        pytest.skip("NOT_APPLICABLE_POSIX: junction 是 Windows 专有目录别名形式")
+
+    junction = tmp_path / "junc"
+    target = tmp_path / "target"
+    target.mkdir()
+    (target / "gbbq.csv").write_text("code,datetime,category\n", encoding="utf-8")
+
+    # 原生创建：mklink /J（无需管理员，不同于符号链接）
+    import subprocess
+
+    completed = subprocess.run(
+        ["cmd", "/c", "mklink", "/J", str(junction), str(target)],
+        capture_output=True, text=True, encoding="utf-8", errors="replace")
+    if completed.returncode != 0:
+        pytest.skip(
+            "JUNCTION_CREATION_FAILED_PRIVILEGE_OR_FS: "
+            f"rc={completed.returncode} {completed.stderr.strip()[:120]}")
+
+    try:
+        # junction 是目录别名：其下的 gbbq.csv 与目标同一身份
+        aliased = junction / "gbbq.csv"
+        assert aliased.exists(), "junction 创建后目标不可见"
+        # 该临时目标不在禁止根下，故应可读（正对照：junction 本身不触发拒绝）
+        assert not is_forbidden_gbbq_path(aliased), "临时目录 junction 被误拒"
+        # 真实 gbbq 经 junction 别名访问时必须被拒（身份解析生效）
+        real = Path("E:/new_tdx_mock/T0002/hq_cache/gbbq")
+        if real.exists():
+            real_junction = tmp_path / "real_junc"
+            completed = subprocess.run(
+                ["cmd", "/c", "mklink", "/J", str(real_junction), str(real.parent)],
+                capture_output=True, text=True, encoding="utf-8", errors="replace")
+            if completed.returncode == 0:
+                aliased_real = real_junction / "gbbq"
+                assert is_forbidden_gbbq_path(aliased_real), \
+                    "真实 gbbq 经 junction 别名未被拒"
+    finally:
+        try:
+            os.rmdir(junction)
+        except OSError:
+            pass
 
 
 # ==========================================================================
@@ -118,6 +160,7 @@ def test_explicit_list_matches_symlink_alias(tmp_path: Path, monkeypatch):
     target = tmp_path / "archived-events.dat"
     target.write_text("x", encoding="utf-8")
     monkeypatch.setenv("CHANLUN_FORBIDDEN_GBBQ_PATHS", str(target))
+    rebuild_frozen_denylist()
     assert is_forbidden_gbbq_path(target), "清单目标本身未被拒"
     if SYMLINK_OK:
         link = tmp_path / "alias.dat"
@@ -137,12 +180,14 @@ def test_explicit_list_is_not_limited_by_basename_whitelist(tmp_path: Path, monk
         target = tmp_path / name
         target.write_text("x", encoding="utf-8")
         monkeypatch.setenv("CHANLUN_FORBIDDEN_GBBQ_PATHS", str(target))
+        rebuild_frozen_denylist()
         assert is_forbidden_gbbq_path(target), f"显式清单对 {name} 失效"
 
 
 def test_explicit_list_accepts_relative_and_absolute(monkeypatch):
     """清单项的相对与绝对写法都应生效。"""
     monkeypatch.setenv("CHANLUN_FORBIDDEN_GBBQ_PATHS", "data/cache/archived-events.dat")
+    rebuild_frozen_denylist()
     assert is_forbidden_gbbq_path("data/cache/archived-events.dat")
     assert is_forbidden_gbbq_path(str((Path.cwd() / "data/cache/archived-events.dat").resolve()))
 

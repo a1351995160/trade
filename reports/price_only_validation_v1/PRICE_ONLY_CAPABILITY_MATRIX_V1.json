@@ -129,7 +129,6 @@
     "formal_trial": "NOT_ESTABLISHED",
     "real_performance_experiments": 0
   },
-  "new_sha": "PENDING_COMMIT",
   "access_boundary_tests": {
     "gbbq_access_guard": 8,
     "gbbq_identity_bypass": 19,
@@ -138,14 +137,16 @@
     "note": "上一轮旧口径写作 20 项访问边界，实际为 31 项（本轮新增 19 项身份绕过测试）。"
   },
   "real_raw_sample_tests": 11,
-  "new_tests_actual_total": 226,
+  "new_tests_actual_total": 249,
   "new_tests_breakdown": {
     "formula": 162,
     "condition_and_service": 41,
     "gbbq_guard": 8,
     "gbbq_identity_bypass": 19,
     "bounded_read": 4,
-    "real_raw_sample": 11
+    "real_raw_sample": 11,
+    "qfq_synthetic": 4,
+    "note": "六部分合计 245 + 合成 QFQ 4 = 249；由 scripts/emit_price_only_evidence_v1.py 自动派生"
   },
   "qfq_synthetic_split": {
     "synthetic_executed": "tests/pit/test_qfq_pit_synthetic_v1.py (4 项，实际执行)",
@@ -182,6 +183,30 @@
       "oracle_fix": "naive_wilder_rma 改为按连续段独立播种；[1,1,NaN,10,10,10] window=2 -> [NaN,2,NaN,NaN,20,20]",
       "evidence_counts_corrected": "新增 226 项（162 公式 + 41 条件/服务 + 8 guard + 19 身份绕过 + 4 bounded + 11 A1）；上一轮 230/20 口径已修正",
       "note": "25 个账户服务用例属于 41 条条件套件内部，不重复累加"
+    }
+  },
+  "evidence_counts_ref": "reports/price_only_validation_v1/EVIDENCE_COUNTS_V1.json",
+  "pr16_residual_closure": {
+    "PR16-01": {
+      "status": "CLOSED",
+      "cwd_counterexample": "已复现：相对清单 external/cache/gbbq.csv，同一绝对路径在 cwd 变化后由拒绝翻转为放行",
+      "fix": "禁止集合在组合根一次性解析为绝对身份并冻结；检查时不重新读取 cwd",
+      "env_var_rule": "环境变量至多追加约束；真实 gbbq 根身份始终保留，不被移除",
+      "entry_covered": "TdxData._load_gbbq 与直接 GbbqReader 走同一限制"
+    },
+    "PR16-02": {
+      "status": "CLOSED",
+      "scope_activation": "显式激活（tests/conftest.py 组合根调用 activate_task_scope）；不由报告文件推断",
+      "shared_scope": "生产 _load_gbbq 与真实测试分类消费同一 task_scope_active()",
+      "qfq_split": "合成可证 4 项实际执行；真实集成标 real_data_integration 并任务激活时 skip",
+      "junction": "Windows 临时目录原生 mklink /J 实际创建并检查拦截；POSIX 标 NOT_APPLICABLE"
+    },
+    "PR16-03": {
+      "status": "CLOSED",
+      "counts_source": "从实际 pytest --collect-only 与 JUnit 自动生成（scripts/emit_price_only_evidence_v1.py）",
+      "corrected": "226 -> 249（六部分 245 + 合成 QFQ 4）",
+      "full_suite_accounting": "errors 与 failures 分开记录；skipped 不计为 passed",
+      "indicator_evidence": "25 项逐行含 indicator/outputs/params/input-domain/formula/condition/account/nodeid/JUnit/status 与证明强度"
     }
   }
 }

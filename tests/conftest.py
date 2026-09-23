@@ -5,6 +5,14 @@ import pytest
 
 
 def pytest_configure(config):
+    # price-only 验收任务作用域：在**组合根**显式激活（不由报告文件推断）。
+    # 生产 TdxData._load_gbbq 与真实测试分类消费同一作用域，保证政策一致。
+    # 激活时禁止打开真实 gbbq；退出（deactivate）后恢复原有权限，
+    # 不创造真实数据授权。
+    from chanlun_trader.price_only_scope import activate_task_scope
+
+    activate_task_scope("price_only_indicator_validation_v1")
+
     if os.environ.get("CHANLUN_TEST_ISOLATION") != "1":
         return
     from chanlun_trader.research_factory.predictive_executor import CanonicalPredictiveExecutorV1

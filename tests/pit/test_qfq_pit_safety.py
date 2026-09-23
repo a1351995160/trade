@@ -1,33 +1,28 @@
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import pytest
 
 from chanlun_trader.config import load_config
 from chanlun_trader.tdx_data import TdxData, list_a_stocks
 from chanlun_trader.research.qfq import qfq_pit_acceptance, qfq_columns_asof
-from price_only_scope.task_scope import real_gbbq_access_forbidden
+from chanlun_trader.price_only_scope import task_scope_active
 
 # 分类说明（PR16-02）：
-# - 本模块是**真实本机数据集成测试**：需要真实 gbbq 与真实 .day，属
-#   REAL_DATA_INTEGRATION 类别，不是「合成可证的正确性」。
+# - 本模块是**真实本机数据集成测试**：需要真实 gbbq 与真实 .day，
+#   属 REAL_DATA_INTEGRATION 类别，不是「合成可证的正确性」。
 # - 合成可证的性质（as_of 前缀、未来事件不改历史、无事件时恒等）已拆到
 #   tests/pit/test_qfq_pit_synthetic_v1.py 并**实际执行**。
-# - 本任务（price-only 验收）禁止打开真实 gbbq，故本模块在**任务激活时**
-#   显式标记为不执行（skip）。离开本任务环境（标记不存在）语义不变。
-# - 不使用环境变量放开真实数据；任务激活条件来自工作区级标记。
-
-
-def _task_forbids_real_gbbq() -> bool:
-    return real_gbbq_access_forbidden()
+# - 本模块与生产 _load_gbbq 消费**同一个**任务作用域（tests/conftest.py 激活）。
+#   作用域未激活时不限制，既有语义不被永久改变。
+# - 不使用环境变量放开真实数据。
 
 
 pytestmark = [
     pytest.mark.real_data_integration,
     pytest.mark.skipif(
-        _task_forbids_real_gbbq(),
+        task_scope_active(),
         reason="TASK_FORBIDS_REAL_GBBQ_ACCESS: 本任务禁止真实 gbbq；"
                "合成可证性质见 tests/pit/test_qfq_pit_synthetic_v1.py"),
 ]
