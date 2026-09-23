@@ -289,13 +289,30 @@ def node_diff_vs_base() -> dict:
     }
 
 
-def main() -> int:
+def main(argv: list | None = None) -> int:
+    """生成证据。
+
+    ``--junit PATH``：指定消费的 JUnit（CI 传入本次实际产出）；
+    ``--out PATH``：指定输出路径。默认消费仓库内已提交的 JUnit。
+    """
+    import argparse
+
+    parser = argparse.ArgumentParser(description="从实际 JUnit 推导能力证据")
+    parser.add_argument("--junit", default=None,
+                        help="消费的 JUnit 路径（默认 reports/junit-price-only-v1.xml）")
+    parser.add_argument("--out", default=None, help="输出 JSON 路径")
+    # 显式传入 argv 才解析；无参时用空列表，避免读到宿主进程的 argv
+    args = parser.parse_args(argv if argv is not None else [])
+
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
+    junit_path = Path(args.junit) if args.junit else (REPO_ROOT / "reports" / TARGET_JUNIT_NAME)
+    out_path = Path(args.out) if args.out else (OUT_DIR / "EVIDENCE_COUNTS_V1.json")
+
     try:
-        outcomes = parse_junit_outcomes(REPO_ROOT / "reports" / TARGET_JUNIT_NAME)
+        outcomes = parse_junit_outcomes(junit_path)
         counts = {name: _collect_count(path) for name, path in NEW_TEST_FILES.items()}
         qfq_synthetic = _collect_count(QFQ_SYNTHETIC_FILE)
     except CollectionError as exc:
@@ -305,7 +322,7 @@ def main() -> int:
     parts_total = sum(counts.values())
     new_total = parts_total + qfq_synthetic
 
-    local_junit = _junit_counts(REPO_ROOT / "reports" / TARGET_JUNIT_NAME)
+    local_junit = _junit_counts(junit_path)
     local_full = _junit_counts(REPO_ROOT / "reports" / "junit-full-local.xml")
 
     rows = _indicator_evidence(outcomes)
@@ -314,6 +331,7 @@ def main() -> int:
 
     payload = {
         "generated_from": "实际 pytest --collect-only 与 JUnit testcase outcome",
+        "junit_consumed": str(junit_path),
         "note": "计数与状态均由脚本自动派生，不硬编码；本机与 CI 分列。"
                 "汇总成功不覆盖单项失败。",
         "source_identity": {
@@ -342,7 +360,8 @@ def main() -> int:
         "indicator_evidence": rows,
         "summary": {"verified": verified, "partial": partial, "total": len(rows)},
     }
-    target = OUT_DIR / "EVIDENCE_COUNTS_V1.json"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    target = out_path
     target.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
     print("junit outcomes parsed:", len(outcomes))

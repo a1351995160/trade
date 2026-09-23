@@ -1,8 +1,9 @@
 {
   "generated_from": "实际 pytest --collect-only 与 JUnit testcase outcome",
+  "junit_consumed": "E:\\llmwiki\\trade-price-only-validation-v1\\reports\\junit-price-only-v1.xml",
   "note": "计数与状态均由脚本自动派生，不硬编码；本机与 CI 分列。汇总成功不覆盖单项失败。",
   "source_identity": {
-    "head": "1b03623b39f08ef4f947b72e24f714897aaca308"
+    "head": "46afec397cb32d5637275c090b3b3baa0ed124f3"
   },
   "new_tests": {
     "by_part": {
@@ -43,11 +44,11 @@
   },
   "local_full_suite": {
     "status": "ESTABLISHED",
-    "tests": 2623,
+    "tests": 2636,
     "errors": 24,
     "failures": 169,
-    "skipped": 3,
-    "passed": 2427,
+    "skipped": 4,
+    "passed": 2439,
     "failed_including_errors": 193
   },
   "accounting_rules": {

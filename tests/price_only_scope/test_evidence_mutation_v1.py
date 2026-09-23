@@ -37,10 +37,17 @@ def _load_module():
     return module
 
 
-def _real_outcomes() -> dict:
-    """读取真实的 JUnit outcome（不伪造）。"""
+def _synthetic_outcomes(tmp_path: Path) -> dict:
+    """自建 JUnit outcome（不依赖已提交的报告文件，避免顺序/环境耦合）。"""
     module = _load_module()
-    return module.parse_junit_outcomes(REPO_ROOT / "reports" / "junit-price-only-v1.xml")
+    junit = tmp_path / "synthetic.xml"
+    cases = []
+    for nodeid in list(module.FORMULA_NODEIDS.values()) + [module.CONDITION_NODEID,
+                                                           module.ACCOUNT_NODEID]:
+        module_path, func_name = nodeid.split("::")
+        cases.append((module_path[:-3].replace("/", "."), func_name, "passed"))
+    _write_junit(junit, cases)
+    return module.parse_junit_outcomes(junit)
 
 
 def _write_junit(path: Path, cases: list) -> None:
@@ -58,10 +65,10 @@ def _write_junit(path: Path, cases: list) -> None:
     ET.ElementTree(suite).write(path, encoding="utf-8", xml_declaration=True)
 
 
-def test_removing_formula_mapping_downgrades_dimension():
+def test_removing_formula_mapping_downgrades_dimension(tmp_path: Path):
     """删除 CCI 的公式映射后，其 formula 维度必须降级为 PARTIAL。"""
     module = _load_module()
-    outcomes = _real_outcomes()
+    outcomes = _synthetic_outcomes(tmp_path)
     assert module.resolve_dimension(module.FORMULA_NODEIDS["CCI"], outcomes)["status"] \
         == "VERIFIED", "前置：CCI 公式维度本应 VERIFIED"
 
@@ -157,10 +164,10 @@ def test_missing_junit_makes_main_nonzero(monkeypatch, capsys):
     assert "NOT_ESTABLISHED" in capsys.readouterr().err
 
 
-def test_unrelated_mutation_does_not_affect_other_dimensions():
+def test_unrelated_mutation_does_not_affect_other_dimensions(tmp_path: Path):
     """变异 CCI 的公式映射，不得影响 DEMA 的任何维度。"""
     module = _load_module()
-    outcomes = _real_outcomes()
+    outcomes = _synthetic_outcomes(tmp_path)
     before = module.resolve_dimension(module.FORMULA_NODEIDS["DEMA"], outcomes)
 
     mutated = dict(module.FORMULA_NODEIDS)
@@ -169,10 +176,10 @@ def test_unrelated_mutation_does_not_affect_other_dimensions():
     assert after == before, "无关变异影响了其他维度"
 
 
-def test_full_row_derivation_reflects_mutation():
+def test_full_row_derivation_reflects_mutation(tmp_path: Path):
     """端到端：用真实判定逻辑跑整表，确认状态来自 outcome 而非写死。"""
     module = _load_module()
-    outcomes = _real_outcomes()
+    outcomes = _synthetic_outcomes(tmp_path)
     rows = module._indicator_evidence(outcomes)
     assert rows, "无证据行"
     for row in rows:

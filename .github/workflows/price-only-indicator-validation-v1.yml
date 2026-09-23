@@ -81,6 +81,14 @@ jobs:
           -q
           --junitxml=junit/price-only-regression-${{ matrix.os }}.xml
 
+      - name: Derive evidence from actual CI JUnit
+        # 生成器消费**本次 CI 实际产出**的 JUnit，而不是提交的本机文件；
+        # 收集/解析失败会非零退出，不会用 0 项继续签发通过结论。
+        run: >
+          python scripts/emit_price_only_evidence_v1.py
+          --junit junit/price-only-a0-${{ matrix.os }}.xml
+          --out junit/EVIDENCE_FROM_CI_${{ matrix.os }}.json
+
       - name: Upload JUnit evidence
         if: always()
         uses: actions/upload-artifact@v4
