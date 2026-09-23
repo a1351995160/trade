@@ -354,7 +354,6 @@ def _indicator_evidence(outcomes: dict) -> list:
             resolved["junit"] = TARGET_JUNIT_NAME
             resolved["strength"] = strength_by_dim[name]
             dims[name] = resolved
-            dims[name] = resolved
         rows.append({
             "indicator": indicator_id,
             "version": spec.version,
