@@ -29,10 +29,9 @@ TARGET_JUNIT_NAME = "junit-price-only-v1.xml"
 _DRIVE_PREFIX_RE = re.compile(r"^[a-zA-Z]:[\\/]")
 
 # 条件消费与账户接线的适用测试函数（**逐项**绑定，不用函数全体参数替单项作证）
-CONDITION_TEST = ("tests/conditions_v2/test_price_only_condition_consumption_v1.py",
-                  "test_condition_layer_consumes_each_new_indicator")
-ACCOUNT_TEST = ("tests/conditions_v2/test_price_only_condition_consumption_v1.py",
-                "test_indicator_reaches_account_chain_through_public_entry")
+CONDITION_MODULE = "tests/conditions_v2/test_price_only_condition_consumption_v1.py"
+CONDITION_TEST = (CONDITION_MODULE, "test_condition_layer_consumes_each_new_indicator")
+ACCOUNT_TEST = (CONDITION_MODULE, "test_indicator_reaches_account_chain_through_public_entry")
 
 # 维度 -> (模块, 测试函数)；公式维度的函数名因指标而异，见 FORMULA_NODEIDS
 DIMENSION_TESTS = {
@@ -73,12 +72,12 @@ class CollectionError(RuntimeError):
 
 # 受审映射：指标 -> 公式维度的**完整参数化 nodeid**。
 # 生成器负责验证这些 nodeid 在 JUnit 中的实际 outcome，而不是仅检查名字存在。
-FORMULA_TEST_MODULE = "tests/indicators_v2/test_price_only_formula_increment_v1.py"
+FORMULA_MODULE = "tests/indicators_v2/test_price_only_formula_increment_v1.py"
 
 
 def _formula_node(func: str) -> str:
     """拼出公式验收用例的完整 nodeid（避免重复字面量）。"""
-    return f"{FORMULA_TEST_MODULE}::{func}"
+    return f"{FORMULA_MODULE}::{func}"
 
 
 FORMULA_NODEIDS = {
@@ -165,6 +164,27 @@ def _junit_counts(path: Path) -> dict:
 _OUTCOME_SEVERITY = {"passed": 0, "skipped": 1, "error": 2, "failed": 3}
 
 
+def _case_outcome(case) -> str:
+    """由 JUnit testcase 的子元素判定 outcome。"""
+    for tag, outcome in (("failure", "failed"), ("error", "error"),
+                         ("skipped", "skipped")):
+        if case.find(tag) is not None:
+            return outcome
+    return "passed"
+
+
+def _merge_worst(outcomes: dict, key: str, outcome: str) -> None:
+    """按**最差** outcome 合并去参数键。
+
+    否则先出现的 passed 参数会掩盖后续失败/跳过的兄弟参数，
+    使整维度被误判 VERIFIED。
+    """
+    previous = outcomes.get(key)
+    if previous is None or _OUTCOME_SEVERITY.get(outcome, 0) > \
+            _OUTCOME_SEVERITY.get(previous, 0):
+        outcomes[key] = outcome
+
+
 def parse_junit_outcomes(path: Path) -> dict:
     """解析 JUnit，返回 {nodeid: outcome}。
 
@@ -184,24 +204,10 @@ def parse_junit_outcomes(path: Path) -> dict:
         classname = case.get("classname") or ""
         name = case.get("name") or ""
         module_path = classname.replace(".", "/") + ".py"
-        base = f"{module_path}::{name}"
-        if case.find("failure") is not None:
-            outcome = "failed"
-        elif case.find("error") is not None:
-            outcome = "error"
-        elif case.find("skipped") is not None:
-            outcome = "skipped"
-        else:
-            outcome = "passed"
-        outcomes[base] = outcome
+        outcome = _case_outcome(case)
+        outcomes[f"{module_path}::{name}"] = outcome
         if "[" in name:
-            stripped = f"{module_path}::{name.split('[', 1)[0]}"
-            # 去参数键必须按**最差** outcome 聚合：否则先出现的 passed 参数
-            # 会掩盖后续失败/跳过的兄弟参数，使整维度被误判 VERIFIED。
-            previous = outcomes.get(stripped)
-            if previous is None or _OUTCOME_SEVERITY.get(outcome, 0) > \
-                    _OUTCOME_SEVERITY.get(previous, 0):
-                outcomes[stripped] = outcome
+            _merge_worst(outcomes, f"{module_path}::{name.split('[', 1)[0]}", outcome)
     return outcomes
 
 
@@ -259,7 +265,6 @@ def build_expected_coverage() -> dict:
     """
     if _COVERAGE_CACHE:
         return _COVERAGE_CACHE
-    formula_module = "tests/indicators_v2/test_price_only_formula_increment_v1.py"
     formula_cache: dict = {}
     condition_map = collect_parameterized_nodeids(*CONDITION_TEST)
     account_map = collect_parameterized_nodeids(*ACCOUNT_TEST)
@@ -269,7 +274,7 @@ def build_expected_coverage() -> dict:
         func_name = base.split("::", 1)[1]
         if func_name not in formula_cache:
             formula_cache[func_name] = collect_parameterized_nodeids(
-                formula_module, func_name, group_by_indicator=False)
+                FORMULA_MODULE, func_name, group_by_indicator=False)
         nodes = list(formula_cache[func_name].get("_all", []))
         if not nodes and base in formula_cache[func_name].get("_plain", []):
             nodes = [base]

@@ -3,7 +3,7 @@
   "junit_consumed": "E:\\llmwiki\\trade-price-only-validation-v1\\reports\\junit-price-only-v1.xml",
   "note": "计数与状态均由脚本自动派生，不硬编码；本机与 CI 分列。汇总成功不覆盖单项失败。",
   "source_identity": {
-    "head": "8e4e20386b4970d1bfca7e35a1d1ae53acee0380"
+    "head": "3f8f20432eb28f55f48edbe3204829bf3c191645"
   },
   "new_tests": {
     "by_part": {
@@ -44,11 +44,11 @@
   },
   "local_full_suite": {
     "status": "ESTABLISHED",
-    "tests": 2636,
+    "tests": 2650,
     "errors": 24,
     "failures": 169,
-    "skipped": 4,
-    "passed": 2439,
+    "skipped": 15,
+    "passed": 2442,
     "failed_including_errors": 193
   },
   "accounting_rules": {

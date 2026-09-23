@@ -59,31 +59,20 @@ def _strip_extended_prefix(text: str) -> str:
     return text
 
 
-def _normalise(path) -> str | None:
-    """把路径规范化为**可比身份字符串**（不依赖 os.path 语义）。
-
-    - 统一分隔符、去扩展前缀、字符串层面折叠 ``.`` 与 ``..``；
-    - 盘符统一大写、其余小写（Windows 大小写不敏感）；
-    - 相对路径**保持相对**（不在此处拼接 cwd，避免 cwd 漂移导致漏判）。
-    """
-    if path is None:
-        return None
-    text = str(path).replace("\\", "/").strip()
-    if not text:
-        return None
-    text = _strip_extended_prefix(text)
-    if not text:
-        return None
-
-    drive = ""
-    rest = text
+def _split_drive(text: str) -> tuple[str, str]:
+    """拆出盘符与其余部分（盘符统一大写，其余以 ``/`` 开头）。"""
     match = _DRIVE_RE.match(text)
-    if match:
-        drive = text[:2].upper()
-        rest = text[2:]
-        if not rest.startswith("/"):
-            rest = "/" + rest
+    if not match:
+        return "", text
+    drive = text[:2].upper()
+    rest = text[2:]
+    if not rest.startswith("/"):
+        rest = "/" + rest
+    return drive, rest
 
+
+def _fold_segments(rest: str) -> str:
+    """字符串层面折叠 ``.`` 与 ``..``（不触碰文件系统）。"""
     parts: list[str] = []
     for token in rest.split("/"):
         if token in ("", "."):
@@ -95,10 +84,24 @@ def _normalise(path) -> str | None:
                 parts.append("..")
             continue
         parts.append(token)
-    body = "/".join(parts)
-    if drive:
-        return f"{drive}/{body}".lower()
-    return body.lower()
+    return "/".join(parts)
+
+
+def _normalise(path) -> str | None:
+    """把路径规范化为**可比身份字符串**（不依赖 os.path 语义）。
+
+    - 统一分隔符、去扩展前缀、字符串层面折叠 ``.`` 与 ``..``；
+    - 盘符统一大写、其余小写（Windows 大小写不敏感）；
+    - 相对路径**保持相对**（不在此处拼接 cwd，避免 cwd 漂移导致漏判）。
+    """
+    if path is None:
+        return None
+    text = _strip_extended_prefix(str(path).replace("\\", "/").strip())
+    if not text:
+        return None
+    drive, rest = _split_drive(text)
+    body = _fold_segments(rest)
+    return f"{drive}/{body}".lower() if drive else body.lower()
 
 
 def _to_absolute_normalised(path) -> str | None:
@@ -128,6 +131,15 @@ def _identity_variants(path) -> set:
     return _freeze_identity_closure(path)
 
 
+def _matches_root_basename(variant: str, name: str) -> bool:
+    """判断某身份是否等于"受保护根 + 该基名"。"""
+    if name == "gbbq.csv" and any(
+            variant == f"{root_id}/{name}" for root_id in _root_identities(REAL_CACHE_ROOT)):
+        return True
+    return any(variant == f"{root_id}/{name}"
+               for root_id in _root_identities(REAL_GBBQ_ROOT))
+
+
 def is_forbidden_gbbq_path(path) -> bool:
     """判断路径是否指向真实 gbbq 原件或其全量缓存（含身份别名两方向）。
 
@@ -137,23 +149,14 @@ def is_forbidden_gbbq_path(path) -> bool:
     variants = _identity_variants(path)
     if not variants:
         return True  # 无法解析 → fail closed
-
-    deny = _FROZEN_DENYLIST
-    if variants & deny:
+    if variants & _FROZEN_DENYLIST:
         return True
 
     # 根之下任意 gbbq 类文件（覆盖未逐一列出的同目录文件）
     for variant in variants:
         name = variant.rsplit("/", 1)[-1]
-        if name not in GBBQ_BASENAMES:
-            continue
-        for root_id in _root_identities(REAL_GBBQ_ROOT):
-            if variant == f"{root_id}/{name}":
-                return True
-        if name == "gbbq.csv":
-            for root_id in _root_identities(REAL_CACHE_ROOT):
-                if variant == f"{root_id}/{name}":
-                    return True
+        if name in GBBQ_BASENAMES and _matches_root_basename(variant, name):
+            return True
     return False
 
 
@@ -179,6 +182,17 @@ def _root_identities(root: Path) -> tuple[str, ...]:
     return tuple(sorted(variants))
 
 
+def _windows_form_normalised(raw: str) -> str | None:
+    """盘符路径的 Windows 形式规范化（POSIX 上 realpath 不处理盘符）。"""
+    if not _DRIVE_RE.match(raw):
+        return None
+    try:
+        from pathlib import PureWindowsPath
+        return _normalise(str(PureWindowsPath(raw)))
+    except (ImportError, ValueError):
+        return None
+
+
 def _freeze_identity_closure(path) -> set:
     """把一个受保护路径解析为**身份闭包**（含别名两个方向）。
 
@@ -191,42 +205,22 @@ def _freeze_identity_closure(path) -> set:
     绝不在解析过程中混用 cwd —— 否则同一配置在 cwd 不同时会解析到不同身份
     （已复现的绕过：相对链接按 cwd 解析，目标本体未被识别）。
 
-    - 解析成功：把锚定后的词法身份、``realpath`` 结果与"父目录解析 + 基名"
-      都纳入闭包；
-    - 解析失败或平台不支持：**不伪装成功**，该候选不产生额外身份
-      （调用方仍按词法身份判定），并由 ``_resolve_status`` 如实记录。
+    解析失败或平台不支持时**不伪装成功**：仅保留词法身份，不产生额外条目。
     """
     if path is None:
         return set()
     raw = str(path).strip()
     if not raw:
         return set()
-    closure: set[str] = set()
 
     # 步骤一：以组合根锚定为绝对候选（唯一基准，不读 cwd）
-    anchored = _to_absolute_normalised(raw)
-    if anchored:
-        closure.add(anchored)
-    relative = _normalise(raw)
-    if relative:
-        closure.add(relative)
-
+    closure = {v for v in (_to_absolute_normalised(raw), _normalise(raw)) if v}
     # 步骤二：对**锚定后的绝对候选**做真实指向解析
-    anchor_path = _anchored_path(raw)
-    if anchor_path is not None:
-        for resolved in _resolve_real_paths(anchor_path):
-            if resolved:
-                closure.add(resolved)
-
-    # Windows 盘符语义（POSIX 上 realpath 不处理盘符）
-    if _DRIVE_RE.match(raw):
-        try:
-            from pathlib import PureWindowsPath
-            win_norm = _normalise(str(PureWindowsPath(raw)))
-            if win_norm:
-                closure.add(win_norm)
-        except (ImportError, ValueError):
-            pass
+    closure |= {v for v in _resolve_real_paths(_anchored_path(raw)) if v}
+    # 步骤三：盘符语义（POSIX 上 realpath 不处理盘符）
+    win_form = _windows_form_normalised(raw)
+    if win_form:
+        closure.add(win_form)
     return closure
 
 
