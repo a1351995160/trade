@@ -1,6 +1,9 @@
 {
-  "generated_from": "实际 pytest --collect-only 与 JUnit XML（自动生成）",
-  "note": "计数由脚本自动派生，不硬编码；本机与 CI 分列。",
+  "generated_from": "实际 pytest --collect-only 与 JUnit testcase outcome",
+  "note": "计数与状态均由脚本自动派生，不硬编码；本机与 CI 分列。汇总成功不覆盖单项失败。",
+  "source_identity": {
+    "head": "1b03623b39f08ef4f947b72e24f714897aaca308"
+  },
   "new_tests": {
     "by_part": {
       "formula": 162,
@@ -10,20 +13,32 @@
       "bounded_read": 4,
       "real_raw_sample": 11,
       "task_scope": 13,
-      "vendor_entry_guard": 4
+      "vendor_entry_guard": 7,
+      "controlled_reader_boundary": 3,
+      "scope_order_regression": 1,
+      "evidence_mutation": 13
     },
-    "parts_total": 262,
+    "parts_total": 282,
     "qfq_synthetic": 4,
-    "total_vs_base": 266,
-    "note": "各组成部分合计 + 合成 QFQ = 相对 BASE 的新增；25 个账户服务用例属于 condition_and_service 内部，不重复累加；计数由脚本从实际 collection 派生，不硬编码"
+    "total_vs_base": 286,
+    "note": "各组成部分合计 + 合成 QFQ；25 个账户服务用例属于 condition_and_service 内部，不重复累加。本清单为**子集**口径（本轮新增文件），非 BASE/HEAD 节点差集全量。",
+    "scope": "SUBSET_OF_NEW_FILES_NOT_FULL_BASE_HEAD_DIFF"
+  },
+  "node_diff_vs_base": {
+    "status": "ESTABLISHED",
+    "base_nodes": 2349,
+    "head_nodes": 2635,
+    "added": 286,
+    "removed": 0,
+    "scope": "FULL_BASE_HEAD_NODE_DIFF"
   },
   "local_target_suite": {
     "status": "ESTABLISHED",
-    "tests": 544,
+    "tests": 557,
     "errors": 0,
     "failures": 0,
     "skipped": 2,
-    "passed": 542,
+    "passed": 555,
     "failed_including_errors": 0
   },
   "local_full_suite": {
@@ -38,7 +53,8 @@
   "accounting_rules": {
     "skipped_is_not_passed": true,
     "errors_and_failures_separated": true,
-    "causality": "UNCONFIRMED"
+    "causality": "UNCONFIRMED",
+    "status_derived_from_junit_outcome": true
   },
   "indicator_evidence": [
     {
@@ -59,26 +75,31 @@
       "price_mode": "CALLER_DECLARED",
       "warmup_bars": 39,
       "unit": "PRICE",
-      "nodeids": {
-        "formula": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_dema_matches_oracle",
-        "condition": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-        "account": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry"
-      },
-      "junit": "reports/junit-price-only-v1.xml",
-      "outcomes": {
-        "formula": "passed",
-        "condition": "passed",
-        "account": "passed"
-      },
-      "strength": {
-        "formula": "NUMERIC_ORACLE（独立朴素参考逐值，参数化用例）",
-        "condition": "CONDITION_INJECTED（手工注入上下文）",
-        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
-      },
       "dimensions": {
-        "formula": "VERIFIED",
-        "condition": "VERIFIED",
-        "account": "VERIFIED"
+        "formula": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_dema_matches_oracle",
+          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_dema_matches_oracle",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "NUMERIC_ORACLE"
+        },
+        "condition": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "CONDITION_INJECTED"
+        },
+        "account": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "ACCOUNT_WIDE_THRESHOLD"
+        }
       },
       "status": "VERIFIED"
     },
@@ -101,26 +122,31 @@
       "price_mode": "CALLER_DECLARED",
       "warmup_bars": 58,
       "unit": "PRICE",
-      "nodeids": {
-        "formula": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_tema_matches_oracle",
-        "condition": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-        "account": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry"
-      },
-      "junit": "reports/junit-price-only-v1.xml",
-      "outcomes": {
-        "formula": "passed",
-        "condition": "passed",
-        "account": "passed"
-      },
-      "strength": {
-        "formula": "NUMERIC_ORACLE（独立朴素参考逐值，参数化用例）",
-        "condition": "CONDITION_INJECTED（手工注入上下文）",
-        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
-      },
       "dimensions": {
-        "formula": "VERIFIED",
-        "condition": "VERIFIED",
-        "account": "VERIFIED"
+        "formula": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_tema_matches_oracle",
+          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_tema_matches_oracle",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "NUMERIC_ORACLE"
+        },
+        "condition": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "CONDITION_INJECTED"
+        },
+        "account": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "ACCOUNT_WIDE_THRESHOLD"
+        }
       },
       "status": "VERIFIED"
     },
@@ -142,26 +168,31 @@
       "price_mode": "CALLER_DECLARED",
       "warmup_bars": 14,
       "unit": "PRICE",
-      "nodeids": {
-        "formula": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_cci_matches_oracle",
-        "condition": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-        "account": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry"
-      },
-      "junit": "reports/junit-price-only-v1.xml",
-      "outcomes": {
-        "formula": "passed",
-        "condition": "passed",
-        "account": "passed"
-      },
-      "strength": {
-        "formula": "NUMERIC_ORACLE（独立朴素参考逐值，参数化用例）",
-        "condition": "CONDITION_INJECTED（手工注入上下文）",
-        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
-      },
       "dimensions": {
-        "formula": "VERIFIED",
-        "condition": "VERIFIED",
-        "account": "VERIFIED"
+        "formula": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_cci_matches_oracle",
+          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_cci_matches_oracle",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "NUMERIC_ORACLE"
+        },
+        "condition": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "CONDITION_INJECTED"
+        },
+        "account": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "ACCOUNT_WIDE_THRESHOLD"
+        }
       },
       "status": "VERIFIED"
     },
@@ -183,26 +214,31 @@
       "price_mode": "CALLER_DECLARED",
       "warmup_bars": 14,
       "unit": "PERCENT",
-      "nodeids": {
-        "formula": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_natr_matches_oracle",
-        "condition": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-        "account": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry"
-      },
-      "junit": "reports/junit-price-only-v1.xml",
-      "outcomes": {
-        "formula": "passed",
-        "condition": "passed",
-        "account": "passed"
-      },
-      "strength": {
-        "formula": "NUMERIC_ORACLE（独立朴素参考逐值，参数化用例）",
-        "condition": "CONDITION_INJECTED（手工注入上下文）",
-        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
-      },
       "dimensions": {
-        "formula": "VERIFIED",
-        "condition": "VERIFIED",
-        "account": "VERIFIED"
+        "formula": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_natr_matches_oracle",
+          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_natr_matches_oracle",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "NUMERIC_ORACLE"
+        },
+        "condition": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "CONDITION_INJECTED"
+        },
+        "account": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "ACCOUNT_WIDE_THRESHOLD"
+        }
       },
       "status": "VERIFIED"
     },
@@ -222,26 +258,31 @@
       "price_mode": "CALLER_DECLARED",
       "warmup_bars": 13,
       "unit": "PERCENT",
-      "nodeids": {
-        "formula": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_psy_matches_oracle",
-        "condition": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-        "account": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry"
-      },
-      "junit": "reports/junit-price-only-v1.xml",
-      "outcomes": {
-        "formula": "passed",
-        "condition": "passed",
-        "account": "passed"
-      },
-      "strength": {
-        "formula": "NUMERIC_ORACLE（独立朴素参考逐值，参数化用例）",
-        "condition": "CONDITION_INJECTED（手工注入上下文）",
-        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
-      },
       "dimensions": {
-        "formula": "VERIFIED",
-        "condition": "VERIFIED",
-        "account": "VERIFIED"
+        "formula": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_psy_matches_oracle",
+          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_psy_matches_oracle",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "NUMERIC_ORACLE"
+        },
+        "condition": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "CONDITION_INJECTED"
+        },
+        "account": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "ACCOUNT_WIDE_THRESHOLD"
+        }
       },
       "status": "VERIFIED"
     },
@@ -265,26 +306,31 @@
       "price_mode": "CALLER_DECLARED",
       "warmup_bars": 20,
       "unit": "PRICE",
-      "nodeids": {
-        "formula": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_donchian_matches_oracle",
-        "condition": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-        "account": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry"
-      },
-      "junit": "reports/junit-price-only-v1.xml",
-      "outcomes": {
-        "formula": "passed",
-        "condition": "passed",
-        "account": "passed"
-      },
-      "strength": {
-        "formula": "NUMERIC_ORACLE（独立朴素参考逐值，参数化用例）",
-        "condition": "CONDITION_INJECTED（手工注入上下文）",
-        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
-      },
       "dimensions": {
-        "formula": "VERIFIED",
-        "condition": "VERIFIED",
-        "account": "VERIFIED"
+        "formula": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_donchian_matches_oracle",
+          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_donchian_matches_oracle",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "NUMERIC_ORACLE"
+        },
+        "condition": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "CONDITION_INJECTED"
+        },
+        "account": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "ACCOUNT_WIDE_THRESHOLD"
+        }
       },
       "status": "VERIFIED"
     },
@@ -310,26 +356,31 @@
       "price_mode": "CALLER_DECLARED",
       "warmup_bars": 20,
       "unit": "PRICE",
-      "nodeids": {
-        "formula": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_keltner_matches_oracle",
-        "condition": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-        "account": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry"
-      },
-      "junit": "reports/junit-price-only-v1.xml",
-      "outcomes": {
-        "formula": "passed",
-        "condition": "passed",
-        "account": "passed"
-      },
-      "strength": {
-        "formula": "NUMERIC_ORACLE（独立朴素参考逐值，参数化用例）",
-        "condition": "CONDITION_INJECTED（手工注入上下文）",
-        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
-      },
       "dimensions": {
-        "formula": "VERIFIED",
-        "condition": "VERIFIED",
-        "account": "VERIFIED"
+        "formula": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_keltner_matches_oracle",
+          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_keltner_matches_oracle",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "NUMERIC_ORACLE"
+        },
+        "condition": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "CONDITION_INJECTED"
+        },
+        "account": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "ACCOUNT_WIDE_THRESHOLD"
+        }
       },
       "status": "VERIFIED"
     },
@@ -352,26 +403,31 @@
       "price_mode": "CALLER_DECLARED",
       "warmup_bars": 21,
       "unit": "RATIO",
-      "nodeids": {
-        "formula": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rolling_volatility_matches_oracle",
-        "condition": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-        "account": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry"
-      },
-      "junit": "reports/junit-price-only-v1.xml",
-      "outcomes": {
-        "formula": "passed",
-        "condition": "passed",
-        "account": "passed"
-      },
-      "strength": {
-        "formula": "NUMERIC_ORACLE（独立朴素参考逐值，参数化用例）",
-        "condition": "CONDITION_INJECTED（手工注入上下文）",
-        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
-      },
       "dimensions": {
-        "formula": "VERIFIED",
-        "condition": "VERIFIED",
-        "account": "VERIFIED"
+        "formula": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rolling_volatility_matches_oracle",
+          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rolling_volatility_matches_oracle",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "NUMERIC_ORACLE"
+        },
+        "condition": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "CONDITION_INJECTED"
+        },
+        "account": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "ACCOUNT_WIDE_THRESHOLD"
+        }
       },
       "status": "VERIFIED"
     },
@@ -393,26 +449,31 @@
       "price_mode": "CALLER_DECLARED",
       "warmup_bars": 21,
       "unit": "RATIO",
-      "nodeids": {
-        "formula": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_historical_return_matches_oracle",
-        "condition": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-        "account": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry"
-      },
-      "junit": "reports/junit-price-only-v1.xml",
-      "outcomes": {
-        "formula": "passed",
-        "condition": "passed",
-        "account": "passed"
-      },
-      "strength": {
-        "formula": "NUMERIC_ORACLE（独立朴素参考逐值，参数化用例）",
-        "condition": "CONDITION_INJECTED（手工注入上下文）",
-        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
-      },
       "dimensions": {
-        "formula": "VERIFIED",
-        "condition": "VERIFIED",
-        "account": "VERIFIED"
+        "formula": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_historical_return_matches_oracle",
+          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_historical_return_matches_oracle",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "NUMERIC_ORACLE"
+        },
+        "condition": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "CONDITION_INJECTED"
+        },
+        "account": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "ACCOUNT_WIDE_THRESHOLD"
+        }
       },
       "status": "VERIFIED"
     },
@@ -434,26 +495,31 @@
       "price_mode": "CALLER_DECLARED",
       "warmup_bars": 20,
       "unit": "PRICE",
-      "nodeids": {
-        "formula": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_price_extremes_matches_oracle",
-        "condition": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-        "account": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry"
-      },
-      "junit": "reports/junit-price-only-v1.xml",
-      "outcomes": {
-        "formula": "passed",
-        "condition": "passed",
-        "account": "passed"
-      },
-      "strength": {
-        "formula": "NUMERIC_ORACLE（独立朴素参考逐值，参数化用例）",
-        "condition": "CONDITION_INJECTED（手工注入上下文）",
-        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
-      },
       "dimensions": {
-        "formula": "VERIFIED",
-        "condition": "VERIFIED",
-        "account": "VERIFIED"
+        "formula": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_price_extremes_matches_oracle",
+          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_price_extremes_matches_oracle",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "NUMERIC_ORACLE"
+        },
+        "condition": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "CONDITION_INJECTED"
+        },
+        "account": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "ACCOUNT_WIDE_THRESHOLD"
+        }
       },
       "status": "VERIFIED"
     },
@@ -477,26 +543,31 @@
       "price_mode": "CALLER_DECLARED",
       "warmup_bars": 21,
       "unit": "PRICE",
-      "nodeids": {
-        "formula": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_prior_breakout_matches_oracle",
-        "condition": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-        "account": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry"
-      },
-      "junit": "reports/junit-price-only-v1.xml",
-      "outcomes": {
-        "formula": "passed",
-        "condition": "passed",
-        "account": "passed"
-      },
-      "strength": {
-        "formula": "NUMERIC_ORACLE（独立朴素参考逐值，参数化用例）",
-        "condition": "CONDITION_INJECTED（手工注入上下文）",
-        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
-      },
       "dimensions": {
-        "formula": "VERIFIED",
-        "condition": "VERIFIED",
-        "account": "VERIFIED"
+        "formula": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_prior_breakout_matches_oracle",
+          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_prior_breakout_matches_oracle",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "NUMERIC_ORACLE"
+        },
+        "condition": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "CONDITION_INJECTED"
+        },
+        "account": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "ACCOUNT_WIDE_THRESHOLD"
+        }
       },
       "status": "VERIFIED"
     },
@@ -517,26 +588,31 @@
       "price_mode": "CALLER_DECLARED",
       "warmup_bars": 60,
       "unit": "RATIO",
-      "nodeids": {
-        "formula": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_drawdown_from_peak_matches_oracle",
-        "condition": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-        "account": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry"
-      },
-      "junit": "reports/junit-price-only-v1.xml",
-      "outcomes": {
-        "formula": "passed",
-        "condition": "passed",
-        "account": "passed"
-      },
-      "strength": {
-        "formula": "NUMERIC_ORACLE（独立朴素参考逐值，参数化用例）",
-        "condition": "CONDITION_INJECTED（手工注入上下文）",
-        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
-      },
       "dimensions": {
-        "formula": "VERIFIED",
-        "condition": "VERIFIED",
-        "account": "VERIFIED"
+        "formula": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_drawdown_from_peak_matches_oracle",
+          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_drawdown_from_peak_matches_oracle",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "NUMERIC_ORACLE"
+        },
+        "condition": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "CONDITION_INJECTED"
+        },
+        "account": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "ACCOUNT_WIDE_THRESHOLD"
+        }
       },
       "status": "VERIFIED"
     },
@@ -559,26 +635,31 @@
       "price_mode": "CALLER_DECLARED",
       "warmup_bars": 34,
       "unit": "PRICE",
-      "nodeids": {
-        "formula": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_macd_hist_raw_matches_oracle",
-        "condition": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-        "account": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry"
-      },
-      "junit": "reports/junit-price-only-v1.xml",
-      "outcomes": {
-        "formula": "passed",
-        "condition": "passed",
-        "account": "passed"
-      },
-      "strength": {
-        "formula": "NUMERIC_ORACLE（独立朴素参考逐值，参数化用例）",
-        "condition": "CONDITION_INJECTED（手工注入上下文）",
-        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
-      },
       "dimensions": {
-        "formula": "VERIFIED",
-        "condition": "VERIFIED",
-        "account": "VERIFIED"
+        "formula": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_macd_hist_raw_matches_oracle",
+          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_macd_hist_raw_matches_oracle",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "NUMERIC_ORACLE"
+        },
+        "condition": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "CONDITION_INJECTED"
+        },
+        "account": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "ACCOUNT_WIDE_THRESHOLD"
+        }
       },
       "status": "VERIFIED"
     },
@@ -600,26 +681,31 @@
       "price_mode": "CALLER_DECLARED",
       "warmup_bars": 45,
       "unit": "PERCENT",
-      "nodeids": {
-        "formula": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_trix_matches_oracle",
-        "condition": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-        "account": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry"
-      },
-      "junit": "reports/junit-price-only-v1.xml",
-      "outcomes": {
-        "formula": "passed",
-        "condition": "passed",
-        "account": "passed"
-      },
-      "strength": {
-        "formula": "NUMERIC_ORACLE（独立朴素参考逐值，参数化用例）",
-        "condition": "CONDITION_INJECTED（手工注入上下文）",
-        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
-      },
       "dimensions": {
-        "formula": "VERIFIED",
-        "condition": "VERIFIED",
-        "account": "VERIFIED"
+        "formula": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_trix_matches_oracle",
+          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_trix_matches_oracle",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "NUMERIC_ORACLE"
+        },
+        "condition": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "CONDITION_INJECTED"
+        },
+        "account": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "ACCOUNT_WIDE_THRESHOLD"
+        }
       },
       "status": "VERIFIED"
     },
@@ -638,26 +724,31 @@
       "price_mode": "CALLER_DECLARED",
       "warmup_bars": 20,
       "unit": "SHARES",
-      "nodeids": {
-        "formula": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_volume_ma_and_amount_ma_match_oracle",
-        "condition": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-        "account": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry"
-      },
-      "junit": "reports/junit-price-only-v1.xml",
-      "outcomes": {
-        "formula": "passed",
-        "condition": "passed",
-        "account": "passed"
-      },
-      "strength": {
-        "formula": "NUMERIC_ORACLE（独立朴素参考逐值，参数化用例）",
-        "condition": "CONDITION_INJECTED（手工注入上下文）",
-        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
-      },
       "dimensions": {
-        "formula": "VERIFIED",
-        "condition": "VERIFIED",
-        "account": "VERIFIED"
+        "formula": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_volume_ma_and_amount_ma_match_oracle",
+          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_volume_ma_and_amount_ma_match_oracle",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "NUMERIC_ORACLE"
+        },
+        "condition": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "CONDITION_INJECTED"
+        },
+        "account": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "ACCOUNT_WIDE_THRESHOLD"
+        }
       },
       "status": "VERIFIED"
     },
@@ -676,26 +767,31 @@
       "price_mode": "CALLER_DECLARED",
       "warmup_bars": 20,
       "unit": "CURRENCY",
-      "nodeids": {
-        "formula": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_volume_ma_and_amount_ma_match_oracle",
-        "condition": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-        "account": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry"
-      },
-      "junit": "reports/junit-price-only-v1.xml",
-      "outcomes": {
-        "formula": "passed",
-        "condition": "passed",
-        "account": "passed"
-      },
-      "strength": {
-        "formula": "NUMERIC_ORACLE（独立朴素参考逐值，参数化用例）",
-        "condition": "CONDITION_INJECTED（手工注入上下文）",
-        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
-      },
       "dimensions": {
-        "formula": "VERIFIED",
-        "condition": "VERIFIED",
-        "account": "VERIFIED"
+        "formula": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_volume_ma_and_amount_ma_match_oracle",
+          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_volume_ma_and_amount_ma_match_oracle",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "NUMERIC_ORACLE"
+        },
+        "condition": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "CONDITION_INJECTED"
+        },
+        "account": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "ACCOUNT_WIDE_THRESHOLD"
+        }
       },
       "status": "VERIFIED"
     },
@@ -715,26 +811,31 @@
       "price_mode": "CALLER_DECLARED",
       "warmup_bars": 21,
       "unit": "RATIO",
-      "nodeids": {
-        "formula": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rvol_variants_match_oracle_and_differ",
-        "condition": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-        "account": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry"
-      },
-      "junit": "reports/junit-price-only-v1.xml",
-      "outcomes": {
-        "formula": "passed",
-        "condition": "passed",
-        "account": "passed"
-      },
-      "strength": {
-        "formula": "NUMERIC_ORACLE（独立朴素参考逐值，参数化用例）",
-        "condition": "CONDITION_INJECTED（手工注入上下文）",
-        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
-      },
       "dimensions": {
-        "formula": "VERIFIED",
-        "condition": "VERIFIED",
-        "account": "VERIFIED"
+        "formula": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rvol_variants_match_oracle_and_differ",
+          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rvol_variants_match_oracle_and_differ",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "NUMERIC_ORACLE"
+        },
+        "condition": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "CONDITION_INJECTED"
+        },
+        "account": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "ACCOUNT_WIDE_THRESHOLD"
+        }
       },
       "status": "VERIFIED"
     },
@@ -754,26 +855,31 @@
       "price_mode": "CALLER_DECLARED",
       "warmup_bars": 20,
       "unit": "RATIO",
-      "nodeids": {
-        "formula": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rvol_variants_match_oracle_and_differ",
-        "condition": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-        "account": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry"
-      },
-      "junit": "reports/junit-price-only-v1.xml",
-      "outcomes": {
-        "formula": "passed",
-        "condition": "passed",
-        "account": "passed"
-      },
-      "strength": {
-        "formula": "NUMERIC_ORACLE（独立朴素参考逐值，参数化用例）",
-        "condition": "CONDITION_INJECTED（手工注入上下文）",
-        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
-      },
       "dimensions": {
-        "formula": "VERIFIED",
-        "condition": "VERIFIED",
-        "account": "VERIFIED"
+        "formula": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rvol_variants_match_oracle_and_differ",
+          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rvol_variants_match_oracle_and_differ",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "NUMERIC_ORACLE"
+        },
+        "condition": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "CONDITION_INJECTED"
+        },
+        "account": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "ACCOUNT_WIDE_THRESHOLD"
+        }
       },
       "status": "VERIFIED"
     },
@@ -794,26 +900,31 @@
       "price_mode": "CALLER_DECLARED",
       "warmup_bars": 1,
       "unit": "SHARES",
-      "nodeids": {
-        "formula": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_accumulation_distribution_and_chaikin_and_pvt_match_oracle",
-        "condition": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-        "account": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry"
-      },
-      "junit": "reports/junit-price-only-v1.xml",
-      "outcomes": {
-        "formula": "passed",
-        "condition": "passed",
-        "account": "passed"
-      },
-      "strength": {
-        "formula": "NUMERIC_ORACLE（独立朴素参考逐值，参数化用例）",
-        "condition": "CONDITION_INJECTED（手工注入上下文）",
-        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
-      },
       "dimensions": {
-        "formula": "VERIFIED",
-        "condition": "VERIFIED",
-        "account": "VERIFIED"
+        "formula": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_accumulation_distribution_and_chaikin_and_pvt_match_oracle",
+          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_accumulation_distribution_and_chaikin_and_pvt_match_oracle",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "NUMERIC_ORACLE"
+        },
+        "condition": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "CONDITION_INJECTED"
+        },
+        "account": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "ACCOUNT_WIDE_THRESHOLD"
+        }
       },
       "status": "VERIFIED"
     },
@@ -837,26 +948,31 @@
       "price_mode": "CALLER_DECLARED",
       "warmup_bars": 20,
       "unit": "RATIO",
-      "nodeids": {
-        "formula": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_accumulation_distribution_and_chaikin_and_pvt_match_oracle",
-        "condition": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-        "account": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry"
-      },
-      "junit": "reports/junit-price-only-v1.xml",
-      "outcomes": {
-        "formula": "passed",
-        "condition": "passed",
-        "account": "passed"
-      },
-      "strength": {
-        "formula": "NUMERIC_ORACLE（独立朴素参考逐值，参数化用例）",
-        "condition": "CONDITION_INJECTED（手工注入上下文）",
-        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
-      },
       "dimensions": {
-        "formula": "VERIFIED",
-        "condition": "VERIFIED",
-        "account": "VERIFIED"
+        "formula": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_accumulation_distribution_and_chaikin_and_pvt_match_oracle",
+          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_accumulation_distribution_and_chaikin_and_pvt_match_oracle",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "NUMERIC_ORACLE"
+        },
+        "condition": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "CONDITION_INJECTED"
+        },
+        "account": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "ACCOUNT_WIDE_THRESHOLD"
+        }
       },
       "status": "VERIFIED"
     },
@@ -874,26 +990,31 @@
       "price_mode": "CALLER_DECLARED",
       "warmup_bars": 1,
       "unit": "SHARES",
-      "nodeids": {
-        "formula": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_accumulation_distribution_and_chaikin_and_pvt_match_oracle",
-        "condition": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-        "account": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry"
-      },
-      "junit": "reports/junit-price-only-v1.xml",
-      "outcomes": {
-        "formula": "passed",
-        "condition": "passed",
-        "account": "passed"
-      },
-      "strength": {
-        "formula": "NUMERIC_ORACLE（独立朴素参考逐值，参数化用例）",
-        "condition": "CONDITION_INJECTED（手工注入上下文）",
-        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
-      },
       "dimensions": {
-        "formula": "VERIFIED",
-        "condition": "VERIFIED",
-        "account": "VERIFIED"
+        "formula": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_accumulation_distribution_and_chaikin_and_pvt_match_oracle",
+          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_accumulation_distribution_and_chaikin_and_pvt_match_oracle",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "NUMERIC_ORACLE"
+        },
+        "condition": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "CONDITION_INJECTED"
+        },
+        "account": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "ACCOUNT_WIDE_THRESHOLD"
+        }
       },
       "status": "VERIFIED"
     },
@@ -911,26 +1032,31 @@
       "price_mode": "CALLER_DECLARED",
       "warmup_bars": 1,
       "unit": "PRICE",
-      "nodeids": {
-        "formula": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_vwap_proxy_and_mfi_match_oracle",
-        "condition": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-        "account": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry"
-      },
-      "junit": "reports/junit-price-only-v1.xml",
-      "outcomes": {
-        "formula": "passed",
-        "condition": "passed",
-        "account": "passed"
-      },
-      "strength": {
-        "formula": "NUMERIC_ORACLE（独立朴素参考逐值，参数化用例）",
-        "condition": "CONDITION_INJECTED（手工注入上下文）",
-        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
-      },
       "dimensions": {
-        "formula": "VERIFIED",
-        "condition": "VERIFIED",
-        "account": "VERIFIED"
+        "formula": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_vwap_proxy_and_mfi_match_oracle",
+          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_vwap_proxy_and_mfi_match_oracle",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "NUMERIC_ORACLE"
+        },
+        "condition": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "CONDITION_INJECTED"
+        },
+        "account": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "ACCOUNT_WIDE_THRESHOLD"
+        }
       },
       "status": "VERIFIED"
     },
@@ -953,26 +1079,31 @@
       "price_mode": "CALLER_DECLARED",
       "warmup_bars": 15,
       "unit": "INDEX_0_100",
-      "nodeids": {
-        "formula": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_vwap_proxy_and_mfi_match_oracle",
-        "condition": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-        "account": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry"
-      },
-      "junit": "reports/junit-price-only-v1.xml",
-      "outcomes": {
-        "formula": "passed",
-        "condition": "passed",
-        "account": "passed"
-      },
-      "strength": {
-        "formula": "NUMERIC_ORACLE（独立朴素参考逐值，参数化用例）",
-        "condition": "CONDITION_INJECTED（手工注入上下文）",
-        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
-      },
       "dimensions": {
-        "formula": "VERIFIED",
-        "condition": "VERIFIED",
-        "account": "VERIFIED"
+        "formula": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_vwap_proxy_and_mfi_match_oracle",
+          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_vwap_proxy_and_mfi_match_oracle",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "NUMERIC_ORACLE"
+        },
+        "condition": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "CONDITION_INJECTED"
+        },
+        "account": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "ACCOUNT_WIDE_THRESHOLD"
+        }
       },
       "status": "VERIFIED"
     },
@@ -992,26 +1123,31 @@
       "price_mode": "CALLER_DECLARED",
       "warmup_bars": 20,
       "unit": "PRICE_PER_BAR",
-      "nodeids": {
-        "formula": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rolling_slope_matches_oracle",
-        "condition": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-        "account": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry"
-      },
-      "junit": "reports/junit-price-only-v1.xml",
-      "outcomes": {
-        "formula": "passed",
-        "condition": "passed",
-        "account": "passed"
-      },
-      "strength": {
-        "formula": "NUMERIC_ORACLE（独立朴素参考逐值，参数化用例）",
-        "condition": "CONDITION_INJECTED（手工注入上下文）",
-        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
-      },
       "dimensions": {
-        "formula": "VERIFIED",
-        "condition": "VERIFIED",
-        "account": "VERIFIED"
+        "formula": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rolling_slope_matches_oracle",
+          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rolling_slope_matches_oracle",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "NUMERIC_ORACLE"
+        },
+        "condition": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "CONDITION_INJECTED"
+        },
+        "account": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "ACCOUNT_WIDE_THRESHOLD"
+        }
       },
       "status": "VERIFIED"
     },
@@ -1030,28 +1166,38 @@
       "price_mode": "CALLER_DECLARED",
       "warmup_bars": 1,
       "unit": "PRICE",
-      "nodeids": {
-        "formula": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_true_range_matches_oracle",
-        "condition": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-        "account": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry"
-      },
-      "junit": "reports/junit-price-only-v1.xml",
-      "outcomes": {
-        "formula": "passed",
-        "condition": "passed",
-        "account": "passed"
-      },
-      "strength": {
-        "formula": "NUMERIC_ORACLE（独立朴素参考逐值，参数化用例）",
-        "condition": "CONDITION_INJECTED（手工注入上下文）",
-        "account": "ACCOUNT_WIDE_THRESHOLD（宽阈值成交，不证明阈值敏感）"
-      },
       "dimensions": {
-        "formula": "VERIFIED",
-        "condition": "VERIFIED",
-        "account": "VERIFIED"
+        "formula": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_true_range_matches_oracle",
+          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_true_range_matches_oracle",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "NUMERIC_ORACLE"
+        },
+        "condition": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "CONDITION_INJECTED"
+        },
+        "account": {
+          "status": "VERIFIED",
+          "outcome": "passed",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "junit": "junit-price-only-v1.xml",
+          "strength": "ACCOUNT_WIDE_THRESHOLD"
+        }
       },
       "status": "VERIFIED"
     }
-  ]
+  ],
+  "summary": {
+    "verified": 25,
+    "partial": 0,
+    "total": 25
+  }
 }

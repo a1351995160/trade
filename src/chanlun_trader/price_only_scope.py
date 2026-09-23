@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import os
 import re
+from dataclasses import dataclass
 from pathlib import Path
 
 # 真实 gbbq 原件所在目录（来自 config.yaml 的 tdx.gbbq）
@@ -273,33 +274,6 @@ def frozen_denylist() -> frozenset:
     return _FROZEN_DENYLIST
 
 
-def is_forbidden_gbbq_path(path) -> bool:
-    """判断路径是否指向真实 gbbq 原件或其全量缓存（含身份别名）。
-
-    判定基于**冻结集合**，检查时不重新读取 cwd。
-    """
-    variants = _identity_variants(path)
-    if not variants:
-        return True  # 无法解析 → fail closed
-
-    deny = _FROZEN_DENYLIST
-    for variant in variants:
-        if variant in deny:
-            return True
-        # 根之下任意 gbbq 类文件（覆盖未逐一列出的同目录文件）
-        name = variant.rsplit("/", 1)[-1]
-        if name not in GBBQ_BASENAMES:
-            continue
-        for root_id in _root_identities(REAL_GBBQ_ROOT):
-            if variant == f"{root_id}/{name}":
-                return True
-        if name == "gbbq.csv":
-            for root_id in _root_identities(REAL_CACHE_ROOT):
-                if variant == f"{root_id}/{name}":
-                    return True
-    return False
-
-
 def guard_gbbq_path(path, *, label: str = "gbbq") -> None:
     """在打开前拒绝真实 gbbq 路径。调用方必须在**任何 open/read 之前**调用。"""
     if is_forbidden_gbbq_path(path):
@@ -307,6 +281,35 @@ def guard_gbbq_path(path, *, label: str = "gbbq") -> None:
             f"FORBIDDEN_GBBQ_ACCESS:{label}:{path}:"
             f"本任务禁止打开真实 gbbq 原件或全量缓存；"
             f"gbbq 的物理限窗实现属后续独立范围")
+
+
+def controlled_gbbq_reader(path):
+    """本任务**受控的直接 vendor 入口**。
+
+    直接 ``GbbqReader().get_df(path)`` 是原始事故路径。本任务不禁止该 vendor
+    的存在，但要求项目内所有直接调用都经本包装器，从而在**打开/解码之前**
+    先经过同一政策。
+
+    返回 vendor 解码后的 DataFrame。若本任务作用域激活且路径受保护，
+    则抛出 ``ForbiddenDataAccess``——此时 vendor 的 ``get_df`` **不会被执行**。
+    """
+    if task_scope_active():
+        assert_gbbq_read_disabled()
+        guard_gbbq_path(path, label="controlled_gbbq_reader")
+    from pytdx.reader import GbbqReader
+
+    return GbbqReader().get_df(str(path))
+
+
+# 受控读取政策：明确区分"受控的直接调用"与"裸 vendor 调用"。
+# 裸 vendor 调用不属于本任务的受控能力，标为不支持；不得列为已关闭。
+CONTROLLED_READER_POLICY = {
+    "controlled": "controlled_gbbq_reader",
+    "bare_vendor": "UNSUPPORTED_NOT_PROTECTED",
+    "note": "裸 GbbqReader().get_df() 不属于本任务受控能力，不支持且未认证；"
+            "项目内直接调用点必须经 controlled_gbbq_reader。"
+            "本任务不实现 OS 沙箱，不约束任意恶意 Python。",
+}
 
 
 def task_scope_active() -> bool:
@@ -335,6 +338,47 @@ def deactivate_task_scope() -> None:
 
 def task_scope_reason() -> str:
     return str(_TASK_SCOPE["reason"])
+
+
+@dataclass(frozen=True)
+class TaskScopeSnapshot:
+    """任务作用域的**完整政策快照**。
+
+    保存的不只是 ``active`` 布尔值，还包含该作用域实际持有的
+    ``reason`` 与**受保护身份集合**（冻结禁止集合）。内部 fixture 在退出时
+    必须用 ``restore_task_scope(snapshot)`` 恢复整个政策，而不是无条件
+    ``deactivate`` —— 后者会关闭仍在执行的外层任务。
+    """
+
+    active: bool
+    reason: str
+    denylist: frozenset
+    forbidden_env: str | None
+
+
+def snapshot_task_scope() -> TaskScopeSnapshot:
+    """保存进入前的完整政策（供内部 fixture 恢复）。"""
+    return TaskScopeSnapshot(
+        active=bool(_TASK_SCOPE["active"]),
+        reason=str(_TASK_SCOPE["reason"]),
+        denylist=_FROZEN_DENYLIST,
+        forbidden_env=os.environ.get("CHANLUN_FORBIDDEN_GBBQ_PATHS"),
+    )
+
+
+def restore_task_scope(snapshot: TaskScopeSnapshot) -> None:
+    """恢复进入前的完整政策（active / reason / 受保护身份 / 环境清单）。
+
+    没有改动的全局状态不另造副本：``denylist`` 直接复用快照中的冻结集合。
+    """
+    global _FROZEN_DENYLIST
+    _TASK_SCOPE["active"] = bool(snapshot.active)
+    _TASK_SCOPE["reason"] = str(snapshot.reason)
+    _FROZEN_DENYLIST = snapshot.denylist
+    if snapshot.forbidden_env is None:
+        os.environ.pop("CHANLUN_FORBIDDEN_GBBQ_PATHS", None)
+    else:
+        os.environ["CHANLUN_FORBIDDEN_GBBQ_PATHS"] = snapshot.forbidden_env
 
 
 def assert_gbbq_read_disabled() -> None:

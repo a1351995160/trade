@@ -231,5 +231,46 @@
     },
     "hardlink": "LIMITATION（未测试，如实列出，不扩展 OS 级隔离）",
     "evidence_regression": "CLOSED（删映射/失败状态降级；收集失败停止签证）"
+  },
+  "pr16_final_scoped_closeout": {
+    "TASK_SCOPE_PARENT_RESTORATION": {
+      "status": "IMPLEMENTED_AND_TESTED",
+      "source": "src/chanlun_trader/price_only_scope.py: snapshot_task_scope/restore_task_scope",
+      "fixtures_fixed": [
+        "tests/price_only_scope/test_task_scope_v1.py::_restore_scope",
+        "tests/price_only_scope/test_vendor_entry_guard_v1.py::_scope"
+      ],
+      "evidence": "保存 active/reason/冻结禁止集合/环境清单；外层激活→缓存拒绝→内部清理→仍拒绝；pytest 顺序回归"
+    },
+    "CONTROLLED_READER_BOUNDARY": {
+      "status": "IMPLEMENTED_AND_TESTED",
+      "source": "src/chanlun_trader/price_only_scope.py: controlled_gbbq_reader + CONTROLLED_READER_POLICY",
+      "path_a_indirect": "TdxData._load_gbbq -> 拒绝，vendor get_df 未执行",
+      "path_b_direct": "controlled_gbbq_reader -> 拒绝，open/decode 前；另有静态检查防调用点绕过",
+      "call_sites_rewired": [
+        "src/chanlun_trader/tdx_data.py",
+        "src/chanlun_trader/data/tdx/owner_export_v1.py"
+      ],
+      "bare_vendor": "UNSUPPORTED_NOT_PROTECTED（如实标注，未列为已关闭）"
+    },
+    "EVIDENCE_STATUS_FROM_ACTUAL_RESULTS": {
+      "status": "IMPLEMENTED_AND_TESTED",
+      "source": "scripts/emit_price_only_evidence_v1.py",
+      "derivation": "状态由 JUnit testcase outcome 推导；参数化按最差聚合",
+      "mutation_tests": "tests/price_only_scope/test_evidence_mutation_v1.py（13 项）",
+      "counts": {
+        "subset_parts_total": 282,
+        "qfq_synthetic": 4,
+        "subset_total": 286,
+        "node_diff_added": 286,
+        "node_diff_removed": 0
+      }
+    },
+    "not_covered": [
+      "硬链接别名（未认证范围）",
+      "OS 级隔离 / 任意恶意 Python（不要求）",
+      "gbbq 日期索引/解码/物理限窗（后续独立范围）",
+      "A1 真实数据重验（本任务禁止，skip 不计通过）"
+    ]
   }
 }

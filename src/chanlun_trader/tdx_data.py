@@ -10,7 +10,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from pytdx.reader import GbbqReader
 
 # .day 每条记录 32 字节：日期、开、高、低、收（均为 uint32，价格单位：分）
 # 成交额 float32，成交量 uint32，保留 4 字节
@@ -140,7 +139,10 @@ class TdxData:
         if cache_file is not None and cache_file.exists():
             self._gbbq_df = pd.read_csv(cache_file, dtype={"code": str})
         else:
-            self._gbbq_df = GbbqReader().get_df(self.gbbq_path)
+            # 直接 vendor 调用必须经受控 wrapper：本任务禁止绕过同一政策。
+            from .price_only_scope import controlled_gbbq_reader
+
+            self._gbbq_df = controlled_gbbq_reader(self.gbbq_path)
             if cache_file is not None:
                 cache_file.parent.mkdir(parents=True, exist_ok=True)
                 self._gbbq_df.to_csv(cache_file, index=False)

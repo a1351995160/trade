@@ -22,25 +22,27 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 from chanlun_trader.price_only_scope import (  # noqa: E402
     ForbiddenDataAccess,
     activate_task_scope,
-    deactivate_task_scope,
     rebuild_frozen_denylist,
+    is_forbidden_gbbq_path,
+    restore_task_scope,
+    snapshot_task_scope,
 )
 from chanlun_trader.tdx_data import TdxData  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
 def _scope():
-    before = os.environ.get("CHANLUN_FORBIDDEN_GBBQ_PATHS")
+    """保存进入前政策 → 激活内部作用域 → finally 恢复**完整**政策。
+
+    不得在 finally 中无条件 ``deactivate_task_scope()`` —— 那会关闭仍在
+    执行的外层任务（PR16 复核明确要求排查此类 fixture）。
+    """
+    snapshot = snapshot_task_scope()
     activate_task_scope("vendor_entry_test")
     try:
         yield
     finally:
-        deactivate_task_scope()
-        if before is None:
-            os.environ.pop("CHANLUN_FORBIDDEN_GBBQ_PATHS", None)
-        else:
-            os.environ["CHANLUN_FORBIDDEN_GBBQ_PATHS"] = before
-        rebuild_frozen_denylist()
+        restore_task_scope(snapshot)
 
 
 def _protected_target(tmp_path: Path) -> Path:
@@ -72,10 +74,11 @@ def test_tdxdata_entry_rejects_before_open(tmp_path: Path, monkeypatch):
 
 
 def test_vendor_gbbqreader_entry_is_rejected_before_open(tmp_path: Path, monkeypatch):
-    """真实 vendor 入口：GbbqReader 路径经同一政策在 open 前被拒。
+    """路径 A（间接）：TdxData._load_gbbq 在 open 前被拒，且 vendor 未执行。
 
-    这里不直接调用 vendor（那正是要防的路径），而是通过受控组合根提供的
-    受控读取入口；并断言 vendor 的 ``get_df`` 从未被调用。
+    注意：本用例**只**证明间接路径。直接 vendor 路径由
+    ``test_direct_controlled_reader_*`` 单独作证 —— 不得用"TdxData 没调用
+    vendor"证明直接调用已受保护。
     """
     target = _protected_target(tmp_path)
     from pytdx.reader import GbbqReader
@@ -102,6 +105,81 @@ def test_vendor_gbbqreader_entry_is_rejected_before_open(tmp_path: Path, monkeyp
         tdx._load_gbbq()
     assert called == [], f"vendor get_df 被调用了：{called}"
     assert opened == [], f"拒绝发生在 open 之后：{opened}"
+
+
+def test_direct_controlled_reader_rejects_before_decode(tmp_path: Path, monkeypatch):
+    """路径 B（直接）：受控 wrapper 在打开/解码前拒绝受保护目标。
+
+    这里**实际调用**受控的直接调用形式 ``controlled_gbbq_reader``，
+    并断言 vendor 的 ``get_df`` 未被调用、文件未被 open。
+    """
+    from chanlun_trader.price_only_scope import controlled_gbbq_reader
+
+    target = _protected_target(tmp_path)
+    from pytdx.reader import GbbqReader
+
+    decoded: list[str] = []
+    real_get_df = GbbqReader.get_df
+
+    def probe_get_df(self, name):
+        decoded.append(str(name))
+        return real_get_df(self, name)
+
+    monkeypatch.setattr(GbbqReader, "get_df", probe_get_df)
+    opened: list[str] = []
+    real_open = open
+
+    def probe_open(file, *args, **kwargs):
+        opened.append(str(file))
+        return real_open(file, *args, **kwargs)
+
+    monkeypatch.setattr("builtins.open", probe_open)
+
+    with pytest.raises(ForbiddenDataAccess):
+        controlled_gbbq_reader(str(target))
+    assert decoded == [], f"vendor 解码被执行：{decoded}"
+    assert opened == [], f"拒绝发生在 open 之后：{opened}"
+
+
+def test_direct_controlled_reader_allows_unprotected_synthetic(tmp_path: Path, monkeypatch):
+    """正对照：受控 wrapper 对**未受保护**的合成输入不拒绝，且确实到达 vendor。
+
+    gbbq 是加密格式，构造可解码的合成文件属逆向范围（超出本轮）。
+    因此这里用观察型计数证明：未受保护路径下 wrapper **继续调用 vendor**，
+    即守卫只拦受保护身份，不误伤普通输入。
+    """
+    import pandas as pd
+
+    from chanlun_trader.price_only_scope import controlled_gbbq_reader
+    from pytdx.reader import GbbqReader
+
+    allowed = tmp_path / "allowed_gbbq"
+    allowed.write_bytes(b"\x00\x00\x00\x00")  # 内容不重要：vendor 被替换
+
+    os.environ.pop("CHANLUN_FORBIDDEN_GBBQ_PATHS", None)
+    rebuild_frozen_denylist()
+    assert not is_forbidden_gbbq_path(allowed), "未受保护的合成输入被误拒"
+
+    reached: list[str] = []
+    sentinel = pd.DataFrame({"code": ["000001"]})
+
+    def fake_get_df(self, name):
+        reached.append(str(name))
+        return sentinel
+
+    monkeypatch.setattr(GbbqReader, "get_df", fake_get_df)
+    frame = controlled_gbbq_reader(str(allowed))
+    assert reached == [str(allowed)], f"未受保护输入未到达 vendor：{reached}"
+    assert frame is sentinel
+
+
+def test_bare_vendor_call_is_documented_unsupported():
+    """裸 vendor 调用不在受控能力内：如实标注，不列为已关闭。"""
+    from chanlun_trader.price_only_scope import CONTROLLED_READER_POLICY
+
+    assert CONTROLLED_READER_POLICY["controlled"] == "controlled_gbbq_reader"
+    assert CONTROLLED_READER_POLICY["bare_vendor"] == "UNSUPPORTED_NOT_PROTECTED"
+    assert "不构成" in CONTROLLED_READER_POLICY["note"] or "不支持" in CONTROLLED_READER_POLICY["note"]
 
 
 def test_protected_target_alias_both_directions(tmp_path: Path):

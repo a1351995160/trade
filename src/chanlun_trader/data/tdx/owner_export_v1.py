@@ -98,8 +98,10 @@ def compare_sources(tdx,tq):
 
 def parse_gbbq_window(path,audit_sink=None):
     """全历史只存在本函数所在OWNER进程内；异常不携带原始事件值。"""
-    from pytdx.reader import GbbqReader
     import inspect
+    # 直接 vendor 调用必须经受控 wrapper：本任务禁止绕过同一政策。
+    from chanlun_trader.price_only_scope import controlled_gbbq_reader
+    from pytdx.reader import GbbqReader
     path=Path(path)
     with path.open('rb') as stream:count=struct.unpack('<I',stream.read(4))[0]
     if path.stat().st_size!=4+count*29:raise ValueError('GBBQ_FORMAT_SIZE_NOT_4_PLUS_29N')
@@ -107,7 +109,7 @@ def parse_gbbq_window(path,audit_sink=None):
     identity={'source_sha256':before,'parser_version':'pytdx.GbbqReader',
         'parser_sha256':sha(inspect.getfile(GbbqReader)),'input_records':count}
     if audit_sink:audit_sink(identity)
-    try:frame=GbbqReader().get_df(str(path))
+    try:frame=controlled_gbbq_reader(str(path))
     except Exception:raise ValueError('GBBQ_INSTALLED_PARSER_FAILED_NO_RAW_DETAILS') from None
     if len(frame)!=count or sha(path)!=before:raise ValueError('GBBQ_COUNT_OR_IDENTITY_CONFLICT')
     try:

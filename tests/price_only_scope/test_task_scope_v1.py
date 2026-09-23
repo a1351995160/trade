@@ -21,6 +21,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 from chanlun_trader.price_only_scope import (  # noqa: E402
     COMPOSITION_ROOT,
+    restore_task_scope,
+    snapshot_task_scope,
     ForbiddenDataAccess,
     activate_task_scope,
     deactivate_task_scope,
@@ -37,21 +39,18 @@ REAL_GBBQ = "E:/new_tdx_mock/T0002/hq_cache/gbbq"
 
 @pytest.fixture(autouse=True)
 def _restore_scope():
-    """保存进入前的政策并在退出时**恢复**，不无条件关闭外层任务。
+    """保存进入前的**完整政策**并在退出时恢复，不无条件关闭外层任务。
 
-    缺陷（PR16-02 复核）：原实现 ``yield`` 后无条件 ``deactivate_task_scope()``，
+    缺陷（PR16 复核）：原实现 ``yield`` 后无条件 ``deactivate_task_scope()``，
     会关闭外层仍在运行的任务（把别人的激活状态清成 False）。
-    正确做法是记录进入前的状态，退出时原样恢复。
+    统一实现：保存进入前政策 → 激活内部作用域 → finally 恢复原政策。
+    恢复对象包含 active、reason、受保护身份与环境清单。
     """
-    before_active = task_scope_active()
-    before_reason = task_scope_reason()
+    snapshot = snapshot_task_scope()
     try:
         yield
     finally:
-        if before_active:
-            activate_task_scope(before_reason)
-        else:
-            deactivate_task_scope()
+        restore_task_scope(snapshot)
 
 
 # ==========================================================================
