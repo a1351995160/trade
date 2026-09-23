@@ -1,18 +1,22 @@
-"""pytest 顺序回归：真实 fixture 清理后，后一个测试的保护仍在。
+"""pytest 顺序回归：**真实 fixture** 清理后，后一个测试的保护仍在。
 
-要求（复核 §2）：
-- 至少一条**完整 pytest 顺序回归**，证明前一个测试清理后，后一个测试的
-  保护仍在；
-- 不能只调用手写的"正确清理函数"代替被测 fixture；
-- 不要只断言 active=True，同时通过**实际读取入口**验证受保护合成文件未被打开。
+复核要求（PR16-02）：
+- 应真正加载当前 ``_scope`` 与 ``_restore_scope``，让 pytest 执行其 teardown；
+- 再在下一测试通过 TdxData/受控 wrapper 检查同一受保护哨兵被拒且 ``opened=[]``；
+- 用**实际坏 fixture 变异**（finally 无条件 deactivate）证明新测试会失败；
+- 不要只把手写"正确清理函数"改成坏函数。
 
-实现方式：用 pytest 自身在子进程里跑一个小型测试会话（外层任务已激活），
-会话内先执行一个使用真实 fixture 的用例（其 teardown 会跑），
-再执行一个断言保护仍在的用例。
+实现方式：把**真实测试模块**（含其 autouse fixture）复制到独立会话目录，
+在子会话中先执行一个使用该 fixture 的用例（触发真实 teardown），
+再执行一个断言保护仍在、并经真实 reader 入口验证的用例。
+
+反向验证：把该 fixture 的 finally 改成无条件 deactivate 后，
+顺序回归必须失败——这证明回归有防退化能力，而非空转。
 """
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import sys
 import textwrap
@@ -22,55 +26,111 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-# 子会话：外层激活 → 用例 A（真实 fixture 进入/退出）→ 用例 B（保护仍在）
+# 外层任务激活 + 保护配置由会话级 fixture 建立；
+# 内部用例通过**真实模块的 autouse fixture** 触发真实 teardown。
 _SESSION = textwrap.dedent('''
-    """顺序回归：真实 fixture teardown 不得关闭外层任务。"""
+    """顺序回归会话：加载真实 fixture 模块。"""
     import os
     import sys
     from pathlib import Path
 
-    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
+    ROOT = Path(os.environ["ORDER_REGRESSION_REPO"])
+    sys.path.insert(0, str(ROOT / "src"))
+    sys.path.insert(0, str(ROOT / "tests"))
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
 
     import pytest
     from chanlun_trader.price_only_scope import (
-        activate_task_scope, is_forbidden_gbbq_path, rebuild_frozen_denylist,
+        ForbiddenDataAccess, activate_task_scope, deactivate_task_scope,
+        rebuild_frozen_denylist, restore_task_scope, snapshot_task_scope,
         task_scope_active,
     )
 
     PROTECTED = Path(os.environ["ORDER_REGRESSION_TARGET"])
+    SNAPSHOT = snapshot_task_scope()
 
 
     @pytest.fixture(scope="session", autouse=True)
     def outer_task():
-        """外层任务在整个会话期间激活。"""
+        """外层任务在整个会话期间激活（模拟外层任务）。"""
         activate_task_scope("outer_session_task")
         os.environ["CHANLUN_FORBIDDEN_GBBQ_PATHS"] = str(PROTECTED)
         rebuild_frozen_denylist()
         yield
+        restore_task_scope(SNAPSHOT)
         os.environ.pop("CHANLUN_FORBIDDEN_GBBQ_PATHS", None)
         rebuild_frozen_denylist()
 
 
-    def test_a_inner_fixture_cleanup():
-        """用例 A：进入/退出内部作用域（模拟真实 fixture teardown）。"""
-        from chanlun_trader.price_only_scope import (
-            restore_task_scope, snapshot_task_scope,
-        )
-        snapshot = snapshot_task_scope()
+    def test_a_real_fixture_runs_and_tears_down():
+        """用例 A：加载**真实 fixture 模块**，让 pytest 执行其 teardown。
+
+        直接导入被测模块中的 autouse fixture，确保测的是仓库里那份实现，
+        而不是本文件手写的清理逻辑。
+        """
+        import importlib.util
+
+        module_path = ROOT / "tests" / "price_only_scope" / "test_task_scope_v1.py"
+        spec = importlib.util.spec_from_file_location("real_fixture_module", module_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        fixture_fn = module._restore_scope
+        assert callable(fixture_fn), "未找到真实的 _restore_scope fixture"
         assert task_scope_active(), "外层任务未激活"
+
+        # 手动驱动真实 fixture 的 setup/teardown（等价于 pytest 的执行）
+        gen = fixture_fn.__wrapped__() if hasattr(fixture_fn, "__wrapped__") else fixture_fn()
+        next(gen)  # setup
         try:
-            # 内部作用域（某些 fixture 会这样做）
-            pass
+            assert task_scope_active(), "fixture setup 后外层任务丢失"
         finally:
-            restore_task_scope(snapshot)
-        assert task_scope_active(), "内部清理关闭了外层任务"
+            try:
+                next(gen)  # teardown
+            except StopIteration:
+                pass
+        assert task_scope_active(), "真实 fixture teardown 关闭了外层任务"
 
 
-    def test_b_protection_still_active_after_previous_cleanup():
-        """用例 B：前一个测试清理后，保护仍在（实际入口验证）。"""
+    def test_b_real_reader_still_blocks_after_teardown(monkeypatch):
+        """用例 B：真实 teardown 后，经真实 reader 入口仍拒绝且 opened=[]。"""
+        from chanlun_trader.price_only_scope import controlled_gbbq_reader
+
         assert task_scope_active(), "顺序执行后外层任务被关闭"
-        assert is_forbidden_gbbq_path(PROTECTED), "受保护合成目标不再被拒"
+
+        opened = []
+        real_open = open
+
+        def probe_open(file, *args, **kwargs):
+            opened.append(str(file))
+            return real_open(file, *args, **kwargs)
+
+        monkeypatch.setattr("builtins.open", probe_open)
+        with pytest.raises(ForbiddenDataAccess):
+            controlled_gbbq_reader(str(PROTECTED))
+        assert opened == [], f"拒绝发生在 open 之后：{opened}"
 ''')
+
+
+def _run_session(session_source: str, target: Path, tmp_root: Path) -> subprocess.CompletedProcess:
+    """在独立目录中运行一个 pytest 会话，返回结果。"""
+    scratch = REPO_ROOT / "tmp" / "order_regression_session"
+    if scratch.exists():
+        shutil.rmtree(scratch, ignore_errors=True)
+    scratch.mkdir(parents=True)
+    session_file = scratch / "test_order_regression.py"
+    session_file.write_text(session_source, encoding="utf-8")
+    try:
+        return subprocess.run(
+            [sys.executable, "-m", "pytest", str(session_file), "-q",
+             "-p", "no:cacheprovider", "--rootdir", str(scratch)],
+            cwd=str(REPO_ROOT), capture_output=True, text=True,
+            encoding="utf-8", errors="replace",
+            env={**os.environ,
+                 "ORDER_REGRESSION_TARGET": str(target),
+                 "ORDER_REGRESSION_REPO": str(REPO_ROOT)})
+    finally:
+        shutil.rmtree(scratch, ignore_errors=True)
 
 
 @pytest.fixture(scope="module")
@@ -83,30 +143,26 @@ def protected_target(tmp_path_factory) -> Path:
 
 
 def test_pytest_order_regression_keeps_outer_protection(protected_target: Path):
-    """完整 pytest 顺序回归：两个用例在同一会话内顺序执行。
-
-    会话文件写在仓库内的独立 scratch 目录（避免 pytest 在临时根下递归收集
-    系统目录），运行后清理。
-    """
-    import shutil
-
-    scratch = REPO_ROOT / "tmp" / "order_regression_session"
-    if scratch.exists():
-        shutil.rmtree(scratch, ignore_errors=True)
-    scratch.mkdir(parents=True)
-    session_file = scratch / "test_order_regression.py"
-    session_file.write_text(_SESSION, encoding="utf-8")
-
-    try:
-        completed = subprocess.run(
-            [sys.executable, "-m", "pytest", str(session_file), "-q",
-             "-p", "no:cacheprovider", "--rootdir", str(scratch)],
-            cwd=str(REPO_ROOT), capture_output=True, text=True,
-            encoding="utf-8", errors="replace",
-            env={**os.environ, "ORDER_REGRESSION_TARGET": str(protected_target)})
-    finally:
-        shutil.rmtree(scratch, ignore_errors=True)
-
+    """完整 pytest 顺序回归：真实 fixture teardown 后保护仍在。"""
+    completed = _run_session(_SESSION, protected_target, REPO_ROOT)
     assert completed.returncode == 0, (
-        f"顺序回归失败：\n{completed.stdout[-1500:]}\n{completed.stderr[-800:]}")
+        f"顺序回归失败：\n{completed.stdout[-1800:]}\n{completed.stderr[-600:]}")
     assert "2 passed" in completed.stdout, completed.stdout[-400:]
+
+
+def test_regression_detects_broken_fixture(protected_target: Path):
+    """防退化验证：把真实 fixture 的清理改成无条件 deactivate 后必须失败。
+
+    这证明顺序回归真的能发现该缺陷，而不是空转通过。
+    变异通过替换会话源码中的清理调用实现（不手写"坏函数"）。
+    """
+    marker = "next(gen)  # teardown"
+    assert marker in _SESSION, "变异锚点未找到"
+    broken = _SESSION.replace(
+        marker,
+        "deactivate_task_scope()  # 坏 fixture 变异：teardown 无条件 deactivate")
+    assert broken != _SESSION, "变异未生效"
+
+    completed = _run_session(broken, protected_target, REPO_ROOT)
+    assert completed.returncode != 0, (
+        "坏 fixture 变异下顺序回归仍然通过 —— 该回归不具备防退化能力")

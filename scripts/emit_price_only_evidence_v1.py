@@ -28,11 +28,17 @@ TARGET_JUNIT_NAME = "junit-price-only-v1.xml"
 # Windows 盘符前缀：在 POSIX 上会被误当仓库内相对路径，直接拒绝
 _DRIVE_PREFIX_RE = re.compile(r"^[a-zA-Z]:[\\/]")
 
-# 条件消费与账户接线的适用 nodeid（同一套件内）
-CONDITION_NODEID = ("tests/conditions_v2/test_price_only_condition_consumption_v1.py"
-                    "::test_condition_layer_consumes_each_new_indicator")
-ACCOUNT_NODEID = ("tests/conditions_v2/test_price_only_condition_consumption_v1.py"
-                  "::test_indicator_reaches_account_chain_through_public_entry")
+# 条件消费与账户接线的适用测试函数（**逐项**绑定，不用函数全体参数替单项作证）
+CONDITION_TEST = ("tests/conditions_v2/test_price_only_condition_consumption_v1.py",
+                  "test_condition_layer_consumes_each_new_indicator")
+ACCOUNT_TEST = ("tests/conditions_v2/test_price_only_condition_consumption_v1.py",
+                "test_indicator_reaches_account_chain_through_public_entry")
+
+# 维度 -> (模块, 测试函数)；公式维度的函数名因指标而异，见 FORMULA_NODEIDS
+DIMENSION_TESTS = {
+    "condition": CONDITION_TEST,
+    "account": ACCOUNT_TEST,
+}
 
 # 本轮新增测试的组成部分（按文件，可自动计数）
 NEW_TEST_FILES = {
@@ -199,36 +205,121 @@ def parse_junit_outcomes(path: Path) -> dict:
     return outcomes
 
 
-def resolve_dimension(nodeid: str | None, outcomes: dict) -> dict:
-    """由**实际 JUnit outcome** 推导单个维度状态。
+_COLLECT_CACHE: dict = {}
 
-    fail closed 规则：映射缺失、testcase 缺失、参数不匹配、
-    failed/error/skipped 都不能给 VERIFIED。
+
+def collect_parameterized_nodeids(module: str, func: str,
+                                  group_by_indicator: bool = True) -> dict:
+    """收集某测试函数的**实际参数化 nodeid**。
+
+    ``group_by_indicator=True``：按参数首段（指标 ID）分组，用于条件/账户套件
+    （参数形如 ``[DEMA-dema-10.0]``）。
+    ``group_by_indicator=False``：返回 ``{"_all": [...]}``，用于公式套件
+    （参数形如 ``[5-flat]``，首段是 window 而非指标名）。
+
+    逐项作证的依据：每个指标只能引用**属于它自己**的参数化 nodeid，
+    不能借整个函数的参数集合作证（复核 PR16-03 明确要求）。
     """
-    if not nodeid:
-        return {"status": "PARTIAL", "outcome": "no_mapping", "matched": ""}
-    if nodeid in outcomes:
-        outcome = outcomes[nodeid]
-        return {"status": "VERIFIED" if outcome == "passed" else "PARTIAL",
-                "outcome": outcome, "matched": nodeid}
-    prefix = nodeid + "["
-    matched = [(k, v) for k, v in outcomes.items() if k.startswith(prefix)]
-    if not matched:
-        return {"status": "PARTIAL", "outcome": "missing", "matched": ""}
-    worst = max(matched, key=lambda kv: _OUTCOME_SEVERITY.get(kv[1], 0))
-    return {"status": "VERIFIED" if worst[1] == "passed" else "PARTIAL",
-            "outcome": worst[1], "matched": worst[0]}
+    cache_key = (module, func, group_by_indicator)
+    if cache_key in _COLLECT_CACHE:
+        return _COLLECT_CACHE[cache_key]
+    completed = subprocess.run(
+        [sys.executable, "-m", "pytest", module, "--collect-only", "-q"],
+        cwd=str(REPO_ROOT), capture_output=True, text=True,
+        encoding="utf-8", errors="replace")
+    if completed.returncode != 0:
+        raise CollectionError(
+            f"COLLECTION_FAILED:{module}:rc={completed.returncode}:"
+            f"{(completed.stdout or completed.stderr).strip()[:200]}")
+    prefix = f"{module}::{func}["
+    plain = f"{module}::{func}"
+    grouped: dict = {}
+    for line in completed.stdout.splitlines():
+        line = line.strip()
+        if line == plain:
+            grouped.setdefault("_plain", []).append(line)
+            continue
+        if not line.startswith(prefix):
+            continue
+        params = line[len(prefix):-1]
+        key = params.split("-", 1)[0] if group_by_indicator else "_all"
+        grouped.setdefault(key, []).append(line)
+    _COLLECT_CACHE[cache_key] = grouped
+    return grouped
+
+
+_COVERAGE_CACHE: dict = {}
+
+
+def build_expected_coverage() -> dict:
+    """建立**期望覆盖集合**：每个指标在每个维度上应被哪些 nodeid 覆盖。
+
+    公式维度：该指标映射函数下的全部参数化节点。
+    条件/账户维度：该指标自己的参数化节点（首段是指标 ID）。
+    """
+    if _COVERAGE_CACHE:
+        return _COVERAGE_CACHE
+    formula_module = "tests/indicators_v2/test_price_only_formula_increment_v1.py"
+    formula_cache: dict = {}
+    condition_map = collect_parameterized_nodeids(*CONDITION_TEST)
+    account_map = collect_parameterized_nodeids(*ACCOUNT_TEST)
+
+    expected: dict = {}
+    for indicator_id, base in FORMULA_NODEIDS.items():
+        func_name = base.split("::", 1)[1]
+        if func_name not in formula_cache:
+            formula_cache[func_name] = collect_parameterized_nodeids(
+                formula_module, func_name, group_by_indicator=False)
+        nodes = list(formula_cache[func_name].get("_all", []))
+        if not nodes and base in formula_cache[func_name].get("_plain", []):
+            nodes = [base]
+        expected[(indicator_id, "formula")] = sorted(set(nodes))
+        expected[(indicator_id, "condition")] = sorted(set(
+            condition_map.get(indicator_id, [])))
+        expected[(indicator_id, "account")] = sorted(set(
+            account_map.get(indicator_id, [])))
+    _COVERAGE_CACHE.update(expected)
+    return expected
+
+
+def resolve_dimension(expected: list, outcomes: dict) -> dict:
+    """由**期望覆盖集合**的实际 JUnit outcome 推导维度状态。
+
+    fail closed 规则（复核 PR16-03）：
+    - 期望集合为空（映射缺失 / 该指标无对应 testcase）→ PARTIAL；
+    - 任一期望节点缺失、failed、error、skipped → PARTIAL；
+    - 只有**全部**期望节点 passed 才 VERIFIED。
+    不得"只剩一条 passed 就整体通过"。
+    """
+    if not expected:
+        return {"status": "PARTIAL", "outcome": "no_expected_coverage",
+                "matched": "", "expected": [], "missing": []}
+    missing = [n for n in expected if n not in outcomes]
+    if missing:
+        return {"status": "PARTIAL", "outcome": "missing_testcase",
+                "matched": "", "expected": expected, "missing": missing}
+    worst = max(expected, key=lambda n: _OUTCOME_SEVERITY.get(outcomes[n], 0))
+    worst_outcome = outcomes[worst]
+    return {
+        "status": "VERIFIED" if worst_outcome == "passed" else "PARTIAL",
+        "outcome": worst_outcome,
+        "matched": worst,
+        "expected": expected,
+        "missing": [],
+    }
 
 
 def _indicator_evidence(outcomes: dict) -> list:
     """为新增 oracle 覆盖的指标建立逐项证据行。
 
     每个能力证据写：指标、实现版本、具体输出、实际测试参数域、输入/价格域、
-    **精确参数化 nodeid**、实际 JUnit、passed/skip/error、证明强度。
+    **属于该指标的完整参数化 nodeid**、实际 JUnit、passed/skip/error、证明强度。
 
-    **状态由实际 JUnit outcome 推导**，不写死：注册表存在、函数存在、
-    能 collect 都不能直接产生 VERIFIED。
-    证明强度分级（标签本身不能代替用例）：
+    逐项适用（复核 PR16-03）：
+    - condition/account **不**共用去参数函数基名；
+    - 每项绑定自己的参数化 nodeid 与期望覆盖集合；
+    - 参数/输出范围只来自对应测试断言，不从注册表全部输出扩大。
+    证明强度分级：
     - ``NUMERIC_ORACLE``：与独立朴素参考逐值比较；
     - ``CONDITION_INJECTED``：手工注入条件上下文（非真实注册计算）；
     - ``ACCOUNT_WIDE_THRESHOLD``：宽阈值成交（不证明阈值敏感）。
@@ -236,7 +327,7 @@ def _indicator_evidence(outcomes: dict) -> list:
     from chanlun_trader.engine.indicator_registry_v2 import default_registry
 
     registry = default_registry()
-    # 维度 -> (适用 nodeid, 证明强度)；nodeid 取自受审映射
+    expected_coverage = build_expected_coverage()
     strength_by_dim = {
         "formula": "NUMERIC_ORACLE",
         "condition": "CONDITION_INJECTED",
@@ -250,17 +341,14 @@ def _indicator_evidence(outcomes: dict) -> list:
             rows.append({"indicator": indicator_id, "status": "PARTIAL",
                          "reason": "NOT_IN_REGISTRY"})
             continue
-        node_by_dim = {
-            "formula": FORMULA_NODEIDS.get(indicator_id),
-            "condition": CONDITION_NODEID,
-            "account": ACCOUNT_NODEID,
-        }
         dims = {}
-        for name, node in node_by_dim.items():
-            resolved = resolve_dimension(node, outcomes)
-            resolved["nodeid"] = node
+        for name in ("formula", "condition", "account"):
+            expected = expected_coverage.get((indicator_id, name), [])
+            resolved = resolve_dimension(expected, outcomes)
+            resolved["nodeids"] = expected
             resolved["junit"] = TARGET_JUNIT_NAME
             resolved["strength"] = strength_by_dim[name]
+            dims[name] = resolved
             dims[name] = resolved
         rows.append({
             "indicator": indicator_id,

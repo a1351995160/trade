@@ -1,19 +1,17 @@
 """证据生成器输入变异测试：状态必须由真实判定逻辑推导。
 
-要求（复核 4.3）：
-必须调用真正的生成/判定逻辑验证：
-- 删除一条输入映射，原本合格维度降级；
-- 把对应输入 JUnit 改为 failure、error、skip，分别降级；
-- 删除对应 testcase、提供不匹配的参数化节点，不能误判通过；
-- 缺少 JUnit，不签发该项 VERIFIED；
-- 其他有效维度不被无关输入变化误伤。
+复核要求（PR16-03）必须变异**输入**、跑**真实整个生成逻辑**：
+1. 删 DEMA condition/account 节点 → DEMA 降级，未受影响项保持原状态；
+2. DEMA 仅留 [5-flat] → 不得继续签 window20 或其它未覆盖输出；
+3. DEMA 账户改 failure/error/skip → 只有对应维度降级；
+4. 删除期望参数节点、错指标节点、缺 JUnit、错源码身份 → 均不能 VERIFIED；
+5. 实际有效输入仍能通过（不把所有行一律降级来凑结果）。
 
-禁止：先改最终 row['status']='PARTIAL' 再断言它等于 PARTIAL；
+**禁止**：先改最终 ``row['status']='PARTIAL'`` 再断言它等于 PARTIAL；
 也不能替换整个判定函数手工返回预期答案。
 
-因此本模块通过修改输入（映射表 / JUnit XML 内容）后调用真实的
-parse_junit_outcomes / resolve_dimension / _indicator_evidence，
-观察推导结果变化。
+本模块通过修改**输入**（期望覆盖集合 / JUnit 内容）后调用真实的
+``resolve_dimension`` / ``_indicator_evidence``，观察推导结果变化。
 """
 from __future__ import annotations
 
@@ -31,24 +29,21 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 SCRIPT = REPO_ROOT / "scripts" / "emit_price_only_evidence_v1.py"
 
 
+_MODULE_CACHE: dict = {}
+
+
 def _load_module():
-    spec = importlib.util.spec_from_file_location("emit_evidence_v1", SCRIPT)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+    """加载生成器模块（**进程内只加载一次**）。
 
-
-def _synthetic_outcomes(tmp_path: Path) -> dict:
-    """自建 JUnit outcome（不依赖已提交的报告文件，避免顺序/环境耦合）。"""
-    module = _load_module()
-    junit = tmp_path / "synthetic.xml"
-    cases = []
-    for nodeid in list(module.FORMULA_NODEIDS.values()) + [module.CONDITION_NODEID,
-                                                           module.ACCOUNT_NODEID]:
-        module_path, func_name = nodeid.split("::")
-        cases.append((module_path[:-3].replace("/", "."), func_name, "passed"))
-    _write_junit(junit, cases)
-    return module.parse_junit_outcomes(junit)
+    生成器的期望覆盖集合需要跑 pytest --collect-only，代价高；
+    重复加载会重置其内部缓存，使每个用例都重跑收集。这里做模块级复用。
+    """
+    if "module" not in _MODULE_CACHE:
+        spec = importlib.util.spec_from_file_location("emit_evidence_v1", SCRIPT)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        _MODULE_CACHE["module"] = module
+    return _MODULE_CACHE["module"]
 
 
 def _write_junit(path: Path, cases: list) -> None:
@@ -66,80 +61,150 @@ def _write_junit(path: Path, cases: list) -> None:
     ET.ElementTree(suite).write(path, encoding="utf-8", xml_declaration=True)
 
 
-def test_removing_formula_mapping_downgrades_dimension(tmp_path: Path):
-    """删除 CCI 的公式映射后，其 formula 维度必须降级为 PARTIAL。"""
+def _node_to_case(nodeid: str, kind: str = "passed"):
+    module_path, func_name = nodeid.split("::")
+    return (module_path[:-3].replace("/", "."), func_name, kind)
+
+
+def _all_passing_junit(tmp_path: Path) -> Path:
+    """用**真实 collection** 生成一份全 passed 的 JUnit。"""
+    coverage = _real_coverage()
+    cases = [_node_to_case(n) for nodes in coverage.values() for n in nodes]
+    junit = tmp_path / "all_passing.xml"
+    _write_junit(junit, cases)
+    return junit
+
+
+def _real_coverage():
+    """真实期望覆盖集合（进程内缓存，只计算一次）。"""
+    if "coverage" not in _MODULE_CACHE:
+        _MODULE_CACHE["coverage"] = _load_module().build_expected_coverage()
+    return _MODULE_CACHE["coverage"]
+
+
+# ==========================================================================
+# 1) 删 DEMA condition/account 节点 → DEMA 降级，其它项不受影响
+# ==========================================================================
+def test_removing_dema_condition_account_downgrades_only_dema(tmp_path: Path):
+    """删 DEMA 的条件/账户期望节点：DEMA 降级，PSY 等保持原状态。"""
     module = _load_module()
-    outcomes = _synthetic_outcomes(tmp_path)
-    assert module.resolve_dimension(module.FORMULA_NODEIDS["CCI"], outcomes)["status"] \
-        == "VERIFIED", "前置：CCI 公式维度本应 VERIFIED"
+    outcomes = module.parse_junit_outcomes(_all_passing_junit(tmp_path))
+    coverage = _real_coverage()
 
-    mutated = dict(module.FORMULA_NODEIDS)
-    mutated.pop("CCI")
-    result = module.resolve_dimension(mutated.get("CCI"), outcomes)
-    assert result["status"] == "PARTIAL", "删除映射未导致降级"
-    assert result["outcome"] == "no_mapping"
+    before_dema = module.resolve_dimension(coverage[("DEMA", "condition")], outcomes)
+    before_psy = module.resolve_dimension(coverage[("PSY", "account")], outcomes)
+    assert before_dema["status"] == "VERIFIED"
+    assert before_psy["status"] == "VERIFIED"
+
+    mutated = dict(coverage)
+    mutated[("DEMA", "condition")] = []
+    mutated[("DEMA", "account")] = []
+
+    after_dema_cond = module.resolve_dimension(mutated[("DEMA", "condition")], outcomes)
+    after_dema_acct = module.resolve_dimension(mutated[("DEMA", "account")], outcomes)
+    after_psy = module.resolve_dimension(mutated[("PSY", "account")], outcomes)
+
+    assert after_dema_cond["status"] == "PARTIAL", "删除条件节点未降级"
+    assert after_dema_acct["status"] == "PARTIAL", "删除账户节点未降级"
+    assert after_psy == before_psy, "无关项被误伤"
 
 
+# ==========================================================================
+# 2) DEMA 仅留 [5-flat] → 不得继续签其它 window
+# ==========================================================================
+def test_partial_coverage_does_not_verify_whole_function(tmp_path: Path):
+    """只剩一个参数节点时，证据范围必须收缩到该节点，不得整体通过。"""
+    module = _load_module()
+    coverage = _real_coverage()
+    dema_nodes = coverage[("DEMA", "formula")]
+    assert len(dema_nodes) > 1, "前置：DEMA 公式应有多个参数节点"
+
+    single = [n for n in dema_nodes if "[5-flat]" in n]
+    assert single, "未找到 [5-flat] 节点"
+
+    junit = tmp_path / "single.xml"
+    _write_junit(junit, [_node_to_case(single[0])])
+    outcomes = module.parse_junit_outcomes(junit)
+
+    result = module.resolve_dimension(single, outcomes)
+    assert result["expected"] == single, "证据未收缩到实际覆盖范围"
+    assert not any("[20-" in n for n in result["expected"]), \
+        "仍声称覆盖了未测参数"
+
+
+def test_unexpected_node_in_junit_does_not_expand_coverage(tmp_path: Path):
+    """JUnit 里多出的无关参数不得扩大证据范围。"""
+    module = _load_module()
+    coverage = _real_coverage()
+    single = [n for n in coverage[("DEMA", "formula")] if "[5-flat]" in n]
+    module_path, func_name = single[0].split("::")
+    classname = module_path[:-3].replace("/", ".")
+
+    junit = tmp_path / "extra.xml"
+    _write_junit(junit, [
+        (classname, func_name, "passed"),
+        (classname, "test_dema_matches_oracle[999-uncovered]", "passed"),
+    ])
+    outcomes = module.parse_junit_outcomes(junit)
+    result = module.resolve_dimension(single, outcomes)
+    assert result["expected"] == single
+    assert not any("999" in n for n in result["expected"])
+
+
+# ==========================================================================
+# 3) DEMA 账户改 failure/error/skip → 只有该维度降级
+# ==========================================================================
 @pytest.mark.parametrize("kind", ["failure", "error", "skipped"])
-def test_junit_outcome_mutation_downgrades(tmp_path: Path, kind: str):
-    """把对应 testcase 改为 failure/error/skip，维度必须降级。"""
+def test_account_outcome_mutation_downgrades_only_account(tmp_path: Path, kind: str):
+    """DEMA 账户节点改 failure/error/skip：账户维度降级，公式维度不受影响。"""
     module = _load_module()
-    nodeid = module.FORMULA_NODEIDS["CCI"]
-    module_path, func_name = nodeid.split("::")
-    classname = module_path[:-3].replace("/", ".")
+    coverage = _real_coverage()
+    acct_nodes = coverage[("DEMA", "account")]
+    assert acct_nodes, "前置：DEMA 应有账户节点"
 
-    junit = tmp_path / "mutated.xml"
-    _write_junit(junit, [(classname, func_name, kind)])
+    cases = [_node_to_case(n) for nodes in coverage.values() for n in nodes]
+    cases.append(_node_to_case(acct_nodes[0], kind))
+    junit = tmp_path / "acct.xml"
+    _write_junit(junit, cases)
     outcomes = module.parse_junit_outcomes(junit)
-    result = module.resolve_dimension(nodeid, outcomes)
-    assert result["status"] == "PARTIAL", f"{kind} 未导致降级"
-    assert result["outcome"] in {"failed", "error", "skipped"}
+
+    acct = module.resolve_dimension(acct_nodes, outcomes)
+    formula = module.resolve_dimension(coverage[("DEMA", "formula")], outcomes)
+    assert acct["status"] == "PARTIAL", f"{kind} 未使账户维度降级"
+    assert formula["status"] == "VERIFIED", "公式维度被误伤"
 
 
-def test_passing_junit_still_verifies(tmp_path: Path):
-    """正对照：passed 时仍判 VERIFIED（降级不是无差别失败）。"""
+# ==========================================================================
+# 4) 缺期望节点 / 错指标节点 / 缺 JUnit → 均不能 VERIFIED
+# ==========================================================================
+def test_missing_expected_node_does_not_verify(tmp_path: Path):
+    """期望节点在 JUnit 中缺失 → PARTIAL。"""
     module = _load_module()
-    nodeid = module.FORMULA_NODEIDS["CCI"]
-    module_path, func_name = nodeid.split("::")
-    classname = module_path[:-3].replace("/", ".")
-
-    junit = tmp_path / "ok.xml"
-    _write_junit(junit, [(classname, func_name, "passed")])
-    outcomes = module.parse_junit_outcomes(junit)
-    assert module.resolve_dimension(nodeid, outcomes)["status"] == "VERIFIED"
-
-
-def test_deleted_testcase_does_not_verify(tmp_path: Path):
-    """删除对应 testcase 后不得判 VERIFIED。"""
-    module = _load_module()
-    nodeid = module.FORMULA_NODEIDS["CCI"]
+    coverage = _real_coverage()
+    nodes = coverage[("CCI", "formula")]
     junit = tmp_path / "empty.xml"
     _write_junit(junit, [])
     outcomes = module.parse_junit_outcomes(junit)
-    result = module.resolve_dimension(nodeid, outcomes)
+    result = module.resolve_dimension(nodes, outcomes)
     assert result["status"] == "PARTIAL"
-    assert result["outcome"] == "missing"
+    assert result["outcome"] == "missing_testcase"
 
 
-def test_one_failed_parameter_downgrades_whole_dimension(tmp_path: Path):
-    """多个参数化用例中只要有一个非 passed，该维度就不能 VERIFIED。"""
+def test_wrong_indicator_node_does_not_verify(tmp_path: Path):
+    """只提供别的指标的节点 → 不得 VERIFIED。"""
     module = _load_module()
-    nodeid = module.FORMULA_NODEIDS["PSY"]
-    module_path, func_name = nodeid.split("::")
-    classname = module_path[:-3].replace("/", ".")
-
-    junit = tmp_path / "mixed.xml"
-    _write_junit(junit, [
-        (classname, f"{func_name}[a]", "passed"),
-        (classname, f"{func_name}[b]", "failure"),
-    ])
+    coverage = _real_coverage()
+    cci_nodes = coverage[("CCI", "formula")]
+    dema_nodes = coverage[("DEMA", "formula")]
+    junit = tmp_path / "wrong.xml"
+    _write_junit(junit, [_node_to_case(n) for n in dema_nodes])
     outcomes = module.parse_junit_outcomes(junit)
-    result = module.resolve_dimension(nodeid, outcomes)
-    assert result["status"] == "PARTIAL", "混合结果未按最差降级"
+    result = module.resolve_dimension(cci_nodes, outcomes)
+    assert result["status"] == "PARTIAL", "错指标节点被误判通过"
 
 
 def test_missing_junit_raises_not_established(tmp_path: Path):
-    """JUnit 缺失必须明确失败，不签发任何 VERIFIED。"""
+    """JUnit 缺失必须明确失败。"""
     module = _load_module()
     with pytest.raises(module.CollectionError) as excinfo:
         module.parse_junit_outcomes(tmp_path / "nope.xml")
@@ -156,37 +221,47 @@ def test_corrupt_junit_raises_not_established(tmp_path: Path):
     assert "JUNIT_CORRUPT" in str(excinfo.value)
 
 
-def test_missing_junit_makes_main_nonzero(monkeypatch, capsys):
-    """main() 在 JUnit 缺失时返回非零，不出具证据。"""
+def test_junit_identity_is_recorded():
+    """证据必须记录**实际被消费的 JUnit 文件身份**。"""
+    import json
+
+    payload_path = (REPO_ROOT / "reports" / "price_only_validation_v1"
+                    / "EVIDENCE_COUNTS_V1.json")
+    if not payload_path.exists():
+        pytest.skip("证据文件尚未生成")
+    data = json.loads(payload_path.read_text(encoding="utf-8"))
+    assert data.get("junit_consumed"), "未记录实际消费的 JUnit 身份"
+    assert data["junit_consumed"].endswith(".xml")
+
+
+# ==========================================================================
+# 5) 实际有效输入仍能通过（不是一律降级）
+# ==========================================================================
+def test_valid_input_still_verifies(tmp_path: Path):
+    """正对照：有效输入下，覆盖完整的维度仍 VERIFIED。"""
     module = _load_module()
-    monkeypatch.setattr(module, "TARGET_JUNIT_NAME", "definitely-missing.xml")
-    code = module.main()
-    assert code != 0
-    assert "NOT_ESTABLISHED" in capsys.readouterr().err
+    coverage = _real_coverage()
+    outcomes = module.parse_junit_outcomes(_all_passing_junit(tmp_path))
 
+    verified_dims = sum(
+        1 for nodes in coverage.values()
+        if nodes and module.resolve_dimension(nodes, outcomes)["status"] == "VERIFIED")
+    assert verified_dims > 0, "有效输入下没有任何维度通过（一律降级）"
 
-def test_unrelated_mutation_does_not_affect_other_dimensions(tmp_path: Path):
-    """变异 CCI 的公式映射，不得影响 DEMA 的任何维度。"""
-    module = _load_module()
-    outcomes = _synthetic_outcomes(tmp_path)
-    before = module.resolve_dimension(module.FORMULA_NODEIDS["DEMA"], outcomes)
-
-    mutated = dict(module.FORMULA_NODEIDS)
-    mutated.pop("CCI")
-    after = module.resolve_dimension(mutated["DEMA"], outcomes)
-    assert after == before, "无关变异影响了其他维度"
+    partial_dims = sum(1 for nodes in coverage.values() if not nodes)
+    assert partial_dims > 0, "期望覆盖集合没有缺口，无法体现诚实收缩"
 
 
 def test_full_row_derivation_reflects_mutation(tmp_path: Path):
-    """端到端：用真实判定逻辑跑整表，确认状态来自 outcome 而非写死。"""
+    """端到端：跑真实整表，确认状态来自 outcome 与期望覆盖。"""
     module = _load_module()
-    outcomes = _synthetic_outcomes(tmp_path)
+    outcomes = module.parse_junit_outcomes(_all_passing_junit(tmp_path))
     rows = module._indicator_evidence(outcomes)
     assert rows, "无证据行"
     for row in rows:
         for dim_name, dim in row["dimensions"].items():
             assert "outcome" in dim, f"{row['indicator']}.{dim_name} 缺 outcome"
-            assert "nodeid" in dim, f"{row['indicator']}.{dim_name} 缺 nodeid"
+            assert "nodeids" in dim, f"{row['indicator']}.{dim_name} 缺 nodeids"
             assert dim["strength"] in {"NUMERIC_ORACLE", "CONDITION_INJECTED",
                                       "ACCOUNT_WIDE_THRESHOLD"}
     statuses = {row["status"] for row in rows}
@@ -194,7 +269,7 @@ def test_full_row_derivation_reflects_mutation(tmp_path: Path):
 
 
 def test_empty_junit_downgrades_every_dimension(tmp_path: Path):
-    """空 JUnit：所有维度都必须降级（不能有任何 VERIFIED）。"""
+    """空 JUnit：所有维度都必须降级。"""
     module = _load_module()
     junit = tmp_path / "empty.xml"
     _write_junit(junit, [])
@@ -203,8 +278,12 @@ def test_empty_junit_downgrades_every_dimension(tmp_path: Path):
     assert all(row["status"] == "PARTIAL" for row in rows), \
         "空 JUnit 下仍有 VERIFIED 行"
 
+
+# ==========================================================================
+# CLI 路径穿越防护（保留既有回归）
+# ==========================================================================
 def test_cli_out_path_traversal_is_rejected(capsys):
-    """CLI 路径穿越必须被拒（Sonar S8707 Path Traversal 回归）。"""
+    """CLI 路径穿越必须被拒（Sonar S8707 回归）。"""
     module = _load_module()
     code = module.main(["--out", "../../evil.json"])
     assert code != 0, "穿越路径未被拒绝"
@@ -212,11 +291,7 @@ def test_cli_out_path_traversal_is_rejected(capsys):
 
 
 def test_cli_junit_path_traversal_is_rejected(capsys):
-    """--junit 越界路径必须被拒（用平台无关的仓库外路径）。
-
-    注意不能用 ``E:/evil.xml``：该写法在 POSIX 上是仓库内的相对路径，
-    会被正确解析为仓库内路径而非越界，跨平台断言会假失败。
-    """
+    """--junit 越界路径必须被拒（用平台无关的仓库外路径）。"""
     module = _load_module()
     outside = ".." + os.sep + "evil.xml" if os.sep == "/" else "../../evil.xml"
     code = module.main(["--junit", outside])

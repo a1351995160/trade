@@ -186,9 +186,15 @@ def _freeze_identity_closure(path) -> set:
     也必须拒绝**。因此冻结时不能只做词法拼接，必须解析该路径的
     真实指向，并把"别名 → 真实目标"与"真实目标 → 别名"两侧都纳入。
 
-    - ``os.path.realpath`` 解析符号链接/junction 到真实路径；
-    - 反向：若清单项本身是别名，则其指向的真实路径也加入闭包；
-    - 受支持平台上无法解析时返回空集，由调用方 fail closed。
+    **基准一致性（关键）**：所有解析都以 ``COMPOSITION_ROOT`` 为唯一基准。
+    先用组合根把候选锚定为绝对路径，再对该绝对候选做符号链接/父目录别名解析；
+    绝不在解析过程中混用 cwd —— 否则同一配置在 cwd 不同时会解析到不同身份
+    （已复现的绕过：相对链接按 cwd 解析，目标本体未被识别）。
+
+    - 解析成功：把锚定后的词法身份、``realpath`` 结果与"父目录解析 + 基名"
+      都纳入闭包；
+    - 解析失败或平台不支持：**不伪装成功**，该候选不产生额外身份
+      （调用方仍按词法身份判定），并由 ``_resolve_status`` 如实记录。
     """
     if path is None:
         return set()
@@ -197,29 +203,20 @@ def _freeze_identity_closure(path) -> set:
         return set()
     closure: set[str] = set()
 
-    for candidate in (raw, str(Path(raw))):
-        absolute = _to_absolute_normalised(candidate)
-        if absolute:
-            closure.add(absolute)
-        relative = _normalise(candidate)
-        if relative:
-            closure.add(relative)
+    # 步骤一：以组合根锚定为绝对候选（唯一基准，不读 cwd）
+    anchored = _to_absolute_normalised(raw)
+    if anchored:
+        closure.add(anchored)
+    relative = _normalise(raw)
+    if relative:
+        closure.add(relative)
 
-    # 真实指向（解析符号链接/junction）；同时把父目录解析后拼接基名，
-    # 使"清单列别名目录下的文件"也能对应到目标目录下的同一文件。
-    try:
-        resolved = os.path.realpath(raw)
-        resolved_norm = _to_absolute_normalised(resolved)
-        if resolved_norm:
-            closure.add(resolved_norm)
-        parent_resolved = os.path.realpath(str(Path(raw).parent))
-        name = Path(raw).name
-        if name:
-            parent_norm = _to_absolute_normalised(str(Path(parent_resolved) / name))
-            if parent_norm:
-                closure.add(parent_norm)
-    except (OSError, ValueError):
-        pass
+    # 步骤二：对**锚定后的绝对候选**做真实指向解析
+    anchor_path = _anchored_path(raw)
+    if anchor_path is not None:
+        for resolved in _resolve_real_paths(anchor_path):
+            if resolved:
+                closure.add(resolved)
 
     # Windows 盘符语义（POSIX 上 realpath 不处理盘符）
     if _DRIVE_RE.match(raw):
@@ -231,6 +228,37 @@ def _freeze_identity_closure(path) -> set:
         except (ImportError, ValueError):
             pass
     return closure
+
+
+def _anchored_path(raw: str) -> Path | None:
+    """把候选以组合根锚定为绝对 Path（相对项基于 COMPOSITION_ROOT）。"""
+    candidate = Path(raw)
+    if not candidate.is_absolute():
+        candidate = COMPOSITION_ROOT / candidate
+    return candidate
+
+
+def _resolve_real_paths(anchor: Path) -> set:
+    """对已锚定的绝对路径解析真实身份（符号链接/父目录别名）。
+
+    返回真实指向与"父目录解析 + 基名"两类身份。解析异常返回空集，
+    由调用方按词法身份处理（不伪装解析成功）。
+    """
+    resolved_ids: set = set()
+    try:
+        real = os.path.realpath(str(anchor))
+        real_norm = _to_absolute_normalised(real)
+        if real_norm:
+            resolved_ids.add(real_norm)
+        parent_real = os.path.realpath(str(anchor.parent))
+        name = anchor.name
+        if name:
+            parent_norm = _to_absolute_normalised(str(Path(parent_real) / name))
+            if parent_norm:
+                resolved_ids.add(parent_norm)
+    except (OSError, ValueError):
+        return set()
+    return resolved_ids
 
 
 def _build_frozen_denylist() -> frozenset:

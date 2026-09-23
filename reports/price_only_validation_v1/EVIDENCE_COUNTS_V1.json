@@ -3,7 +3,7 @@
   "junit_consumed": "E:\\llmwiki\\trade-price-only-validation-v1\\reports\\junit-price-only-v1.xml",
   "note": "计数与状态均由脚本自动派生，不硬编码；本机与 CI 分列。汇总成功不覆盖单项失败。",
   "source_identity": {
-    "head": "f45488c07a7195f8323d25f9ec97c80988ad5aa7"
+    "head": "8e4e20386b4970d1bfca7e35a1d1ae53acee0380"
   },
   "new_tests": {
     "by_part": {
@@ -16,12 +16,12 @@
       "task_scope": 13,
       "vendor_entry_guard": 7,
       "controlled_reader_boundary": 3,
-      "scope_order_regression": 1,
-      "evidence_mutation": 16
+      "scope_order_regression": 2,
+      "evidence_mutation": 17
     },
-    "parts_total": 285,
+    "parts_total": 287,
     "qfq_synthetic": 4,
-    "total_vs_base": 289,
+    "total_vs_base": 291,
     "note": "各组成部分合计 + 合成 QFQ；25 个账户服务用例属于 condition_and_service 内部，不重复累加。本清单为**子集**口径（本轮新增文件），非 BASE/HEAD 节点差集全量。",
     "scope": "SUBSET_OF_NEW_FILES_NOT_FULL_BASE_HEAD_DIFF"
   },
@@ -35,11 +35,11 @@
   },
   "local_target_suite": {
     "status": "ESTABLISHED",
-    "tests": 560,
+    "tests": 571,
     "errors": 0,
     "failures": 0,
     "skipped": 13,
-    "passed": 547,
+    "passed": 558,
     "failed_including_errors": 0
   },
   "local_full_suite": {
@@ -80,24 +80,60 @@
         "formula": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_dema_matches_oracle",
-          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_dema_matches_oracle",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_dema_matches_oracle[20-down]",
+          "expected": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_dema_matches_oracle[20-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_dema_matches_oracle[20-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_dema_matches_oracle[20-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_dema_matches_oracle[20-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_dema_matches_oracle[20-up]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_dema_matches_oracle[5-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_dema_matches_oracle[5-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_dema_matches_oracle[5-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_dema_matches_oracle[5-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_dema_matches_oracle[5-up]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_dema_matches_oracle[20-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_dema_matches_oracle[20-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_dema_matches_oracle[20-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_dema_matches_oracle[20-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_dema_matches_oracle[20-up]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_dema_matches_oracle[5-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_dema_matches_oracle[5-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_dema_matches_oracle[5-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_dema_matches_oracle[5-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_dema_matches_oracle[5-up]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE"
         },
         "condition": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[DEMA-dema-10.0]",
+          "expected": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[DEMA-dema-10.0]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[DEMA-dema-10.0]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED"
         },
         "account": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[DEMA-params3-condition3]",
+          "expected": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[DEMA-params3-condition3]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[DEMA-params3-condition3]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD"
         }
@@ -127,24 +163,60 @@
         "formula": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_tema_matches_oracle",
-          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_tema_matches_oracle",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_tema_matches_oracle[20-down]",
+          "expected": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_tema_matches_oracle[20-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_tema_matches_oracle[20-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_tema_matches_oracle[20-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_tema_matches_oracle[20-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_tema_matches_oracle[20-up]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_tema_matches_oracle[5-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_tema_matches_oracle[5-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_tema_matches_oracle[5-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_tema_matches_oracle[5-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_tema_matches_oracle[5-up]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_tema_matches_oracle[20-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_tema_matches_oracle[20-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_tema_matches_oracle[20-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_tema_matches_oracle[20-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_tema_matches_oracle[20-up]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_tema_matches_oracle[5-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_tema_matches_oracle[5-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_tema_matches_oracle[5-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_tema_matches_oracle[5-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_tema_matches_oracle[5-up]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE"
         },
         "condition": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[TEMA-tema-10.0]",
+          "expected": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[TEMA-tema-10.0]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[TEMA-tema-10.0]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED"
         },
         "account": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[TEMA-params4-condition4]",
+          "expected": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[TEMA-params4-condition4]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[TEMA-params4-condition4]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD"
         }
@@ -173,29 +245,61 @@
         "formula": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_cci_matches_oracle",
-          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_cci_matches_oracle",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_cci_matches_oracle[14-down]",
+          "expected": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_cci_matches_oracle[14-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_cci_matches_oracle[14-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_cci_matches_oracle[14-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_cci_matches_oracle[14-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_cci_matches_oracle[14-up]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_cci_matches_oracle[20-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_cci_matches_oracle[20-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_cci_matches_oracle[20-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_cci_matches_oracle[20-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_cci_matches_oracle[20-up]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_cci_matches_oracle[14-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_cci_matches_oracle[14-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_cci_matches_oracle[14-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_cci_matches_oracle[14-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_cci_matches_oracle[14-up]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_cci_matches_oracle[20-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_cci_matches_oracle[20-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_cci_matches_oracle[20-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_cci_matches_oracle[20-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_cci_matches_oracle[20-up]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE"
         },
         "condition": {
-          "status": "VERIFIED",
-          "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "status": "PARTIAL",
+          "outcome": "no_expected_coverage",
+          "matched": "",
+          "expected": [],
+          "missing": [],
+          "nodeids": [],
           "junit": "junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED"
         },
         "account": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[CCI-params0-condition0]",
+          "expected": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[CCI-params0-condition0]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[CCI-params0-condition0]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD"
         }
       },
-      "status": "VERIFIED"
+      "status": "PARTIAL"
     },
     {
       "indicator": "NATR",
@@ -219,29 +323,61 @@
         "formula": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_natr_matches_oracle",
-          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_natr_matches_oracle",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_natr_matches_oracle[14-down]",
+          "expected": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_natr_matches_oracle[14-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_natr_matches_oracle[14-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_natr_matches_oracle[14-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_natr_matches_oracle[14-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_natr_matches_oracle[14-up]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_natr_matches_oracle[20-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_natr_matches_oracle[20-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_natr_matches_oracle[20-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_natr_matches_oracle[20-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_natr_matches_oracle[20-up]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_natr_matches_oracle[14-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_natr_matches_oracle[14-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_natr_matches_oracle[14-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_natr_matches_oracle[14-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_natr_matches_oracle[14-up]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_natr_matches_oracle[20-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_natr_matches_oracle[20-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_natr_matches_oracle[20-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_natr_matches_oracle[20-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_natr_matches_oracle[20-up]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE"
         },
         "condition": {
-          "status": "VERIFIED",
-          "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "status": "PARTIAL",
+          "outcome": "no_expected_coverage",
+          "matched": "",
+          "expected": [],
+          "missing": [],
+          "nodeids": [],
           "junit": "junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED"
         },
         "account": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[NATR-params1-condition1]",
+          "expected": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[NATR-params1-condition1]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[NATR-params1-condition1]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD"
         }
       },
-      "status": "VERIFIED"
+      "status": "PARTIAL"
     },
     {
       "indicator": "PSY",
@@ -263,29 +399,61 @@
         "formula": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_psy_matches_oracle",
-          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_psy_matches_oracle",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_psy_matches_oracle[12-down]",
+          "expected": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_psy_matches_oracle[12-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_psy_matches_oracle[12-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_psy_matches_oracle[12-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_psy_matches_oracle[12-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_psy_matches_oracle[12-up]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_psy_matches_oracle[6-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_psy_matches_oracle[6-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_psy_matches_oracle[6-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_psy_matches_oracle[6-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_psy_matches_oracle[6-up]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_psy_matches_oracle[12-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_psy_matches_oracle[12-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_psy_matches_oracle[12-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_psy_matches_oracle[12-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_psy_matches_oracle[12-up]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_psy_matches_oracle[6-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_psy_matches_oracle[6-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_psy_matches_oracle[6-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_psy_matches_oracle[6-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_psy_matches_oracle[6-up]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE"
         },
         "condition": {
-          "status": "VERIFIED",
-          "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "status": "PARTIAL",
+          "outcome": "no_expected_coverage",
+          "matched": "",
+          "expected": [],
+          "missing": [],
+          "nodeids": [],
           "junit": "junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED"
         },
         "account": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[PSY-params2-condition2]",
+          "expected": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[PSY-params2-condition2]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[PSY-params2-condition2]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD"
         }
       },
-      "status": "VERIFIED"
+      "status": "PARTIAL"
     },
     {
       "indicator": "DONCHIAN",
@@ -311,24 +479,60 @@
         "formula": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_donchian_matches_oracle",
-          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_donchian_matches_oracle",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_donchian_matches_oracle[10-down]",
+          "expected": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_donchian_matches_oracle[10-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_donchian_matches_oracle[10-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_donchian_matches_oracle[10-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_donchian_matches_oracle[10-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_donchian_matches_oracle[10-up]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_donchian_matches_oracle[20-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_donchian_matches_oracle[20-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_donchian_matches_oracle[20-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_donchian_matches_oracle[20-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_donchian_matches_oracle[20-up]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_donchian_matches_oracle[10-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_donchian_matches_oracle[10-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_donchian_matches_oracle[10-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_donchian_matches_oracle[10-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_donchian_matches_oracle[10-up]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_donchian_matches_oracle[20-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_donchian_matches_oracle[20-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_donchian_matches_oracle[20-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_donchian_matches_oracle[20-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_donchian_matches_oracle[20-up]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE"
         },
         "condition": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[DONCHIAN-upper-10.0]",
+          "expected": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[DONCHIAN-upper-10.0]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[DONCHIAN-upper-10.0]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED"
         },
         "account": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[DONCHIAN-params6-condition6]",
+          "expected": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[DONCHIAN-params6-condition6]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[DONCHIAN-params6-condition6]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD"
         }
@@ -361,24 +565,50 @@
         "formula": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_keltner_matches_oracle",
-          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_keltner_matches_oracle",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_keltner_matches_oracle[down]",
+          "expected": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_keltner_matches_oracle[down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_keltner_matches_oracle[flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_keltner_matches_oracle[jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_keltner_matches_oracle[osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_keltner_matches_oracle[up]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_keltner_matches_oracle[down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_keltner_matches_oracle[flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_keltner_matches_oracle[jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_keltner_matches_oracle[osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_keltner_matches_oracle[up]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE"
         },
         "condition": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[KELTNER-upper-10.0]",
+          "expected": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[KELTNER-upper-10.0]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[KELTNER-upper-10.0]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED"
         },
         "account": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[KELTNER-params7-condition7]",
+          "expected": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[KELTNER-params7-condition7]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[KELTNER-params7-condition7]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD"
         }
@@ -408,24 +638,52 @@
         "formula": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rolling_volatility_matches_oracle",
-          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rolling_volatility_matches_oracle",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rolling_volatility_matches_oracle[10-jump]",
+          "expected": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rolling_volatility_matches_oracle[10-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rolling_volatility_matches_oracle[10-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rolling_volatility_matches_oracle[10-up]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rolling_volatility_matches_oracle[20-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rolling_volatility_matches_oracle[20-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rolling_volatility_matches_oracle[20-up]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rolling_volatility_matches_oracle[10-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rolling_volatility_matches_oracle[10-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rolling_volatility_matches_oracle[10-up]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rolling_volatility_matches_oracle[20-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rolling_volatility_matches_oracle[20-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rolling_volatility_matches_oracle[20-up]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE"
         },
         "condition": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[ROLLING_VOLATILITY-volatility-0.01]",
+          "expected": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[ROLLING_VOLATILITY-volatility-0.01]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[ROLLING_VOLATILITY-volatility-0.01]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED"
         },
         "account": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[ROLLING_VOLATILITY-params9-condition9]",
+          "expected": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[ROLLING_VOLATILITY-params9-condition9]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[ROLLING_VOLATILITY-params9-condition9]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD"
         }
@@ -454,24 +712,60 @@
         "formula": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_historical_return_matches_oracle",
-          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_historical_return_matches_oracle",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_historical_return_matches_oracle[20-down]",
+          "expected": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_historical_return_matches_oracle[20-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_historical_return_matches_oracle[20-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_historical_return_matches_oracle[20-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_historical_return_matches_oracle[20-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_historical_return_matches_oracle[20-up]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_historical_return_matches_oracle[5-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_historical_return_matches_oracle[5-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_historical_return_matches_oracle[5-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_historical_return_matches_oracle[5-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_historical_return_matches_oracle[5-up]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_historical_return_matches_oracle[20-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_historical_return_matches_oracle[20-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_historical_return_matches_oracle[20-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_historical_return_matches_oracle[20-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_historical_return_matches_oracle[20-up]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_historical_return_matches_oracle[5-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_historical_return_matches_oracle[5-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_historical_return_matches_oracle[5-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_historical_return_matches_oracle[5-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_historical_return_matches_oracle[5-up]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE"
         },
         "condition": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[HISTORICAL_RETURN-return-0.5]",
+          "expected": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[HISTORICAL_RETURN-return-0.5]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[HISTORICAL_RETURN-return-0.5]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED"
         },
         "account": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[HISTORICAL_RETURN-params8-condition8]",
+          "expected": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[HISTORICAL_RETURN-params8-condition8]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[HISTORICAL_RETURN-params8-condition8]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD"
         }
@@ -500,24 +794,60 @@
         "formula": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_price_extremes_matches_oracle",
-          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_price_extremes_matches_oracle",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_price_extremes_matches_oracle[10-down]",
+          "expected": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_price_extremes_matches_oracle[10-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_price_extremes_matches_oracle[10-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_price_extremes_matches_oracle[10-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_price_extremes_matches_oracle[10-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_price_extremes_matches_oracle[10-up]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_price_extremes_matches_oracle[20-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_price_extremes_matches_oracle[20-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_price_extremes_matches_oracle[20-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_price_extremes_matches_oracle[20-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_price_extremes_matches_oracle[20-up]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_price_extremes_matches_oracle[10-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_price_extremes_matches_oracle[10-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_price_extremes_matches_oracle[10-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_price_extremes_matches_oracle[10-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_price_extremes_matches_oracle[10-up]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_price_extremes_matches_oracle[20-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_price_extremes_matches_oracle[20-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_price_extremes_matches_oracle[20-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_price_extremes_matches_oracle[20-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_price_extremes_matches_oracle[20-up]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE"
         },
         "condition": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[PRICE_EXTREMES-hhv-10.0]",
+          "expected": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[PRICE_EXTREMES-hhv-10.0]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[PRICE_EXTREMES-hhv-10.0]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED"
         },
         "account": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[PRICE_EXTREMES-params10-condition10]",
+          "expected": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[PRICE_EXTREMES-params10-condition10]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[PRICE_EXTREMES-params10-condition10]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD"
         }
@@ -548,29 +878,61 @@
         "formula": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_prior_breakout_matches_oracle",
-          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_prior_breakout_matches_oracle",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_prior_breakout_matches_oracle[10-down]",
+          "expected": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_prior_breakout_matches_oracle[10-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_prior_breakout_matches_oracle[10-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_prior_breakout_matches_oracle[10-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_prior_breakout_matches_oracle[10-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_prior_breakout_matches_oracle[10-up]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_prior_breakout_matches_oracle[20-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_prior_breakout_matches_oracle[20-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_prior_breakout_matches_oracle[20-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_prior_breakout_matches_oracle[20-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_prior_breakout_matches_oracle[20-up]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_prior_breakout_matches_oracle[10-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_prior_breakout_matches_oracle[10-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_prior_breakout_matches_oracle[10-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_prior_breakout_matches_oracle[10-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_prior_breakout_matches_oracle[10-up]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_prior_breakout_matches_oracle[20-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_prior_breakout_matches_oracle[20-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_prior_breakout_matches_oracle[20-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_prior_breakout_matches_oracle[20-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_prior_breakout_matches_oracle[20-up]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE"
         },
         "condition": {
-          "status": "VERIFIED",
-          "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "status": "PARTIAL",
+          "outcome": "no_expected_coverage",
+          "matched": "",
+          "expected": [],
+          "missing": [],
+          "nodeids": [],
           "junit": "junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED"
         },
         "account": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[PRIOR_BREAKOUT-params11-condition11]",
+          "expected": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[PRIOR_BREAKOUT-params11-condition11]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[PRIOR_BREAKOUT-params11-condition11]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD"
         }
       },
-      "status": "VERIFIED"
+      "status": "PARTIAL"
     },
     {
       "indicator": "DRAWDOWN_FROM_PEAK",
@@ -593,29 +955,61 @@
         "formula": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_drawdown_from_peak_matches_oracle",
-          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_drawdown_from_peak_matches_oracle",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_drawdown_from_peak_matches_oracle[20-down]",
+          "expected": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_drawdown_from_peak_matches_oracle[20-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_drawdown_from_peak_matches_oracle[20-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_drawdown_from_peak_matches_oracle[20-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_drawdown_from_peak_matches_oracle[20-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_drawdown_from_peak_matches_oracle[20-up]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_drawdown_from_peak_matches_oracle[60-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_drawdown_from_peak_matches_oracle[60-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_drawdown_from_peak_matches_oracle[60-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_drawdown_from_peak_matches_oracle[60-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_drawdown_from_peak_matches_oracle[60-up]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_drawdown_from_peak_matches_oracle[20-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_drawdown_from_peak_matches_oracle[20-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_drawdown_from_peak_matches_oracle[20-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_drawdown_from_peak_matches_oracle[20-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_drawdown_from_peak_matches_oracle[20-up]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_drawdown_from_peak_matches_oracle[60-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_drawdown_from_peak_matches_oracle[60-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_drawdown_from_peak_matches_oracle[60-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_drawdown_from_peak_matches_oracle[60-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_drawdown_from_peak_matches_oracle[60-up]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE"
         },
         "condition": {
-          "status": "VERIFIED",
-          "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "status": "PARTIAL",
+          "outcome": "no_expected_coverage",
+          "matched": "",
+          "expected": [],
+          "missing": [],
+          "nodeids": [],
           "junit": "junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED"
         },
         "account": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[DRAWDOWN_FROM_PEAK-params21-condition21]",
+          "expected": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[DRAWDOWN_FROM_PEAK-params21-condition21]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[DRAWDOWN_FROM_PEAK-params21-condition21]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD"
         }
       },
-      "status": "VERIFIED"
+      "status": "PARTIAL"
     },
     {
       "indicator": "MACD_HIST_RAW",
@@ -640,29 +1034,51 @@
         "formula": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_macd_hist_raw_matches_oracle",
-          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_macd_hist_raw_matches_oracle",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_macd_hist_raw_matches_oracle[down]",
+          "expected": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_macd_hist_raw_matches_oracle[down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_macd_hist_raw_matches_oracle[flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_macd_hist_raw_matches_oracle[jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_macd_hist_raw_matches_oracle[osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_macd_hist_raw_matches_oracle[up]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_macd_hist_raw_matches_oracle[down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_macd_hist_raw_matches_oracle[flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_macd_hist_raw_matches_oracle[jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_macd_hist_raw_matches_oracle[osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_macd_hist_raw_matches_oracle[up]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE"
         },
         "condition": {
-          "status": "VERIFIED",
-          "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "status": "PARTIAL",
+          "outcome": "no_expected_coverage",
+          "matched": "",
+          "expected": [],
+          "missing": [],
+          "nodeids": [],
           "junit": "junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED"
         },
         "account": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[MACD_HIST_RAW-params19-condition19]",
+          "expected": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[MACD_HIST_RAW-params19-condition19]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[MACD_HIST_RAW-params19-condition19]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD"
         }
       },
-      "status": "VERIFIED"
+      "status": "PARTIAL"
     },
     {
       "indicator": "TRIX",
@@ -686,24 +1102,60 @@
         "formula": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_trix_matches_oracle",
-          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_trix_matches_oracle",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_trix_matches_oracle[12-down]",
+          "expected": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_trix_matches_oracle[12-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_trix_matches_oracle[12-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_trix_matches_oracle[12-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_trix_matches_oracle[12-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_trix_matches_oracle[12-up]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_trix_matches_oracle[6-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_trix_matches_oracle[6-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_trix_matches_oracle[6-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_trix_matches_oracle[6-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_trix_matches_oracle[6-up]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_trix_matches_oracle[12-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_trix_matches_oracle[12-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_trix_matches_oracle[12-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_trix_matches_oracle[12-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_trix_matches_oracle[12-up]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_trix_matches_oracle[6-down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_trix_matches_oracle[6-flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_trix_matches_oracle[6-jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_trix_matches_oracle[6-osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_trix_matches_oracle[6-up]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE"
         },
         "condition": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[TRIX-trix-0.5]",
+          "expected": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[TRIX-trix-0.5]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[TRIX-trix-0.5]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED"
         },
         "account": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[TRIX-params5-condition5]",
+          "expected": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[TRIX-params5-condition5]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[TRIX-params5-condition5]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD"
         }
@@ -729,24 +1181,44 @@
         "formula": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_volume_ma_and_amount_ma_match_oracle",
-          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_volume_ma_and_amount_ma_match_oracle",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_volume_ma_and_amount_ma_match_oracle[20]",
+          "expected": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_volume_ma_and_amount_ma_match_oracle[20]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_volume_ma_and_amount_ma_match_oracle[5]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_volume_ma_and_amount_ma_match_oracle[20]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_volume_ma_and_amount_ma_match_oracle[5]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE"
         },
         "condition": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[VOLUME_MA-volume_ma-500000.0]",
+          "expected": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[VOLUME_MA-volume_ma-500000.0]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[VOLUME_MA-volume_ma-500000.0]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED"
         },
         "account": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[VOLUME_MA-params12-condition12]",
+          "expected": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[VOLUME_MA-params12-condition12]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[VOLUME_MA-params12-condition12]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD"
         }
@@ -772,29 +1244,45 @@
         "formula": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_volume_ma_and_amount_ma_match_oracle",
-          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_volume_ma_and_amount_ma_match_oracle",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_volume_ma_and_amount_ma_match_oracle[20]",
+          "expected": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_volume_ma_and_amount_ma_match_oracle[20]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_volume_ma_and_amount_ma_match_oracle[5]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_volume_ma_and_amount_ma_match_oracle[20]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_volume_ma_and_amount_ma_match_oracle[5]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE"
         },
         "condition": {
-          "status": "VERIFIED",
-          "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "status": "PARTIAL",
+          "outcome": "no_expected_coverage",
+          "matched": "",
+          "expected": [],
+          "missing": [],
+          "nodeids": [],
           "junit": "junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED"
         },
         "account": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[AMOUNT_MA-params20-condition20]",
+          "expected": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[AMOUNT_MA-params20-condition20]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[AMOUNT_MA-params20-condition20]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD"
         }
       },
-      "status": "VERIFIED"
+      "status": "PARTIAL"
     },
     {
       "indicator": "RVOL_PRIOR",
@@ -816,24 +1304,44 @@
         "formula": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rvol_variants_match_oracle_and_differ",
-          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rvol_variants_match_oracle_and_differ",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rvol_variants_match_oracle_and_differ[20]",
+          "expected": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rvol_variants_match_oracle_and_differ[20]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rvol_variants_match_oracle_and_differ[5]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rvol_variants_match_oracle_and_differ[20]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rvol_variants_match_oracle_and_differ[5]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE"
         },
         "condition": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[RVOL_PRIOR-rvol-1.0]",
+          "expected": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[RVOL_PRIOR-rvol-1.0]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[RVOL_PRIOR-rvol-1.0]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED"
         },
         "account": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[RVOL_PRIOR-params13-condition13]",
+          "expected": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[RVOL_PRIOR-params13-condition13]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[RVOL_PRIOR-params13-condition13]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD"
         }
@@ -860,29 +1368,45 @@
         "formula": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rvol_variants_match_oracle_and_differ",
-          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rvol_variants_match_oracle_and_differ",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rvol_variants_match_oracle_and_differ[20]",
+          "expected": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rvol_variants_match_oracle_and_differ[20]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rvol_variants_match_oracle_and_differ[5]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rvol_variants_match_oracle_and_differ[20]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rvol_variants_match_oracle_and_differ[5]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE"
         },
         "condition": {
-          "status": "VERIFIED",
-          "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "status": "PARTIAL",
+          "outcome": "no_expected_coverage",
+          "matched": "",
+          "expected": [],
+          "missing": [],
+          "nodeids": [],
           "junit": "junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED"
         },
         "account": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[RVOL_INCL_CURRENT-params23-condition23]",
+          "expected": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[RVOL_INCL_CURRENT-params23-condition23]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[RVOL_INCL_CURRENT-params23-condition23]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD"
         }
       },
-      "status": "VERIFIED"
+      "status": "PARTIAL"
     },
     {
       "indicator": "ACCUMULATION_DISTRIBUTION",
@@ -906,28 +1430,42 @@
           "status": "VERIFIED",
           "outcome": "passed",
           "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_accumulation_distribution_and_chaikin_and_pvt_match_oracle",
-          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_accumulation_distribution_and_chaikin_and_pvt_match_oracle",
+          "expected": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_accumulation_distribution_and_chaikin_and_pvt_match_oracle"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_accumulation_distribution_and_chaikin_and_pvt_match_oracle"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE"
         },
         "condition": {
-          "status": "VERIFIED",
-          "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "status": "PARTIAL",
+          "outcome": "no_expected_coverage",
+          "matched": "",
+          "expected": [],
+          "missing": [],
+          "nodeids": [],
           "junit": "junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED"
         },
         "account": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[ACCUMULATION_DISTRIBUTION-params15-condition15]",
+          "expected": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[ACCUMULATION_DISTRIBUTION-params15-condition15]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[ACCUMULATION_DISTRIBUTION-params15-condition15]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD"
         }
       },
-      "status": "VERIFIED"
+      "status": "PARTIAL"
     },
     {
       "indicator": "CHAIKIN_MONEY_FLOW",
@@ -954,28 +1492,42 @@
           "status": "VERIFIED",
           "outcome": "passed",
           "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_accumulation_distribution_and_chaikin_and_pvt_match_oracle",
-          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_accumulation_distribution_and_chaikin_and_pvt_match_oracle",
+          "expected": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_accumulation_distribution_and_chaikin_and_pvt_match_oracle"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_accumulation_distribution_and_chaikin_and_pvt_match_oracle"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE"
         },
         "condition": {
-          "status": "VERIFIED",
-          "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "status": "PARTIAL",
+          "outcome": "no_expected_coverage",
+          "matched": "",
+          "expected": [],
+          "missing": [],
+          "nodeids": [],
           "junit": "junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED"
         },
         "account": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[CHAIKIN_MONEY_FLOW-params16-condition16]",
+          "expected": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[CHAIKIN_MONEY_FLOW-params16-condition16]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[CHAIKIN_MONEY_FLOW-params16-condition16]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD"
         }
       },
-      "status": "VERIFIED"
+      "status": "PARTIAL"
     },
     {
       "indicator": "PVT",
@@ -996,28 +1548,42 @@
           "status": "VERIFIED",
           "outcome": "passed",
           "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_accumulation_distribution_and_chaikin_and_pvt_match_oracle",
-          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_accumulation_distribution_and_chaikin_and_pvt_match_oracle",
+          "expected": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_accumulation_distribution_and_chaikin_and_pvt_match_oracle"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_accumulation_distribution_and_chaikin_and_pvt_match_oracle"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE"
         },
         "condition": {
-          "status": "VERIFIED",
-          "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "status": "PARTIAL",
+          "outcome": "no_expected_coverage",
+          "matched": "",
+          "expected": [],
+          "missing": [],
+          "nodeids": [],
           "junit": "junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED"
         },
         "account": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[PVT-params17-condition17]",
+          "expected": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[PVT-params17-condition17]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[PVT-params17-condition17]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD"
         }
       },
-      "status": "VERIFIED"
+      "status": "PARTIAL"
     },
     {
       "indicator": "VWAP_SESSION_PROXY",
@@ -1038,28 +1604,42 @@
           "status": "VERIFIED",
           "outcome": "passed",
           "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_vwap_proxy_and_mfi_match_oracle",
-          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_vwap_proxy_and_mfi_match_oracle",
+          "expected": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_vwap_proxy_and_mfi_match_oracle"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_vwap_proxy_and_mfi_match_oracle"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE"
         },
         "condition": {
-          "status": "VERIFIED",
-          "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "status": "PARTIAL",
+          "outcome": "no_expected_coverage",
+          "matched": "",
+          "expected": [],
+          "missing": [],
+          "nodeids": [],
           "junit": "junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED"
         },
         "account": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[VWAP_SESSION_PROXY-params18-condition18]",
+          "expected": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[VWAP_SESSION_PROXY-params18-condition18]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[VWAP_SESSION_PROXY-params18-condition18]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD"
         }
       },
-      "status": "VERIFIED"
+      "status": "PARTIAL"
     },
     {
       "indicator": "MFI",
@@ -1085,23 +1665,41 @@
           "status": "VERIFIED",
           "outcome": "passed",
           "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_vwap_proxy_and_mfi_match_oracle",
-          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_vwap_proxy_and_mfi_match_oracle",
+          "expected": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_vwap_proxy_and_mfi_match_oracle"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_vwap_proxy_and_mfi_match_oracle"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE"
         },
         "condition": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[MFI-mfi-50.0]",
+          "expected": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[MFI-mfi-50.0]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[MFI-mfi-50.0]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED"
         },
         "account": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[MFI-params14-condition14]",
+          "expected": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[MFI-params14-condition14]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[MFI-params14-condition14]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD"
         }
@@ -1129,28 +1727,42 @@
           "status": "VERIFIED",
           "outcome": "passed",
           "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rolling_slope_matches_oracle",
-          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rolling_slope_matches_oracle",
+          "expected": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rolling_slope_matches_oracle"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rolling_slope_matches_oracle"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE"
         },
         "condition": {
-          "status": "VERIFIED",
-          "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "status": "PARTIAL",
+          "outcome": "no_expected_coverage",
+          "matched": "",
+          "expected": [],
+          "missing": [],
+          "nodeids": [],
           "junit": "junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED"
         },
         "account": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[ROLLING_SLOPE-params22-condition22]",
+          "expected": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[ROLLING_SLOPE-params22-condition22]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[ROLLING_SLOPE-params22-condition22]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD"
         }
       },
-      "status": "VERIFIED"
+      "status": "PARTIAL"
     },
     {
       "indicator": "TRUE_RANGE",
@@ -1171,34 +1783,56 @@
         "formula": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_true_range_matches_oracle",
-          "nodeid": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_true_range_matches_oracle",
+          "matched": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_true_range_matches_oracle[down]",
+          "expected": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_true_range_matches_oracle[down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_true_range_matches_oracle[flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_true_range_matches_oracle[jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_true_range_matches_oracle[osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_true_range_matches_oracle[up]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_true_range_matches_oracle[down]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_true_range_matches_oracle[flat]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_true_range_matches_oracle[jump]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_true_range_matches_oracle[osc]",
+            "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_true_range_matches_oracle[up]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE"
         },
         "condition": {
-          "status": "VERIFIED",
-          "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator",
+          "status": "PARTIAL",
+          "outcome": "no_expected_coverage",
+          "matched": "",
+          "expected": [],
+          "missing": [],
+          "nodeids": [],
           "junit": "junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED"
         },
         "account": {
           "status": "VERIFIED",
           "outcome": "passed",
-          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
-          "nodeid": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry",
+          "matched": "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[TRUE_RANGE-params24-condition24]",
+          "expected": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[TRUE_RANGE-params24-condition24]"
+          ],
+          "missing": [],
+          "nodeids": [
+            "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[TRUE_RANGE-params24-condition24]"
+          ],
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD"
         }
       },
-      "status": "VERIFIED"
+      "status": "PARTIAL"
     }
   ],
   "summary": {
-    "verified": 25,
-    "partial": 0,
+    "verified": 11,
+    "partial": 14,
     "total": 25
   }
 }
