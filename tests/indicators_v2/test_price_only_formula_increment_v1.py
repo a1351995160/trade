@@ -544,7 +544,8 @@ def test_wilder_rma_oracle_reseeds_after_gap():
     """
     values = [1.0, 1.0, float("nan"), 10.0, 10.0, 10.0]
     got = oracle.naive_wilder_rma(values, 2)
-    assert got[0] is None and got[1] == pytest.approx(2.0)
+    assert got[0] is None
+    assert got[1] == pytest.approx(2.0)
     assert got[2] is None
     assert got[3] is None, "缺口后第一个位置应重新预热"
     assert got[4] == pytest.approx(20.0), "缺口后应按新段播种"

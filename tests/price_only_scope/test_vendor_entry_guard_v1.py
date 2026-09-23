@@ -45,19 +45,19 @@ def _scope():
         restore_task_scope(snapshot)
 
 
-def _protected_target(tmp_path: Path) -> Path:
-    """构造列入禁止集合的合成 gbbq 文件。"""
+def _protected_target(tmp_path: Path, monkeypatch) -> Path:
+    """构造列入禁止集合的合成 gbbq 文件（经 monkeypatch 设置环境）。"""
     target = tmp_path / "protected" / "gbbq.csv"
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text("code,datetime,category\n000001,20240101,1\n", encoding="utf-8")
-    os.environ["CHANLUN_FORBIDDEN_GBBQ_PATHS"] = str(target)
+    monkeypatch.setenv("CHANLUN_FORBIDDEN_GBBQ_PATHS", str(target))
     rebuild_frozen_denylist()
     return target
 
 
 def test_tdxdata_entry_rejects_before_open(tmp_path: Path, monkeypatch):
     """TdxData 入口：受保护合成缓存必须在 open 之前被拒。"""
-    target = _protected_target(tmp_path)
+    target = _protected_target(tmp_path, monkeypatch)
     opened: list[str] = []
     real_open = open
 
@@ -80,7 +80,7 @@ def test_vendor_gbbqreader_entry_is_rejected_before_open(tmp_path: Path, monkeyp
     ``test_direct_controlled_reader_*`` 单独作证 —— 不得用"TdxData 没调用
     vendor"证明直接调用已受保护。
     """
-    target = _protected_target(tmp_path)
+    target = _protected_target(tmp_path, monkeypatch)
     from pytdx.reader import GbbqReader
 
     called: list[str] = []
@@ -115,7 +115,7 @@ def test_direct_controlled_reader_rejects_before_decode(tmp_path: Path, monkeypa
     """
     from chanlun_trader.price_only_scope import controlled_gbbq_reader
 
-    target = _protected_target(tmp_path)
+    target = _protected_target(tmp_path, monkeypatch)
     from pytdx.reader import GbbqReader
 
     decoded: list[str] = []
@@ -182,11 +182,11 @@ def test_bare_vendor_call_is_documented_unsupported():
     assert "不构成" in CONTROLLED_READER_POLICY["note"] or "不支持" in CONTROLLED_READER_POLICY["note"]
 
 
-def test_protected_target_alias_both_directions(tmp_path: Path):
+def test_protected_target_alias_both_directions(tmp_path: Path, monkeypatch):
     """身份两方向：清单列目标访问别名、清单列别名访问目标本体，都拒绝。"""
     import subprocess
 
-    target = _protected_target(tmp_path)
+    target = _protected_target(tmp_path, monkeypatch)
     real_dir = target.parent
     alias_dir = tmp_path / "aliasdir"
 
@@ -208,7 +208,7 @@ def test_protected_target_alias_both_directions(tmp_path: Path):
         # 方向 A：清单列目标，访问别名
         assert is_forbidden_gbbq_path(alias_file), "方向 A 未拒绝"
         # 方向 B：清单列别名，访问目标本体
-        os.environ["CHANLUN_FORBIDDEN_GBBQ_PATHS"] = str(alias_file)
+        monkeypatch.setenv("CHANLUN_FORBIDDEN_GBBQ_PATHS", str(alias_file))
         rebuild_frozen_denylist()
         assert is_forbidden_gbbq_path(target), "方向 B 未拒绝（清单列别名、访问目标）"
     finally:

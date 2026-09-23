@@ -201,3 +201,26 @@ def test_empty_junit_downgrades_every_dimension(tmp_path: Path):
     rows = module._indicator_evidence(outcomes)
     assert all(row["status"] == "PARTIAL" for row in rows), \
         "空 JUnit 下仍有 VERIFIED 行"
+
+def test_cli_out_path_traversal_is_rejected(capsys):
+    """CLI 路径穿越必须被拒（Sonar S8707 Path Traversal 回归）。"""
+    module = _load_module()
+    code = module.main(["--out", "../../evil.json"])
+    assert code != 0, "穿越路径未被拒绝"
+    assert "PATH_OUTSIDE_REPO" in capsys.readouterr().err
+
+
+def test_cli_junit_path_traversal_is_rejected(capsys):
+    """--junit 绝对路径越界必须被拒。"""
+    module = _load_module()
+    code = module.main(["--junit", "E:/evil.xml"])
+    assert code != 0
+    assert "PATH_OUTSIDE_REPO" in capsys.readouterr().err
+
+
+def test_cli_in_repo_path_is_accepted():
+    """正对照：仓库内路径正常接受。"""
+    module = _load_module()
+    resolved = module.resolve_within_repo(
+        "reports/price_only_validation_v1/EVIDENCE_COUNTS_V1.json", label="out")
+    assert resolved.is_relative_to(module.REPO_ROOT.resolve())

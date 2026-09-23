@@ -63,32 +63,40 @@ class CollectionError(RuntimeError):
 
 # 受审映射：指标 -> 公式维度的**完整参数化 nodeid**。
 # 生成器负责验证这些 nodeid 在 JUnit 中的实际 outcome，而不是仅检查名字存在。
+FORMULA_TEST_MODULE = "tests/indicators_v2/test_price_only_formula_increment_v1.py"
+
+
+def _formula_node(func: str) -> str:
+    """拼出公式验收用例的完整 nodeid（避免重复字面量）。"""
+    return f"{FORMULA_TEST_MODULE}::{func}"
+
+
 FORMULA_NODEIDS = {
-    "DEMA": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_dema_matches_oracle",
-    "TEMA": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_tema_matches_oracle",
-    "CCI": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_cci_matches_oracle",
-    "NATR": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_natr_matches_oracle",
-    "PSY": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_psy_matches_oracle",
-    "DONCHIAN": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_donchian_matches_oracle",
-    "KELTNER": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_keltner_matches_oracle",
-    "ROLLING_VOLATILITY": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rolling_volatility_matches_oracle",
-    "HISTORICAL_RETURN": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_historical_return_matches_oracle",
-    "PRICE_EXTREMES": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_price_extremes_matches_oracle",
-    "PRIOR_BREAKOUT": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_prior_breakout_matches_oracle",
-    "DRAWDOWN_FROM_PEAK": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_drawdown_from_peak_matches_oracle",
-    "MACD_HIST_RAW": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_macd_hist_raw_matches_oracle",
-    "TRIX": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_trix_matches_oracle",
-    "VOLUME_MA": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_volume_ma_and_amount_ma_match_oracle",
-    "AMOUNT_MA": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_volume_ma_and_amount_ma_match_oracle",
-    "RVOL_PRIOR": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rvol_variants_match_oracle_and_differ",
-    "RVOL_INCL_CURRENT": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rvol_variants_match_oracle_and_differ",
-    "ACCUMULATION_DISTRIBUTION": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_accumulation_distribution_and_chaikin_and_pvt_match_oracle",
-    "CHAIKIN_MONEY_FLOW": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_accumulation_distribution_and_chaikin_and_pvt_match_oracle",
-    "PVT": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_accumulation_distribution_and_chaikin_and_pvt_match_oracle",
-    "VWAP_SESSION_PROXY": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_vwap_proxy_and_mfi_match_oracle",
-    "MFI": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_vwap_proxy_and_mfi_match_oracle",
-    "ROLLING_SLOPE": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rolling_slope_matches_oracle",
-    "TRUE_RANGE": "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_true_range_matches_oracle",
+    "DEMA": _formula_node("test_dema_matches_oracle"),
+    "TEMA": _formula_node("test_tema_matches_oracle"),
+    "CCI": _formula_node("test_cci_matches_oracle"),
+    "NATR": _formula_node("test_natr_matches_oracle"),
+    "PSY": _formula_node("test_psy_matches_oracle"),
+    "DONCHIAN": _formula_node("test_donchian_matches_oracle"),
+    "KELTNER": _formula_node("test_keltner_matches_oracle"),
+    "ROLLING_VOLATILITY": _formula_node("test_rolling_volatility_matches_oracle"),
+    "HISTORICAL_RETURN": _formula_node("test_historical_return_matches_oracle"),
+    "PRICE_EXTREMES": _formula_node("test_price_extremes_matches_oracle"),
+    "PRIOR_BREAKOUT": _formula_node("test_prior_breakout_matches_oracle"),
+    "DRAWDOWN_FROM_PEAK": _formula_node("test_drawdown_from_peak_matches_oracle"),
+    "MACD_HIST_RAW": _formula_node("test_macd_hist_raw_matches_oracle"),
+    "TRIX": _formula_node("test_trix_matches_oracle"),
+    "VOLUME_MA": _formula_node("test_volume_ma_and_amount_ma_match_oracle"),
+    "AMOUNT_MA": _formula_node("test_volume_ma_and_amount_ma_match_oracle"),
+    "RVOL_PRIOR": _formula_node("test_rvol_variants_match_oracle_and_differ"),
+    "RVOL_INCL_CURRENT": _formula_node("test_rvol_variants_match_oracle_and_differ"),
+    "ACCUMULATION_DISTRIBUTION": _formula_node("test_accumulation_distribution_and_chaikin_and_pvt_match_oracle"),
+    "CHAIKIN_MONEY_FLOW": _formula_node("test_accumulation_distribution_and_chaikin_and_pvt_match_oracle"),
+    "PVT": _formula_node("test_accumulation_distribution_and_chaikin_and_pvt_match_oracle"),
+    "VWAP_SESSION_PROXY": _formula_node("test_vwap_proxy_and_mfi_match_oracle"),
+    "MFI": _formula_node("test_vwap_proxy_and_mfi_match_oracle"),
+    "ROLLING_SLOPE": _formula_node("test_rolling_slope_matches_oracle"),
+    "TRUE_RANGE": _formula_node("test_true_range_matches_oracle"),
 }
 
 
@@ -223,8 +231,13 @@ def _indicator_evidence(outcomes: dict) -> list:
     """
     from chanlun_trader.engine.indicator_registry_v2 import default_registry
 
-
     registry = default_registry()
+    # 维度 -> (适用 nodeid, 证明强度)；nodeid 取自受审映射
+    strength_by_dim = {
+        "formula": "NUMERIC_ORACLE",
+        "condition": "CONDITION_INJECTED",
+        "account": "ACCOUNT_WIDE_THRESHOLD",
+    }
     rows = []
     for indicator_id in NEW_ORACLE_INDICATORS:
         try:
@@ -233,22 +246,18 @@ def _indicator_evidence(outcomes: dict) -> list:
             rows.append({"indicator": indicator_id, "status": "PARTIAL",
                          "reason": "NOT_IN_REGISTRY"})
             continue
-        formula_node = FORMULA_NODEIDS.get(indicator_id)
-        condition_node = CONDITION_NODEID
-        dims = {
-            "formula": resolve_dimension(formula_node, outcomes),
-            "condition": resolve_dimension(condition_node, outcomes),
-            "account": resolve_dimension(ACCOUNT_NODEID, outcomes),
+        node_by_dim = {
+            "formula": FORMULA_NODEIDS.get(indicator_id),
+            "condition": CONDITION_NODEID,
+            "account": ACCOUNT_NODEID,
         }
-        for name, resolved in dims.items():
-            resolved["nodeid"] = (formula_node if name == "formula" else
-                                  condition_node if name == "condition" else ACCOUNT_NODEID)
+        dims = {}
+        for name, node in node_by_dim.items():
+            resolved = resolve_dimension(node, outcomes)
+            resolved["nodeid"] = node
             resolved["junit"] = TARGET_JUNIT_NAME
-            resolved["strength"] = {
-                "formula": "NUMERIC_ORACLE",
-                "condition": "CONDITION_INJECTED",
-                "account": "ACCOUNT_WIDE_THRESHOLD",
-            }[name]
+            resolved["strength"] = strength_by_dim[name]
+            dims[name] = resolved
         rows.append({
             "indicator": indicator_id,
             "version": spec.version,
@@ -289,11 +298,30 @@ def node_diff_vs_base() -> dict:
     }
 
 
+def resolve_within_repo(candidate: str, *, label: str) -> Path:
+    """把 CLI 传入的路径解析并**限制在仓库根内**，拒绝路径穿越。
+
+    安全说明：``--junit``/``--out`` 是外部输入，直接当作文件路径会产生
+    路径穿越（Sonar ``pythonsecurity:S8707``）。本函数是唯一允许把外部
+    字符串转成文件路径的入口：解析后必须落在 ``REPO_ROOT`` 之内。
+    """
+    root = REPO_ROOT.resolve()
+    raw = Path(candidate)
+    resolved = (root / raw).resolve() if not raw.is_absolute() else raw.resolve()
+    try:
+        resolved.relative_to(root)
+    except ValueError:
+        raise ValueError(
+            f"{label}_PATH_OUTSIDE_REPO:{candidate}") from None
+    return resolved
+
+
 def main(argv: list | None = None) -> int:
     """生成证据。
 
     ``--junit PATH``：指定消费的 JUnit（CI 传入本次实际产出）；
     ``--out PATH``：指定输出路径。默认消费仓库内已提交的 JUnit。
+    两个路径都必须位于仓库根内。
     """
     import argparse
 
@@ -308,8 +336,14 @@ def main(argv: list | None = None) -> int:
         sys.stdout.reconfigure(encoding="utf-8")
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    junit_path = Path(args.junit) if args.junit else (REPO_ROOT / "reports" / TARGET_JUNIT_NAME)
-    out_path = Path(args.out) if args.out else (OUT_DIR / "EVIDENCE_COUNTS_V1.json")
+    try:
+        junit_path = (resolve_within_repo(args.junit, label="junit") if args.junit
+                      else (REPO_ROOT / "reports" / TARGET_JUNIT_NAME))
+        out_path = (resolve_within_repo(args.out, label="out") if args.out
+                    else (OUT_DIR / "EVIDENCE_COUNTS_V1.json"))
+    except ValueError as exc:
+        print(f"NOT_ESTABLISHED: {exc}", file=sys.stderr)
+        return 2
 
     try:
         outcomes = parse_junit_outcomes(junit_path)
@@ -376,4 +410,5 @@ def main(argv: list | None = None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    # 直接运行时才解析命令行；被 import（如测试）时 main() 默认不读宿主 argv
+    raise SystemExit(main(sys.argv[1:]))

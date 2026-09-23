@@ -56,18 +56,18 @@ def _restore_scope():
 # ==========================================================================
 # 上层任务不能被测试清理关闭（PR16-02 复核的最低验收序列）
 # ==========================================================================
-def _protected_synthetic_cache(tmp_path: Path) -> Path:
+def _protected_synthetic_cache(tmp_path: Path, monkeypatch) -> Path:
     """构造一个受保护的合成缓存（列入禁止集合）。"""
     cache = tmp_path / "external" / "cache"
     cache.mkdir(parents=True)
     target = cache / "gbbq.csv"
     target.write_text("code,datetime,category\n", encoding="utf-8")
-    os.environ["CHANLUN_FORBIDDEN_GBBQ_PATHS"] = str(target)
+    monkeypatch.setenv("CHANLUN_FORBIDDEN_GBBQ_PATHS", str(target))
     rebuild_frozen_denylist()
     return target
 
 
-def test_outer_activation_survives_inner_scope_cleanup(tmp_path: Path):
+def test_outer_activation_survives_inner_scope_cleanup(tmp_path: Path, monkeypatch):
     """验收序列：外层激活 → 受保护缓存拒绝 → 内部清理 → 仍拒绝。
 
     防止 `_restore_scope` 这类清理把外层任务的作用域关掉。
@@ -75,7 +75,7 @@ def test_outer_activation_survives_inner_scope_cleanup(tmp_path: Path):
     os.environ.pop("CHANLUN_FORBIDDEN_GBBQ_PATHS", None)
     rebuild_frozen_denylist()
     try:
-        target = _protected_synthetic_cache(tmp_path)
+        target = _protected_synthetic_cache(tmp_path, monkeypatch)
         activate_task_scope("outer_task")
         assert task_scope_active()
         assert is_forbidden_gbbq_path(target), "外层激活下受保护缓存未被拒"
@@ -208,7 +208,7 @@ def test_two_task_contexts_do_not_bleed(tmp_path: Path):
 # ==========================================================================
 # 冻结禁止身份：cwd 不改变判定
 # ==========================================================================
-def test_cwd_change_does_not_change_forbidden_identity(tmp_path: Path):
+def test_cwd_change_does_not_change_forbidden_identity(tmp_path: Path, monkeypatch):
     """cwd 改变不得改变禁止身份（复现并关闭 cwd 反例）。
 
     反例：相对清单 + 同一绝对路径，cwd 变化使判定由拒绝翻转为放行。
@@ -221,7 +221,7 @@ def test_cwd_change_does_not_change_forbidden_identity(tmp_path: Path):
     if created:
         target.write_text("x", encoding="utf-8")
     try:
-        os.environ["CHANLUN_FORBIDDEN_GBBQ_PATHS"] = "external/cache/gbbq.csv"
+        monkeypatch.setenv("CHANLUN_FORBIDDEN_GBBQ_PATHS", "external/cache/gbbq.csv")
         rebuild_frozen_denylist()
         abs_target = str(target.resolve())
         os.chdir(COMPOSITION_ROOT)
@@ -230,8 +230,8 @@ def test_cwd_change_does_not_change_forbidden_identity(tmp_path: Path):
         other.mkdir(parents=True, exist_ok=True)
         os.chdir(other)
         second = is_forbidden_gbbq_path(abs_target)
-        assert first is True and second is True, \
-            f"cwd 改变了禁止身份：{first} -> {second}"
+        assert first is True, f"cwd=repo 时未拒绝：{first}"
+        assert second is True, f"cwd 改变后未拒绝：{first} -> {second}"
     finally:
         os.chdir(origin)
         os.environ.pop("CHANLUN_FORBIDDEN_GBBQ_PATHS", None)
@@ -243,9 +243,9 @@ def test_cwd_change_does_not_change_forbidden_identity(tmp_path: Path):
         shutil.rmtree(COMPOSITION_ROOT / "tmp" / "cwd_scope_test", ignore_errors=True)
 
 
-def test_frozen_denylist_keeps_real_roots_under_env_override():
+def test_frozen_denylist_keeps_real_roots_under_env_override(monkeypatch):
     """环境变量至多追加约束：真实 gbbq 根身份始终保留。"""
-    os.environ["CHANLUN_FORBIDDEN_GBBQ_PATHS"] = "/tmp/unrelated.dat"
+    monkeypatch.setenv("CHANLUN_FORBIDDEN_GBBQ_PATHS", "/tmp/unrelated.dat")
     try:
         rebuild_frozen_denylist()
         deny = frozen_denylist()

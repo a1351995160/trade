@@ -19,6 +19,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 from chanlun_trader.research.guard import FINAL_TEST_START, RESEARCH_END  # noqa: E402
+from chanlun_trader.research.guard import FinalTestAccessViolation  # noqa: E402
 from chanlun_trader.research.io_safety import read_day_file_range  # noqa: E402
 
 DAY_STRUCT = struct.Struct("<IIIIIfI4s")
@@ -71,7 +72,7 @@ def test_synthetic_read_rejects_sealed_range(tmp_path: Path):
     """请求区间越过封存期必须被拒绝（不得靠过滤兜底）。"""
     path = tmp_path / "sh600000.day"
     _write_day(path, _all_dates())
-    with pytest.raises(Exception) as excinfo:
+    with pytest.raises(FinalTestAccessViolation) as excinfo:
         read_day_file_range(path, start_date=20240102, end_date=FINAL_TEST_START)
     assert "FINAL_TEST" in str(excinfo.value).upper()
 

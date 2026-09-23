@@ -116,7 +116,9 @@ def test_condition_layer_consumes_natr_output():
     ctx.indicator_values["NATR.natr"] = pd.Series(
         [np.nan] * 5 + [3.0] * 15 + [0.5] * 20, index=ctx.index)
     result = evaluate_condition(op("gt", ind("NATR", "natr"), lit(1.0)), ctx)
-    assert (result == TRUE).any() and (result == FALSE).any() and result.isna().any()
+    assert (result == TRUE).any()
+    assert (result == FALSE).any()
+    assert result.isna().any()
 
 
 def test_condition_layer_consumes_psy_output():
@@ -124,7 +126,9 @@ def test_condition_layer_consumes_psy_output():
     ctx.indicator_values["PSY.psy"] = pd.Series(
         [np.nan] * 5 + [80.0] * 15 + [20.0] * 20, index=ctx.index)
     result = evaluate_condition(op("gt", ind("PSY", "psy"), lit(50.0)), ctx)
-    assert (result == TRUE).any() and (result == FALSE).any() and result.isna().any()
+    assert (result == TRUE).any()
+    assert (result == FALSE).any()
+    assert result.isna().any()
 
 
 @pytest.mark.parametrize("indicator_id,output,threshold", [
