@@ -275,7 +275,7 @@ def node_diff_vs_base() -> dict:
     base_file = REPO_ROOT / "tmp" / "base_nodes.txt"
     head_file = REPO_ROOT / "tmp" / "head_nodes.txt"
     if not base_file.exists() or not head_file.exists():
-        return {"status": NOT_ESTABLISHED,
+        return {"status": "NOT_ESTABLISHED",
                 "reason": "missing node listing (base_nodes.txt / head_nodes.txt)"}
     base = {l.strip() for l in base_file.read_text(encoding="utf-8").splitlines() if l.strip()}
     head = {l.strip() for l in head_file.read_text(encoding="utf-8").splitlines() if l.strip()}
