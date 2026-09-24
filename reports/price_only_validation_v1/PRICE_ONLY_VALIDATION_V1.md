@@ -43,9 +43,9 @@
 
 | 测试 | 证明 |
 | --- | --- |
-| `test_guard_rejects_before_real_open` | 用 `builtins.open` 探针断言拒绝时 `opened == []` |
-| `test_load_gbbq_rejects_real_path_without_reading` | `_load_gbbq` 走真实路径时同样在读取前拒绝 |
-| `test_load_gbbq_rejects_real_cache_csv` | 全量缓存 `gbbq.csv` 同样禁止 |
+| `test_guard_rejects_before_synthetic_open` | 用合成禁止哨兵和 `builtins.open` 探针断言拒绝时 `opened == []` |
+| `test_load_gbbq_rejects_synthetic_path_without_reading` | `_load_gbbq` 走合成禁止路径时同样在读取前拒绝 |
+| `test_load_gbbq_rejects_protected_cache_csv` | 显式保护的合成缓存 `gbbq.csv` 同样禁止 |
 | `test_synthetic_fixture_paths_are_not_forbidden` | 合成夹具不被误伤 |
 | `test_normal_price_path_still_works` | 正对照：正常价格路径不受影响 |
 | `test_env_override_is_refused` | 环境变量不能放开 |
@@ -95,14 +95,14 @@
 | --- | --- |
 | 公式增量（`test_price_only_formula_increment_v1.py`） | 166 |
 | 条件消费（`test_price_only_condition_consumption_v1.py`） | 41 |
-| 其余范围、守卫与证据测试（10 个文件） | 111 |
+| 其余范围、守卫与证据测试（10 个文件） | 112 |
 | 真实 RAW 小样本（`test_real_raw_sample_v1.py`，本轮只收集不执行） | 11 |
 | 合成 QFQ（`test_qfq_pit_synthetic_v1.py`） | 4 |
-| **新增文件子集合计** | **333** |
+| **新增文件子集合计** | **334** |
 
-计数由 `scripts/emit_price_only_evidence_v1.py` 的实际 collection 得出。当前 A0 公式/条件 JUnit 为 291 passed；25 项逐项证据为 14 VERIFIED / 11 PARTIAL。完整 BASE/HEAD 节点清单缺源码身份绑定，差集状态为 `NOT_ESTABLISHED`，不能拿子集 333 冒充全量新增数。
+计数由 `scripts/emit_price_only_evidence_v1.py` 的实际 collection 得出。当前 A0 公式/条件 JUnit 为 291 passed；25 项逐项证据为 14 VERIFIED / 11 PARTIAL。完整 BASE/HEAD 节点清单缺源码身份绑定，差集状态为 `NOT_ESTABLISHED`，不能拿子集 334 冒充全量新增数。
 
-覆盖要求：至少两个参数设置；常数/递增/递减/振荡/跳变/缺口/零成交量/非有限值/短于预热；追加未来尾段不改变历史值；条件 TRUE/FALSE/UNKNOWN 正反例齐备；不以全部拒单制造通过；入口测试实际消费指标输出（不以 list-indicators 作证）。
+覆盖要求：至少两个参数设置；常数/递增/递减/振荡/跳变/缺口/零成交量/非有限值/短于预热；追加未来尾段不改变历史值；条件 TRUE/FALSE/UNKNOWN 正反例齐备；不以全部拒单制造通过；入口测试实际消费指标输出（不以 list-indicators 作证）。实际覆盖以逐项 `tested_parameter_sets` 为准，单组合指标不视为满足“至少两个参数设置”。
 
 ### 3.4 本轮发现的真实缺陷（已复现并最小修复）
 
@@ -118,17 +118,20 @@
 
 ### 3.5 2026-09-24 合并前复核修正
 
-- `TRUE_RANGE`、`DMI_ADX`、`PSY`、`MFI` 在无效行后不再引用上一段价格；`KELTNER.ready` 同时遵守 EMA 与 ATR 预热；`TRIX.trix_ma` 改为合同与独立参考所写的 EMA；负成交额的 `VWAP_SESSION_PROXY` 与无效 OHLC 的 `HLC3` 不再标为 ready。
+- `TRUE_RANGE`、`DMI_ADX`、`PSY`、`MFI` 在无效行后不再引用上一段价格；`KELTNER.ready` 同时遵守 EMA 与 ATR 预热；负成交额的 `VWAP_SESSION_PROXY` 与无效 OHLC 的 `HLC3` 不再标为 ready。
+- 独立复核发现 `TRIX_V1` 公开注册说明及原实现均为 M 期算术滚动均值，而测试 oracle 曾误用 EMA。本次恢复 `trix_ma` 的 V1 算术滚动均值口径并修正 oracle；版本仍为 `TRIX_V1`，数值语义与已发布注册快照一致。此修正不验证其他 TRIX 版本，也不追认曾按 EMA 生成的结果。
 - `parse_gbbq_window` 在头部读取、大小检查及哈希前按同一解析路径执行任务守卫；合成禁止哨兵验证 `opened=[]`。
+- gbbq 保护测试在每个用例中保存、激活、恢复任务作用域；入口和别名验证使用临时合成哨兵，普通 pytest 也不触及真实 gbbq 或项目缓存。
 - 普通 pytest 会话不自动开启 price-only 作用域；本任务的 CI 显式设置 `CHANLUN_PRICE_ONLY_TASK_SCOPE=1`。A1 真实 RAW 样本测试默认跳过，未来须另行明确授权并设置 `CHANLUN_RUN_A1_RAW_SAMPLE=1` 才可执行，且 price-only 作用域激活时仍跳过；本轮真实读取新增 0。
 - `read_day_file_range` 在请求起点晚于文件最后记录时返回空结果，物理 payload 读取计数为 0。
 - 证据行把源码断言输出与本次已验证输出分开，`tested_parameter_sets` 只列本次 JUnit 中实际通过的参数节点；生成器从 25 项公式测试源码 AST 复核进入逐值断言的输出与实际参数组合，声明漂移则拒绝签发，账户配置取自参数化测试源码，维度 JUnit 字段指向实际消费文件。旧完整套件 JUnit 与旧回归对账标为历史记录，当前源码完整套件未重跑。
+- pytest 在目标 JUnit 中记录测试运行时的源码/测试树指纹及提交身份；生成器比较该指纹与当前已提交源码。缺失、失配或运行时存在未提交源码时，逐项证据全部降为 PARTIAL，生成命令返回非零。仅文档提交号变化而代码/测试树不变时可继续复用。
 
 ---
 
 ## 4. A1：真实 RAW 数值小样本
 
-**状态：PASS**
+**历史状态：PASS；本轮未重跑，当前源码状态未复验。**
 
 | 项 | 值 |
 | --- | --- |

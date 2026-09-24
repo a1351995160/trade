@@ -125,7 +125,7 @@
   "capability_ceiling": {
     "formula_and_condition": "SUPPORTED",
     "public_synthetic_consumption": "SUPPORTED",
-    "real_raw_numeric_sample": "PASS（两证券、单一窗口）",
+    "real_raw_numeric_sample": "HISTORICAL_PASS（两证券、单一窗口；本轮未重跑）",
     "real_account_backtest": "NOT_ESTABLISHED",
     "formal_trial": "NOT_ESTABLISHED",
     "real_performance_experiments": 0
@@ -138,7 +138,7 @@
     "note": "按当前 collection 计数；旧口径 20 项已过时。"
   },
   "real_raw_sample_tests": 11,
-  "new_tests_actual_total": 333,
+  "new_tests_actual_total": 334,
   "new_tests_breakdown": {
     "formula": 166,
     "condition_and_service": 41,
@@ -150,11 +150,11 @@
     "vendor_entry_guard": 7,
     "controlled_reader_boundary": 3,
     "scope_order_regression": 2,
-    "evidence_mutation": 34,
+    "evidence_mutation": 35,
     "relative_link_binding": 9,
     "read_path_identity": 9,
     "qfq_synthetic": 4,
-    "note": "13 个新增文件组成部分 329 + 合成 QFQ 4 = 333；子集口径，由 scripts/emit_price_only_evidence_v1.py 派生"
+    "note": "13 个新增文件组成部分 330 + 合成 QFQ 4 = 334；子集口径，由 scripts/emit_price_only_evidence_v1.py 派生"
   },
   "qfq_synthetic_split": {
     "synthetic_executed": "tests/pit/test_qfq_pit_synthetic_v1.py (4 项，实际执行)",
@@ -162,7 +162,7 @@
     "marker": "real_data_integration"
   },
   "skip_classification": {
-    "local_scope_suite": {"passed": 98, "skipped": 23, "a1_real_sample": 11, "platform_link_cases": 12},
+    "local_scope_suite": {"passed": 100, "skipped": 23, "a1_real_sample": 11, "platform_link_cases": 12},
     "local_regression_suite": {"passed": 152, "qfq_real_data_integration_skipped": 2},
     "note": "A1 本轮不重跑；平台链接能力不足与真实数据集成均显式分类 skip"
   },
@@ -177,19 +177,19 @@
         "Windows 扩展路径 \\\\?\\ 与父目录别名被放行"
       ],
       "fix": "改为基于可信组合根的绝对身份判定：解析 . / .. / 符号链接与 Windows 扩展前缀，相对与绝对一致拒绝；显式清单先于白名单；无法解析则 fail closed。",
-      "scope_note": "junction 需 Windows 管理员权限，本机未覆盖并已标注。",
+      "scope_note": "junction 依赖本机文件系统和权限；当前工作树所在卷不支持，相关测试明确分类跳过。",
       "entry_covered": "TdxData._load_gbbq（实际调用入口，非仅 guard helper）"
     },
     "PR16-02": {
       "status": "CLOSED",
-      "skip_scope_fix": "pytest 仅在 CHANLUN_PRICE_ONLY_TASK_SCOPE=1 时显式激活；CI 设置该变量。A1 真实样本需另行明确授权并设置 CHANLUN_RUN_A1_RAW_SAMPLE=1，默认不重读。",
+      "skip_scope_fix": "pytest 仅在 CHANLUN_PRICE_ONLY_TASK_SCOPE=1 时全局激活；gbbq 保护用例自行保存、激活及恢复作用域，并仅使用合成哨兵。A1 真实样本需另行明确授权并设置 CHANLUN_RUN_A1_RAW_SAMPLE=1，默认不重读。",
       "qfq_split": "合成可证性质拆到 test_qfq_pit_synthetic_v1.py 并实际执行（4 项）；真实本机集成标 real_data_integration 且任务激活时 skip（2 项）。",
       "no_assertions_removed": true
     },
     "PR16-03": {
       "status": "CLOSED",
       "oracle_fix": "naive_wilder_rma 改为按连续段独立播种；[1,1,NaN,10,10,10] window=2 -> [NaN,2,NaN,NaN,20,20]",
-      "evidence_counts_corrected": "当前新增文件子集 329 项 + 合成 QFQ 4 项 = 333；以 EVIDENCE_COUNTS_V1.json 实际 collection 为准",
+      "evidence_counts_corrected": "当前新增文件子集 330 项 + 合成 QFQ 4 项 = 334；以 EVIDENCE_COUNTS_V1.json 实际 collection 为准",
       "note": "25 个账户服务用例属于 41 条条件套件内部，不重复累加"
     }
   },
@@ -264,12 +264,12 @@
     "EVIDENCE_STATUS_FROM_ACTUAL_RESULTS": {
       "status": "IMPLEMENTED_AND_TESTED",
       "source": "scripts/emit_price_only_evidence_v1.py",
-      "derivation": "状态由 JUnit testcase outcome 推导；参数化按最差聚合",
-      "mutation_tests": "tests/price_only_scope/test_evidence_mutation_v1.py（34 项）",
+      "derivation": "状态由 JUnit testcase outcome 推导；参数化按最差聚合；运行时源码树指纹与当前源码匹配后才签发 VERIFIED",
+      "mutation_tests": "tests/price_only_scope/test_evidence_mutation_v1.py（35 项）",
       "counts": {
-        "subset_parts_total": 328,
+        "subset_parts_total": 330,
         "qfq_synthetic": 4,
-        "subset_total": 333,
+        "subset_total": 334,
         "node_diff_status": "NOT_ESTABLISHED",
         "node_diff_reason": "旧节点清单缺源码身份 manifest"
       }

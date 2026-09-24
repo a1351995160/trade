@@ -1,12 +1,18 @@
 {
   "generated_from": "实际 pytest --collect-only 与 JUnit testcase outcome",
   "junit_consumed": "reports/junit-price-only-v1.xml",
-  "junit_sha256": "e66d3d9f79f63d9f0e1e2b0695513bb0deb7c8076c91415a8a1e3650fd6531bf",
+  "junit_sha256": "926208f489efb9b7d774a8214c9eaf4abdd7fa3c18ccbe7253411315c258e382",
   "note": "计数与状态均由脚本自动派生，不硬编码；本机与 CI 分列。汇总成功不覆盖单项失败。",
   "source_identity": {
-    "head": "0ea0dcd537fb68daef4b34c42a06a2c76ca84502",
-    "code_test_tree_sha256": "86074766bce0e1e0d8c24eef64a16bd89f57ac82f1a34d3c802f60d76d084dbf",
+    "head": "168f2343b5dac90bc51a68704110585cb2cc1c05",
+    "code_test_tree_sha256": "7c6a9e7061e8b31f8d777ee15c674b30e45be5b25ecc69c8612e4b2362ef8e60",
     "status": "COMMITTED_SOURCE"
+  },
+  "junit_source_binding": {
+    "status": "MATCHED",
+    "run_head": "168f2343b5dac90bc51a68704110585cb2cc1c05",
+    "run_code_test_tree_sha256": "7c6a9e7061e8b31f8d777ee15c674b30e45be5b25ecc69c8612e4b2362ef8e60",
+    "run_source_status": "COMMITTED_SOURCE"
   },
   "new_tests": {
     "by_part": {
@@ -20,13 +26,13 @@
       "vendor_entry_guard": 7,
       "controlled_reader_boundary": 3,
       "scope_order_regression": 2,
-      "evidence_mutation": 34,
+      "evidence_mutation": 35,
       "relative_link_binding": 9,
       "read_path_identity": 9
     },
-    "parts_total": 329,
+    "parts_total": 330,
     "qfq_synthetic": 4,
-    "total_vs_base": 333,
+    "total_vs_base": 334,
     "note": "各组成部分合计 + 合成 QFQ；25 个账户服务用例属于 condition_and_service 内部，不重复累加。本清单为**子集**口径（本轮新增文件），非 BASE/HEAD 节点差集全量。",
     "scope": "SUBSET_OF_NEW_FILES_NOT_FULL_BASE_HEAD_DIFF"
   },

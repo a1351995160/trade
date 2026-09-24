@@ -2233,3 +2233,16 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 - 本轮补充验证：证据变异 34 passed；普通 pytest 且未设置 A1 开关时 11 skipped，新增真实读取 0。完整本机套件与当前 SHA 的远端 CI 状态尚未建立，不把既有基线结果冒充当前结论。
 - 源码提交 `0ea0dcd` 后重跑 A0 目标套件 291 passed、完整 price_only_scope 99 passed / 23 skipped；据新 JUnit 重生成证据，新增测试子集 333 项、指标 14 VERIFIED / 11 PARTIAL，JUnit SHA256 与报告一致。
 - 回滚点 `04bb3a25d634b4362b549a1a7d3e8332b907e666`；可对本轮提交按逆序执行 `git revert`，不需改动旧工作区。
+
+## 2026-09-24 - Task: PR #16 独立复核的三项阻塞修复
+### What was done
+按 P1/P2 复核意见修复：gbbq 保护测试改为自行保存、激活、恢复任务作用域并只使用合成哨兵；`TRIX_V1` 的 `trix_ma` 恢复公开契约的算术滚动均值，修正 oracle 和公开入口回归；目标 pytest JUnit 写入运行时源码树指纹，生成器核对身份后才签发 VERIFIED。同步更新正式报告、能力矩阵及 `docs/PRICE_ONLY_VALIDATION_RUNBOOK_V1.md`。PR 保持 Draft，未合并或部署。
+### Testing
+- 普通 pytest 下两个 gbbq 模块 25 passed / 2 skipped；没有真实 gbbq 或项目缓存读取。
+- 已提交源码 `168f2343b5dac90bc51a68704110585cb2cc1c05` 上：A0 公式/条件 291 passed；账户入口链 37 passed；既有 V1/V2 回归 152 passed / 2 skipped；完整 price-only 访问与证据套件 100 passed / 23 skipped，其中 11 项 A1 默认跳过。
+- 重新生成的 `reports/junit-price-only-v1.xml` 记录 `COMMITTED_SOURCE` 和源码树指纹；`EVIDENCE_COUNTS_V1.json` 的 JUnit 哈希相符、`junit_source_binding=MATCHED`，25 项为 14 VERIFIED / 11 PARTIAL，新增文件子集 334 项。证据变异测试共 35 项，旧或缺身份 JUnit 会降级。
+- `PRICE_ONLY_CAPABILITY_MATRIX_V1.json` 解析与 `git diff --check` 通过；本轮未读取或重跑 A1 真实 RAW。
+### Notes
+- 源码及测试：`src/chanlun_trader/engine/indicators_v2.py`、`scripts/emit_price_only_evidence_v1.py`、`tests/conftest.py`、`tests/indicators_v2/`、`tests/price_only_scope/`。
+- 正式证据及说明：`reports/junit-price-only-v1.xml`、`reports/price_only_validation_v1/`、`docs/PRICE_ONLY_VALIDATION_RUNBOOK_V1.md`、本文件。
+- 当前源码完整套件未重跑；A1 PASS 仅为历史记录。以本轮开始前的 `eef298075d16c0b571f5429f6e95dcc2735a2512` 为回滚点，按逆序 `git revert` 本轮提交即可撤回，不触及旧工作区。
