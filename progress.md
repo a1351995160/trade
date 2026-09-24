@@ -2179,3 +2179,22 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 - tests/price_only_scope/test_scope_order_regression_v1.py：改为加载真实 fixture + 防退化变异。
 - reports/price_only_validation_v1/{EVIDENCE_COUNTS_V1.json,PRICE_ONLY_CAPABILITY_MATRIX_V1.json}、reports/junit-price-only-v1.xml：逐项证据、关闭矩阵、脱敏 JUnit。
 - 回滚点 8e4e20386b4970d1bfca7e35a1d1ae53acee0380。
+
+## 2026-09-23 - Task: PR #16 读入身份绑定与证据适用性收尾
+### What was done
+修复守卫与实际打开使用不同文件身份的绕过（相对 cache_dir 被按组合根解释、读取却按 cwd 打开）；把证据生成器的适用性剩余补齐：映射既有单独条件测试、区分注册输出与已验证输出、计数补入新文件。
+### Testing
+- 读入身份：复现组合根 T/source、cwd T/outside、清单列绝对哨兵时，cache_dir 用相对写法会真实读出同一哨兵；修复后守卫/exists/读取消费同一已解析绝对对象。新增 9 项交叉覆盖（绝对/相对 cache_dir × cwd 位置 × 冻结后变 cwd），open 探针证明拒绝先于打开，受控 reader 绑定验证，允许合成输入正对照。
+- 证据适用性：CCI/NATR/PSY 的既有单独测试补入映射（原被误标"无覆盖"）；DEMA 注册 3 输出仅 dema 被断言，新增 validated_outputs/tested_params 与 registered_* 分列。24 项变异测试全部通过。
+- 目标套件 574 passed / 13 skipped；完整套件零新增失败 nodeid（基线 194 覆盖本次 193），因果 UNCONFIRMED。
+- 真实数据读取：运行前后计数均为 73，新增 0；用合成哨兵验证开关，未读取真实文件。
+- 双平台 CI 与 SonarCloud 全部通过。
+### Notes
+- src/chanlun_trader/price_only_scope.py：新增 resolve_input_path()（唯一输入解析边界，相对项按组合根锚定）；controlled_gbbq_reader 绑定守卫与 vendor 打开同一对象。
+- src/chanlun_trader/tdx_data.py：新增 _resolve_cache_dir()；__init__ 解析 cache_dir 为绝对；_load_gbbq 的守卫、exists、读取共用同一对象。
+- scripts/emit_price_only_evidence_v1.py：新增 SINGLE_CONDITION_TESTS 与 VALIDATED_BY_DIMENSION；行内区分 registered_* 与 validated_outputs/tested_params；计数补入两个新测试文件。
+- tests/price_only_scope/test_read_path_identity_v1.py（新增）：9 项读入身份交叉覆盖。
+- tests/price_only_scope/test_evidence_mutation_v1.py：补 7 项适用性变异。
+- tests/price_only_scope/test_scope_order_regression_v1.py：措辞改为准确说明手动驱动 generator fixture。
+- reports/price_only_validation_v1/{EVIDENCE_COUNTS_V1.json,PRICE_ONLY_CAPABILITY_MATRIX_V1.json}、reports/junit-price-only-v1.xml：逐项证据、关闭矩阵、脱敏 JUnit。
+- 回滚点 40e18ab3a53242bd4ef702f2883318d91d6aa16f。
