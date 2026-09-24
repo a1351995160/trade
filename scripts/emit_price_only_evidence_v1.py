@@ -672,7 +672,8 @@ def main(argv: list | None = None) -> int:
 
     payload = {
         "generated_from": "实际 pytest --collect-only 与 JUnit testcase outcome",
-        "junit_consumed": str(junit_path),
+        "junit_consumed": junit_path.relative_to(REPO_ROOT).as_posix(),
+        "junit_sha256": hashlib.sha256(junit_path.read_bytes()).hexdigest(),
         "note": "计数与状态均由脚本自动派生，不硬编码；本机与 CI 分列。"
                 "汇总成功不覆盖单项失败。",
         "source_identity": source_identity(),

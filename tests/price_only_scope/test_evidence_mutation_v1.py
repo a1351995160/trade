@@ -234,6 +234,7 @@ def test_corrupt_junit_raises_not_established(tmp_path: Path):
 
 def test_junit_identity_is_recorded():
     """证据必须记录**实际被消费的 JUnit 文件身份**。"""
+    import hashlib
     import json
 
     payload_path = (REPO_ROOT / "reports" / "price_only_validation_v1"
@@ -243,6 +244,8 @@ def test_junit_identity_is_recorded():
     data = json.loads(payload_path.read_text(encoding="utf-8"))
     assert data.get("junit_consumed"), "未记录实际消费的 JUnit 身份"
     assert data["junit_consumed"].endswith(".xml")
+    consumed = REPO_ROOT / data["junit_consumed"]
+    assert data["junit_sha256"] == hashlib.sha256(consumed.read_bytes()).hexdigest()
 
 
 # ==========================================================================
