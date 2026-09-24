@@ -2198,3 +2198,21 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 - tests/price_only_scope/test_scope_order_regression_v1.py：措辞改为准确说明手动驱动 generator fixture。
 - reports/price_only_validation_v1/{EVIDENCE_COUNTS_V1.json,PRICE_ONLY_CAPABILITY_MATRIX_V1.json}、reports/junit-price-only-v1.xml：逐项证据、关闭矩阵、脱敏 JUnit。
 - 回滚点 40e18ab3a53242bd4ef702f2883318d91d6aa16f。
+
+## 2026-09-23 - Task: PR #16 证据适用范围修正（声明不得超过实际断言）
+### What was done
+逐项核对本 PR 25 项指标的证据映射，把声明收窄到实际测试断言范围；参数证据从"参数名"改为"实际取值与组合"；补最小输入变异回归。
+### Testing
+- 核对方法：从测试源码 AST 提取每个指标对应测试函数中所有 .value("<output>") 调用与 @pytest.mark.parametrize 实际取值。
+- 全量核对发现 5 项声明超过/偏离断言：DONCHIAN（middle 未断言）、KELTNER（middle/atr 未断言）、ROLLING_VOLATILITY（return 未断言）、MACD_HIST_RAW（dif/dea 未断言）、DRAWDOWN_FROM_PEAK（peak 实际已断言，原先漏声明，已补正）。
+- 每行新增 unvalidated_registered_outputs，保证 validated ∪ unvalidated = registered。
+- 参数证据改为 tested_parameter_sets：DEMA=[{window:5},{window:20}]、MACD_HIST_RAW=[{fast:12,slow:26,signal:9}]、KELTNER=[{window:20,atr_window:10}]；条件维度记录注入阈值。不从注册默认值推导范围。
+- 新增 7 项变异测试（合计 31 项）：声明不得超断言、已知四项修正、参数须为取值字典、注册默认值不得扩大范围、兄弟输出 passed 不得附带认证、删 testcase 只降级该范围、合格主输出正对照。
+- 目标套件 581 passed / 13 skipped；完整套件失败集合与基线逐条完全一致（各 194 含 errors），零新增零消除，因果 UNCONFIRMED。
+- 真实数据读取：运行前后计数均为 73，新增 0。
+- 双平台 CI 与 SonarCloud 全部通过。
+### Notes
+- scripts/emit_price_only_evidence_v1.py：VALIDATED_BY_DIMENSION 逐项改为实际断言的输出与取值；tested_params 改为 tested_parameter_sets；新增 unvalidated_registered_outputs。
+- tests/price_only_scope/test_evidence_mutation_v1.py：补 7 项证据范围变异；修正既有测试对新字段的引用。
+- reports/price_only_validation_v1/EVIDENCE_COUNTS_V1.json、reports/junit-price-only-v1.xml：重新生成并脱敏。
+- 回滚点 d2e91789ed861200fae5eaadb86d2a063bf775e5。
