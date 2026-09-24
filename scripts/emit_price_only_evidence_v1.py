@@ -15,6 +15,7 @@ from __future__ import annotations
 import ast
 from functools import lru_cache
 import hashlib
+from itertools import product
 import json
 import re
 import subprocess
@@ -235,6 +236,114 @@ FORMULA_NODEIDS = {
     "ROLLING_SLOPE": _formula_node("test_rolling_slope_matches_oracle"),
     "TRUE_RANGE": _formula_node("test_true_range_matches_oracle"),
 }
+
+
+@lru_cache(maxsize=1)
+def _formula_source_evidence() -> dict:
+    """从公式 oracle 测试源码提取每项实际取值，防止静态证据声明漂移。"""
+    tree = ast.parse((REPO_ROOT / FORMULA_MODULE).read_text(encoding="utf-8"))
+    functions = {node.name: node for node in tree.body
+                 if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))}
+    evidence = {}
+    for indicator_id, nodeid in FORMULA_NODEIDS.items():
+        func_name = nodeid.split("::", 1)[1]
+        func = functions.get(func_name)
+        if func is None:
+            raise CollectionError(f"FORMULA_TEST_NOT_FOUND:{indicator_id}:{func_name}")
+        implementation = indicator_id.lower()
+        parameter_values = {}
+        for decorator in func.decorator_list:
+            if (not isinstance(decorator, ast.Call)
+                    or not isinstance(decorator.func, ast.Attribute)
+                    or decorator.func.attr != "parametrize"):
+                continue
+            names = ast.literal_eval(decorator.args[0]).split(",")
+            if len(names) != 1:
+                raise CollectionError(f"FORMULA_PARAMETRIZE_UNSUPPORTED:{indicator_id}")
+            try:
+                parameter_values[names[0].strip()] = ast.literal_eval(decorator.args[1])
+            except (ValueError, TypeError):
+                # 形状参数可由模块常量给出；仅用于输出取值的参数必须能静态确定。
+                pass
+
+        calls = [node for node in ast.walk(func) if isinstance(node, ast.Call)
+                 and isinstance(node.func, ast.Name)
+                 and node.func.id == implementation]
+        bound_names = {target.id for node in ast.walk(func)
+                       if isinstance(node, ast.Assign)
+                       and isinstance(node.value, ast.Call)
+                       and node.value in calls
+                       for target in node.targets if isinstance(target, ast.Name)}
+        # 只计入进入逐值 assert_allclose 的 .value()；单独读取输出不作数值证明。
+        asserted_values = set()
+        asserted_names = set()
+        for node in ast.walk(func):
+            if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                    and node.func.attr == "assert_allclose"):
+                asserted_values.update(child for child in ast.walk(node)
+                                       if isinstance(child, ast.Call))
+                asserted_names.update(child.id for child in ast.walk(node)
+                                      if isinstance(child, ast.Name))
+        for node in ast.walk(func):
+            if isinstance(node, ast.Assign) and any(
+                    isinstance(target, ast.Name) and target.id in asserted_names
+                    for target in node.targets):
+                asserted_values.update(child for child in ast.walk(node.value)
+                                       if isinstance(child, ast.Call))
+        outputs = []
+        for node in ast.walk(func):
+            if (not isinstance(node, ast.Call)
+                    or not isinstance(node.func, ast.Attribute)
+                    or node.func.attr != "value" or len(node.args) != 1
+                    or node not in asserted_values):
+                continue
+            receiver = node.func.value
+            belongs = (isinstance(receiver, ast.Call) and receiver in calls
+                       or isinstance(receiver, ast.Name) and receiver.id in bound_names)
+            if belongs and isinstance(node.args[0], ast.Constant) \
+                    and isinstance(node.args[0].value, str):
+                value = node.args[0].value
+                if value not in outputs:
+                    outputs.append(value)
+
+        parameter_sets = []
+        for call in calls:
+            keys = []
+            alternatives = []
+            for keyword in call.keywords:
+                if keyword.arg is None:
+                    raise CollectionError(f"FORMULA_PARAMS_UNRESOLVED:{indicator_id}")
+                keys.append(keyword.arg)
+                if isinstance(keyword.value, ast.Name):
+                    values = parameter_values.get(keyword.value.id)
+                    if values is None:
+                        raise CollectionError(f"FORMULA_PARAMS_UNRESOLVED:{indicator_id}:{keyword.arg}")
+                    alternatives.append(values)
+                else:
+                    try:
+                        alternatives.append([ast.literal_eval(keyword.value)])
+                    except (ValueError, TypeError) as exc:
+                        raise CollectionError(
+                            f"FORMULA_PARAMS_UNRESOLVED:{indicator_id}:{keyword.arg}") from exc
+            for combination in product(*alternatives):
+                item = dict(zip(keys, combination))
+                if item not in parameter_sets:
+                    parameter_sets.append(item)
+        if not calls or not outputs or not parameter_sets:
+            raise CollectionError(f"FORMULA_SOURCE_EVIDENCE_MISSING:{indicator_id}")
+        evidence[indicator_id] = {"outputs": outputs,
+                                  "tested_parameter_sets": parameter_sets}
+    return evidence
+
+
+def _check_formula_declarations() -> None:
+    """任一静态声明与测试源码不符时拒绝签发证据。"""
+    for indicator_id, source in _formula_source_evidence().items():
+        declared = VALIDATED_BY_DIMENSION.get((indicator_id, "formula"), {})
+        if set(declared.get("outputs", [])) != set(source["outputs"]) or \
+                declared.get("tested_parameter_sets") != source["tested_parameter_sets"]:
+            raise CollectionError(f"FORMULA_DECLARATION_DRIFT:{indicator_id}:"
+                                  f"declared={declared}:source={source}")
 
 
 def _collect_count(rel_path: str) -> int:
@@ -473,7 +582,8 @@ def _passed_parameter_sets(candidates: list, passed_nodeids: list) -> list:
     if len(candidates) <= 1:
         return [dict(item) for item in candidates]
     return [dict(item) for item in candidates if "window" in item and any(
-        f"[{item['window']}-" in nodeid for nodeid in passed_nodeids)]
+        f"[{item['window']}-" in nodeid or f"[{item['window']}]" in nodeid
+        for nodeid in passed_nodeids)]
 
 
 def _indicator_evidence(outcomes: dict, junit_name: str = TARGET_JUNIT_NAME) -> list:
@@ -491,6 +601,7 @@ def _indicator_evidence(outcomes: dict, junit_name: str = TARGET_JUNIT_NAME) -> 
     - ``CONDITION_INJECTED``：手工注入条件上下文（非真实注册计算）；
     - ``ACCOUNT_WIDE_THRESHOLD``：宽阈值成交（不证明阈值敏感）。
     """
+    _check_formula_declarations()
     from chanlun_trader.engine.indicator_registry_v2 import default_registry
 
     registry = default_registry()
@@ -666,7 +777,11 @@ def main(argv: list | None = None) -> int:
     new_total = parts_total + qfq_synthetic
 
     local_junit = _junit_counts(junit_path)
-    rows = _indicator_evidence(outcomes, junit_path.relative_to(REPO_ROOT).as_posix())
+    try:
+        rows = _indicator_evidence(outcomes, junit_path.relative_to(REPO_ROOT).as_posix())
+    except CollectionError as exc:
+        print(f"NOT_ESTABLISHED: {exc}", file=sys.stderr)
+        return 2
     verified = sum(1 for r in rows if r.get("status") == "VERIFIED")
     partial = sum(1 for r in rows if r.get("status") == "PARTIAL")
 

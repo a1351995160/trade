@@ -2229,4 +2229,6 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 - `src/chanlun_trader/data/tdx/owner_export_v1.py`、`src/chanlun_trader/research/io_safety.py` 与 `tests/price_only_scope/`：读取前守卫、有界读取及合成哨兵。
 - `tests/conftest.py`、`.github/workflows/price-only-indicator-validation-v1.yml`：price-only 作用域改为显式 CI 选用。
 - `scripts/emit_price_only_evidence_v1.py`、`reports/price_only_validation_v1/`、`reports/junit-price-only-v1.xml`：证据范围、计数及历史状态；`progress.md` 与报告说明记录本轮结果。
+- 合并前复核补充：普通 pytest 关闭任务作用域后，A1 样本测试原本会在真实文件存在时重新读取；现改为默认跳过，仅未来另行明确授权且设置 `CHANLUN_RUN_A1_RAW_SAMPLE=1` 才执行。证据参数匹配同时覆盖 `[20]` 与 `[20-形状]` 两种 pytest 节点格式；生成器逐项核对 25 项公式测试源码中进入逐值断言的输出与参数组合，漂移时拒绝签发。
+- 本轮补充验证：证据变异 34 passed；普通 pytest 且未设置 A1 开关时 11 skipped，新增真实读取 0。完整本机套件与当前 SHA 的远端 CI 状态尚未建立，不把既有基线结果冒充当前结论。
 - 回滚点 `04bb3a25d634b4362b549a1a7d3e8332b907e666`；可对本轮提交按逆序执行 `git revert`，不需改动旧工作区。

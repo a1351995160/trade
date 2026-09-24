@@ -95,12 +95,12 @@
 | --- | --- |
 | 公式增量（`test_price_only_formula_increment_v1.py`） | 166 |
 | 条件消费（`test_price_only_condition_consumption_v1.py`） | 41 |
-| 其余范围、守卫与证据测试（10 个文件） | 110 |
+| 其余范围、守卫与证据测试（10 个文件） | 111 |
 | 真实 RAW 小样本（`test_real_raw_sample_v1.py`，本轮只收集不执行） | 11 |
 | 合成 QFQ（`test_qfq_pit_synthetic_v1.py`） | 4 |
-| **新增文件子集合计** | **332** |
+| **新增文件子集合计** | **333** |
 
-计数由 `scripts/emit_price_only_evidence_v1.py` 的实际 collection 得出。当前 A0 公式/条件 JUnit 为 291 passed；25 项逐项证据为 14 VERIFIED / 11 PARTIAL。完整 BASE/HEAD 节点清单缺源码身份绑定，差集状态为 `NOT_ESTABLISHED`，不能拿子集 332 冒充全量新增数。
+计数由 `scripts/emit_price_only_evidence_v1.py` 的实际 collection 得出。当前 A0 公式/条件 JUnit 为 291 passed；25 项逐项证据为 14 VERIFIED / 11 PARTIAL。完整 BASE/HEAD 节点清单缺源码身份绑定，差集状态为 `NOT_ESTABLISHED`，不能拿子集 333 冒充全量新增数。
 
 覆盖要求：至少两个参数设置；常数/递增/递减/振荡/跳变/缺口/零成交量/非有限值/短于预热；追加未来尾段不改变历史值；条件 TRUE/FALSE/UNKNOWN 正反例齐备；不以全部拒单制造通过；入口测试实际消费指标输出（不以 list-indicators 作证）。
 
@@ -120,9 +120,9 @@
 
 - `TRUE_RANGE`、`DMI_ADX`、`PSY`、`MFI` 在无效行后不再引用上一段价格；`KELTNER.ready` 同时遵守 EMA 与 ATR 预热；`TRIX.trix_ma` 改为合同与独立参考所写的 EMA；负成交额的 `VWAP_SESSION_PROXY` 与无效 OHLC 的 `HLC3` 不再标为 ready。
 - `parse_gbbq_window` 在头部读取、大小检查及哈希前按同一解析路径执行任务守卫；合成禁止哨兵验证 `opened=[]`。
-- 普通 pytest 会话不自动开启 price-only 作用域；本任务的 CI 显式设置 `CHANLUN_PRICE_ONLY_TASK_SCOPE=1`。该作用域下 A1 真实 RAW 样本测试分类跳过，本轮真实读取新增 0。
+- 普通 pytest 会话不自动开启 price-only 作用域；本任务的 CI 显式设置 `CHANLUN_PRICE_ONLY_TASK_SCOPE=1`。A1 真实 RAW 样本测试默认跳过，未来须另行明确授权并设置 `CHANLUN_RUN_A1_RAW_SAMPLE=1` 才可执行，且 price-only 作用域激活时仍跳过；本轮真实读取新增 0。
 - `read_day_file_range` 在请求起点晚于文件最后记录时返回空结果，物理 payload 读取计数为 0。
-- 证据行把源码断言输出与本次已验证输出分开，`tested_parameter_sets` 只列本次 JUnit 中实际通过的参数节点；账户配置取自参数化测试源码，维度 JUnit 字段指向实际消费文件。旧完整套件 JUnit 与旧回归对账标为历史记录，当前源码完整套件未重跑。
+- 证据行把源码断言输出与本次已验证输出分开，`tested_parameter_sets` 只列本次 JUnit 中实际通过的参数节点；生成器从 25 项公式测试源码 AST 复核进入逐值断言的输出与实际参数组合，声明漂移则拒绝签发，账户配置取自参数化测试源码，维度 JUnit 字段指向实际消费文件。旧完整套件 JUnit 与旧回归对账标为历史记录，当前源码完整套件未重跑。
 
 ---
 

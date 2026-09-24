@@ -435,7 +435,7 @@ def test_unbound_node_lists_do_not_establish_full_diff(tmp_path: Path, monkeypat
 # PR16 证据范围修正：声明不得超过实际断言
 # ==========================================================================
 def test_declared_outputs_never_exceed_asserted_outputs(tmp_path: Path):
-    """每项声明的 validated_outputs 必须落在注册输出内且严格来自断言。
+    """25 项公式声明必须等于测试源码中进入逐值断言的输出。
 
     复核给定反例：DONCHIAN 声明 upper/lower/middle、KELTNER 声明含 middle/atr、
     ROLLING_VOLATILITY 声明含 return、MACD_HIST_RAW 声明含 dif/dea ——
@@ -443,8 +443,16 @@ def test_declared_outputs_never_exceed_asserted_outputs(tmp_path: Path):
     """
     module = _load_module()
     rows = _passing_rows(tmp_path)
+    source = module._formula_source_evidence()
+    assert {row["indicator"] for row in rows} == set(source)
     offenders = []
     for row in rows:
+        indicator = row["indicator"]
+        formula = row["dimensions"]["formula"]
+        if set(formula["asserted_outputs"]) != set(source[indicator]["outputs"]):
+            offenders.append((indicator, "formula", "not-asserted-by-source"))
+        if formula["tested_parameter_sets"] != source[indicator]["tested_parameter_sets"]:
+            offenders.append((indicator, "formula", "params-not-in-source"))
         for dim_name, dim in row["dimensions"].items():
             declared = set(dim["validated_outputs"])
             registered = set(row["registered_outputs"])
@@ -455,6 +463,22 @@ def test_declared_outputs_never_exceed_asserted_outputs(tmp_path: Path):
             if declared | unvalidated != registered:
                 offenders.append((row["indicator"], dim_name, "partition-incomplete"))
     assert not offenders, f"输出声明与注册范围不一致：{offenders}"
+
+
+def test_formula_source_drift_blocks_evidence_generation(tmp_path: Path, monkeypatch):
+    """多输出声明和单组合参数均不得超出公式测试源码。"""
+    module = _load_module()
+    outcomes = module.parse_junit_outcomes(_all_passing_junit(tmp_path))
+    for indicator, change in (
+            ("TEMA", {"outputs": ["tema", "ema1"],
+                      "tested_parameter_sets": [{"window": 5}, {"window": 20}]}),
+            ("MACD_HIST_RAW", {"outputs": ["hist_raw"],
+                               "tested_parameter_sets": [{"fast": 10, "slow": 26,
+                                                          "signal": 9}]})):
+        with monkeypatch.context() as patch:
+            patch.setitem(module.VALIDATED_BY_DIMENSION, (indicator, "formula"), change)
+            with pytest.raises(module.CollectionError, match=f"FORMULA_DECLARATION_DRIFT:{indicator}"):
+                module._indicator_evidence(outcomes)
 
 
 def test_known_over_declarations_are_corrected(tmp_path: Path):
@@ -493,6 +517,9 @@ def test_test_parameter_sets_record_actual_values_not_names(tmp_path: Path):
         {"window": 12, "signal": 9}]
     assert rows["CCI"]["dimensions"]["condition"]["tested_parameter_sets"] == [
         {"threshold": 100.0}]
+    for indicator in ("VOLUME_MA", "AMOUNT_MA", "RVOL_PRIOR", "RVOL_INCL_CURRENT"):
+        assert rows[indicator]["dimensions"]["formula"]["tested_parameter_sets"] == [
+            {"window": 20}, {"window": 5}]
 
 
 def test_dimension_records_consumed_junit_name(tmp_path: Path):

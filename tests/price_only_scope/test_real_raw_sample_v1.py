@@ -16,6 +16,7 @@
 """
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -37,13 +38,13 @@ START = 20240102
 END = 20240731
 
 # 本模块读取**真实行情**，属 real_data_integration 分类。
-# 任务作用域激活时不再重跑：A1 证据已在本任务早期采集并记录，
-# 后续轮次重复执行会造成无意义的真实数据重读。
+# A1 证据已在本任务早期采集；默认不重读真实数据。
+# 只有未来另行明确授权并设置独立开关时才执行，且任务作用域激活时仍跳过。
 pytestmark = [
     pytest.mark.real_data_integration,
     pytest.mark.skipif(
-        task_scope_active(),
-        reason="TASK_SCOPE_ACTIVE: A1 证据已采集；本任务不重跑真实行情采样"),
+        task_scope_active() or os.environ.get("CHANLUN_RUN_A1_RAW_SAMPLE") != "1",
+        reason="A1_NOT_EXPLICITLY_ENABLED: 已采集证据；默认不重跑真实行情采样"),
     pytest.mark.skipif(
         not all(p.exists() for p in SYMBOLS.values()),
         reason="A1_BLOCKED: 本机缺少 .day 样本文件（真实数据不在预期根）"),
