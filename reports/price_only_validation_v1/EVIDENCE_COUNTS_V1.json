@@ -1,11 +1,11 @@
 {
   "generated_from": "实际 pytest --collect-only 与 JUnit testcase outcome",
   "junit_consumed": "reports/junit-price-only-v1.xml",
-  "junit_sha256": "da6573dc5294a8078ffa7e3ecfcc89dc0cc6123ecd4667162ad85bd5d5366237",
+  "junit_sha256": "e66d3d9f79f63d9f0e1e2b0695513bb0deb7c8076c91415a8a1e3650fd6531bf",
   "note": "计数与状态均由脚本自动派生，不硬编码；本机与 CI 分列。汇总成功不覆盖单项失败。",
   "source_identity": {
-    "head": "cbc9aac8c09da8dc65ebb678fc4885b83034a4bc",
-    "code_test_tree_sha256": "6a3dbb156d764407f91b5da0ff887113593babdb8254890a22996605d8084df0",
+    "head": "0ea0dcd537fb68daef4b34c42a06a2c76ca84502",
+    "code_test_tree_sha256": "86074766bce0e1e0d8c24eef64a16bd89f57ac82f1a34d3c802f60d76d084dbf",
     "status": "COMMITTED_SOURCE"
   },
   "new_tests": {
@@ -20,13 +20,13 @@
       "vendor_entry_guard": 7,
       "controlled_reader_boundary": 3,
       "scope_order_regression": 2,
-      "evidence_mutation": 33,
+      "evidence_mutation": 34,
       "relative_link_binding": 9,
       "read_path_identity": 9
     },
-    "parts_total": 328,
+    "parts_total": 329,
     "qfq_synthetic": 4,
-    "total_vs_base": 332,
+    "total_vs_base": 333,
     "note": "各组成部分合计 + 合成 QFQ；25 个账户服务用例属于 condition_and_service 内部，不重复累加。本清单为**子集**口径（本轮新增文件），非 BASE/HEAD 节点差集全量。",
     "scope": "SUBSET_OF_NEW_FILES_NOT_FULL_BASE_HEAD_DIFF"
   },
@@ -1803,7 +1803,14 @@
           "validated_outputs": [
             "volume_ma"
           ],
-          "tested_parameter_sets": [],
+          "tested_parameter_sets": [
+            {
+              "window": 20
+            },
+            {
+              "window": 5
+            }
+          ],
           "unvalidated_registered_outputs": []
         },
         "condition": {
@@ -1896,7 +1903,14 @@
           "validated_outputs": [
             "amount_ma"
           ],
-          "tested_parameter_sets": [],
+          "tested_parameter_sets": [
+            {
+              "window": 20
+            },
+            {
+              "window": 5
+            }
+          ],
           "unvalidated_registered_outputs": []
         },
         "condition": {
@@ -1980,7 +1994,14 @@
           "validated_outputs": [
             "rvol"
           ],
-          "tested_parameter_sets": [],
+          "tested_parameter_sets": [
+            {
+              "window": 20
+            },
+            {
+              "window": 5
+            }
+          ],
           "unvalidated_registered_outputs": [
             "volume_ma_prior"
           ]
@@ -2079,7 +2100,14 @@
           "validated_outputs": [
             "rvol"
           ],
-          "tested_parameter_sets": [],
+          "tested_parameter_sets": [
+            {
+              "window": 20
+            },
+            {
+              "window": 5
+            }
+          ],
           "unvalidated_registered_outputs": [
             "volume_ma"
           ]
