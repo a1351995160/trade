@@ -1,4 +1,4 @@
-"""PR16-01：真实输入身份必须在**已有入口**真正被阻断。
+"""PR16-01：受保护合成输入身份必须在**已有入口**真正被阻断。
 
 对应复核的五类绕过：
 1. 相对 ``data/cache/gbbq.csv`` 被拒，而同一缓存的**绝对路径**被打开；
@@ -28,11 +28,31 @@ from chanlun_trader.price_only_scope import (
     ForbiddenDataAccess,
     _normalise,
     is_forbidden_gbbq_path,
+    activate_task_scope,
+    restore_task_scope,
+    snapshot_task_scope,
 )
 from chanlun_trader.tdx_data import TdxData  # noqa: E402
 
-REAL_GBBQ = "E:/new_tdx_mock/T0002/hq_cache/gbbq"
-PROJECT_CACHE_ABS = str((Path.cwd() / "data" / "cache").resolve())
+
+@pytest.fixture(autouse=True)
+def _scope():
+    """在每个测试中激活访问限制，退出时恢复外层完整政策。"""
+    snapshot = snapshot_task_scope()
+    activate_task_scope("gbbq_identity_bypass_test")
+    try:
+        yield
+    finally:
+        restore_task_scope(snapshot)
+
+
+def _protected_target(tmp_path: Path, monkeypatch, name: str = "gbbq.csv") -> Path:
+    target = tmp_path / "protected" / name
+    target.parent.mkdir(exist_ok=True)
+    target.write_text("code,datetime,category\n000001,20240101,1\n", encoding="utf-8")
+    monkeypatch.setenv("CHANLUN_FORBIDDEN_GBBQ_PATHS", str(target))
+    rebuild_frozen_denylist()
+    return target
 
 
 def _symlink_supported() -> bool:
@@ -55,19 +75,21 @@ SYMLINK_OK = _symlink_supported()
 # ==========================================================================
 # 1) 相对 vs 绝对：同一文件必须一致拒绝
 # ==========================================================================
-def test_relative_and_absolute_cache_path_are_both_rejected():
-    """同一缓存的相对与绝对写法必须**一致拒绝**（此前绝对路径被放行）。"""
-    relative = "data/cache/gbbq.csv"
-    absolute = PROJECT_CACHE_ABS + "/gbbq.csv"
+def test_relative_and_absolute_cache_path_are_both_rejected(tmp_path: Path, monkeypatch):
+    """同一合成缓存的相对与绝对写法必须一致拒绝。"""
+    monkeypatch.setattr("chanlun_trader.price_only_scope.COMPOSITION_ROOT", tmp_path)
+    absolute = str(_protected_target(tmp_path, monkeypatch))
+    relative = "protected/gbbq.csv"
     assert is_forbidden_gbbq_path(relative), "相对写法未被拒"
     assert is_forbidden_gbbq_path(absolute), "绝对写法未被拒（绕过）"
     assert is_forbidden_gbbq_path(Path(absolute)), "Path 对象写法未被拒"
 
 
-def test_entry_blocks_absolute_cache_path(tmp_path: Path):
-    """实际入口：绝对路径的项目缓存必须在打开前被拒。"""
+def test_entry_blocks_absolute_cache_path(tmp_path: Path, monkeypatch):
+    """实际入口：绝对路径的合成缓存必须在打开前被拒。"""
+    target = _protected_target(tmp_path, monkeypatch)
     tdx = TdxData(str(tmp_path / "vipdoc"), str(tmp_path / "gbbq"),
-                  cache_dir=PROJECT_CACHE_ABS)
+                  cache_dir=str(target.parent))
     with pytest.raises(ForbiddenDataAccess):
         tdx._load_gbbq()
 
@@ -75,35 +97,32 @@ def test_entry_blocks_absolute_cache_path(tmp_path: Path):
 # ==========================================================================
 # 2) .. 与符号链接别名
 # ==========================================================================
-def test_parent_traversal_alias_is_rejected():
-    """``scratch/../data/cache/gbbq.csv`` 必须被拒（此前被放行）。"""
-    assert is_forbidden_gbbq_path("scratch/../data/cache/gbbq.csv")
-    assert is_forbidden_gbbq_path("a/b/../../data/cache/gbbq.csv")
-    assert is_forbidden_gbbq_path("./data/./cache/../cache/gbbq.csv")
+def test_parent_traversal_alias_is_rejected(tmp_path: Path, monkeypatch):
+    """合成缓存经 ``..`` 与 ``.`` 形成的别名必须被拒。"""
+    monkeypatch.setattr("chanlun_trader.price_only_scope.COMPOSITION_ROOT", tmp_path)
+    _protected_target(tmp_path, monkeypatch)
+    assert is_forbidden_gbbq_path("scratch/../protected/gbbq.csv")
+    assert is_forbidden_gbbq_path("a/b/../../protected/gbbq.csv")
+    assert is_forbidden_gbbq_path("./protected/./gbbq.csv")
 
 
 @pytest.mark.skipif(not SYMLINK_OK, reason="本机不支持符号链接")
-def test_symlink_alias_to_forbidden_cache_is_rejected(tmp_path: Path):
+def test_symlink_alias_to_forbidden_cache_is_rejected(tmp_path: Path, monkeypatch):
     """符号链接别名指向禁止目标时必须被拒（经身份解析）。"""
-    real_dir = Path.cwd() / "data" / "cache"
-    real_dir.mkdir(parents=True, exist_ok=True)
-    sentinel = real_dir / "gbbq.csv"
-    created = not sentinel.exists()
-    if created:
-        sentinel.write_text("code,datetime,category\n", encoding="utf-8")
+    target = tmp_path / "protected" / "gbbq.csv"
+    target.parent.mkdir()
+    target.write_text("code,datetime,category\n", encoding="utf-8")
+    monkeypatch.setenv("CHANLUN_FORBIDDEN_GBBQ_PATHS", str(target))
+    rebuild_frozen_denylist()
     link = tmp_path / "alias.csv"
     try:
-        os.symlink(sentinel, link)
+        os.symlink(target, link)
     except (OSError, NotImplementedError):
         pytest.skip("本机不支持符号链接")
-    try:
-        assert is_forbidden_gbbq_path(link), "符号链接别名未被拒"
-    finally:
-        if created and sentinel.exists():
-            sentinel.unlink()
+    assert is_forbidden_gbbq_path(link), "符号链接别名未被拒"
 
 
-def test_junction_alias_in_temp_dir(tmp_path: Path):
+def test_junction_alias_in_temp_dir(tmp_path: Path, monkeypatch):
     """Windows 上在临时目录**原生创建 junction** 并检查入口拦截。
 
     任务要求：不能无条件 skip 并声称尝试失败；只有**实际权限或文件系统错误**
@@ -134,17 +153,13 @@ def test_junction_alias_in_temp_dir(tmp_path: Path):
         assert aliased.exists(), "junction 创建后目标不可见"
         # 该临时目标不在禁止根下，故应可读（正对照：junction 本身不触发拒绝）
         assert not is_forbidden_gbbq_path(aliased), "临时目录 junction 被误拒"
-        # 真实 gbbq 经 junction 别名访问时必须被拒（身份解析生效）
-        real = Path("E:/new_tdx_mock/T0002/hq_cache/gbbq")
-        if real.exists():
-            real_junction = tmp_path / "real_junc"
-            completed = subprocess.run(
-                ["cmd", "/c", "mklink", "/J", str(real_junction), str(real.parent)],
-                capture_output=True, text=True, encoding="utf-8", errors="replace")
-            if completed.returncode == 0:
-                aliased_real = real_junction / "gbbq"
-                assert is_forbidden_gbbq_path(aliased_real), \
-                    "真实 gbbq 经 junction 别名未被拒"
+        # 将合成目标列入清单后，同一个 junction 别名必须被拒。
+        monkeypatch.setenv("CHANLUN_FORBIDDEN_GBBQ_PATHS", str(target / "gbbq.csv"))
+        rebuild_frozen_denylist()
+        assert is_forbidden_gbbq_path(aliased), "受保护合成目标经 junction 别名未被拒"
+        tdx = TdxData(str(tmp_path / "vipdoc"), str(aliased))
+        with pytest.raises(ForbiddenDataAccess):
+            tdx._load_gbbq()
     finally:
         try:
             os.rmdir(junction)
@@ -184,53 +199,56 @@ def test_explicit_list_is_not_limited_by_basename_whitelist(tmp_path: Path, monk
         assert is_forbidden_gbbq_path(target), f"显式清单对 {name} 失效"
 
 
-def test_explicit_list_accepts_relative_and_absolute(monkeypatch):
+def test_explicit_list_accepts_relative_and_absolute(tmp_path: Path, monkeypatch):
     """清单项的相对与绝对写法都应生效。"""
-    monkeypatch.setenv("CHANLUN_FORBIDDEN_GBBQ_PATHS", "data/cache/archived-events.dat")
+    monkeypatch.setattr("chanlun_trader.price_only_scope.COMPOSITION_ROOT", tmp_path)
+    monkeypatch.setenv("CHANLUN_FORBIDDEN_GBBQ_PATHS", "cache/archived-events.dat")
     rebuild_frozen_denylist()
-    assert is_forbidden_gbbq_path("data/cache/archived-events.dat")
-    assert is_forbidden_gbbq_path(str((Path.cwd() / "data/cache/archived-events.dat").resolve()))
+    assert is_forbidden_gbbq_path("cache/archived-events.dat")
+    assert is_forbidden_gbbq_path(tmp_path / "cache" / "archived-events.dat")
 
 
 # ==========================================================================
 # 5) Windows 路径语义
 # ==========================================================================
 @pytest.mark.parametrize("raw", [
-    "\\\\?\\E:\\new_tdx_mock\\T0002\\hq_cache\\gbbq",
-    "\\\\.\\E:\\new_tdx_mock\\T0002\\hq_cache\\gbbq",
-    "E:/new_tdx_mock/T0002/../T0002/hq_cache/gbbq",
-    "E:/new_tdx_mock/T0002/hq_cache/./gbbq",
-    "e:/NEW_TDX_MOCK/t0002/HQ_CACHE/GBBQ",
-    "E:\\new_tdx_mock\\T0002\\hq_cache\\gbbq",
+    "\\\\?\\Z:\\synthetic_scope\\hq_cache\\gbbq",
+    "\\\\.\\Z:\\synthetic_scope\\hq_cache\\gbbq",
+    "Z:/synthetic_scope/sub/../hq_cache/gbbq",
+    "Z:/synthetic_scope/hq_cache/./gbbq",
+    "z:/SYNTHETIC_SCOPE/HQ_CACHE/GBBQ",
+    "Z:\\synthetic_scope\\hq_cache\\gbbq",
 ])
-def test_windows_path_forms_are_rejected(raw):
-    """Windows 扩展路径、父目录别名、大小写与分隔符变体都必须被拒。"""
+def test_windows_path_forms_are_rejected(raw, monkeypatch):
+    """合成盘符路径的扩展形式、父目录别名、大小写与分隔符变体都必须被拒。"""
+    monkeypatch.setenv("CHANLUN_FORBIDDEN_GBBQ_PATHS", "Z:/synthetic_scope/hq_cache/gbbq")
+    rebuild_frozen_denylist()
     assert is_forbidden_gbbq_path(raw), f"Windows 路径形式未被拒：{raw}"
 
 
 def test_normalise_does_not_treat_drive_path_as_relative():
     """盘符路径不得被当作 POSIX 相对路径（此前在 Linux 上失效）。"""
-    normalised = _normalise("E:/new_tdx_mock/T0002/hq_cache/gbbq")
+    normalised = _normalise("Z:/synthetic_scope/hq_cache/gbbq")
     assert normalised is not None
-    assert normalised.startswith("e:/"), f"盘符被丢失：{normalised}"
+    assert normalised.startswith("z:/"), f"盘符被丢失：{normalised}"
     # 反斜杠与扩展前缀规范化后一致
-    assert _normalise("\\\\?\\E:\\x\\gbbq") == _normalise("E:/x/gbbq")
+    assert _normalise("\\\\?\\Z:\\x\\gbbq") == _normalise("Z:/x/gbbq")
 
 
 # ==========================================================================
 # 实际调用入口（不只 guard helper）
 # ==========================================================================
-def test_entry_blocks_real_gbbq_before_open(tmp_path: Path, monkeypatch):
-    """实际入口：真实 gbbq 原件必须在 open 之前被拒（open 探针证明）。"""
+def test_entry_blocks_synthetic_gbbq_before_open(tmp_path: Path, monkeypatch):
+    """实际入口：受保护合成 gbbq 必须在 open 之前被拒。"""
+    target = _protected_target(tmp_path, monkeypatch, "gbbq")
     opened: list[str] = []
-    real_open = open
 
     def probe_open(file, *args, **kwargs):
         opened.append(str(file))
-        return real_open(file, *args, **kwargs)
+        raise AssertionError(f"守卫前调用 open：{file}")
 
     monkeypatch.setattr("builtins.open", probe_open)
-    tdx = TdxData(str(tmp_path / "vipdoc"), REAL_GBBQ, cache_dir=str(tmp_path / "cache"))
+    tdx = TdxData(str(tmp_path / "vipdoc"), str(target), cache_dir=str(tmp_path / "cache"))
     with pytest.raises(ForbiddenDataAccess):
         tdx._load_gbbq()
     assert opened == [], f"拒绝发生在 open 之后：{opened}"
@@ -238,15 +256,16 @@ def test_entry_blocks_real_gbbq_before_open(tmp_path: Path, monkeypatch):
 
 def test_entry_blocks_relative_cache_before_open(tmp_path: Path, monkeypatch):
     """实际入口：相对写法的缓存路径同样在 open 之前被拒。"""
+    monkeypatch.setattr("chanlun_trader.price_only_scope.COMPOSITION_ROOT", tmp_path)
+    _protected_target(tmp_path, monkeypatch)
     opened: list[str] = []
-    real_open = open
 
     def probe_open(file, *args, **kwargs):
         opened.append(str(file))
-        return real_open(file, *args, **kwargs)
+        raise AssertionError(f"守卫前调用 open：{file}")
 
     monkeypatch.setattr("builtins.open", probe_open)
-    tdx = TdxData(str(tmp_path / "vipdoc"), str(tmp_path / "gbbq"), cache_dir="data/cache")
+    tdx = TdxData(str(tmp_path / "vipdoc"), str(tmp_path / "gbbq"), cache_dir="protected")
     with pytest.raises(ForbiddenDataAccess):
         tdx._load_gbbq()
     assert opened == [], f"拒绝发生在 open 之后：{opened}"

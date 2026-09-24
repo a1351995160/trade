@@ -52,6 +52,7 @@ from chanlun_trader.engine.indicators_v2 import (  # noqa: E402
     volume_ma,
     vwap_session_proxy,
 )
+from chanlun_trader.engine.indicator_registry_v2 import default_registry  # noqa: E402
 from tests.indicators_v2 import _oracle_price_only_v1 as oracle  # noqa: E402
 
 
@@ -345,6 +346,19 @@ def test_trix_matches_oracle(shape, window):
                                rtol=0, atol=1e-9, equal_nan=True)
     np.testing.assert_allclose(result.value("trix_ma").to_numpy(), _nan(want["trix_ma"]),
                                rtol=0, atol=1e-9, equal_nan=True)
+    if shape == "osc" and window == 12:
+        registry = default_registry()
+        spec = registry.get("TRIX", "TRIX_V1")
+        assert spec.formula_note == "三重 EMA 的单期百分比变动；信号线为 M 期滚动均值"
+        assert result.version == "TRIX_V1"
+        public = registry.compute(
+            "TRIX", pd.Series(closes, index=frame["date"]), version="TRIX_V1",
+            params={"window": window, "signal": 9},
+        )
+        np.testing.assert_allclose(public.output("trix_ma").to_numpy(),
+                                   result.value("trix_ma").to_numpy(),
+                                   rtol=0, atol=1e-9, equal_nan=True)
+        assert public.output("trix_ma").iloc[79] == pytest.approx(0.9261805044153897)
 
 
 # ------------------------------------------------------------------ KELTNER

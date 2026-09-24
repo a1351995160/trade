@@ -736,6 +736,48 @@ def source_identity() -> dict:
             "status": "UNCOMMITTED_SOURCE_CHANGES" if changed else "COMMITTED_SOURCE"}
 
 
+def junit_source_binding(path: Path, current: dict) -> dict:
+    """核对 JUnit 中测试进程记录的源码树；缺失或不一致不得认证。"""
+    root = ET.parse(path).getroot()
+    suites = root.findall("testsuite") or [root]
+    required = {"price_only_source_head", "price_only_code_test_tree_sha256",
+                "price_only_source_status"}
+    runs = []
+    for suite in suites:
+        properties = suite.find("properties")
+        entries = [] if properties is None else properties.findall("property")
+        names = [prop.get("name") for prop in entries]
+        values = {prop.get("name"): prop.get("value") for prop in entries}
+        if len(names) != len(set(names)):
+            return {"status": "NOT_ESTABLISHED", "reason": "duplicate_junit_run_source_identity"}
+        if not required <= values.keys() or any(not values[name] for name in required):
+            return {"status": "NOT_ESTABLISHED", "reason": "missing_junit_run_source_identity"}
+        runs.append(tuple(values[name] for name in sorted(required)))
+    if not runs or len(set(runs)) != 1:
+        return {"status": "NOT_ESTABLISHED", "reason": "inconsistent_junit_run_source_identity"}
+    run = dict(zip(sorted(required), runs[0]))
+    result = {
+        "run_head": run["price_only_source_head"],
+        "run_code_test_tree_sha256": run["price_only_code_test_tree_sha256"],
+        "run_source_status": run["price_only_source_status"],
+    }
+    if run["price_only_source_status"] != "COMMITTED_SOURCE" or \
+            current["status"] != "COMMITTED_SOURCE":
+        return {"status": "NOT_ESTABLISHED", "reason": "uncommitted_source", **result}
+    if run["price_only_code_test_tree_sha256"] != current["code_test_tree_sha256"]:
+        return {"status": "NOT_ESTABLISHED", "reason": "code_test_tree_mismatch", **result}
+    return {"status": "MATCHED", **result}
+
+
+def bound_indicator_evidence(outcomes: dict, path: Path, current: dict,
+                             junit_name: str) -> tuple[list, dict]:
+    """仅使用绑定到当前源码的 JUnit outcome 签发逐项证据。"""
+    binding = junit_source_binding(path, current)
+    rows = _indicator_evidence(outcomes if binding["status"] == "MATCHED" else {},
+                               junit_name)
+    return rows, binding
+
+
 def main(argv: list | None = None) -> int:
     """生成证据。
 
@@ -777,8 +819,10 @@ def main(argv: list | None = None) -> int:
     new_total = parts_total + qfq_synthetic
 
     local_junit = _junit_counts(junit_path)
+    current_source = source_identity()
     try:
-        rows = _indicator_evidence(outcomes, junit_path.relative_to(REPO_ROOT).as_posix())
+        rows, binding = bound_indicator_evidence(
+            outcomes, junit_path, current_source, junit_path.relative_to(REPO_ROOT).as_posix())
     except CollectionError as exc:
         print(f"NOT_ESTABLISHED: {exc}", file=sys.stderr)
         return 2
@@ -791,7 +835,8 @@ def main(argv: list | None = None) -> int:
         "junit_sha256": hashlib.sha256(junit_path.read_bytes()).hexdigest(),
         "note": "计数与状态均由脚本自动派生，不硬编码；本机与 CI 分列。"
                 "汇总成功不覆盖单项失败。",
-        "source_identity": source_identity(),
+        "source_identity": current_source,
+        "junit_source_binding": binding,
         "new_tests": {
             "by_part": counts,
             "parts_total": parts_total,
@@ -827,7 +872,7 @@ def main(argv: list | None = None) -> int:
     print("本机目标套件:", local_junit)
     print("verified/partial/total:", verified, partial, len(rows))
     print("输出:", target)
-    return 0
+    return 0 if binding["status"] == "MATCHED" else 2
 
 
 if __name__ == "__main__":

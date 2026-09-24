@@ -1,7 +1,34 @@
 """认证模式下拦截真实执行端；合成领域调用单独计数。"""
 import os
+import hashlib
+import subprocess
+from pathlib import Path
 
 import pytest
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _record_price_only_junit_source(request):
+    """把实际测试进程的源码身份写入 JUnit testsuite properties。"""
+    if (os.environ.get("CHANLUN_PRICE_ONLY_TASK_SCOPE") != "1"
+            or not request.config.option.xmlpath):
+        return
+    root = Path(__file__).resolve().parents[1]
+
+    def git(*args):
+        return subprocess.run(["git", *args], cwd=str(root), capture_output=True,
+                              text=True, check=True).stdout
+
+    head = git("rev-parse", "HEAD").strip()
+    tree = git("ls-tree", "-r", "--full-tree", "HEAD", "--", "src", "scripts",
+               "tests", ".github/workflows")
+    changed = git("status", "--porcelain", "--", "src", "scripts", "tests",
+                  ".github/workflows").strip()
+    record = request.getfixturevalue("record_testsuite_property")
+    record("price_only_source_head", head)
+    record("price_only_code_test_tree_sha256", hashlib.sha256(tree.encode()).hexdigest())
+    record("price_only_source_status",
+           "UNCOMMITTED_SOURCE_CHANGES" if changed else "COMMITTED_SOURCE")
 
 
 def pytest_configure(config):

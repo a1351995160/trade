@@ -460,7 +460,7 @@ def naive_macd_hist_raw(closes, fast: int, slow: int, signal: int) -> dict:
 
 
 def naive_trix(values: Sequence[float], window: int, signal: int) -> dict:
-    """TRIX = 三重 EMA 的单期百分比变动；trix_ma = EMA(TRIX, signal)。"""
+    """TRIX = 三重 EMA 的单期百分比变动；trix_ma = SMA(TRIX, signal)。"""
     e1 = naive_ema(values, window)
     alpha = 2.0 / (window + 1.0)
 
@@ -482,15 +482,7 @@ def naive_trix(values: Sequence[float], window: int, signal: int) -> dict:
         if e3[i] is None or e3[i - 1] is None or e3[i - 1] == 0:
             continue
         trix[i] = (e3[i] / e3[i - 1] - 1.0) * 100.0
-    sig_alpha = 2.0 / (signal + 1.0)
-    trix_ma: List[Optional[float]] = [None] * len(trix)
-    previous: Optional[float] = None
-    for i, value in enumerate(trix):
-        if value is None:
-            previous = None
-            continue
-        previous = value if previous is None else sig_alpha * value + (1 - sig_alpha) * previous
-        trix_ma[i] = previous
+    trix_ma = naive_rolling_mean(trix, signal)
     return {"trix": trix, "trix_ma": trix_ma}
 
 

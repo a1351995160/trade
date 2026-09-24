@@ -720,7 +720,7 @@ def bias(data: PriceInput, *, window: int = 6, price: str = "close") -> Indicato
 
 
 def trix(data: PriceInput, *, window: int = 12, signal: int = 9, price: str = "close") -> IndicatorFrameV2:
-    """TRIX：三重 EMA 的单期百分比变动，再取 M 期 EMA 作为信号线。"""
+    """TRIX：三重 EMA 的单期百分比变动，再取 M 期算术滚动均值作为信号线。"""
     window = _require_positive_int(window, "window")
     signal = _require_positive_int(signal, "signal")
     values = _price_field(data, price)
@@ -739,11 +739,8 @@ def trix(data: PriceInput, *, window: int = 12, signal: int = 9, price: str = "c
             np.isfinite(triple) & (np.concatenate(([np.nan], triple[:-1])) > 0),
             (triple / np.concatenate(([np.nan], triple[:-1])) - 1.0) * 100.0, np.nan,
         )
-    # 信号线在同一段内对 TRIX 做 EMA；段内 NaN 位置不参与，不跨段。
-    ma = np.full(len(values), np.nan)
-    for segment in range(int(segments.max()) + 1) if len(values) else []:
-        positions = np.flatnonzero(segments == segment)
-        ma[positions] = ema_recursive(out[positions], signal)
+    # 信号线在同一段内对 TRIX 做算术滚动均值；段内 NaN 位置不参与，不跨段。
+    ma = _rolling_in_segments(out, segments, signal, signal, "mean")
     counts = _segment_count(segments)
     ready = (counts >= 3 * window + signal) & np.isfinite(ma)
     return _frame("TRIX", "TRIX_V1", data.index,

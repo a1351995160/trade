@@ -46,7 +46,7 @@ def _load_module():
     return _MODULE_CACHE["module"]
 
 
-def _write_junit(path: Path, cases: list) -> None:
+def _write_junit(path: Path, cases: list, properties: dict | None = None) -> None:
     """写一个最小 JUnit，cases 为 (classname, name, kind)。"""
     suite = ET.Element("testsuite", {
         "name": "pytest", "tests": str(len(cases)),
@@ -54,6 +54,10 @@ def _write_junit(path: Path, cases: list) -> None:
         "errors": str(sum(1 for c in cases if c[2] == "error")),
         "skipped": str(sum(1 for c in cases if c[2] == "skipped")),
     })
+    if properties is not None:
+        props = ET.SubElement(suite, "properties")
+        for name, value in properties.items():
+            ET.SubElement(props, "property", {"name": name, "value": value})
     for classname, name, kind in cases:
         case = ET.SubElement(suite, "testcase", {"classname": classname, "name": name})
         if kind != "passed":
@@ -246,6 +250,44 @@ def test_junit_identity_is_recorded():
     assert data["junit_consumed"].endswith(".xml")
     consumed = REPO_ROOT / data["junit_consumed"]
     assert data["junit_sha256"] == hashlib.sha256(consumed.read_bytes()).hexdigest()
+    binding = data["junit_source_binding"]
+    assert binding["status"] == "MATCHED"
+    assert binding["run_code_test_tree_sha256"] == \
+        data["source_identity"]["code_test_tree_sha256"]
+
+
+def test_old_or_unbound_junit_cannot_certify_current_source(tmp_path: Path):
+    """通过的旧 JUnit 即使 nodeid 相同，也不得签出 VERIFIED。"""
+    module = _load_module()
+    coverage = _real_coverage()
+    cases = [_node_to_case(n) for nodes in coverage.values() for n in nodes]
+    junit = tmp_path / "bound.xml"
+    current = {"head": "new-docs-head", "code_test_tree_sha256": "current-tree",
+               "status": "COMMITTED_SOURCE"}
+    scenarios = (
+        (None, "NOT_ESTABLISHED"),
+        ({"price_only_source_head": "old-head",
+          "price_only_code_test_tree_sha256": "old-tree",
+          "price_only_source_status": "COMMITTED_SOURCE"}, "NOT_ESTABLISHED"),
+        ({"price_only_source_head": "current-head",
+          "price_only_code_test_tree_sha256": "current-tree",
+          "price_only_source_status": "UNCOMMITTED_SOURCE_CHANGES"}, "NOT_ESTABLISHED"),
+        ({"price_only_source_head": "old-docs-head",
+          "price_only_code_test_tree_sha256": "current-tree",
+          "price_only_source_status": "COMMITTED_SOURCE"}, "MATCHED"),
+    )
+    for properties, expected in scenarios:
+        _write_junit(junit, cases, properties)
+        outcomes = module.parse_junit_outcomes(junit)
+        rows, binding = module.bound_indicator_evidence(
+            outcomes, junit, current, "bound.xml")
+        assert binding["status"] == expected
+        if expected == "MATCHED":
+            assert any(row["status"] == "VERIFIED" for row in rows)
+        else:
+            assert all(row["status"] == "PARTIAL" for row in rows)
+            assert all(not dim["validated_outputs"] and not dim["tested_parameter_sets"]
+                       for row in rows for dim in row["dimensions"].values())
 
 
 # ==========================================================================
