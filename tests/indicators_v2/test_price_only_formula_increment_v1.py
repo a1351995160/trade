@@ -29,8 +29,10 @@ from chanlun_trader.engine.indicators_v2 import (  # noqa: E402
     chaikin_money_flow,
     dema,
     donchian,
+    dmi_adx,
     drawdown_from_peak,
     historical_return,
+    hlc3,
     keltner,
     macd_hist_raw,
     make_price_input,
@@ -341,6 +343,8 @@ def test_trix_matches_oracle(shape, window):
     want = oracle.naive_trix(closes, window, 9)
     np.testing.assert_allclose(result.value("trix").to_numpy(), _nan(want["trix"]),
                                rtol=0, atol=1e-9, equal_nan=True)
+    np.testing.assert_allclose(result.value("trix_ma").to_numpy(), _nan(want["trix_ma"]),
+                               rtol=0, atol=1e-9, equal_nan=True)
 
 
 # ------------------------------------------------------------------ KELTNER
@@ -595,3 +599,45 @@ def test_gap_breaks_segment_and_does_not_backfill():
     assert np.isnan(upper[gap_at + 1])
     # 缺口前一段的最后值仍然有效
     assert np.isfinite(upper[gap_at - 1])
+
+
+def test_invalid_ohlc_breaks_true_range_and_dmi_previous_close():
+    frame = _frame([10.0, 100.0, 11.0, 12.0])
+    frame.loc[1, "high"] = 0.0
+    frame.loc[2, ["high", "low"]] = [12.0, 10.0]
+    data = _input(frame)
+    tr = true_range(data).value("tr").to_numpy()
+    assert np.isnan(tr[1])
+    assert tr[2] == 2.0
+    assert dmi_adx(data, window=1).value("atr").iloc[2] == 2.0
+    assert np.isnan(hlc3(data).value("hlc3").iloc[1])
+    assert not bool(hlc3(data).ready.iloc[1])
+
+
+def test_keltner_waits_for_both_component_warmups():
+    result = keltner(_input(_frame(_series("up", n=30))), window=20, atr_window=10)
+    assert result.warmup_bars == 20
+    assert not result.ready.iloc[:19].any()
+    assert result.ready.iloc[19:].all()
+
+
+def test_psy_and_mfi_restart_comparisons_after_invalid_row():
+    psy_frame = _frame([10.0, 0.0, 11.0, 12.0, 13.0])
+    psy_result = psy(_input(psy_frame), window=2).value("psy").to_numpy()
+    assert np.isnan(psy_result[3])
+    assert psy_result[4] == 100.0
+
+    mfi_frame = _frame([10.0, 100.0, 11.0, 12.0, 13.0, 14.0])
+    mfi_frame.loc[1, "high"] = 0.0
+    mfi_result = mfi(_input(mfi_frame), window=2).value("mfi").to_numpy()
+    assert np.isnan(mfi_result[3])
+    assert np.isfinite(mfi_result[4])
+
+
+def test_negative_amount_is_not_a_ready_vwap_proxy():
+    frame = _frame([10.0, 11.0])
+    frame.loc[0, "amount"] = -1.0
+    result = vwap_session_proxy(_input(frame))
+    assert np.isnan(result.value("vwap_session_proxy").iloc[0])
+    assert not bool(result.ready.iloc[0])
+    assert np.isfinite(result.value("vwap_session_proxy").iloc[1])

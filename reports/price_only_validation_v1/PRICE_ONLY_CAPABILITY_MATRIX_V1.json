@@ -1,6 +1,6 @@
 {
   "matrix_id": "PRICE_ONLY_CAPABILITY_MATRIX_V1",
-  "generated_at": "2026-09-22",
+  "generated_at": "2026-09-24",
   "base_sha": "f5acb0317719a42eb7071504048e341b50a7ac12",
   "workspace": "E:/llmwiki/trade-price-only-validation-v1",
   "branch": "codex/price-only-indicator-validation-v1",
@@ -52,7 +52,7 @@
     "note": "既有测试全部通过，说明原测试未覆盖振荡序列下的 PSY。"
   },
   "a0_results": {
-    "formula_oracle_tests": 162,
+    "formula_oracle_tests": 166,
     "condition_consumption_tests": 41,
     "note": "25 个账户服务用例属于 41 条条件套件内部，不重复累加",
     "indicators_with_new_oracle": 25,
@@ -60,6 +60,7 @@
   },
   "a1_results": {
     "status": "PASS",
+    "current_review": "NOT_RERUN",
     "symbols": [
       "600000.SH",
       "000001.SZ"
@@ -132,21 +133,28 @@
   "access_boundary_tests": {
     "gbbq_access_guard": 8,
     "gbbq_identity_bypass": 19,
-    "bounded_read_boundary": 4,
-    "subtotal": 31,
-    "note": "上一轮旧口径写作 20 项访问边界，实际为 31 项（本轮新增 19 项身份绕过测试）。"
+    "bounded_read_boundary": 5,
+    "subtotal": 32,
+    "note": "按当前 collection 计数；旧口径 20 项已过时。"
   },
   "real_raw_sample_tests": 11,
-  "new_tests_actual_total": 266,
+  "new_tests_actual_total": 332,
   "new_tests_breakdown": {
-    "formula": 162,
+    "formula": 166,
     "condition_and_service": 41,
     "gbbq_guard": 8,
     "gbbq_identity_bypass": 19,
-    "bounded_read": 4,
+    "bounded_read": 5,
     "real_raw_sample": 11,
+    "task_scope": 15,
+    "vendor_entry_guard": 7,
+    "controlled_reader_boundary": 3,
+    "scope_order_regression": 2,
+    "evidence_mutation": 33,
+    "relative_link_binding": 9,
+    "read_path_identity": 9,
     "qfq_synthetic": 4,
-    "note": "六部分合计 245 + 合成 QFQ 4 = 249；由 scripts/emit_price_only_evidence_v1.py 自动派生"
+    "note": "13 个新增文件组成部分 328 + 合成 QFQ 4 = 332；子集口径，由 scripts/emit_price_only_evidence_v1.py 派生"
   },
   "qfq_synthetic_split": {
     "synthetic_executed": "tests/pit/test_qfq_pit_synthetic_v1.py (4 项，实际执行)",
@@ -154,9 +162,9 @@
     "marker": "real_data_integration"
   },
   "skip_classification": {
-    "gbbq_access_guard_junction": 1,
-    "qfq_real_data_integration": 2,
-    "note": "全部为显式分类 skip，非伪装通过；不用数量相同冒充零回归"
+    "local_scope_suite": {"passed": 98, "skipped": 23, "a1_real_sample": 11, "platform_link_cases": 12},
+    "local_regression_suite": {"passed": 152, "qfq_real_data_integration_skipped": 2},
+    "note": "A1 本轮不重跑；平台链接能力不足与真实数据集成均显式分类 skip"
   },
   "pr16_remediation": {
     "PR16-01": {
@@ -174,14 +182,14 @@
     },
     "PR16-02": {
       "status": "CLOSED",
-      "skip_scope_fix": "改用工作区级任务激活条件（结果根标记），离开本任务不产生永久影响；不接受环境变量放开真实数据。",
+      "skip_scope_fix": "pytest 仅在 CHANLUN_PRICE_ONLY_TASK_SCOPE=1 时显式激活；CI 任务设置该环境变量。离开本任务不产生永久影响。",
       "qfq_split": "合成可证性质拆到 test_qfq_pit_synthetic_v1.py 并实际执行（4 项）；真实本机集成标 real_data_integration 且任务激活时 skip（2 项）。",
       "no_assertions_removed": true
     },
     "PR16-03": {
       "status": "CLOSED",
       "oracle_fix": "naive_wilder_rma 改为按连续段独立播种；[1,1,NaN,10,10,10] window=2 -> [NaN,2,NaN,NaN,20,20]",
-      "evidence_counts_corrected": "新增 226 项（162 公式 + 41 条件/服务 + 8 guard + 19 身份绕过 + 4 bounded + 11 A1）；上一轮 230/20 口径已修正",
+      "evidence_counts_corrected": "当前新增文件子集 328 项 + 合成 QFQ 4 项 = 332；以 EVIDENCE_COUNTS_V1.json 实际 collection 为准",
       "note": "25 个账户服务用例属于 41 条条件套件内部，不重复累加"
     }
   },
@@ -192,7 +200,7 @@
       "cwd_counterexample": "已复现：相对清单 external/cache/gbbq.csv，同一绝对路径在 cwd 变化后由拒绝翻转为放行",
       "fix": "禁止集合在组合根一次性解析为绝对身份并冻结；检查时不重新读取 cwd",
       "env_var_rule": "环境变量至多追加约束；真实 gbbq 根身份始终保留，不被移除",
-      "entry_covered": "TdxData._load_gbbq 与直接 GbbqReader 走同一限制"
+      "entry_covered": "TdxData._load_gbbq 与受控 controlled_gbbq_reader 走同一限制；裸 vendor 调用不在认证范围"
     },
     "PR16-02": {
       "status": "CLOSED",
@@ -257,13 +265,13 @@
       "status": "IMPLEMENTED_AND_TESTED",
       "source": "scripts/emit_price_only_evidence_v1.py",
       "derivation": "状态由 JUnit testcase outcome 推导；参数化按最差聚合",
-      "mutation_tests": "tests/price_only_scope/test_evidence_mutation_v1.py（13 项）",
+      "mutation_tests": "tests/price_only_scope/test_evidence_mutation_v1.py（33 项）",
       "counts": {
-        "subset_parts_total": 282,
+        "subset_parts_total": 328,
         "qfq_synthetic": 4,
-        "subset_total": 286,
-        "node_diff_added": 286,
-        "node_diff_removed": 0
+        "subset_total": 332,
+        "node_diff_status": "NOT_ESTABLISHED",
+        "node_diff_reason": "旧节点清单缺源码身份 manifest"
       }
     },
     "not_covered": [

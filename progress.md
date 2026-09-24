@@ -2216,3 +2216,17 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 - tests/price_only_scope/test_evidence_mutation_v1.py：补 7 项证据范围变异；修正既有测试对新字段的引用。
 - reports/price_only_validation_v1/EVIDENCE_COUNTS_V1.json、reports/junit-price-only-v1.xml：重新生成并脱敏。
 - 回滚点 d2e91789ed861200fae5eaadb86d2a063bf775e5。
+
+## 2026-09-24 - Task: PR #16 合并前全链路复核与修复
+### What was done
+独立检查 PR #16 的指标计算、访问边界、pytest 任务作用域、证据生成器及正式报告；修复无效行跨段比较、KELTNER 预热、TRIX 信号线、负成交额/无效 OHLC 的 ready、OWNER gbbq 读取前守卫与有界 `.day` 请求起点越界。证据仅列本次 JUnit 中通过的参数节点，账户参数从测试源码取值；未绑定当前源码的旧完整套件及节点差集标为未建立。PR 保持 Draft，未合并。
+### Testing
+- 本机 Windows Python 3.13.5：A0 公式/条件 291 passed；访问边界全集 98 passed / 23 分类 skipped；账户入口 37 passed；既有 V1/V2 回归 152 passed / 2 分类 skipped；受影响 OWNER 合成测试 12 passed。
+- 证据变异测试 33 项通过（包含删参数节点、空 JUnit、实际 JUnit 身份及无身份节点清单）；目标新测试仅使用合成数据。`compileall`、JSON 语法与 `git diff --check` 通过。
+- 本轮 A1 真实 RAW 样本 11 项按任务作用域分类跳过；未重新读取真实样本。当前源码完整套件未执行，因此没有当前 HEAD 的全量失败集合对账；旧对账仅保留为历史原件。
+### Notes
+- `src/chanlun_trader/engine/indicators_v2.py` 与 `tests/indicators_v2/`：指标计算及独立 oracle/边界回归。
+- `src/chanlun_trader/data/tdx/owner_export_v1.py`、`src/chanlun_trader/research/io_safety.py` 与 `tests/price_only_scope/`：读取前守卫、有界读取及合成哨兵。
+- `tests/conftest.py`、`.github/workflows/price-only-indicator-validation-v1.yml`：price-only 作用域改为显式 CI 选用。
+- `scripts/emit_price_only_evidence_v1.py`、`reports/price_only_validation_v1/`、`reports/junit-price-only-v1.xml`：证据范围、计数及历史状态；`progress.md` 与报告说明记录本轮结果。
+- 回滚点 `04bb3a25d634b4362b549a1a7d3e8332b907e666`；可对本轮提交按逆序执行 `git revert`，不需改动旧工作区。

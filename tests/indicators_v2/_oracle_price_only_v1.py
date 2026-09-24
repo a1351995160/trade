@@ -102,14 +102,19 @@ def naive_cci(highs, lows, closes, window: int) -> List[Optional[float]]:
     return out
 
 
-def naive_true_range(highs, lows, closes, prev_closes) -> List[float]:
+def naive_true_range(highs, lows, closes, prev_closes) -> List[Optional[float]]:
     """TR：有可用前收时取三者最大；否则退化为 H-L（与被测实现同约定）。"""
     h = np.asarray(highs, float)
     l = np.asarray(lows, float)
+    c = np.asarray(closes, float)
     pc = np.asarray(prev_closes, float)
-    out: List[float] = []
+    valid = (np.isfinite(c) & (c > 0) & np.isfinite(h) & (h > 0)
+             & np.isfinite(l) & (l > 0) & (h >= l))
+    out: List[Optional[float]] = []
     for i in range(len(h)):
-        if np.isfinite(pc[i]) and pc[i] > 0:
+        if not valid[i]:
+            out.append(None)
+        elif i > 0 and valid[i - 1] and np.isfinite(pc[i]) and pc[i] > 0:
             out.append(float(max(h[i] - l[i], abs(h[i] - pc[i]), abs(l[i] - pc[i]))))
         else:
             out.append(float(h[i] - l[i]))
@@ -172,7 +177,7 @@ def naive_psy(values: Sequence[float], window: int) -> List[Optional[float]]:
     arr = _finite(values)
     up: List[Optional[float]] = [None] * len(arr)
     for i in range(1, len(arr)):
-        if np.isfinite(arr[i - 1]) and np.isfinite(arr[i]):
+        if np.isfinite(arr[i - 1]) and arr[i - 1] > 0 and np.isfinite(arr[i]) and arr[i] > 0:
             up[i] = 1.0 if arr[i] > arr[i - 1] else 0.0
     out: List[Optional[float]] = []
     for i in range(len(arr)):
@@ -412,8 +417,11 @@ def naive_mfi(highs, lows, closes, volumes, window: int) -> List[Optional[float]
     flow = tp * v
     pos = np.full(len(tp), np.nan)
     neg = np.full(len(tp), np.nan)
+    valid = (np.isfinite(c) & (c > 0) & np.isfinite(h) & (h > 0)
+             & np.isfinite(l) & (l > 0) & (h >= l)
+             & np.isfinite(v) & (v >= 0))
     for i in range(1, len(tp)):
-        if not (np.isfinite(tp[i - 1]) and np.isfinite(tp[i])):
+        if not (valid[i - 1] and valid[i]):
             continue
         if tp[i] > tp[i - 1]:
             pos[i] = flow[i]

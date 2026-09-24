@@ -9,9 +9,10 @@ def pytest_configure(config):
     # 生产 TdxData._load_gbbq 与真实测试分类消费同一作用域，保证政策一致。
     # 激活时禁止打开真实 gbbq；退出（deactivate）后恢复原有权限，
     # 不创造真实数据授权。
-    from chanlun_trader.price_only_scope import activate_task_scope
+    if os.environ.get("CHANLUN_PRICE_ONLY_TASK_SCOPE") == "1":
+        from chanlun_trader.price_only_scope import activate_task_scope
 
-    activate_task_scope("price_only_indicator_validation_v1")
+        activate_task_scope("price_only_indicator_validation_v1")
 
     if os.environ.get("CHANLUN_TEST_ISOLATION") != "1":
         return

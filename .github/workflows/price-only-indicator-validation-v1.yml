@@ -28,6 +28,7 @@ jobs:
       PYTHONPATH: ${{ matrix.pythonpath }}
       PYTHONDONTWRITEBYTECODE: "1"
       PYTHONUTF8: "1"
+      CHANLUN_PRICE_ONLY_TASK_SCOPE: "1"
 
     steps:
       - name: Check out source

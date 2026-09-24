@@ -100,8 +100,6 @@ def read_day_file_range(path, start_date: int = 0, end_date: int = RESEARCH_END,
             else:
                 h0 = mid - 1
         lo = l0
-        if lo >= n:
-            lo = 0
     hi = _rightmost_le(path, n, end_date, "day")
     if hi < lo:
         _log_physical_read(dataset="day", path=path, requested=[start_date, end_date],

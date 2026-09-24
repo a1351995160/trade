@@ -117,3 +117,16 @@ def test_requested_range_never_exceeds_research_end(tmp_path: Path):
     _write_day(path, _all_dates())
     frame = read_day_file_range(path, start_date=20240102)
     assert int(frame["date"].max()) <= RESEARCH_END
+
+
+def test_start_after_last_record_reads_no_day_payload(tmp_path: Path, monkeypatch):
+    path = tmp_path / "past.day"
+    _write_day(path, [20240102, 20240103])
+    from chanlun_trader.research import io_safety
+
+    physical = []
+    monkeypatch.setattr(io_safety, "_log_physical_read", lambda **record: physical.append(record))
+    frame = read_day_file_range(path, start_date=20240701, end_date=20240731)
+    assert frame.empty
+    assert len(physical) == 1
+    assert physical[0]["physical_records"] == 0

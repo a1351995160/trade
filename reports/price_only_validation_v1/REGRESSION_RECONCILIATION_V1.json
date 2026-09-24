@@ -1,5 +1,6 @@
 {
-  "note": "BASE_SHA 干净工作树 vs 本次 HEAD，CI 同等隔离环境，逐 nodeid 对账。按 nodeid 分列失败/skip/未执行/因果。",
+  "note": "历史对账原件：BASE_SHA 干净工作树 vs 3bcd5f7 HEAD；本次源码未重跑完整套件，不得把这些数字当作当前回归结论。",
+  "status": "HISTORICAL_NOT_CURRENT_HEAD",
   "base_sha": "f5acb0317719a42eb7071504048e341b50a7ac12",
   "reviewed_head": "3bcd5f7dd38519d83f0d3551575d888c8cf28ba7",
   "isolated_env": {
@@ -59,5 +60,5 @@
     "junction 别名形式"
   ],
   "causality": "UNCONFIRMED",
-  "claim": "仅声明本次 HEAD 未出现新增失败 nodeid；不用数量相同冒充零回归"
+  "claim": "仅记录 3bcd5f7 历史 HEAD 的逐 nodeid 对账；当前 HEAD 完整套件状态 NOT_RUN"
 }

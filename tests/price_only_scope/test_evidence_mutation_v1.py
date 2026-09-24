@@ -82,6 +82,12 @@ def _real_coverage():
     return _MODULE_CACHE["coverage"]
 
 
+def _passing_rows(tmp_path: Path):
+    module = _load_module()
+    outcomes = module.parse_junit_outcomes(_all_passing_junit(tmp_path))
+    return module._indicator_evidence(outcomes)
+
+
 # ==========================================================================
 # 1) 删 DEMA condition/account 节点 → DEMA 降级，其它项不受影响
 # ==========================================================================
@@ -130,6 +136,11 @@ def test_partial_coverage_does_not_verify_whole_function(tmp_path: Path):
     assert result["expected"] == single, "证据未收缩到实际覆盖范围"
     assert not any("[20-" in n for n in result["expected"]), \
         "仍声称覆盖了未测参数"
+    row = next(r for r in module._indicator_evidence(outcomes) if r["indicator"] == "DEMA")
+    formula = row["dimensions"]["formula"]
+    assert formula["status"] == "PARTIAL"
+    assert formula["tested_parameter_sets"] == [{"window": 5}]
+    assert formula["validated_outputs"] == []
 
 
 def test_unexpected_node_in_junit_does_not_expand_coverage(tmp_path: Path):
@@ -277,6 +288,8 @@ def test_empty_junit_downgrades_every_dimension(tmp_path: Path):
     rows = module._indicator_evidence(outcomes)
     assert all(row["status"] == "PARTIAL" for row in rows), \
         "空 JUnit 下仍有 VERIFIED 行"
+    assert all(not dim["validated_outputs"] and not dim["tested_parameter_sets"]
+               for row in rows for dim in row["dimensions"].values())
 
 
 # ==========================================================================
@@ -346,10 +359,10 @@ def test_mapped_single_test_downgrades_when_removed(tmp_path: Path):
     assert result["outcome"] == "missing_testcase"
 
 
-def test_registered_outputs_are_not_auto_validated():
+def test_registered_outputs_are_not_auto_validated(tmp_path: Path):
     """注册输出不得自动成为已验证输出（DEMA 注册 3 输出，仅 dema 被断言）。"""
     module = _load_module()
-    rows = module._indicator_evidence({})
+    rows = _passing_rows(tmp_path)
     dema = next(r for r in rows if r["indicator"] == "DEMA")
     registered = set(dema["registered_outputs"])
     validated = set(dema["dimensions"]["formula"]["validated_outputs"])
@@ -358,10 +371,10 @@ def test_registered_outputs_are_not_auto_validated():
     assert validated < registered, "已验证输出未严格小于注册输出"
 
 
-def test_registered_params_are_not_auto_tested():
+def test_registered_params_are_not_auto_tested(tmp_path: Path):
     """注册参数不得自动成为已验证参数（字段已改为 tested_parameter_sets）。"""
     module = _load_module()
-    rows = module._indicator_evidence({})
+    rows = _passing_rows(tmp_path)
     dema = next(r for r in rows if r["indicator"] == "DEMA")
     registered = set(dema["registered_params"])
     tested = set()
@@ -404,10 +417,21 @@ def test_subset_and_full_diff_are_reported_separately():
     if diff.get("status") == "NOT_ESTABLISHED":
         assert "reason" in diff, "未建立全量身份时必须给出原因"
 
+
+def test_unbound_node_lists_do_not_establish_full_diff(tmp_path: Path, monkeypatch):
+    module = _load_module()
+    (tmp_path / "tmp").mkdir()
+    (tmp_path / "tmp" / "base_nodes.txt").write_text("old::test_one\n", encoding="utf-8")
+    (tmp_path / "tmp" / "head_nodes.txt").write_text("new::test_two\n", encoding="utf-8")
+    monkeypatch.setattr(module, "REPO_ROOT", tmp_path)
+    result = module.node_diff_vs_base()
+    assert result["status"] == "NOT_ESTABLISHED"
+    assert "identity" in result["reason"]
+
 # ==========================================================================
 # PR16 证据范围修正：声明不得超过实际断言
 # ==========================================================================
-def test_declared_outputs_never_exceed_asserted_outputs():
+def test_declared_outputs_never_exceed_asserted_outputs(tmp_path: Path):
     """每项声明的 validated_outputs 必须落在注册输出内且严格来自断言。
 
     复核给定反例：DONCHIAN 声明 upper/lower/middle、KELTNER 声明含 middle/atr、
@@ -415,7 +439,7 @@ def test_declared_outputs_never_exceed_asserted_outputs():
     这些输出在对应测试中**没有**被逐值断言。
     """
     module = _load_module()
-    rows = module._indicator_evidence({})
+    rows = _passing_rows(tmp_path)
     offenders = []
     for row in rows:
         for dim_name, dim in row["dimensions"].items():
@@ -430,10 +454,10 @@ def test_declared_outputs_never_exceed_asserted_outputs():
     assert not offenders, f"输出声明与注册范围不一致：{offenders}"
 
 
-def test_known_over_declarations_are_corrected():
+def test_known_over_declarations_are_corrected(tmp_path: Path):
     """四个已指出例子 + 全量核对结果都必须落在实际断言范围内。"""
     module = _load_module()
-    rows = {r["indicator"]: r for r in module._indicator_evidence({})}
+    rows = {r["indicator"]: r for r in _passing_rows(tmp_path)}
     expectations = {
         "DONCHIAN": {"upper", "lower"},
         "KELTNER": {"upper", "lower"},
@@ -447,10 +471,10 @@ def test_known_over_declarations_are_corrected():
         assert got == expected, f"{indicator}: 声明 {got} != 实际断言 {expected}"
 
 
-def test_test_parameter_sets_record_actual_values_not_names():
+def test_test_parameter_sets_record_actual_values_not_names(tmp_path: Path):
     """参数证据必须记录**实际取值与组合**，不能只写参数名。"""
     module = _load_module()
-    rows = {r["indicator"]: r for r in module._indicator_evidence({})}
+    rows = {r["indicator"]: r for r in _passing_rows(tmp_path)}
     dema = rows["DEMA"]["dimensions"]["formula"]["tested_parameter_sets"]
     assert dema == [{"window": 5}, {"window": 20}], f"DEMA 参数取值记录错误：{dema}"
     # 不能是参数名列表
@@ -460,14 +484,29 @@ def test_test_parameter_sets_record_actual_values_not_names():
     assert macd == [{"fast": 12, "slow": 26, "signal": 9}], \
         f"MACD_HIST_RAW 组合参数记录错误：{macd}"
 
+    assert rows["DEMA"]["dimensions"]["account"]["tested_parameter_sets"] == [
+        {"window": 20}]
+    assert rows["TRIX"]["dimensions"]["account"]["tested_parameter_sets"] == [
+        {"window": 12, "signal": 9}]
+    assert rows["CCI"]["dimensions"]["condition"]["tested_parameter_sets"] == [
+        {"threshold": 100.0}]
 
-def test_parameter_range_is_not_inflated_from_registry_default():
+
+def test_dimension_records_consumed_junit_name(tmp_path: Path):
+    module = _load_module()
+    outcomes = module.parse_junit_outcomes(_all_passing_junit(tmp_path))
+    rows = module._indicator_evidence(outcomes, "junit/price-only-a0-windows-latest.xml")
+    assert {dim["junit"] for row in rows for dim in row["dimensions"].values()} == {
+        "junit/price-only-a0-windows-latest.xml"}
+
+
+def test_parameter_range_is_not_inflated_from_registry_default(tmp_path: Path):
     """修改注册默认值不得扩大已有证据的参数范围。
 
     测试只执行 window=5/20；注册默认 window=20 不构成"全范围"证据。
     """
     module = _load_module()
-    rows = {r["indicator"]: r for r in module._indicator_evidence({})}
+    rows = {r["indicator"]: r for r in _passing_rows(tmp_path)}
     dema = rows["DEMA"]
     tested_values = {ps["window"] for ps in
                      dema["dimensions"]["formula"]["tested_parameter_sets"]}
@@ -478,14 +517,14 @@ def test_parameter_range_is_not_inflated_from_registry_default():
     assert 10 not in tested_values, "未测试取值被列入证据"
 
 
-def test_unvalidated_output_does_not_become_verified_from_sibling_output():
+def test_unvalidated_output_does_not_become_verified_from_sibling_output(tmp_path: Path):
     """同指标其他输出 passed 不得让未断言输出变成已验证。
 
     模拟：某指标声明两个输出，但只断言其中一个 —— 未断言的那个必须留在
     unvalidated_registered_outputs，不得进入 validated_outputs。
     """
     module = _load_module()
-    rows = {r["indicator"]: r for r in module._indicator_evidence({})}
+    rows = {r["indicator"]: r for r in _passing_rows(tmp_path)}
     # KELTNER 注册 4 输出，只断言 2
     keltner = rows["KELTNER"]
     assert set(keltner["registered_outputs"]) == {"upper", "middle", "lower", "atr"}

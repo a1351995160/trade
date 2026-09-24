@@ -465,7 +465,7 @@ def dmi_adx(data: PriceInput, *, window: int = 14) -> IndicatorFrameV2:
         if not valid[i]:
             continue
         previous_close = data.prev_close[i]
-        if np.isfinite(previous_close) and previous_close > 0:
+        if i > 0 and valid[i - 1] and np.isfinite(previous_close) and previous_close > 0:
             tr[i] = max(high[i] - low[i], abs(high[i] - previous_close),
                         abs(low[i] - previous_close))
         else:
@@ -739,8 +739,11 @@ def trix(data: PriceInput, *, window: int = 12, signal: int = 9, price: str = "c
             np.isfinite(triple) & (np.concatenate(([np.nan], triple[:-1])) > 0),
             (triple / np.concatenate(([np.nan], triple[:-1])) - 1.0) * 100.0, np.nan,
         )
-    # 信号线在同一段内对 TRIX 做滚动均值；段内 NaN 位置不参与，不跨段。
-    ma = _rolling_in_segments(out, segments, signal, signal, "mean")
+    # 信号线在同一段内对 TRIX 做 EMA；段内 NaN 位置不参与，不跨段。
+    ma = np.full(len(values), np.nan)
+    for segment in range(int(segments.max()) + 1) if len(values) else []:
+        positions = np.flatnonzero(segments == segment)
+        ma[positions] = ema_recursive(out[positions], signal)
     counts = _segment_count(segments)
     ready = (counts >= 3 * window + signal) & np.isfinite(ma)
     return _frame("TRIX", "TRIX_V1", data.index,
@@ -767,7 +770,7 @@ def psy(data: PriceInput, *, window: int = 12, price: str = "close") -> Indicato
     values = _price_field(data, price)
     segments = segment_ids(np.isfinite(values) & (values > 0))
     previous = np.concatenate(([np.nan], values[:-1]))
-    comparable = np.isfinite(previous) & np.isfinite(values)
+    comparable = (segments >= 0) & np.concatenate(([False], segments[1:] == segments[:-1]))
     up = np.where(comparable, np.where(values > previous, 1.0, 0.0), np.nan)
     ups = _rolling_in_segments(up, segments, window, window, "sum")
     observations = _rolling_in_segments(up, segments, window, window, "count")
@@ -795,7 +798,7 @@ def true_range(data: PriceInput) -> IndicatorFrameV2:
         if not valid[i]:
             continue
         previous_close = data.prev_close[i]
-        if np.isfinite(previous_close) and previous_close > 0:
+        if i > 0 and valid[i - 1] and np.isfinite(previous_close) and previous_close > 0:
             tr[i] = max(high[i] - low[i], abs(high[i] - previous_close),
                         abs(low[i] - previous_close))
         else:
@@ -912,7 +915,8 @@ def keltner(data: PriceInput, *, window: int = 20, atr_window: int = 10,
     middle = ema_frame.value("ema").to_numpy(dtype=float)
     upper = middle + float(multiplier) * atr_values
     lower = middle - float(multiplier) * atr_values
-    ready = np.isfinite(middle) & np.isfinite(atr_values)
+    ready = (ema_frame.ready.to_numpy(dtype=bool) & atr_frame.ready.to_numpy(dtype=bool)
+             & np.isfinite(middle) & np.isfinite(atr_values))
     return _frame("KELTNER", "KELTNER_V1", data.index,
                   {"upper": upper, "middle": middle, "lower": lower, "atr": atr_values},
                   ready, atr_frame.segment.to_numpy(), max(window, atr_window))
@@ -1021,10 +1025,9 @@ def mfi(data: PriceInput, *, window: int = 14) -> IndicatorFrameV2:
     typical = (high + low + data.close) / 3.0
     raw_flow = typical * volume
     previous = np.concatenate(([np.nan], typical[:-1]))
-    positive = np.where(np.isfinite(previous) & (typical > previous), raw_flow, 0.0)
-    negative = np.where(np.isfinite(previous) & (typical < previous), raw_flow, 0.0)
-    positive[~np.isfinite(previous)] = np.nan
-    negative[~np.isfinite(previous)] = np.nan
+    comparable = valid & np.concatenate(([False], valid[:-1]))
+    positive = np.where(comparable, np.where(typical > previous, raw_flow, 0.0), np.nan)
+    negative = np.where(comparable, np.where(typical < previous, raw_flow, 0.0), np.nan)
     positive_sum = _rolling_in_segments(positive, segments, window, window, "sum")
     negative_sum = _rolling_in_segments(negative, segments, window, window, "sum")
     with np.errstate(divide="ignore", invalid="ignore"):
@@ -1105,9 +1108,9 @@ def vwap_session_proxy(data: PriceInput) -> IndicatorFrameV2:
     valid = np.isfinite(amount) & np.isfinite(volume) & (volume > 0) & (amount >= 0)
     segments = segment_ids(valid)
     with np.errstate(divide="ignore", invalid="ignore"):
-        out = np.where(volume > 0, amount / volume, np.nan)
+        out = np.where(valid, amount / volume, np.nan)
     return _frame("VWAP_SESSION_PROXY", "VWAP_SESSION_PROXY_V1", data.index,
-                  {"vwap_session_proxy": out}, np.isfinite(out), segments, 1)
+                  {"vwap_session_proxy": out}, valid & np.isfinite(out), segments, 1)
 
 
 def hlc3(data: PriceInput) -> IndicatorFrameV2:
@@ -1115,8 +1118,9 @@ def hlc3(data: PriceInput) -> IndicatorFrameV2:
     high, low = _require_high_low(data, "HLC3")
     valid = data.ohlc_valid()
     segments = segment_ids(valid)
-    out = (high + low + data.close) / 3.0
-    return _frame("HLC3", "HLC3_V1", data.index, {"hlc3": out}, np.isfinite(out), segments, 1)
+    out = np.where(valid, (high + low + data.close) / 3.0, np.nan)
+    return _frame("HLC3", "HLC3_V1", data.index, {"hlc3": out},
+                  valid & np.isfinite(out), segments, 1)
 
 
 def rolling_vwap(data: PriceInput, *, window: int = 20) -> IndicatorFrameV2:

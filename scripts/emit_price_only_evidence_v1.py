@@ -12,6 +12,9 @@
 """
 from __future__ import annotations
 
+import ast
+from functools import lru_cache
+import hashlib
 import json
 import re
 import subprocess
@@ -24,6 +27,7 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 
 OUT_DIR = REPO_ROOT / "reports" / "price_only_validation_v1"
 TARGET_JUNIT_NAME = "junit-price-only-v1.xml"
+BASE_SHA = "f5acb0317719a42eb7071504048e341b50a7ac12"
 
 # Windows 盘符前缀：在 POSIX 上会被误当仓库内相对路径，直接拒绝
 _DRIVE_PREFIX_RE = re.compile(r"^[a-zA-Z]:[\\/]")
@@ -47,8 +51,6 @@ SINGLE_CONDITION_TESTS = {
     "PSY": f"{CONDITION_MODULE}::test_condition_layer_consumes_psy_output",
 }
 
-# 各维度**实际被断言**的输出与参数（来自对应测试的真实断言，非注册表）。
-# 未列出的输出/参数保持 PARTIAL —— 注册信息不能自动认证全部输出。
 # 各维度**实际被断言**的输出与参数（逐项核对对应测试的真实断言，非注册表）。
 #
 # 核对方法：从测试源码 AST 提取该指标对应测试函数中所有 ``.value("<output>")``
@@ -75,7 +77,8 @@ VALIDATED_BY_DIMENSION = {
                               "tested_parameter_sets": [{"window": 20}, {"window": 10}]},
     # KELTNER 只逐值断言 upper/lower；middle/atr 未被断言
     ("KELTNER", "formula"): {"outputs": ["upper", "lower"],
-                             "tested_parameter_sets": [{"window": 20, "atr_window": 10}]},
+                             "tested_parameter_sets": [{"window": 20, "atr_window": 10,
+                                                        "multiplier": 2.0}]},
     # ROLLING_VOLATILITY 只逐值断言 volatility；return 未被断言
     ("ROLLING_VOLATILITY", "formula"): {
         "outputs": ["volatility"],
@@ -97,8 +100,9 @@ VALIDATED_BY_DIMENSION = {
     ("MACD_HIST_RAW", "formula"): {
         "outputs": ["hist_raw"],
         "tested_parameter_sets": [{"fast": 12, "slow": 26, "signal": 9}]},
-    ("TRIX", "formula"): {"outputs": ["trix"],
-                          "tested_parameter_sets": [{"window": 12}, {"window": 6}]},
+    ("TRIX", "formula"): {"outputs": ["trix", "trix_ma"],
+                          "tested_parameter_sets": [{"window": 12, "signal": 9},
+                                                    {"window": 6, "signal": 9}]},
     ("VOLUME_MA", "formula"): {"outputs": ["volume_ma"],
                                "tested_parameter_sets": [{"window": 20}, {"window": 5}]},
     ("AMOUNT_MA", "formula"): {"outputs": ["amount_ma"],
@@ -122,9 +126,9 @@ VALIDATED_BY_DIMENSION = {
     ("TRUE_RANGE", "formula"): {"outputs": ["tr"], "tested_parameter_sets": [{}]},
     # ---- 条件维度：测试**手工注入**的输出（CONDITION_INJECTED）----
     # 单独测试：CCI/NATR/PSY（各断言 TRUE/FALSE/UNKNOWN 三值齐备）
-    ("CCI", "condition"): {"outputs": ["cci"], "tested_parameter_sets": [{}]},
-    ("NATR", "condition"): {"outputs": ["natr"], "tested_parameter_sets": [{}]},
-    ("PSY", "condition"): {"outputs": ["psy"], "tested_parameter_sets": [{}]},
+    ("CCI", "condition"): {"outputs": ["cci"], "tested_parameter_sets": [{"threshold": 100.0}]},
+    ("NATR", "condition"): {"outputs": ["natr"], "tested_parameter_sets": [{"threshold": 1.0}]},
+    ("PSY", "condition"): {"outputs": ["psy"], "tested_parameter_sets": [{"threshold": 50.0}]},
     # 参数化用例：注入 (indicator, output, threshold) 三元组
     ("DEMA", "condition"): {"outputs": ["dema"],
                             "tested_parameter_sets": [{"threshold": 10.0}]},
@@ -149,8 +153,9 @@ VALIDATED_BY_DIMENSION = {
     ("MFI", "condition"): {"outputs": ["mfi"],
                            "tested_parameter_sets": [{"threshold": 50.0}]},
     # ---- 账户维度：经公开服务产生合成成交（ACCOUNT_WIDE_THRESHOLD）----
-    # 测试断言"产生真实成交"，不断言具体输出或阈值敏感性
-    **{(ind, "account"): {"outputs": [], "tested_parameter_sets": [{}]}
+    # 测试断言"产生真实成交"，不断言具体输出或阈值敏感性。
+    # 指标配置参数从账户测试的 parametrize 源码提取，避免以注册默认值冒充。
+    **{(ind, "account"): {"outputs": [], "tested_parameter_sets": []}
        for ind in ("CCI", "NATR", "PSY", "DEMA", "TEMA", "TRIX", "DONCHIAN",
                    "KELTNER", "HISTORICAL_RETURN", "ROLLING_VOLATILITY",
                    "PRICE_EXTREMES", "PRIOR_BREAKOUT", "VOLUME_MA", "RVOL_PRIOR",
@@ -441,7 +446,37 @@ def resolve_dimension(expected: list, outcomes: dict) -> dict:
     }
 
 
-def _indicator_evidence(outcomes: dict) -> list:
+@lru_cache(maxsize=1)
+def _account_parameter_sets() -> dict:
+    """从账户测试的实际参数化用例提取指标配置；不借用注册默认值。"""
+    source = (REPO_ROOT / CONDITION_MODULE).read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    for node in tree.body:
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) or \
+                node.name != ACCOUNT_TEST[1]:
+            continue
+        for decorator in node.decorator_list:
+            if isinstance(decorator, ast.Call) and isinstance(decorator.func, ast.Attribute) \
+                    and decorator.func.attr == "parametrize":
+                names = ast.literal_eval(decorator.args[0]).split(",")
+                if [name.strip() for name in names] != ["indicator_id", "params", "condition"]:
+                    continue
+                cases = ast.literal_eval(decorator.args[1])
+                return {indicator_id: dict(params) for indicator_id, params, _ in cases}
+    raise CollectionError("ACCOUNT_PARAMETER_SOURCE_NOT_FOUND")
+
+
+def _passed_parameter_sets(candidates: list, passed_nodeids: list) -> list:
+    """只列实际 passed 的参数组合；多窗口用例按 collection 的参数 ID 收缩。"""
+    if not passed_nodeids:
+        return []
+    if len(candidates) <= 1:
+        return [dict(item) for item in candidates]
+    return [dict(item) for item in candidates if "window" in item and any(
+        f"[{item['window']}-" in nodeid for nodeid in passed_nodeids)]
+
+
+def _indicator_evidence(outcomes: dict, junit_name: str = TARGET_JUNIT_NAME) -> list:
     """为新增 oracle 覆盖的指标建立逐项证据行。
 
     每个能力证据写：指标、实现版本、具体输出、实际测试参数域、输入/价格域、
@@ -460,6 +495,7 @@ def _indicator_evidence(outcomes: dict) -> list:
 
     registry = default_registry()
     expected_coverage = build_expected_coverage()
+    account_params = _account_parameter_sets()
     strength_by_dim = {
         "formula": "NUMERIC_ORACLE",
         "condition": "CONDITION_INJECTED",
@@ -478,13 +514,18 @@ def _indicator_evidence(outcomes: dict) -> list:
             expected = expected_coverage.get((indicator_id, name), [])
             resolved = resolve_dimension(expected, outcomes)
             resolved["nodeids"] = expected
-            resolved["junit"] = TARGET_JUNIT_NAME
+            resolved["junit"] = junit_name
             resolved["strength"] = strength_by_dim[name]
-            # 只给**实际被断言**的输出/参数；其余保持未验证
+            # 源码断言范围与本次通过范围分开；缺失/失败的旧 JUnit 不得签发。
             validated = VALIDATED_BY_DIMENSION.get((indicator_id, name), {})
-            resolved["validated_outputs"] = list(validated.get("outputs", []))
-            resolved["tested_parameter_sets"] = [
-                dict(ps) for ps in validated.get("tested_parameter_sets", [])]
+            asserted_outputs = list(validated.get("outputs", []))
+            resolved["asserted_outputs"] = asserted_outputs
+            resolved["validated_outputs"] = (asserted_outputs if resolved["status"] == "VERIFIED"
+                                             else [])
+            candidates = ([account_params[indicator_id]] if name == "account"
+                          else validated.get("tested_parameter_sets", []))
+            passed = [node for node in expected if outcomes.get(node) == "passed"]
+            resolved["tested_parameter_sets"] = _passed_parameter_sets(candidates, passed)
             # 该维度注册但未被断言的输出，如实列出（供复核对照）
             registered = list(spec.outputs)
             resolved["unvalidated_registered_outputs"] = [
@@ -516,9 +557,24 @@ def node_diff_vs_base() -> dict:
     """
     base_file = REPO_ROOT / "tmp" / "base_nodes.txt"
     head_file = REPO_ROOT / "tmp" / "head_nodes.txt"
+    identity_file = REPO_ROOT / "tmp" / "node_diff_identity.json"
     if not base_file.exists() or not head_file.exists():
         return {"status": "NOT_ESTABLISHED",
                 "reason": "missing node listing (base_nodes.txt / head_nodes.txt)"}
+    if not identity_file.exists():
+        return {"status": "NOT_ESTABLISHED",
+                "reason": "node listings have no source identity manifest"}
+    try:
+        identity = json.loads(identity_file.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {"status": "NOT_ESTABLISHED", "reason": "invalid node identity manifest"}
+    head_sha = subprocess.run(["git", "rev-parse", "HEAD"], cwd=str(REPO_ROOT),
+                              capture_output=True, text=True).stdout.strip()
+    checksums = {name: hashlib.sha256(path.read_bytes()).hexdigest()
+                 for name, path in (("base", base_file), ("head", head_file))}
+    if (identity.get("base_sha") != BASE_SHA or identity.get("head_sha") != head_sha
+            or identity.get("node_sha256") != checksums):
+        return {"status": "NOT_ESTABLISHED", "reason": "node listing identity mismatch"}
     base = {l.strip() for l in base_file.read_text(encoding="utf-8").splitlines() if l.strip()}
     head = {l.strip() for l in head_file.read_text(encoding="utf-8").splitlines() if l.strip()}
     return {
@@ -552,6 +608,21 @@ def resolve_within_repo(candidate: str, *, label: str) -> Path:
         raise ValueError(
             f"{label}_PATH_OUTSIDE_REPO:{candidate}") from None
     return resolved
+
+
+def source_identity() -> dict:
+    """把 commit 身份与未提交的源码/测试状态分开，避免旧 HEAD 冒充执行源码。"""
+    head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=str(REPO_ROOT),
+                          capture_output=True, text=True, check=True).stdout.strip()
+    tree = subprocess.run(
+        ["git", "ls-tree", "-r", "--full-tree", "HEAD", "--", "src", "scripts", "tests",
+         ".github/workflows"],
+        cwd=str(REPO_ROOT), capture_output=True, text=True, check=True).stdout
+    changed = subprocess.run(
+        ["git", "status", "--porcelain", "--", "src", "scripts", "tests", ".github/workflows"],
+        cwd=str(REPO_ROOT), capture_output=True, text=True, check=True).stdout.strip()
+    return {"head": head, "code_test_tree_sha256": hashlib.sha256(tree.encode()).hexdigest(),
+            "status": "UNCOMMITTED_SOURCE_CHANGES" if changed else "COMMITTED_SOURCE"}
 
 
 def main(argv: list | None = None) -> int:
@@ -595,9 +666,7 @@ def main(argv: list | None = None) -> int:
     new_total = parts_total + qfq_synthetic
 
     local_junit = _junit_counts(junit_path)
-    local_full = _junit_counts(REPO_ROOT / "reports" / "junit-full-local.xml")
-
-    rows = _indicator_evidence(outcomes)
+    rows = _indicator_evidence(outcomes, junit_path.relative_to(REPO_ROOT).as_posix())
     verified = sum(1 for r in rows if r.get("status") == "VERIFIED")
     partial = sum(1 for r in rows if r.get("status") == "PARTIAL")
 
@@ -606,10 +675,7 @@ def main(argv: list | None = None) -> int:
         "junit_consumed": str(junit_path),
         "note": "计数与状态均由脚本自动派生，不硬编码；本机与 CI 分列。"
                 "汇总成功不覆盖单项失败。",
-        "source_identity": {
-            "head": subprocess.run(["git", "rev-parse", "HEAD"], cwd=str(REPO_ROOT),
-                                   capture_output=True, text=True).stdout.strip(),
-        },
+        "source_identity": source_identity(),
         "new_tests": {
             "by_part": counts,
             "parts_total": parts_total,
@@ -622,7 +688,8 @@ def main(argv: list | None = None) -> int:
         },
         "node_diff_vs_base": node_diff_vs_base(),
         "local_target_suite": local_junit,
-        "local_full_suite": local_full,
+        "local_full_suite": {"status": "NOT_RUN_AT_SOURCE_HEAD",
+                             "note": "历史完整套件 JUnit 未绑定本次源码，不作为本次回归结论"},
         "accounting_rules": {
             "skipped_is_not_passed": True,
             "errors_and_failures_separated": True,

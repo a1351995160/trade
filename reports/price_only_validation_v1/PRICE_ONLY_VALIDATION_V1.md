@@ -93,11 +93,14 @@
 
 | 套件 | 项数 |
 | --- | --- |
-| 公式增量（`test_price_only_formula_increment_v1.py`） | 158 |
+| 公式增量（`test_price_only_formula_increment_v1.py`） | 166 |
 | 条件消费（`test_price_only_condition_consumption_v1.py`） | 41 |
-| 访问边界（`test_gbbq_access_guard_v1.py` + `test_bounded_read_boundary_v1.py`） | 20 |
-| 真实 RAW 小样本（`test_real_raw_sample_v1.py`） | 11 |
-| **本轮新增合计** | **230** |
+| 其余范围、守卫与证据测试（10 个文件） | 110 |
+| 真实 RAW 小样本（`test_real_raw_sample_v1.py`，本轮只收集不执行） | 11 |
+| 合成 QFQ（`test_qfq_pit_synthetic_v1.py`） | 4 |
+| **新增文件子集合计** | **332** |
+
+计数由 `scripts/emit_price_only_evidence_v1.py` 的实际 collection 得出。当前 A0 公式/条件 JUnit 为 291 passed；25 项逐项证据为 14 VERIFIED / 11 PARTIAL。完整 BASE/HEAD 节点清单缺源码身份绑定，差集状态为 `NOT_ESTABLISHED`，不能拿子集 332 冒充全量新增数。
 
 覆盖要求：至少两个参数设置；常数/递增/递减/振荡/跳变/缺口/零成交量/非有限值/短于预热；追加未来尾段不改变历史值；条件 TRUE/FALSE/UNKNOWN 正反例齐备；不以全部拒单制造通过；入口测试实际消费指标输出（不以 list-indicators 作证）。
 
@@ -112,6 +115,14 @@
 修复：分子改为 `sum(up)`（上涨根数），分母改为 `count(up)`（可比较根数，含上涨与下跌）。
 
 回归：新增三项测试（交替序列不恒为 100 / 单调上涨仍为 100 / 真实 RAW 上不恒为 100）。**既有测试全部通过**，说明原测试未覆盖振荡序列下的 PSY。
+
+### 3.5 2026-09-24 合并前复核修正
+
+- `TRUE_RANGE`、`DMI_ADX`、`PSY`、`MFI` 在无效行后不再引用上一段价格；`KELTNER.ready` 同时遵守 EMA 与 ATR 预热；`TRIX.trix_ma` 改为合同与独立参考所写的 EMA；负成交额的 `VWAP_SESSION_PROXY` 与无效 OHLC 的 `HLC3` 不再标为 ready。
+- `parse_gbbq_window` 在头部读取、大小检查及哈希前按同一解析路径执行任务守卫；合成禁止哨兵验证 `opened=[]`。
+- 普通 pytest 会话不自动开启 price-only 作用域；本任务的 CI 显式设置 `CHANLUN_PRICE_ONLY_TASK_SCOPE=1`。该作用域下 A1 真实 RAW 样本测试分类跳过，本轮真实读取新增 0。
+- `read_day_file_range` 在请求起点晚于文件最后记录时返回空结果，物理 payload 读取计数为 0。
+- 证据行把源码断言输出与本次已验证输出分开，`tested_parameter_sets` 只列本次 JUnit 中实际通过的参数节点；账户配置取自参数化测试源码，维度 JUnit 字段指向实际消费文件。旧完整套件 JUnit 与旧回归对账标为历史记录，当前源码完整套件未重跑。
 
 ---
 
@@ -154,7 +165,7 @@ PROFITABILITY_VALIDATED = false
 ## 5. 最终声明
 
 ```
-FORMULA_ACCEPTANCE = 25 项新增独立 oracle 逐值通过；1 项真实缺陷（PSY）已修复
+FORMULA_ACCEPTANCE = 公式增量 166 passed；A0 合计 291 passed；25 项综合证据中 14 VERIFIED / 11 PARTIAL
 PUBLIC_SYNTHETIC_CONSUMPTION = 41 项条件消费 + 25 项经公开服务进入合成账户链
 REAL_RAW_NUMERIC_SAMPLE = PASS
 REAL_PERFORMANCE_EXPERIMENTS = 0

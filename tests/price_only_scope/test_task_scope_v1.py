@@ -37,6 +37,53 @@ from chanlun_trader.tdx_data import TdxData  # noqa: E402
 REAL_GBBQ = "E:/new_tdx_mock/T0002/hq_cache/gbbq"
 
 
+def test_pytest_task_scope_requires_explicit_opt_in(monkeypatch):
+    import importlib.util
+
+    conftest_path = Path(__file__).resolve().parents[1] / "conftest.py"
+    spec = importlib.util.spec_from_file_location("price_only_root_conftest", conftest_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    snapshot = snapshot_task_scope()
+    try:
+        monkeypatch.delenv("CHANLUN_TEST_ISOLATION", raising=False)
+        monkeypatch.delenv("CHANLUN_PRICE_ONLY_TASK_SCOPE", raising=False)
+        deactivate_task_scope()
+        module.pytest_configure(None)
+        assert not task_scope_active()
+        monkeypatch.setenv("CHANLUN_PRICE_ONLY_TASK_SCOPE", "1")
+        module.pytest_configure(None)
+        assert task_scope_active()
+    finally:
+        restore_task_scope(snapshot)
+
+
+def test_owner_parser_rejects_forbidden_file_before_open_or_audit(tmp_path: Path, monkeypatch):
+    from chanlun_trader.data.tdx.owner_export_v1 import parse_gbbq_window
+
+    target = tmp_path / "protected" / "gbbq.csv"
+    target.parent.mkdir()
+    target.write_bytes(b"synthetic sentinel")
+    monkeypatch.setenv("CHANLUN_FORBIDDEN_GBBQ_PATHS", str(target))
+    rebuild_frozen_denylist()
+    activate_task_scope("synthetic_guard_test")
+
+    opened = []
+    original_open = Path.open
+
+    def probed_open(path, *args, **kwargs):
+        if path == target:
+            opened.append(str(path))
+        return original_open(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", probed_open)
+    audits = []
+    with pytest.raises(ForbiddenDataAccess):
+        parse_gbbq_window(target, audit_sink=audits.append)
+    assert opened == []
+    assert audits == []
+
+
 @pytest.fixture(autouse=True)
 def _restore_scope():
     """保存进入前的**完整政策**并在退出时恢复，不无条件关闭外层任务。

@@ -100,9 +100,15 @@ def parse_gbbq_window(path,audit_sink=None):
     """全历史只存在本函数所在OWNER进程内；异常不携带原始事件值。"""
     import inspect
     # 直接 vendor 调用必须经受控 wrapper：本任务禁止绕过同一政策。
-    from chanlun_trader.price_only_scope import controlled_gbbq_reader
+    from chanlun_trader.price_only_scope import (
+        assert_gbbq_read_disabled, controlled_gbbq_reader, guard_gbbq_path,
+        resolve_input_path, task_scope_active,
+    )
+    path=resolve_input_path(path)
+    if task_scope_active():
+        assert_gbbq_read_disabled()
+        guard_gbbq_path(path, label='parse_gbbq_window')
     from pytdx.reader import GbbqReader
-    path=Path(path)
     with path.open('rb') as stream:count=struct.unpack('<I',stream.read(4))[0]
     if path.stat().st_size!=4+count*29:raise ValueError('GBBQ_FORMAT_SIZE_NOT_4_PLUS_29N')
     before=sha(path)
