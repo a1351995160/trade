@@ -1,57 +1,51 @@
 {
   "generated_from": "实际 pytest --collect-only 与 JUnit testcase outcome",
-  "junit_consumed": "E:\\llmwiki\\trade-price-only-validation-v1\\reports\\junit-price-only-v1.xml",
+  "junit_consumed": "reports/junit-price-only-v1.xml",
+  "junit_sha256": "da6573dc5294a8078ffa7e3ecfcc89dc0cc6123ecd4667162ad85bd5d5366237",
   "note": "计数与状态均由脚本自动派生，不硬编码；本机与 CI 分列。汇总成功不覆盖单项失败。",
   "source_identity": {
-    "head": "d2e91789ed861200fae5eaadb86d2a063bf775e5"
+    "head": "cbc9aac8c09da8dc65ebb678fc4885b83034a4bc",
+    "code_test_tree_sha256": "6a3dbb156d764407f91b5da0ff887113593babdb8254890a22996605d8084df0",
+    "status": "COMMITTED_SOURCE"
   },
   "new_tests": {
     "by_part": {
-      "formula": 162,
+      "formula": 166,
       "condition_and_service": 41,
       "gbbq_guard": 8,
       "gbbq_identity_bypass": 19,
-      "bounded_read": 4,
+      "bounded_read": 5,
       "real_raw_sample": 11,
-      "task_scope": 13,
+      "task_scope": 15,
       "vendor_entry_guard": 7,
       "controlled_reader_boundary": 3,
       "scope_order_regression": 2,
-      "evidence_mutation": 31,
+      "evidence_mutation": 33,
       "relative_link_binding": 9,
       "read_path_identity": 9
     },
-    "parts_total": 319,
+    "parts_total": 328,
     "qfq_synthetic": 4,
-    "total_vs_base": 323,
+    "total_vs_base": 332,
     "note": "各组成部分合计 + 合成 QFQ；25 个账户服务用例属于 condition_and_service 内部，不重复累加。本清单为**子集**口径（本轮新增文件），非 BASE/HEAD 节点差集全量。",
     "scope": "SUBSET_OF_NEW_FILES_NOT_FULL_BASE_HEAD_DIFF"
   },
   "node_diff_vs_base": {
-    "status": "ESTABLISHED",
-    "base_nodes": 2349,
-    "head_nodes": 2672,
-    "added": 323,
-    "removed": 0,
-    "scope": "FULL_BASE_HEAD_NODE_DIFF"
+    "status": "NOT_ESTABLISHED",
+    "reason": "node listings have no source identity manifest"
   },
   "local_target_suite": {
     "status": "ESTABLISHED",
-    "tests": 594,
+    "tests": 291,
     "errors": 0,
     "failures": 0,
-    "skipped": 13,
-    "passed": 581,
+    "skipped": 0,
+    "passed": 291,
     "failed_including_errors": 0
   },
   "local_full_suite": {
-    "status": "ESTABLISHED",
-    "tests": 2666,
-    "errors": 24,
-    "failures": 169,
-    "skipped": 15,
-    "passed": 2458,
-    "failed_including_errors": 193
+    "status": "NOT_RUN_AT_SOURCE_HEAD",
+    "note": "历史完整套件 JUnit 未绑定本次源码，不作为本次回归结论"
   },
   "accounting_rules": {
     "skipped_is_not_passed": true,
@@ -108,8 +102,11 @@
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_dema_matches_oracle[5-osc]",
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_dema_matches_oracle[5-up]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE",
+          "asserted_outputs": [
+            "dema"
+          ],
           "validated_outputs": [
             "dema"
           ],
@@ -137,8 +134,11 @@
           "nodeids": [
             "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[DEMA-dema-10.0]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED",
+          "asserted_outputs": [
+            "dema"
+          ],
           "validated_outputs": [
             "dema"
           ],
@@ -163,11 +163,14 @@
           "nodeids": [
             "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[DEMA-params3-condition3]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
+          "asserted_outputs": [],
           "validated_outputs": [],
           "tested_parameter_sets": [
-            {}
+            {
+              "window": 20
+            }
           ],
           "unvalidated_registered_outputs": [
             "dema",
@@ -227,8 +230,11 @@
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_tema_matches_oracle[5-osc]",
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_tema_matches_oracle[5-up]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE",
+          "asserted_outputs": [
+            "tema"
+          ],
           "validated_outputs": [
             "tema"
           ],
@@ -257,8 +263,11 @@
           "nodeids": [
             "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[TEMA-tema-10.0]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED",
+          "asserted_outputs": [
+            "tema"
+          ],
           "validated_outputs": [
             "tema"
           ],
@@ -284,11 +293,14 @@
           "nodeids": [
             "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[TEMA-params4-condition4]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
+          "asserted_outputs": [],
           "validated_outputs": [],
           "tested_parameter_sets": [
-            {}
+            {
+              "window": 20
+            }
           ],
           "unvalidated_registered_outputs": [
             "tema",
@@ -348,8 +360,11 @@
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_cci_matches_oracle[20-osc]",
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_cci_matches_oracle[20-up]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE",
+          "asserted_outputs": [
+            "cci"
+          ],
           "validated_outputs": [
             "cci"
           ],
@@ -376,13 +391,18 @@
           "nodeids": [
             "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_cci_output_with_true_false_unknown"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED",
+          "asserted_outputs": [
+            "cci"
+          ],
           "validated_outputs": [
             "cci"
           ],
           "tested_parameter_sets": [
-            {}
+            {
+              "threshold": 100.0
+            }
           ],
           "unvalidated_registered_outputs": [
             "typical_price"
@@ -399,11 +419,14 @@
           "nodeids": [
             "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[CCI-params0-condition0]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
+          "asserted_outputs": [],
           "validated_outputs": [],
           "tested_parameter_sets": [
-            {}
+            {
+              "window": 14
+            }
           ],
           "unvalidated_registered_outputs": [
             "cci",
@@ -461,8 +484,11 @@
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_natr_matches_oracle[20-osc]",
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_natr_matches_oracle[20-up]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE",
+          "asserted_outputs": [
+            "natr"
+          ],
           "validated_outputs": [
             "natr"
           ],
@@ -489,13 +515,18 @@
           "nodeids": [
             "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_natr_output"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED",
+          "asserted_outputs": [
+            "natr"
+          ],
           "validated_outputs": [
             "natr"
           ],
           "tested_parameter_sets": [
-            {}
+            {
+              "threshold": 1.0
+            }
           ],
           "unvalidated_registered_outputs": [
             "atr"
@@ -512,11 +543,14 @@
           "nodeids": [
             "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[NATR-params1-condition1]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
+          "asserted_outputs": [],
           "validated_outputs": [],
           "tested_parameter_sets": [
-            {}
+            {
+              "window": 14
+            }
           ],
           "unvalidated_registered_outputs": [
             "natr",
@@ -572,8 +606,11 @@
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_psy_matches_oracle[6-osc]",
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_psy_matches_oracle[6-up]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE",
+          "asserted_outputs": [
+            "psy"
+          ],
           "validated_outputs": [
             "psy"
           ],
@@ -598,13 +635,18 @@
           "nodeids": [
             "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_psy_output"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED",
+          "asserted_outputs": [
+            "psy"
+          ],
           "validated_outputs": [
             "psy"
           ],
           "tested_parameter_sets": [
-            {}
+            {
+              "threshold": 50.0
+            }
           ],
           "unvalidated_registered_outputs": []
         },
@@ -619,11 +661,14 @@
           "nodeids": [
             "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[PSY-params2-condition2]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
+          "asserted_outputs": [],
           "validated_outputs": [],
           "tested_parameter_sets": [
-            {}
+            {
+              "window": 12
+            }
           ],
           "unvalidated_registered_outputs": [
             "psy"
@@ -682,8 +727,12 @@
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_donchian_matches_oracle[20-osc]",
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_donchian_matches_oracle[20-up]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE",
+          "asserted_outputs": [
+            "upper",
+            "lower"
+          ],
           "validated_outputs": [
             "upper",
             "lower"
@@ -711,8 +760,11 @@
           "nodeids": [
             "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[DONCHIAN-upper-10.0]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED",
+          "asserted_outputs": [
+            "upper"
+          ],
           "validated_outputs": [
             "upper"
           ],
@@ -737,11 +789,14 @@
           "nodeids": [
             "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[DONCHIAN-params6-condition6]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
+          "asserted_outputs": [],
           "validated_outputs": [],
           "tested_parameter_sets": [
-            {}
+            {
+              "window": 20
+            }
           ],
           "unvalidated_registered_outputs": [
             "upper",
@@ -794,8 +849,12 @@
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_keltner_matches_oracle[osc]",
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_keltner_matches_oracle[up]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE",
+          "asserted_outputs": [
+            "upper",
+            "lower"
+          ],
           "validated_outputs": [
             "upper",
             "lower"
@@ -803,7 +862,8 @@
           "tested_parameter_sets": [
             {
               "window": 20,
-              "atr_window": 10
+              "atr_window": 10,
+              "multiplier": 2.0
             }
           ],
           "unvalidated_registered_outputs": [
@@ -822,8 +882,11 @@
           "nodeids": [
             "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[KELTNER-upper-10.0]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED",
+          "asserted_outputs": [
+            "upper"
+          ],
           "validated_outputs": [
             "upper"
           ],
@@ -849,11 +912,15 @@
           "nodeids": [
             "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[KELTNER-params7-condition7]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
+          "asserted_outputs": [],
           "validated_outputs": [],
           "tested_parameter_sets": [
-            {}
+            {
+              "window": 20,
+              "atr_window": 10
+            }
           ],
           "unvalidated_registered_outputs": [
             "upper",
@@ -906,8 +973,11 @@
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rolling_volatility_matches_oracle[20-osc]",
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rolling_volatility_matches_oracle[20-up]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE",
+          "asserted_outputs": [
+            "volatility"
+          ],
           "validated_outputs": [
             "volatility"
           ],
@@ -934,8 +1004,11 @@
           "nodeids": [
             "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[ROLLING_VOLATILITY-volatility-0.01]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED",
+          "asserted_outputs": [
+            "volatility"
+          ],
           "validated_outputs": [
             "volatility"
           ],
@@ -959,11 +1032,14 @@
           "nodeids": [
             "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[ROLLING_VOLATILITY-params9-condition9]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
+          "asserted_outputs": [],
           "validated_outputs": [],
           "tested_parameter_sets": [
-            {}
+            {
+              "window": 20
+            }
           ],
           "unvalidated_registered_outputs": [
             "volatility",
@@ -1021,8 +1097,11 @@
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_historical_return_matches_oracle[5-osc]",
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_historical_return_matches_oracle[5-up]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE",
+          "asserted_outputs": [
+            "return"
+          ],
           "validated_outputs": [
             "return"
           ],
@@ -1049,8 +1128,11 @@
           "nodeids": [
             "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[HISTORICAL_RETURN-return-0.5]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED",
+          "asserted_outputs": [
+            "return"
+          ],
           "validated_outputs": [
             "return"
           ],
@@ -1074,11 +1156,14 @@
           "nodeids": [
             "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[HISTORICAL_RETURN-params8-condition8]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
+          "asserted_outputs": [],
           "validated_outputs": [],
           "tested_parameter_sets": [
-            {}
+            {
+              "window": 20
+            }
           ],
           "unvalidated_registered_outputs": [
             "return",
@@ -1136,8 +1221,12 @@
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_price_extremes_matches_oracle[20-osc]",
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_price_extremes_matches_oracle[20-up]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE",
+          "asserted_outputs": [
+            "hhv",
+            "llv"
+          ],
           "validated_outputs": [
             "hhv",
             "llv"
@@ -1163,8 +1252,11 @@
           "nodeids": [
             "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[PRICE_EXTREMES-hhv-10.0]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED",
+          "asserted_outputs": [
+            "hhv"
+          ],
           "validated_outputs": [
             "hhv"
           ],
@@ -1188,11 +1280,14 @@
           "nodeids": [
             "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[PRICE_EXTREMES-params10-condition10]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
+          "asserted_outputs": [],
           "validated_outputs": [],
           "tested_parameter_sets": [
-            {}
+            {
+              "window": 20
+            }
           ],
           "unvalidated_registered_outputs": [
             "hhv",
@@ -1252,8 +1347,12 @@
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_prior_breakout_matches_oracle[20-osc]",
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_prior_breakout_matches_oracle[20-up]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE",
+          "asserted_outputs": [
+            "prior_high",
+            "prior_low"
+          ],
           "validated_outputs": [
             "prior_high",
             "prior_low"
@@ -1278,8 +1377,9 @@
           "expected": [],
           "missing": [],
           "nodeids": [],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED",
+          "asserted_outputs": [],
           "validated_outputs": [],
           "tested_parameter_sets": [],
           "unvalidated_registered_outputs": [
@@ -1300,11 +1400,14 @@
           "nodeids": [
             "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[PRIOR_BREAKOUT-params11-condition11]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
+          "asserted_outputs": [],
           "validated_outputs": [],
           "tested_parameter_sets": [
-            {}
+            {
+              "window": 20
+            }
           ],
           "unvalidated_registered_outputs": [
             "prior_high",
@@ -1363,8 +1466,12 @@
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_drawdown_from_peak_matches_oracle[60-osc]",
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_drawdown_from_peak_matches_oracle[60-up]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE",
+          "asserted_outputs": [
+            "drawdown",
+            "peak"
+          ],
           "validated_outputs": [
             "drawdown",
             "peak"
@@ -1386,8 +1493,9 @@
           "expected": [],
           "missing": [],
           "nodeids": [],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED",
+          "asserted_outputs": [],
           "validated_outputs": [],
           "tested_parameter_sets": [],
           "unvalidated_registered_outputs": [
@@ -1406,11 +1514,14 @@
           "nodeids": [
             "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[DRAWDOWN_FROM_PEAK-params21-condition21]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
+          "asserted_outputs": [],
           "validated_outputs": [],
           "tested_parameter_sets": [
-            {}
+            {
+              "window": 20
+            }
           ],
           "unvalidated_registered_outputs": [
             "drawdown",
@@ -1459,8 +1570,11 @@
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_macd_hist_raw_matches_oracle[osc]",
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_macd_hist_raw_matches_oracle[up]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE",
+          "asserted_outputs": [
+            "hist_raw"
+          ],
           "validated_outputs": [
             "hist_raw"
           ],
@@ -1483,8 +1597,9 @@
           "expected": [],
           "missing": [],
           "nodeids": [],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED",
+          "asserted_outputs": [],
           "validated_outputs": [],
           "tested_parameter_sets": [],
           "unvalidated_registered_outputs": [
@@ -1504,11 +1619,16 @@
           "nodeids": [
             "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[MACD_HIST_RAW-params19-condition19]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
+          "asserted_outputs": [],
           "validated_outputs": [],
           "tested_parameter_sets": [
-            {}
+            {
+              "fast": 12,
+              "slow": 26,
+              "signal": 9
+            }
           ],
           "unvalidated_registered_outputs": [
             "dif",
@@ -1567,22 +1687,27 @@
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_trix_matches_oracle[6-osc]",
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_trix_matches_oracle[6-up]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE",
+          "asserted_outputs": [
+            "trix",
+            "trix_ma"
+          ],
           "validated_outputs": [
-            "trix"
+            "trix",
+            "trix_ma"
           ],
           "tested_parameter_sets": [
             {
-              "window": 12
+              "window": 12,
+              "signal": 9
             },
             {
-              "window": 6
+              "window": 6,
+              "signal": 9
             }
           ],
-          "unvalidated_registered_outputs": [
-            "trix_ma"
-          ]
+          "unvalidated_registered_outputs": []
         },
         "condition": {
           "status": "VERIFIED",
@@ -1595,8 +1720,11 @@
           "nodeids": [
             "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[TRIX-trix-0.5]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED",
+          "asserted_outputs": [
+            "trix"
+          ],
           "validated_outputs": [
             "trix"
           ],
@@ -1620,11 +1748,15 @@
           "nodeids": [
             "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[TRIX-params5-condition5]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
+          "asserted_outputs": [],
           "validated_outputs": [],
           "tested_parameter_sets": [
-            {}
+            {
+              "window": 12,
+              "signal": 9
+            }
           ],
           "unvalidated_registered_outputs": [
             "trix",
@@ -1663,19 +1795,15 @@
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_volume_ma_and_amount_ma_match_oracle[20]",
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_volume_ma_and_amount_ma_match_oracle[5]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE",
+          "asserted_outputs": [
+            "volume_ma"
+          ],
           "validated_outputs": [
             "volume_ma"
           ],
-          "tested_parameter_sets": [
-            {
-              "window": 20
-            },
-            {
-              "window": 5
-            }
-          ],
+          "tested_parameter_sets": [],
           "unvalidated_registered_outputs": []
         },
         "condition": {
@@ -1689,8 +1817,11 @@
           "nodeids": [
             "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[VOLUME_MA-volume_ma-500000.0]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED",
+          "asserted_outputs": [
+            "volume_ma"
+          ],
           "validated_outputs": [
             "volume_ma"
           ],
@@ -1712,11 +1843,14 @@
           "nodeids": [
             "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[VOLUME_MA-params12-condition12]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
+          "asserted_outputs": [],
           "validated_outputs": [],
           "tested_parameter_sets": [
-            {}
+            {
+              "window": 20
+            }
           ],
           "unvalidated_registered_outputs": [
             "volume_ma"
@@ -1754,19 +1888,15 @@
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_volume_ma_and_amount_ma_match_oracle[20]",
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_volume_ma_and_amount_ma_match_oracle[5]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE",
+          "asserted_outputs": [
+            "amount_ma"
+          ],
           "validated_outputs": [
             "amount_ma"
           ],
-          "tested_parameter_sets": [
-            {
-              "window": 20
-            },
-            {
-              "window": 5
-            }
-          ],
+          "tested_parameter_sets": [],
           "unvalidated_registered_outputs": []
         },
         "condition": {
@@ -1776,8 +1906,9 @@
           "expected": [],
           "missing": [],
           "nodeids": [],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED",
+          "asserted_outputs": [],
           "validated_outputs": [],
           "tested_parameter_sets": [],
           "unvalidated_registered_outputs": [
@@ -1795,11 +1926,14 @@
           "nodeids": [
             "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[AMOUNT_MA-params20-condition20]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
+          "asserted_outputs": [],
           "validated_outputs": [],
           "tested_parameter_sets": [
-            {}
+            {
+              "window": 20
+            }
           ],
           "unvalidated_registered_outputs": [
             "amount_ma"
@@ -1838,19 +1972,15 @@
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rvol_variants_match_oracle_and_differ[20]",
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rvol_variants_match_oracle_and_differ[5]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE",
+          "asserted_outputs": [
+            "rvol"
+          ],
           "validated_outputs": [
             "rvol"
           ],
-          "tested_parameter_sets": [
-            {
-              "window": 20
-            },
-            {
-              "window": 5
-            }
-          ],
+          "tested_parameter_sets": [],
           "unvalidated_registered_outputs": [
             "volume_ma_prior"
           ]
@@ -1866,8 +1996,11 @@
           "nodeids": [
             "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[RVOL_PRIOR-rvol-1.0]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED",
+          "asserted_outputs": [
+            "rvol"
+          ],
           "validated_outputs": [
             "rvol"
           ],
@@ -1891,11 +2024,14 @@
           "nodeids": [
             "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[RVOL_PRIOR-params13-condition13]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
+          "asserted_outputs": [],
           "validated_outputs": [],
           "tested_parameter_sets": [
-            {}
+            {
+              "window": 20
+            }
           ],
           "unvalidated_registered_outputs": [
             "rvol",
@@ -1935,19 +2071,15 @@
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rvol_variants_match_oracle_and_differ[20]",
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rvol_variants_match_oracle_and_differ[5]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE",
+          "asserted_outputs": [
+            "rvol"
+          ],
           "validated_outputs": [
             "rvol"
           ],
-          "tested_parameter_sets": [
-            {
-              "window": 20
-            },
-            {
-              "window": 5
-            }
-          ],
+          "tested_parameter_sets": [],
           "unvalidated_registered_outputs": [
             "volume_ma"
           ]
@@ -1959,8 +2091,9 @@
           "expected": [],
           "missing": [],
           "nodeids": [],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED",
+          "asserted_outputs": [],
           "validated_outputs": [],
           "tested_parameter_sets": [],
           "unvalidated_registered_outputs": [
@@ -1979,11 +2112,14 @@
           "nodeids": [
             "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[RVOL_INCL_CURRENT-params23-condition23]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
+          "asserted_outputs": [],
           "validated_outputs": [],
           "tested_parameter_sets": [
-            {}
+            {
+              "window": 20
+            }
           ],
           "unvalidated_registered_outputs": [
             "rvol",
@@ -2022,8 +2158,11 @@
           "nodeids": [
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_accumulation_distribution_and_chaikin_and_pvt_match_oracle"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE",
+          "asserted_outputs": [
+            "ad_line"
+          ],
           "validated_outputs": [
             "ad_line"
           ],
@@ -2041,8 +2180,9 @@
           "expected": [],
           "missing": [],
           "nodeids": [],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED",
+          "asserted_outputs": [],
           "validated_outputs": [],
           "tested_parameter_sets": [],
           "unvalidated_registered_outputs": [
@@ -2061,8 +2201,9 @@
           "nodeids": [
             "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[ACCUMULATION_DISTRIBUTION-params15-condition15]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
+          "asserted_outputs": [],
           "validated_outputs": [],
           "tested_parameter_sets": [
             {}
@@ -2107,8 +2248,11 @@
           "nodeids": [
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_accumulation_distribution_and_chaikin_and_pvt_match_oracle"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE",
+          "asserted_outputs": [
+            "cmf"
+          ],
           "validated_outputs": [
             "cmf"
           ],
@@ -2129,8 +2273,9 @@
           "expected": [],
           "missing": [],
           "nodeids": [],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED",
+          "asserted_outputs": [],
           "validated_outputs": [],
           "tested_parameter_sets": [],
           "unvalidated_registered_outputs": [
@@ -2150,11 +2295,14 @@
           "nodeids": [
             "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[CHAIKIN_MONEY_FLOW-params16-condition16]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
+          "asserted_outputs": [],
           "validated_outputs": [],
           "tested_parameter_sets": [
-            {}
+            {
+              "window": 20
+            }
           ],
           "unvalidated_registered_outputs": [
             "cmf",
@@ -2191,8 +2339,11 @@
           "nodeids": [
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_accumulation_distribution_and_chaikin_and_pvt_match_oracle"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE",
+          "asserted_outputs": [
+            "pvt"
+          ],
           "validated_outputs": [
             "pvt"
           ],
@@ -2208,8 +2359,9 @@
           "expected": [],
           "missing": [],
           "nodeids": [],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED",
+          "asserted_outputs": [],
           "validated_outputs": [],
           "tested_parameter_sets": [],
           "unvalidated_registered_outputs": [
@@ -2227,8 +2379,9 @@
           "nodeids": [
             "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[PVT-params17-condition17]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
+          "asserted_outputs": [],
           "validated_outputs": [],
           "tested_parameter_sets": [
             {}
@@ -2266,8 +2419,11 @@
           "nodeids": [
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_vwap_proxy_and_mfi_match_oracle"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE",
+          "asserted_outputs": [
+            "vwap_session_proxy"
+          ],
           "validated_outputs": [
             "vwap_session_proxy"
           ],
@@ -2283,8 +2439,9 @@
           "expected": [],
           "missing": [],
           "nodeids": [],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED",
+          "asserted_outputs": [],
           "validated_outputs": [],
           "tested_parameter_sets": [],
           "unvalidated_registered_outputs": [
@@ -2302,8 +2459,9 @@
           "nodeids": [
             "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[VWAP_SESSION_PROXY-params18-condition18]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
+          "asserted_outputs": [],
           "validated_outputs": [],
           "tested_parameter_sets": [
             {}
@@ -2346,8 +2504,11 @@
           "nodeids": [
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_vwap_proxy_and_mfi_match_oracle"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE",
+          "asserted_outputs": [
+            "mfi"
+          ],
           "validated_outputs": [
             "mfi"
           ],
@@ -2371,8 +2532,11 @@
           "nodeids": [
             "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_condition_layer_consumes_each_new_indicator[MFI-mfi-50.0]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED",
+          "asserted_outputs": [
+            "mfi"
+          ],
           "validated_outputs": [
             "mfi"
           ],
@@ -2396,11 +2560,14 @@
           "nodeids": [
             "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[MFI-params14-condition14]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
+          "asserted_outputs": [],
           "validated_outputs": [],
           "tested_parameter_sets": [
-            {}
+            {
+              "window": 14
+            }
           ],
           "unvalidated_registered_outputs": [
             "mfi",
@@ -2438,8 +2605,11 @@
           "nodeids": [
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_rolling_slope_matches_oracle"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE",
+          "asserted_outputs": [
+            "slope"
+          ],
           "validated_outputs": [
             "slope"
           ],
@@ -2457,8 +2627,9 @@
           "expected": [],
           "missing": [],
           "nodeids": [],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED",
+          "asserted_outputs": [],
           "validated_outputs": [],
           "tested_parameter_sets": [],
           "unvalidated_registered_outputs": [
@@ -2476,11 +2647,14 @@
           "nodeids": [
             "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[ROLLING_SLOPE-params22-condition22]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
+          "asserted_outputs": [],
           "validated_outputs": [],
           "tested_parameter_sets": [
-            {}
+            {
+              "window": 20
+            }
           ],
           "unvalidated_registered_outputs": [
             "slope"
@@ -2524,8 +2698,11 @@
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_true_range_matches_oracle[osc]",
             "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_true_range_matches_oracle[up]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE",
+          "asserted_outputs": [
+            "tr"
+          ],
           "validated_outputs": [
             "tr"
           ],
@@ -2541,8 +2718,9 @@
           "expected": [],
           "missing": [],
           "nodeids": [],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED",
+          "asserted_outputs": [],
           "validated_outputs": [],
           "tested_parameter_sets": [],
           "unvalidated_registered_outputs": [
@@ -2560,8 +2738,9 @@
           "nodeids": [
             "tests/conditions_v2/test_price_only_condition_consumption_v1.py::test_indicator_reaches_account_chain_through_public_entry[TRUE_RANGE-params24-condition24]"
           ],
-          "junit": "junit-price-only-v1.xml",
+          "junit": "reports/junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
+          "asserted_outputs": [],
           "validated_outputs": [],
           "tested_parameter_sets": [
             {}
