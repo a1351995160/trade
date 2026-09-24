@@ -305,3 +305,99 @@ def test_cli_in_repo_path_is_accepted():
     resolved = module.resolve_within_repo(
         "reports/price_only_validation_v1/EVIDENCE_COUNTS_V1.json", label="out")
     assert resolved.is_relative_to(module.REPO_ROOT.resolve())
+
+
+# ==========================================================================
+# PR16-B：适用性剩余（未映射 vs 未测试；注册输出 vs 已验证输出）
+# ==========================================================================
+def test_single_condition_tests_are_mapped_not_unmapped(tmp_path: Path):
+    """既有单独条件测试必须被映射进去，不得标成"无覆盖"。"""
+    module = _load_module()
+    coverage = _real_coverage()
+    for indicator in ("CCI", "NATR", "PSY"):
+        nodes = coverage[(indicator, "condition")]
+        assert nodes, f"{indicator} 的条件覆盖为空 —— 单独测试未映射"
+        assert any("test_condition_layer_consumes_" in n for n in nodes), \
+            f"{indicator} 未映射到其单独测试"
+
+
+def test_mapped_single_test_verifies_when_passed(tmp_path: Path):
+    """被映射的单独测试 passed 时，该维度可 VERIFIED。"""
+    module = _load_module()
+    coverage = _real_coverage()
+    nodes = coverage[("CCI", "condition")]
+    junit = tmp_path / "cci.xml"
+    _write_junit(junit, [_node_to_case(n) for n in nodes])
+    outcomes = module.parse_junit_outcomes(junit)
+    result = module.resolve_dimension(nodes, outcomes)
+    assert result["status"] == "VERIFIED"
+
+
+def test_mapped_single_test_downgrades_when_removed(tmp_path: Path):
+    """删除该单独测试节点后必须降级（不是"未测试"被当成通过）。"""
+    module = _load_module()
+    coverage = _real_coverage()
+    nodes = coverage[("CCI", "condition")]
+    junit = tmp_path / "empty.xml"
+    _write_junit(junit, [])
+    outcomes = module.parse_junit_outcomes(junit)
+    result = module.resolve_dimension(nodes, outcomes)
+    assert result["status"] == "PARTIAL"
+    assert result["outcome"] == "missing_testcase"
+
+
+def test_registered_outputs_are_not_auto_validated():
+    """注册输出不得自动成为已验证输出（DEMA 注册 3 输出，仅 dema 被断言）。"""
+    module = _load_module()
+    rows = module._indicator_evidence({})
+    dema = next(r for r in rows if r["indicator"] == "DEMA")
+    registered = set(dema["registered_outputs"])
+    validated = set(dema["dimensions"]["formula"]["validated_outputs"])
+    assert registered == {"dema", "ema1", "ema2"}, f"注册输出异常：{registered}"
+    assert validated == {"dema"}, f"已验证输出被夸大：{validated}"
+    assert validated < registered, "已验证输出未严格小于注册输出"
+
+
+def test_registered_params_are_not_auto_tested():
+    """注册参数不得自动成为已验证参数。"""
+    module = _load_module()
+    rows = module._indicator_evidence({})
+    dema = next(r for r in rows if r["indicator"] == "DEMA")
+    registered = set(dema["registered_params"])
+    tested = set(dema["dimensions"]["formula"]["tested_params"])
+    assert tested <= registered, "已验证参数超出注册范围"
+    assert "price" in registered and "price" not in tested, \
+        "price 参数未被断言却出现在已验证参数中"
+
+
+def test_removing_one_node_affects_only_its_dimension(tmp_path: Path):
+    """删除一个精确节点只影响其真正适用的维度。"""
+    module = _load_module()
+    coverage = _real_coverage()
+    acct_nodes = coverage[("DEMA", "account")]
+    cases = [_node_to_case(n) for nodes in coverage.values() for n in nodes
+             if n not in acct_nodes]
+    junit = tmp_path / "no_acct.xml"
+    _write_junit(junit, cases)
+    outcomes = module.parse_junit_outcomes(junit)
+
+    acct = module.resolve_dimension(acct_nodes, outcomes)
+    formula = module.resolve_dimension(coverage[("DEMA", "formula")], outcomes)
+    assert acct["status"] == "PARTIAL", "被删节点维度未降级"
+    assert formula["status"] == "VERIFIED", "无关维度被误伤"
+
+
+def test_subset_and_full_diff_are_reported_separately():
+    """子集口径与 BASE/HEAD 全量差集必须分别记录。"""
+    import json
+
+    payload_path = (REPO_ROOT / "reports" / "price_only_validation_v1"
+                    / "EVIDENCE_COUNTS_V1.json")
+    if not payload_path.exists():
+        pytest.skip("证据文件尚未生成")
+    data = json.loads(payload_path.read_text(encoding="utf-8"))
+    assert data["new_tests"]["scope"] == "SUBSET_OF_NEW_FILES_NOT_FULL_BASE_HEAD_DIFF"
+    diff = data.get("node_diff_vs_base", {})
+    assert diff.get("status") in {"ESTABLISHED", "NOT_ESTABLISHED"}
+    if diff.get("status") == "NOT_ESTABLISHED":
+        assert "reason" in diff, "未建立全量身份时必须给出原因"

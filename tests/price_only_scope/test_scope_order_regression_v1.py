@@ -6,12 +6,13 @@
 - 用**实际坏 fixture 变异**（finally 无条件 deactivate）证明新测试会失败；
 - 不要只把手写"正确清理函数"改成坏函数。
 
-实现方式：把**真实测试模块**（含其 autouse fixture）复制到独立会话目录，
-在子会话中先执行一个使用该 fixture 的用例（触发真实 teardown），
-再执行一个断言保护仍在、并经真实 reader 入口验证的用例。
+实现方式（措辞准确）：子会话**动态导入仓库里那份真实测试模块**，取出其中的
+``_restore_scope`` **generator fixture**，并**手动驱动**它的 setup/teardown
+（``next(gen)`` 两次）—— 不是由 pytest 自动注入该 fixture。
+第二个用例再经受控 wrapper 检查同一受保护哨兵被拒且 ``opened=[]``。
 
-反向验证：把该 fixture 的 finally 改成无条件 deactivate 后，
-顺序回归必须失败——这证明回归有防退化能力，而非空转。
+反向验证：把 teardown 换成无条件 ``deactivate`` 后，顺序回归必须失败 ——
+这证明回归有防退化能力，而非空转。
 """
 from __future__ import annotations
 

@@ -39,6 +39,75 @@ DIMENSION_TESTS = {
     "account": ACCOUNT_TEST,
 }
 
+# 非参数化的**单独**条件消费测试：既有、已通过，但参数化扫描扫不到。
+# 任务要求把它们映射进去（或明确标 UNMAPPED_EVIDENCE），不要求重复新写测试。
+SINGLE_CONDITION_TESTS = {
+    "CCI": f"{CONDITION_MODULE}::test_condition_layer_consumes_cci_output_with_true_false_unknown",
+    "NATR": f"{CONDITION_MODULE}::test_condition_layer_consumes_natr_output",
+    "PSY": f"{CONDITION_MODULE}::test_condition_layer_consumes_psy_output",
+}
+
+# 各维度**实际被断言**的输出与参数（来自对应测试的真实断言，非注册表）。
+# 未列出的输出/参数保持 PARTIAL —— 注册信息不能自动认证全部输出。
+VALIDATED_BY_DIMENSION = {
+    # 公式维度：每个指标只断言主输出；window 参数由参数化用例覆盖
+    ("DEMA", "formula"): {"outputs": ["dema"], "params": ["window"]},
+    ("TEMA", "formula"): {"outputs": ["tema"], "params": ["window"]},
+    ("CCI", "formula"): {"outputs": ["cci"], "params": ["window"]},
+    ("NATR", "formula"): {"outputs": ["natr"], "params": ["window"]},
+    ("PSY", "formula"): {"outputs": ["psy"], "params": ["window"]},
+    ("DONCHIAN", "formula"): {"outputs": ["upper", "lower", "middle"],
+                              "params": ["window"]},
+    ("KELTNER", "formula"): {"outputs": ["upper", "middle", "lower", "atr"],
+                             "params": ["window", "atr_window"]},
+    ("ROLLING_VOLATILITY", "formula"): {"outputs": ["volatility", "return"],
+                                        "params": ["window"]},
+    ("HISTORICAL_RETURN", "formula"): {"outputs": ["return"], "params": ["window"]},
+    ("PRICE_EXTREMES", "formula"): {"outputs": ["hhv", "llv"], "params": ["window"]},
+    ("PRIOR_BREAKOUT", "formula"): {"outputs": ["prior_high", "prior_low"],
+                                    "params": ["window"]},
+    ("DRAWDOWN_FROM_PEAK", "formula"): {"outputs": ["drawdown"], "params": ["window"]},
+    ("MACD_HIST_RAW", "formula"): {"outputs": ["dif", "dea", "hist_raw"],
+                                   "params": ["fast", "slow", "signal"]},
+    ("TRIX", "formula"): {"outputs": ["trix"], "params": ["window", "signal"]},
+    ("VOLUME_MA", "formula"): {"outputs": ["volume_ma"], "params": ["window"]},
+    ("AMOUNT_MA", "formula"): {"outputs": ["amount_ma"], "params": ["window"]},
+    ("RVOL_PRIOR", "formula"): {"outputs": ["rvol"], "params": ["window"]},
+    ("RVOL_INCL_CURRENT", "formula"): {"outputs": ["rvol"], "params": ["window"]},
+    ("ACCUMULATION_DISTRIBUTION", "formula"): {"outputs": ["ad_line"], "params": []},
+    ("CHAIKIN_MONEY_FLOW", "formula"): {"outputs": ["cmf"], "params": ["window"]},
+    ("PVT", "formula"): {"outputs": ["pvt"], "params": []},
+    ("VWAP_SESSION_PROXY", "formula"): {"outputs": ["vwap_session_proxy"], "params": []},
+    ("MFI", "formula"): {"outputs": ["mfi"], "params": ["window"]},
+    ("ROLLING_SLOPE", "formula"): {"outputs": ["slope"], "params": ["window"]},
+    ("TRUE_RANGE", "formula"): {"outputs": ["tr"], "params": []},
+    # 条件维度：单独测试断言的具体输出
+    ("CCI", "condition"): {"outputs": ["cci"], "params": []},
+    ("NATR", "condition"): {"outputs": ["natr"], "params": []},
+    ("PSY", "condition"): {"outputs": ["psy"], "params": []},
+    # 条件维度：参数化测试注入的具体输出（形如 [DEMA-dema-10.0]）
+    ("DEMA", "condition"): {"outputs": ["dema"], "params": []},
+    ("TEMA", "condition"): {"outputs": ["tema"], "params": []},
+    ("TRIX", "condition"): {"outputs": ["trix"], "params": []},
+    ("KELTNER", "condition"): {"outputs": ["upper"], "params": []},
+    ("DONCHIAN", "condition"): {"outputs": ["upper"], "params": []},
+    ("PRICE_EXTREMES", "condition"): {"outputs": ["hhv"], "params": []},
+    ("HISTORICAL_RETURN", "condition"): {"outputs": ["return"], "params": []},
+    ("ROLLING_VOLATILITY", "condition"): {"outputs": ["volatility"], "params": []},
+    ("VOLUME_MA", "condition"): {"outputs": ["volume_ma"], "params": []},
+    ("RVOL_PRIOR", "condition"): {"outputs": ["rvol"], "params": []},
+    ("MFI", "condition"): {"outputs": ["mfi"], "params": []},
+    # 账户维度：经公开服务消费，断言成交而非具体输出
+    **{(ind, "account"): {"outputs": [], "params": []}
+       for ind in ("CCI", "NATR", "PSY", "DEMA", "TEMA", "TRIX", "DONCHIAN",
+                   "KELTNER", "HISTORICAL_RETURN", "ROLLING_VOLATILITY",
+                   "PRICE_EXTREMES", "PRIOR_BREAKOUT", "VOLUME_MA", "RVOL_PRIOR",
+                   "MFI", "ACCUMULATION_DISTRIBUTION", "CHAIKIN_MONEY_FLOW", "PVT",
+                   "VWAP_SESSION_PROXY", "MACD_HIST_RAW", "AMOUNT_MA",
+                   "DRAWDOWN_FROM_PEAK", "ROLLING_SLOPE", "RVOL_INCL_CURRENT",
+                   "TRUE_RANGE")},
+}
+
 # 本轮新增测试的组成部分（按文件，可自动计数）
 NEW_TEST_FILES = {
     "formula": "tests/indicators_v2/test_price_only_formula_increment_v1.py",
@@ -52,6 +121,8 @@ NEW_TEST_FILES = {
     "controlled_reader_boundary": "tests/price_only_scope/test_controlled_reader_boundary_v1.py",
     "scope_order_regression": "tests/price_only_scope/test_scope_order_regression_v1.py",
     "evidence_mutation": "tests/price_only_scope/test_evidence_mutation_v1.py",
+    "relative_link_binding": "tests/price_only_scope/test_relative_link_binding_v1.py",
+    "read_path_identity": "tests/price_only_scope/test_read_path_identity_v1.py",
 }
 QFQ_SYNTHETIC_FILE = "tests/pit/test_qfq_pit_synthetic_v1.py"
 
@@ -279,8 +350,12 @@ def build_expected_coverage() -> dict:
         if not nodes and base in formula_cache[func_name].get("_plain", []):
             nodes = [base]
         expected[(indicator_id, "formula")] = sorted(set(nodes))
-        expected[(indicator_id, "condition")] = sorted(set(
-            condition_map.get(indicator_id, [])))
+        # 条件维度：参数化用例 + 该指标的单独测试（若有）
+        condition_nodes = set(condition_map.get(indicator_id, []))
+        single = SINGLE_CONDITION_TESTS.get(indicator_id)
+        if single:
+            condition_nodes.add(single)
+        expected[(indicator_id, "condition")] = sorted(condition_nodes)
         expected[(indicator_id, "account")] = sorted(set(
             account_map.get(indicator_id, [])))
     _COVERAGE_CACHE.update(expected)
@@ -353,12 +428,17 @@ def _indicator_evidence(outcomes: dict) -> list:
             resolved["nodeids"] = expected
             resolved["junit"] = TARGET_JUNIT_NAME
             resolved["strength"] = strength_by_dim[name]
+            # 只给**实际被断言**的输出/参数；其余保持未验证
+            validated = VALIDATED_BY_DIMENSION.get((indicator_id, name), {})
+            resolved["validated_outputs"] = list(validated.get("outputs", []))
+            resolved["tested_params"] = list(validated.get("params", []))
             dims[name] = resolved
         rows.append({
             "indicator": indicator_id,
             "version": spec.version,
-            "outputs": list(spec.outputs),
-            "params_domain": dict(spec.params),
+            # registered_* 是实现清单，不是已验证范围
+            "registered_outputs": list(spec.outputs),
+            "registered_params": dict(spec.params),
             "input_domain": list(spec.inputs),
             "price_mode": spec.price_mode,
             "warmup_bars": spec.warmup_bars,

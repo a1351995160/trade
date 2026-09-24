@@ -163,6 +163,21 @@ def is_forbidden_gbbq_path(path) -> bool:
 # --------------------------------------------------------------------------
 # 冻结的禁止集合（建立一次，之后只读）
 # --------------------------------------------------------------------------
+def resolve_input_path(path) -> Path:
+    """把**输入路径**解析为唯一绝对对象（守卫与读取共用）。
+
+    这是本任务唯一的输入解析边界：相对路径按 ``COMPOSITION_ROOT`` 解释，
+    不按 cwd。调用方必须把返回值同时用于守卫、``exists`` 与实际打开，
+    **不得** guard 一个字符串、read 另一个字符串 —— 否则同一文件会有两种
+    身份（已复现的绕过：``cache_dir='cache'`` 时守卫锚定组合根、
+    ``pd.read_csv`` 按 cwd 打开，同一哨兵被真实读出）。
+    """
+    candidate = Path(str(path))
+    if not candidate.is_absolute():
+        candidate = COMPOSITION_ROOT / candidate
+    return candidate
+
+
 def _root_identities(root: Path) -> tuple[str, ...]:
     """把根解析为全部可比身份（相对写法 + 组合根下的绝对写法）。"""
     variants = set()
@@ -312,15 +327,19 @@ def controlled_gbbq_reader(path):
     的存在，但要求项目内所有直接调用都经本包装器，从而在**打开/解码之前**
     先经过同一政策。
 
+    路径在**输入边界解析一次**，守卫与 vendor 打开消费同一个已解析对象
+    （不得 guard A 再 read B）。
+
     返回 vendor 解码后的 DataFrame。若本任务作用域激活且路径受保护，
     则抛出 ``ForbiddenDataAccess``——此时 vendor 的 ``get_df`` **不会被执行**。
     """
+    resolved = resolve_input_path(path)
     if task_scope_active():
         assert_gbbq_read_disabled()
-        guard_gbbq_path(path, label="controlled_gbbq_reader")
+        guard_gbbq_path(resolved, label="controlled_gbbq_reader")
     from pytdx.reader import GbbqReader
 
-    return GbbqReader().get_df(str(path))
+    return GbbqReader().get_df(str(resolved))
 
 
 # 受控读取政策：明确区分"受控的直接调用"与"裸 vendor 调用"。
