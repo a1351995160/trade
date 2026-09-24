@@ -359,12 +359,14 @@ def test_registered_outputs_are_not_auto_validated():
 
 
 def test_registered_params_are_not_auto_tested():
-    """注册参数不得自动成为已验证参数。"""
+    """注册参数不得自动成为已验证参数（字段已改为 tested_parameter_sets）。"""
     module = _load_module()
     rows = module._indicator_evidence({})
     dema = next(r for r in rows if r["indicator"] == "DEMA")
     registered = set(dema["registered_params"])
-    tested = set(dema["dimensions"]["formula"]["tested_params"])
+    tested = set()
+    for ps in dema["dimensions"]["formula"]["tested_parameter_sets"]:
+        tested |= set(ps)
     assert tested <= registered, "已验证参数超出注册范围"
     assert "price" in registered and "price" not in tested, \
         "price 参数未被断言却出现在已验证参数中"
@@ -401,3 +403,128 @@ def test_subset_and_full_diff_are_reported_separately():
     assert diff.get("status") in {"ESTABLISHED", "NOT_ESTABLISHED"}
     if diff.get("status") == "NOT_ESTABLISHED":
         assert "reason" in diff, "未建立全量身份时必须给出原因"
+
+# ==========================================================================
+# PR16 证据范围修正：声明不得超过实际断言
+# ==========================================================================
+def test_declared_outputs_never_exceed_asserted_outputs():
+    """每项声明的 validated_outputs 必须落在注册输出内且严格来自断言。
+
+    复核给定反例：DONCHIAN 声明 upper/lower/middle、KELTNER 声明含 middle/atr、
+    ROLLING_VOLATILITY 声明含 return、MACD_HIST_RAW 声明含 dif/dea ——
+    这些输出在对应测试中**没有**被逐值断言。
+    """
+    module = _load_module()
+    rows = module._indicator_evidence({})
+    offenders = []
+    for row in rows:
+        for dim_name, dim in row["dimensions"].items():
+            declared = set(dim["validated_outputs"])
+            registered = set(row["registered_outputs"])
+            if not declared <= registered:
+                offenders.append((row["indicator"], dim_name, "declared>registered"))
+            # 未被断言的注册输出必须出现在 unvalidated 列表里
+            unvalidated = set(dim["unvalidated_registered_outputs"])
+            if declared | unvalidated != registered:
+                offenders.append((row["indicator"], dim_name, "partition-incomplete"))
+    assert not offenders, f"输出声明与注册范围不一致：{offenders}"
+
+
+def test_known_over_declarations_are_corrected():
+    """四个已指出例子 + 全量核对结果都必须落在实际断言范围内。"""
+    module = _load_module()
+    rows = {r["indicator"]: r for r in module._indicator_evidence({})}
+    expectations = {
+        "DONCHIAN": {"upper", "lower"},
+        "KELTNER": {"upper", "lower"},
+        "ROLLING_VOLATILITY": {"volatility"},
+        "MACD_HIST_RAW": {"hist_raw"},
+        "DRAWDOWN_FROM_PEAK": {"drawdown", "peak"},
+        "DEMA": {"dema"},
+    }
+    for indicator, expected in expectations.items():
+        got = set(rows[indicator]["dimensions"]["formula"]["validated_outputs"])
+        assert got == expected, f"{indicator}: 声明 {got} != 实际断言 {expected}"
+
+
+def test_test_parameter_sets_record_actual_values_not_names():
+    """参数证据必须记录**实际取值与组合**，不能只写参数名。"""
+    module = _load_module()
+    rows = {r["indicator"]: r for r in module._indicator_evidence({})}
+    dema = rows["DEMA"]["dimensions"]["formula"]["tested_parameter_sets"]
+    assert dema == [{"window": 5}, {"window": 20}], f"DEMA 参数取值记录错误：{dema}"
+    # 不能是参数名列表
+    assert all(isinstance(ps, dict) and ps for ps in dema), "参数证据退化为参数名"
+
+    macd = rows["MACD_HIST_RAW"]["dimensions"]["formula"]["tested_parameter_sets"]
+    assert macd == [{"fast": 12, "slow": 26, "signal": 9}], \
+        f"MACD_HIST_RAW 组合参数记录错误：{macd}"
+
+
+def test_parameter_range_is_not_inflated_from_registry_default():
+    """修改注册默认值不得扩大已有证据的参数范围。
+
+    测试只执行 window=5/20；注册默认 window=20 不构成"全范围"证据。
+    """
+    module = _load_module()
+    rows = {r["indicator"]: r for r in module._indicator_evidence({})}
+    dema = rows["DEMA"]
+    tested_values = {ps["window"] for ps in
+                     dema["dimensions"]["formula"]["tested_parameter_sets"]}
+    assert tested_values == {5, 20}, f"参数范围被夸大：{tested_values}"
+    # 注册默认值存在，但不得成为已验证取值
+    assert dema["registered_params"].get("window") == 20
+    # 未测试的取值（如 10）不得出现在证据中
+    assert 10 not in tested_values, "未测试取值被列入证据"
+
+
+def test_unvalidated_output_does_not_become_verified_from_sibling_output():
+    """同指标其他输出 passed 不得让未断言输出变成已验证。
+
+    模拟：某指标声明两个输出，但只断言其中一个 —— 未断言的那个必须留在
+    unvalidated_registered_outputs，不得进入 validated_outputs。
+    """
+    module = _load_module()
+    rows = {r["indicator"]: r for r in module._indicator_evidence({})}
+    # KELTNER 注册 4 输出，只断言 2
+    keltner = rows["KELTNER"]
+    assert set(keltner["registered_outputs"]) == {"upper", "middle", "lower", "atr"}
+    assert set(keltner["dimensions"]["formula"]["validated_outputs"]) == {"upper", "lower"}
+    assert set(keltner["dimensions"]["formula"]["unvalidated_registered_outputs"]) == {
+        "middle", "atr"}, "未断言输出被附带认证"
+
+
+def test_missing_testcase_downgrades_only_that_range(tmp_path: Path):
+    """删除某指标某参数的预期 testcase：该范围降级，其他合格范围不受影响。"""
+    module = _load_module()
+    coverage = _real_coverage()
+    # 删除 DEMA 的 window=20 节点
+    dema_nodes = coverage[("DEMA", "formula")]
+    keep = [n for n in dema_nodes if "[20-" not in n]
+    assert len(keep) < len(dema_nodes), "前置：未找到 window=20 节点"
+
+    junit = tmp_path / "partial.xml"
+    _write_junit(junit, [_node_to_case(n) for n in keep])
+    outcomes = module.parse_junit_outcomes(junit)
+
+    dema = module.resolve_dimension(keep, outcomes)
+    tema_nodes = coverage[("TEMA", "formula")]
+    tema = module.resolve_dimension(tema_nodes, outcomes)
+    assert dema["status"] == "VERIFIED", "保留范围未通过"
+    # 完整期望（含 20）必须降级
+    full = module.resolve_dimension(dema_nodes, outcomes)
+    assert full["status"] == "PARTIAL", "缺失节点未导致降级"
+    assert tema["status"] == "PARTIAL", "无关指标被误判（TEMA 节点不在该 JUnit）"
+
+
+def test_valid_primary_output_positive_control(tmp_path: Path):
+    """正对照：合格主输出仍可 VERIFIED，不靠把全部状态改 PARTIAL。"""
+    module = _load_module()
+    coverage = _real_coverage()
+    outcomes = module.parse_junit_outcomes(_all_passing_junit(tmp_path))
+    dema = module.resolve_dimension(coverage[("DEMA", "formula")], outcomes)
+    assert dema["status"] == "VERIFIED", "合格主输出未通过"
+
+    rows = module._indicator_evidence(outcomes)
+    verified = sum(1 for r in rows if r["status"] == "VERIFIED")
+    assert verified > 0, "全部降级 —— 未保留正对照"

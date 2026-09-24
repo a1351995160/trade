@@ -3,7 +3,7 @@
   "junit_consumed": "E:\\llmwiki\\trade-price-only-validation-v1\\reports\\junit-price-only-v1.xml",
   "note": "计数与状态均由脚本自动派生，不硬编码；本机与 CI 分列。汇总成功不覆盖单项失败。",
   "source_identity": {
-    "head": "27500a3ead5d17d5441c3f2fcda2256fff21a5bf"
+    "head": "d2e91789ed861200fae5eaadb86d2a063bf775e5"
   },
   "new_tests": {
     "by_part": {
@@ -17,31 +17,31 @@
       "vendor_entry_guard": 7,
       "controlled_reader_boundary": 3,
       "scope_order_regression": 2,
-      "evidence_mutation": 24,
+      "evidence_mutation": 31,
       "relative_link_binding": 9,
       "read_path_identity": 9
     },
-    "parts_total": 312,
+    "parts_total": 319,
     "qfq_synthetic": 4,
-    "total_vs_base": 316,
+    "total_vs_base": 323,
     "note": "各组成部分合计 + 合成 QFQ；25 个账户服务用例属于 condition_and_service 内部，不重复累加。本清单为**子集**口径（本轮新增文件），非 BASE/HEAD 节点差集全量。",
     "scope": "SUBSET_OF_NEW_FILES_NOT_FULL_BASE_HEAD_DIFF"
   },
   "node_diff_vs_base": {
     "status": "ESTABLISHED",
     "base_nodes": 2349,
-    "head_nodes": 2665,
-    "added": 316,
+    "head_nodes": 2672,
+    "added": 323,
     "removed": 0,
     "scope": "FULL_BASE_HEAD_NODE_DIFF"
   },
   "local_target_suite": {
     "status": "ESTABLISHED",
-    "tests": 587,
+    "tests": 594,
     "errors": 0,
     "failures": 0,
     "skipped": 13,
-    "passed": 574,
+    "passed": 581,
     "failed_including_errors": 0
   },
   "local_full_suite": {
@@ -113,8 +113,17 @@
           "validated_outputs": [
             "dema"
           ],
-          "tested_params": [
-            "window"
+          "tested_parameter_sets": [
+            {
+              "window": 5
+            },
+            {
+              "window": 20
+            }
+          ],
+          "unvalidated_registered_outputs": [
+            "ema1",
+            "ema2"
           ]
         },
         "condition": {
@@ -133,7 +142,15 @@
           "validated_outputs": [
             "dema"
           ],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {
+              "threshold": 10.0
+            }
+          ],
+          "unvalidated_registered_outputs": [
+            "ema1",
+            "ema2"
+          ]
         },
         "account": {
           "status": "VERIFIED",
@@ -149,7 +166,14 @@
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
           "validated_outputs": [],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {}
+          ],
+          "unvalidated_registered_outputs": [
+            "dema",
+            "ema1",
+            "ema2"
+          ]
         }
       },
       "status": "VERIFIED"
@@ -208,8 +232,18 @@
           "validated_outputs": [
             "tema"
           ],
-          "tested_params": [
-            "window"
+          "tested_parameter_sets": [
+            {
+              "window": 5
+            },
+            {
+              "window": 20
+            }
+          ],
+          "unvalidated_registered_outputs": [
+            "ema1",
+            "ema2",
+            "ema3"
           ]
         },
         "condition": {
@@ -228,7 +262,16 @@
           "validated_outputs": [
             "tema"
           ],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {
+              "threshold": 10.0
+            }
+          ],
+          "unvalidated_registered_outputs": [
+            "ema1",
+            "ema2",
+            "ema3"
+          ]
         },
         "account": {
           "status": "VERIFIED",
@@ -244,7 +287,15 @@
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
           "validated_outputs": [],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {}
+          ],
+          "unvalidated_registered_outputs": [
+            "tema",
+            "ema1",
+            "ema2",
+            "ema3"
+          ]
         }
       },
       "status": "VERIFIED"
@@ -302,8 +353,16 @@
           "validated_outputs": [
             "cci"
           ],
-          "tested_params": [
-            "window"
+          "tested_parameter_sets": [
+            {
+              "window": 14
+            },
+            {
+              "window": 20
+            }
+          ],
+          "unvalidated_registered_outputs": [
+            "typical_price"
           ]
         },
         "condition": {
@@ -322,7 +381,12 @@
           "validated_outputs": [
             "cci"
           ],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {}
+          ],
+          "unvalidated_registered_outputs": [
+            "typical_price"
+          ]
         },
         "account": {
           "status": "VERIFIED",
@@ -338,7 +402,13 @@
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
           "validated_outputs": [],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {}
+          ],
+          "unvalidated_registered_outputs": [
+            "cci",
+            "typical_price"
+          ]
         }
       },
       "status": "VERIFIED"
@@ -396,8 +466,16 @@
           "validated_outputs": [
             "natr"
           ],
-          "tested_params": [
-            "window"
+          "tested_parameter_sets": [
+            {
+              "window": 14
+            },
+            {
+              "window": 20
+            }
+          ],
+          "unvalidated_registered_outputs": [
+            "atr"
           ]
         },
         "condition": {
@@ -416,7 +494,12 @@
           "validated_outputs": [
             "natr"
           ],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {}
+          ],
+          "unvalidated_registered_outputs": [
+            "atr"
+          ]
         },
         "account": {
           "status": "VERIFIED",
@@ -432,7 +515,13 @@
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
           "validated_outputs": [],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {}
+          ],
+          "unvalidated_registered_outputs": [
+            "natr",
+            "atr"
+          ]
         }
       },
       "status": "VERIFIED"
@@ -488,9 +577,15 @@
           "validated_outputs": [
             "psy"
           ],
-          "tested_params": [
-            "window"
-          ]
+          "tested_parameter_sets": [
+            {
+              "window": 12
+            },
+            {
+              "window": 6
+            }
+          ],
+          "unvalidated_registered_outputs": []
         },
         "condition": {
           "status": "VERIFIED",
@@ -508,7 +603,10 @@
           "validated_outputs": [
             "psy"
           ],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {}
+          ],
+          "unvalidated_registered_outputs": []
         },
         "account": {
           "status": "VERIFIED",
@@ -524,7 +622,12 @@
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
           "validated_outputs": [],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {}
+          ],
+          "unvalidated_registered_outputs": [
+            "psy"
+          ]
         }
       },
       "status": "VERIFIED"
@@ -583,11 +686,18 @@
           "strength": "NUMERIC_ORACLE",
           "validated_outputs": [
             "upper",
-            "lower",
-            "middle"
+            "lower"
           ],
-          "tested_params": [
-            "window"
+          "tested_parameter_sets": [
+            {
+              "window": 20
+            },
+            {
+              "window": 10
+            }
+          ],
+          "unvalidated_registered_outputs": [
+            "middle"
           ]
         },
         "condition": {
@@ -606,7 +716,15 @@
           "validated_outputs": [
             "upper"
           ],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {
+              "threshold": 10.0
+            }
+          ],
+          "unvalidated_registered_outputs": [
+            "lower",
+            "middle"
+          ]
         },
         "account": {
           "status": "VERIFIED",
@@ -622,7 +740,14 @@
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
           "validated_outputs": [],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {}
+          ],
+          "unvalidated_registered_outputs": [
+            "upper",
+            "lower",
+            "middle"
+          ]
         }
       },
       "status": "VERIFIED"
@@ -673,13 +798,17 @@
           "strength": "NUMERIC_ORACLE",
           "validated_outputs": [
             "upper",
-            "middle",
-            "lower",
-            "atr"
+            "lower"
           ],
-          "tested_params": [
-            "window",
-            "atr_window"
+          "tested_parameter_sets": [
+            {
+              "window": 20,
+              "atr_window": 10
+            }
+          ],
+          "unvalidated_registered_outputs": [
+            "middle",
+            "atr"
           ]
         },
         "condition": {
@@ -698,7 +827,16 @@
           "validated_outputs": [
             "upper"
           ],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {
+              "threshold": 10.0
+            }
+          ],
+          "unvalidated_registered_outputs": [
+            "middle",
+            "lower",
+            "atr"
+          ]
         },
         "account": {
           "status": "VERIFIED",
@@ -714,7 +852,15 @@
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
           "validated_outputs": [],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {}
+          ],
+          "unvalidated_registered_outputs": [
+            "upper",
+            "middle",
+            "lower",
+            "atr"
+          ]
         }
       },
       "status": "VERIFIED"
@@ -763,11 +909,18 @@
           "junit": "junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE",
           "validated_outputs": [
-            "volatility",
-            "return"
+            "volatility"
           ],
-          "tested_params": [
-            "window"
+          "tested_parameter_sets": [
+            {
+              "window": 20
+            },
+            {
+              "window": 10
+            }
+          ],
+          "unvalidated_registered_outputs": [
+            "return"
           ]
         },
         "condition": {
@@ -786,7 +939,14 @@
           "validated_outputs": [
             "volatility"
           ],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {
+              "threshold": 0.01
+            }
+          ],
+          "unvalidated_registered_outputs": [
+            "return"
+          ]
         },
         "account": {
           "status": "VERIFIED",
@@ -802,7 +962,13 @@
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
           "validated_outputs": [],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {}
+          ],
+          "unvalidated_registered_outputs": [
+            "volatility",
+            "return"
+          ]
         }
       },
       "status": "VERIFIED"
@@ -860,8 +1026,16 @@
           "validated_outputs": [
             "return"
           ],
-          "tested_params": [
-            "window"
+          "tested_parameter_sets": [
+            {
+              "window": 20
+            },
+            {
+              "window": 5
+            }
+          ],
+          "unvalidated_registered_outputs": [
+            "ref_close"
           ]
         },
         "condition": {
@@ -880,7 +1054,14 @@
           "validated_outputs": [
             "return"
           ],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {
+              "threshold": 0.5
+            }
+          ],
+          "unvalidated_registered_outputs": [
+            "ref_close"
+          ]
         },
         "account": {
           "status": "VERIFIED",
@@ -896,7 +1077,13 @@
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
           "validated_outputs": [],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {}
+          ],
+          "unvalidated_registered_outputs": [
+            "return",
+            "ref_close"
+          ]
         }
       },
       "status": "VERIFIED"
@@ -955,9 +1142,15 @@
             "hhv",
             "llv"
           ],
-          "tested_params": [
-            "window"
-          ]
+          "tested_parameter_sets": [
+            {
+              "window": 20
+            },
+            {
+              "window": 10
+            }
+          ],
+          "unvalidated_registered_outputs": []
         },
         "condition": {
           "status": "VERIFIED",
@@ -975,7 +1168,14 @@
           "validated_outputs": [
             "hhv"
           ],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {
+              "threshold": 10.0
+            }
+          ],
+          "unvalidated_registered_outputs": [
+            "llv"
+          ]
         },
         "account": {
           "status": "VERIFIED",
@@ -991,7 +1191,13 @@
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
           "validated_outputs": [],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {}
+          ],
+          "unvalidated_registered_outputs": [
+            "hhv",
+            "llv"
+          ]
         }
       },
       "status": "VERIFIED"
@@ -1052,8 +1258,17 @@
             "prior_high",
             "prior_low"
           ],
-          "tested_params": [
-            "window"
+          "tested_parameter_sets": [
+            {
+              "window": 20
+            },
+            {
+              "window": 10
+            }
+          ],
+          "unvalidated_registered_outputs": [
+            "break_up",
+            "break_down"
           ]
         },
         "condition": {
@@ -1066,7 +1281,13 @@
           "junit": "junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED",
           "validated_outputs": [],
-          "tested_params": []
+          "tested_parameter_sets": [],
+          "unvalidated_registered_outputs": [
+            "prior_high",
+            "prior_low",
+            "break_up",
+            "break_down"
+          ]
         },
         "account": {
           "status": "VERIFIED",
@@ -1082,7 +1303,15 @@
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
           "validated_outputs": [],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {}
+          ],
+          "unvalidated_registered_outputs": [
+            "prior_high",
+            "prior_low",
+            "break_up",
+            "break_down"
+          ]
         }
       },
       "status": "PARTIAL"
@@ -1137,11 +1366,18 @@
           "junit": "junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE",
           "validated_outputs": [
-            "drawdown"
+            "drawdown",
+            "peak"
           ],
-          "tested_params": [
-            "window"
-          ]
+          "tested_parameter_sets": [
+            {
+              "window": 60
+            },
+            {
+              "window": 20
+            }
+          ],
+          "unvalidated_registered_outputs": []
         },
         "condition": {
           "status": "PARTIAL",
@@ -1153,7 +1389,11 @@
           "junit": "junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED",
           "validated_outputs": [],
-          "tested_params": []
+          "tested_parameter_sets": [],
+          "unvalidated_registered_outputs": [
+            "drawdown",
+            "peak"
+          ]
         },
         "account": {
           "status": "VERIFIED",
@@ -1169,7 +1409,13 @@
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
           "validated_outputs": [],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {}
+          ],
+          "unvalidated_registered_outputs": [
+            "drawdown",
+            "peak"
+          ]
         }
       },
       "status": "PARTIAL"
@@ -1216,14 +1462,18 @@
           "junit": "junit-price-only-v1.xml",
           "strength": "NUMERIC_ORACLE",
           "validated_outputs": [
-            "dif",
-            "dea",
             "hist_raw"
           ],
-          "tested_params": [
-            "fast",
-            "slow",
-            "signal"
+          "tested_parameter_sets": [
+            {
+              "fast": 12,
+              "slow": 26,
+              "signal": 9
+            }
+          ],
+          "unvalidated_registered_outputs": [
+            "dif",
+            "dea"
           ]
         },
         "condition": {
@@ -1236,7 +1486,12 @@
           "junit": "junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED",
           "validated_outputs": [],
-          "tested_params": []
+          "tested_parameter_sets": [],
+          "unvalidated_registered_outputs": [
+            "dif",
+            "dea",
+            "hist_raw"
+          ]
         },
         "account": {
           "status": "VERIFIED",
@@ -1252,7 +1507,14 @@
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
           "validated_outputs": [],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {}
+          ],
+          "unvalidated_registered_outputs": [
+            "dif",
+            "dea",
+            "hist_raw"
+          ]
         }
       },
       "status": "PARTIAL"
@@ -1310,9 +1572,16 @@
           "validated_outputs": [
             "trix"
           ],
-          "tested_params": [
-            "window",
-            "signal"
+          "tested_parameter_sets": [
+            {
+              "window": 12
+            },
+            {
+              "window": 6
+            }
+          ],
+          "unvalidated_registered_outputs": [
+            "trix_ma"
           ]
         },
         "condition": {
@@ -1331,7 +1600,14 @@
           "validated_outputs": [
             "trix"
           ],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {
+              "threshold": 0.5
+            }
+          ],
+          "unvalidated_registered_outputs": [
+            "trix_ma"
+          ]
         },
         "account": {
           "status": "VERIFIED",
@@ -1347,7 +1623,13 @@
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
           "validated_outputs": [],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {}
+          ],
+          "unvalidated_registered_outputs": [
+            "trix",
+            "trix_ma"
+          ]
         }
       },
       "status": "VERIFIED"
@@ -1386,9 +1668,15 @@
           "validated_outputs": [
             "volume_ma"
           ],
-          "tested_params": [
-            "window"
-          ]
+          "tested_parameter_sets": [
+            {
+              "window": 20
+            },
+            {
+              "window": 5
+            }
+          ],
+          "unvalidated_registered_outputs": []
         },
         "condition": {
           "status": "VERIFIED",
@@ -1406,7 +1694,12 @@
           "validated_outputs": [
             "volume_ma"
           ],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {
+              "threshold": 500000.0
+            }
+          ],
+          "unvalidated_registered_outputs": []
         },
         "account": {
           "status": "VERIFIED",
@@ -1422,7 +1715,12 @@
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
           "validated_outputs": [],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {}
+          ],
+          "unvalidated_registered_outputs": [
+            "volume_ma"
+          ]
         }
       },
       "status": "VERIFIED"
@@ -1461,9 +1759,15 @@
           "validated_outputs": [
             "amount_ma"
           ],
-          "tested_params": [
-            "window"
-          ]
+          "tested_parameter_sets": [
+            {
+              "window": 20
+            },
+            {
+              "window": 5
+            }
+          ],
+          "unvalidated_registered_outputs": []
         },
         "condition": {
           "status": "PARTIAL",
@@ -1475,7 +1779,10 @@
           "junit": "junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED",
           "validated_outputs": [],
-          "tested_params": []
+          "tested_parameter_sets": [],
+          "unvalidated_registered_outputs": [
+            "amount_ma"
+          ]
         },
         "account": {
           "status": "VERIFIED",
@@ -1491,7 +1798,12 @@
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
           "validated_outputs": [],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {}
+          ],
+          "unvalidated_registered_outputs": [
+            "amount_ma"
+          ]
         }
       },
       "status": "PARTIAL"
@@ -1531,8 +1843,16 @@
           "validated_outputs": [
             "rvol"
           ],
-          "tested_params": [
-            "window"
+          "tested_parameter_sets": [
+            {
+              "window": 20
+            },
+            {
+              "window": 5
+            }
+          ],
+          "unvalidated_registered_outputs": [
+            "volume_ma_prior"
           ]
         },
         "condition": {
@@ -1551,7 +1871,14 @@
           "validated_outputs": [
             "rvol"
           ],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {
+              "threshold": 1.0
+            }
+          ],
+          "unvalidated_registered_outputs": [
+            "volume_ma_prior"
+          ]
         },
         "account": {
           "status": "VERIFIED",
@@ -1567,7 +1894,13 @@
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
           "validated_outputs": [],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {}
+          ],
+          "unvalidated_registered_outputs": [
+            "rvol",
+            "volume_ma_prior"
+          ]
         }
       },
       "status": "VERIFIED"
@@ -1607,8 +1940,16 @@
           "validated_outputs": [
             "rvol"
           ],
-          "tested_params": [
-            "window"
+          "tested_parameter_sets": [
+            {
+              "window": 20
+            },
+            {
+              "window": 5
+            }
+          ],
+          "unvalidated_registered_outputs": [
+            "volume_ma"
           ]
         },
         "condition": {
@@ -1621,7 +1962,11 @@
           "junit": "junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED",
           "validated_outputs": [],
-          "tested_params": []
+          "tested_parameter_sets": [],
+          "unvalidated_registered_outputs": [
+            "rvol",
+            "volume_ma"
+          ]
         },
         "account": {
           "status": "VERIFIED",
@@ -1637,7 +1982,13 @@
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
           "validated_outputs": [],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {}
+          ],
+          "unvalidated_registered_outputs": [
+            "rvol",
+            "volume_ma"
+          ]
         }
       },
       "status": "PARTIAL"
@@ -1676,7 +2027,12 @@
           "validated_outputs": [
             "ad_line"
           ],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {}
+          ],
+          "unvalidated_registered_outputs": [
+            "money_flow_volume"
+          ]
         },
         "condition": {
           "status": "PARTIAL",
@@ -1688,7 +2044,11 @@
           "junit": "junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED",
           "validated_outputs": [],
-          "tested_params": []
+          "tested_parameter_sets": [],
+          "unvalidated_registered_outputs": [
+            "ad_line",
+            "money_flow_volume"
+          ]
         },
         "account": {
           "status": "VERIFIED",
@@ -1704,7 +2064,13 @@
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
           "validated_outputs": [],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {}
+          ],
+          "unvalidated_registered_outputs": [
+            "ad_line",
+            "money_flow_volume"
+          ]
         }
       },
       "status": "PARTIAL"
@@ -1746,8 +2112,14 @@
           "validated_outputs": [
             "cmf"
           ],
-          "tested_params": [
-            "window"
+          "tested_parameter_sets": [
+            {
+              "window": 20
+            }
+          ],
+          "unvalidated_registered_outputs": [
+            "mfv_sum",
+            "volume_sum"
           ]
         },
         "condition": {
@@ -1760,7 +2132,12 @@
           "junit": "junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED",
           "validated_outputs": [],
-          "tested_params": []
+          "tested_parameter_sets": [],
+          "unvalidated_registered_outputs": [
+            "cmf",
+            "mfv_sum",
+            "volume_sum"
+          ]
         },
         "account": {
           "status": "VERIFIED",
@@ -1776,7 +2153,14 @@
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
           "validated_outputs": [],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {}
+          ],
+          "unvalidated_registered_outputs": [
+            "cmf",
+            "mfv_sum",
+            "volume_sum"
+          ]
         }
       },
       "status": "PARTIAL"
@@ -1812,7 +2196,10 @@
           "validated_outputs": [
             "pvt"
           ],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {}
+          ],
+          "unvalidated_registered_outputs": []
         },
         "condition": {
           "status": "PARTIAL",
@@ -1824,7 +2211,10 @@
           "junit": "junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED",
           "validated_outputs": [],
-          "tested_params": []
+          "tested_parameter_sets": [],
+          "unvalidated_registered_outputs": [
+            "pvt"
+          ]
         },
         "account": {
           "status": "VERIFIED",
@@ -1840,7 +2230,12 @@
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
           "validated_outputs": [],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {}
+          ],
+          "unvalidated_registered_outputs": [
+            "pvt"
+          ]
         }
       },
       "status": "PARTIAL"
@@ -1876,7 +2271,10 @@
           "validated_outputs": [
             "vwap_session_proxy"
           ],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {}
+          ],
+          "unvalidated_registered_outputs": []
         },
         "condition": {
           "status": "PARTIAL",
@@ -1888,7 +2286,10 @@
           "junit": "junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED",
           "validated_outputs": [],
-          "tested_params": []
+          "tested_parameter_sets": [],
+          "unvalidated_registered_outputs": [
+            "vwap_session_proxy"
+          ]
         },
         "account": {
           "status": "VERIFIED",
@@ -1904,7 +2305,12 @@
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
           "validated_outputs": [],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {}
+          ],
+          "unvalidated_registered_outputs": [
+            "vwap_session_proxy"
+          ]
         }
       },
       "status": "PARTIAL"
@@ -1945,8 +2351,13 @@
           "validated_outputs": [
             "mfi"
           ],
-          "tested_params": [
-            "window"
+          "tested_parameter_sets": [
+            {
+              "window": 14
+            }
+          ],
+          "unvalidated_registered_outputs": [
+            "typical_price"
           ]
         },
         "condition": {
@@ -1965,7 +2376,14 @@
           "validated_outputs": [
             "mfi"
           ],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {
+              "threshold": 50.0
+            }
+          ],
+          "unvalidated_registered_outputs": [
+            "typical_price"
+          ]
         },
         "account": {
           "status": "VERIFIED",
@@ -1981,7 +2399,13 @@
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
           "validated_outputs": [],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {}
+          ],
+          "unvalidated_registered_outputs": [
+            "mfi",
+            "typical_price"
+          ]
         }
       },
       "status": "VERIFIED"
@@ -2019,9 +2443,12 @@
           "validated_outputs": [
             "slope"
           ],
-          "tested_params": [
-            "window"
-          ]
+          "tested_parameter_sets": [
+            {
+              "window": 20
+            }
+          ],
+          "unvalidated_registered_outputs": []
         },
         "condition": {
           "status": "PARTIAL",
@@ -2033,7 +2460,10 @@
           "junit": "junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED",
           "validated_outputs": [],
-          "tested_params": []
+          "tested_parameter_sets": [],
+          "unvalidated_registered_outputs": [
+            "slope"
+          ]
         },
         "account": {
           "status": "VERIFIED",
@@ -2049,7 +2479,12 @@
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
           "validated_outputs": [],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {}
+          ],
+          "unvalidated_registered_outputs": [
+            "slope"
+          ]
         }
       },
       "status": "PARTIAL"
@@ -2094,7 +2529,10 @@
           "validated_outputs": [
             "tr"
           ],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {}
+          ],
+          "unvalidated_registered_outputs": []
         },
         "condition": {
           "status": "PARTIAL",
@@ -2106,7 +2544,10 @@
           "junit": "junit-price-only-v1.xml",
           "strength": "CONDITION_INJECTED",
           "validated_outputs": [],
-          "tested_params": []
+          "tested_parameter_sets": [],
+          "unvalidated_registered_outputs": [
+            "tr"
+          ]
         },
         "account": {
           "status": "VERIFIED",
@@ -2122,7 +2563,12 @@
           "junit": "junit-price-only-v1.xml",
           "strength": "ACCOUNT_WIDE_THRESHOLD",
           "validated_outputs": [],
-          "tested_params": []
+          "tested_parameter_sets": [
+            {}
+          ],
+          "unvalidated_registered_outputs": [
+            "tr"
+          ]
         }
       },
       "status": "PARTIAL"

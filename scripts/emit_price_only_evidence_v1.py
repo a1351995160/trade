@@ -49,56 +49,108 @@ SINGLE_CONDITION_TESTS = {
 
 # 各维度**实际被断言**的输出与参数（来自对应测试的真实断言，非注册表）。
 # 未列出的输出/参数保持 PARTIAL —— 注册信息不能自动认证全部输出。
+# 各维度**实际被断言**的输出与参数（逐项核对对应测试的真实断言，非注册表）。
+#
+# 核对方法：从测试源码 AST 提取该指标对应测试函数中所有 ``.value("<output>")``
+# 调用（即被逐值断言的输出），以及 ``@pytest.mark.parametrize`` 的**实际取值**。
+# 未出现在断言中的输出/参数一律不认证（保留 PARTIAL）——注册信息不能自动认证。
+#
+# ``tested_parameter_sets`` 记录测试**真正执行**的参数取值与组合，
+# 不写参数名，也不从注册默认值推导范围（例：只执行 window=10/20 时，
+# 不得声明 10~20 全范围）。
 VALIDATED_BY_DIMENSION = {
-    # 公式维度：每个指标只断言主输出；window 参数由参数化用例覆盖
-    ("DEMA", "formula"): {"outputs": ["dema"], "params": ["window"]},
-    ("TEMA", "formula"): {"outputs": ["tema"], "params": ["window"]},
-    ("CCI", "formula"): {"outputs": ["cci"], "params": ["window"]},
-    ("NATR", "formula"): {"outputs": ["natr"], "params": ["window"]},
-    ("PSY", "formula"): {"outputs": ["psy"], "params": ["window"]},
-    ("DONCHIAN", "formula"): {"outputs": ["upper", "lower", "middle"],
-                              "params": ["window"]},
-    ("KELTNER", "formula"): {"outputs": ["upper", "middle", "lower", "atr"],
-                             "params": ["window", "atr_window"]},
-    ("ROLLING_VOLATILITY", "formula"): {"outputs": ["volatility", "return"],
-                                        "params": ["window"]},
-    ("HISTORICAL_RETURN", "formula"): {"outputs": ["return"], "params": ["window"]},
-    ("PRICE_EXTREMES", "formula"): {"outputs": ["hhv", "llv"], "params": ["window"]},
-    ("PRIOR_BREAKOUT", "formula"): {"outputs": ["prior_high", "prior_low"],
-                                    "params": ["window"]},
-    ("DRAWDOWN_FROM_PEAK", "formula"): {"outputs": ["drawdown"], "params": ["window"]},
-    ("MACD_HIST_RAW", "formula"): {"outputs": ["dif", "dea", "hist_raw"],
-                                   "params": ["fast", "slow", "signal"]},
-    ("TRIX", "formula"): {"outputs": ["trix"], "params": ["window", "signal"]},
-    ("VOLUME_MA", "formula"): {"outputs": ["volume_ma"], "params": ["window"]},
-    ("AMOUNT_MA", "formula"): {"outputs": ["amount_ma"], "params": ["window"]},
-    ("RVOL_PRIOR", "formula"): {"outputs": ["rvol"], "params": ["window"]},
-    ("RVOL_INCL_CURRENT", "formula"): {"outputs": ["rvol"], "params": ["window"]},
-    ("ACCUMULATION_DISTRIBUTION", "formula"): {"outputs": ["ad_line"], "params": []},
-    ("CHAIKIN_MONEY_FLOW", "formula"): {"outputs": ["cmf"], "params": ["window"]},
-    ("PVT", "formula"): {"outputs": ["pvt"], "params": []},
-    ("VWAP_SESSION_PROXY", "formula"): {"outputs": ["vwap_session_proxy"], "params": []},
-    ("MFI", "formula"): {"outputs": ["mfi"], "params": ["window"]},
-    ("ROLLING_SLOPE", "formula"): {"outputs": ["slope"], "params": ["window"]},
-    ("TRUE_RANGE", "formula"): {"outputs": ["tr"], "params": []},
-    # 条件维度：单独测试断言的具体输出
-    ("CCI", "condition"): {"outputs": ["cci"], "params": []},
-    ("NATR", "condition"): {"outputs": ["natr"], "params": []},
-    ("PSY", "condition"): {"outputs": ["psy"], "params": []},
-    # 条件维度：参数化测试注入的具体输出（形如 [DEMA-dema-10.0]）
-    ("DEMA", "condition"): {"outputs": ["dema"], "params": []},
-    ("TEMA", "condition"): {"outputs": ["tema"], "params": []},
-    ("TRIX", "condition"): {"outputs": ["trix"], "params": []},
-    ("KELTNER", "condition"): {"outputs": ["upper"], "params": []},
-    ("DONCHIAN", "condition"): {"outputs": ["upper"], "params": []},
-    ("PRICE_EXTREMES", "condition"): {"outputs": ["hhv"], "params": []},
-    ("HISTORICAL_RETURN", "condition"): {"outputs": ["return"], "params": []},
-    ("ROLLING_VOLATILITY", "condition"): {"outputs": ["volatility"], "params": []},
-    ("VOLUME_MA", "condition"): {"outputs": ["volume_ma"], "params": []},
-    ("RVOL_PRIOR", "condition"): {"outputs": ["rvol"], "params": []},
-    ("MFI", "condition"): {"outputs": ["mfi"], "params": []},
-    # 账户维度：经公开服务消费，断言成交而非具体输出
-    **{(ind, "account"): {"outputs": [], "params": []}
+    # ---- 公式维度：逐值断言的主输出 + 实际参数取值 ----
+    ("DEMA", "formula"): {"outputs": ["dema"],
+                          "tested_parameter_sets": [{"window": 5}, {"window": 20}]},
+    ("TEMA", "formula"): {"outputs": ["tema"],
+                          "tested_parameter_sets": [{"window": 5}, {"window": 20}]},
+    ("CCI", "formula"): {"outputs": ["cci"],
+                         "tested_parameter_sets": [{"window": 14}, {"window": 20}]},
+    ("NATR", "formula"): {"outputs": ["natr"],
+                          "tested_parameter_sets": [{"window": 14}, {"window": 20}]},
+    ("PSY", "formula"): {"outputs": ["psy"],
+                         "tested_parameter_sets": [{"window": 12}, {"window": 6}]},
+    # DONCHIAN 只逐值断言 upper/lower；middle 未被断言
+    ("DONCHIAN", "formula"): {"outputs": ["upper", "lower"],
+                              "tested_parameter_sets": [{"window": 20}, {"window": 10}]},
+    # KELTNER 只逐值断言 upper/lower；middle/atr 未被断言
+    ("KELTNER", "formula"): {"outputs": ["upper", "lower"],
+                             "tested_parameter_sets": [{"window": 20, "atr_window": 10}]},
+    # ROLLING_VOLATILITY 只逐值断言 volatility；return 未被断言
+    ("ROLLING_VOLATILITY", "formula"): {
+        "outputs": ["volatility"],
+        "tested_parameter_sets": [{"window": 20}, {"window": 10}]},
+    ("HISTORICAL_RETURN", "formula"): {
+        "outputs": ["return"],
+        "tested_parameter_sets": [{"window": 20}, {"window": 5}]},
+    ("PRICE_EXTREMES", "formula"): {
+        "outputs": ["hhv", "llv"],
+        "tested_parameter_sets": [{"window": 20}, {"window": 10}]},
+    ("PRIOR_BREAKOUT", "formula"): {
+        "outputs": ["prior_high", "prior_low"],
+        "tested_parameter_sets": [{"window": 20}, {"window": 10}]},
+    # DRAWDOWN_FROM_PEAK 同时逐值断言 drawdown 与 peak
+    ("DRAWDOWN_FROM_PEAK", "formula"): {
+        "outputs": ["drawdown", "peak"],
+        "tested_parameter_sets": [{"window": 60}, {"window": 20}]},
+    # MACD_HIST_RAW 只逐值断言 hist_raw；dif/dea 未被断言
+    ("MACD_HIST_RAW", "formula"): {
+        "outputs": ["hist_raw"],
+        "tested_parameter_sets": [{"fast": 12, "slow": 26, "signal": 9}]},
+    ("TRIX", "formula"): {"outputs": ["trix"],
+                          "tested_parameter_sets": [{"window": 12}, {"window": 6}]},
+    ("VOLUME_MA", "formula"): {"outputs": ["volume_ma"],
+                               "tested_parameter_sets": [{"window": 20}, {"window": 5}]},
+    ("AMOUNT_MA", "formula"): {"outputs": ["amount_ma"],
+                               "tested_parameter_sets": [{"window": 20}, {"window": 5}]},
+    ("RVOL_PRIOR", "formula"): {"outputs": ["rvol"],
+                                "tested_parameter_sets": [{"window": 20}, {"window": 5}]},
+    ("RVOL_INCL_CURRENT", "formula"): {
+        "outputs": ["rvol"],
+        "tested_parameter_sets": [{"window": 20}, {"window": 5}]},
+    ("ACCUMULATION_DISTRIBUTION", "formula"): {
+        "outputs": ["ad_line"], "tested_parameter_sets": [{}]},
+    ("CHAIKIN_MONEY_FLOW", "formula"): {"outputs": ["cmf"],
+                                        "tested_parameter_sets": [{"window": 20}]},
+    ("PVT", "formula"): {"outputs": ["pvt"], "tested_parameter_sets": [{}]},
+    ("VWAP_SESSION_PROXY", "formula"): {
+        "outputs": ["vwap_session_proxy"], "tested_parameter_sets": [{}]},
+    ("MFI", "formula"): {"outputs": ["mfi"],
+                         "tested_parameter_sets": [{"window": 14}]},
+    ("ROLLING_SLOPE", "formula"): {"outputs": ["slope"],
+                                   "tested_parameter_sets": [{"window": 20}]},
+    ("TRUE_RANGE", "formula"): {"outputs": ["tr"], "tested_parameter_sets": [{}]},
+    # ---- 条件维度：测试**手工注入**的输出（CONDITION_INJECTED）----
+    # 单独测试：CCI/NATR/PSY（各断言 TRUE/FALSE/UNKNOWN 三值齐备）
+    ("CCI", "condition"): {"outputs": ["cci"], "tested_parameter_sets": [{}]},
+    ("NATR", "condition"): {"outputs": ["natr"], "tested_parameter_sets": [{}]},
+    ("PSY", "condition"): {"outputs": ["psy"], "tested_parameter_sets": [{}]},
+    # 参数化用例：注入 (indicator, output, threshold) 三元组
+    ("DEMA", "condition"): {"outputs": ["dema"],
+                            "tested_parameter_sets": [{"threshold": 10.0}]},
+    ("TEMA", "condition"): {"outputs": ["tema"],
+                            "tested_parameter_sets": [{"threshold": 10.0}]},
+    ("TRIX", "condition"): {"outputs": ["trix"],
+                            "tested_parameter_sets": [{"threshold": 0.5}]},
+    ("KELTNER", "condition"): {"outputs": ["upper"],
+                               "tested_parameter_sets": [{"threshold": 10.0}]},
+    ("DONCHIAN", "condition"): {"outputs": ["upper"],
+                                "tested_parameter_sets": [{"threshold": 10.0}]},
+    ("PRICE_EXTREMES", "condition"): {
+        "outputs": ["hhv"], "tested_parameter_sets": [{"threshold": 10.0}]},
+    ("HISTORICAL_RETURN", "condition"): {
+        "outputs": ["return"], "tested_parameter_sets": [{"threshold": 0.5}]},
+    ("ROLLING_VOLATILITY", "condition"): {
+        "outputs": ["volatility"], "tested_parameter_sets": [{"threshold": 0.01}]},
+    ("VOLUME_MA", "condition"): {
+        "outputs": ["volume_ma"], "tested_parameter_sets": [{"threshold": 500000.0}]},
+    ("RVOL_PRIOR", "condition"): {
+        "outputs": ["rvol"], "tested_parameter_sets": [{"threshold": 1.0}]},
+    ("MFI", "condition"): {"outputs": ["mfi"],
+                           "tested_parameter_sets": [{"threshold": 50.0}]},
+    # ---- 账户维度：经公开服务产生合成成交（ACCOUNT_WIDE_THRESHOLD）----
+    # 测试断言"产生真实成交"，不断言具体输出或阈值敏感性
+    **{(ind, "account"): {"outputs": [], "tested_parameter_sets": [{}]}
        for ind in ("CCI", "NATR", "PSY", "DEMA", "TEMA", "TRIX", "DONCHIAN",
                    "KELTNER", "HISTORICAL_RETURN", "ROLLING_VOLATILITY",
                    "PRICE_EXTREMES", "PRIOR_BREAKOUT", "VOLUME_MA", "RVOL_PRIOR",
@@ -431,7 +483,12 @@ def _indicator_evidence(outcomes: dict) -> list:
             # 只给**实际被断言**的输出/参数；其余保持未验证
             validated = VALIDATED_BY_DIMENSION.get((indicator_id, name), {})
             resolved["validated_outputs"] = list(validated.get("outputs", []))
-            resolved["tested_params"] = list(validated.get("params", []))
+            resolved["tested_parameter_sets"] = [
+                dict(ps) for ps in validated.get("tested_parameter_sets", [])]
+            # 该维度注册但未被断言的输出，如实列出（供复核对照）
+            registered = list(spec.outputs)
+            resolved["unvalidated_registered_outputs"] = [
+                out for out in registered if out not in resolved["validated_outputs"]]
             dims[name] = resolved
         rows.append({
             "indicator": indicator_id,
