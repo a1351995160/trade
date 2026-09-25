@@ -8,6 +8,7 @@ import subprocess
 import sys
 from dataclasses import replace
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
@@ -24,9 +25,13 @@ from chanlun_trader.engine.indicator_registry_v2 import default_registry  # noqa
 from chanlun_trader.engine.indicators_v2 import IndicatorFrameV2  # noqa: E402
 from chanlun_trader.engine.asof import MarketDataStore  # noqa: E402
 from chanlun_trader.engine.engine import BacktestEngineV2, EngineConfig  # noqa: E402
+from chanlun_trader.engine.individual_dividend_accounting_v1 import IndividualDividendAccountingV1  # noqa: E402
 from chanlun_trader.engine.official_valuation import official_equity_curve  # noqa: E402
 from chanlun_trader.engine.signal import Signal, Side  # noqa: E402
 from chanlun_trader.research.io_safety import GuardedResearchReader  # noqa: E402
+from chanlun_trader.research_factory.degraded_execution_v2 import (  # noqa: E402
+    DegradedAccountEngineV2, DegradedPriceLimitV1, DegradedStateMasterV1,
+)
 
 
 STRATEGY_ID = "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1"
@@ -39,6 +44,37 @@ SYMBOLS = ("000001.SZ", "600000.SH")
 INDICATOR_COUNT = 51
 BUY_VOTES = 26
 CATALOG_SHA256 = "a74f3936989489ad8080d0f62fa9e1acd8fe09426c25fc72be3cbdda20d75f6f"
+
+
+def known_bool(value, expected: bool) -> bool:
+    return isinstance(value, (bool, np.bool_)) and bool(value) is expected
+
+
+class StateGatedPilotEngine(BacktestEngineV2):
+    """Apply the existing historical execution-state gate to the fixed pilot."""
+
+    def _build(self):
+        super()._build()
+        self.broker.price_limit = DegradedPriceLimitV1(self.security_master)
+
+
+class IndividualDividendPilotEngine(DegradedAccountEngineV2):
+    """Use the existing event clock with explicit personal-dividend accounting."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.hazards = {}
+        self.unsupported_lots = {}
+        self.entry_rejections = []
+        self.sellability_projections = []
+
+    def _build(self):
+        super()._build()
+        self.ledger = IndividualDividendAccountingV1(
+            self.config.initial_cash, self.action_dataset.events, self.action_dataset.dataset_id)
+        self.broker.ledger = self.ledger
+        self.risk.ledger = self.ledger
+        self.broker.price_limit = DegradedPriceLimitV1(self.security_master)
 
 
 def vendor_turnover_rate(data, *, vendor_turn: pd.Series) -> IndicatorFrameV2:
@@ -151,11 +187,14 @@ def decision_trace(results: dict, definition: dict) -> list[dict]:
 
 def run_chain(frame: pd.DataFrame, decisions: dict, definition: dict,
               daily_hash: str, turn_hash: str, states_hash: str,
-              actions_hash: str) -> dict:
+              actions_hash: str, *, execution_states: pd.DataFrame | None = None,
+              historical_states_hash: str | None = None,
+              account_end_date: int = ACCOUNT_END_DATE,
+              corporate_events: tuple[dict, ...] | None = None) -> dict:
     """Exercise the existing event engine, then recompute each account close."""
-    account_bars = frame.loc[frame["date"].between(ACCOUNT_START_DATE, ACCOUNT_END_DATE)]
+    account_bars = frame.loc[frame["date"].between(ACCOUNT_START_DATE, account_end_date)]
     calendar = sorted(int(day) for day in account_bars["date"].unique())
-    if not calendar or calendar[0] != ACCOUNT_START_DATE or calendar[-1] != ACCOUNT_END_DATE:
+    if not calendar or calendar[0] != ACCOUNT_START_DATE or calendar[-1] != account_end_date:
         raise ValueError("ACCOUNT_CALENDAR_INCOMPLETE")
     store = MarketDataStore()
     for symbol in SYMBOLS:
@@ -166,7 +205,8 @@ def run_chain(frame: pd.DataFrame, decisions: dict, definition: dict,
             "open", "high", "low", "close", "volume", "amount", "prev_close"]])
 
     source_hash = hashlib.sha256(
-        f"{daily_hash}:{turn_hash}:{states_hash}:{actions_hash}".encode()).hexdigest()
+        f"{daily_hash}:{turn_hash}:{states_hash}:{actions_hash}"
+        f"{':' + historical_states_hash if historical_states_hash else ''}".encode()).hexdigest()
     config = EngineConfig(
         initial_cash=1_000_000.0, max_positions=len(SYMBOLS),
         max_position_weight=1.0 / len(SYMBOLS),
@@ -174,10 +214,40 @@ def run_chain(frame: pd.DataFrame, decisions: dict, definition: dict,
         start_date=calendar[0], end_date=calendar[-1],
         enable_index_filter=False, index_filter_enabled=False,
         strategy_hash=definition["catalog_sha256"], data_manifest_hash=source_hash,
-        execution_model_version="ALL_51_PILOT_ENGINE_V2_NEXT_OPEN_V1",
+        execution_model_version=("ALL_51_S1_INDIVIDUAL_DIVIDEND_V1" if corporate_events is not None
+                                 else "ALL_51_PILOT_STATE_GATED_V1" if execution_states is not None
+                                 else "ALL_51_PILOT_ENGINE_V2_NEXT_OPEN_V1"),
         persist_run_manifest=False,
     )
-    engine = BacktestEngineV2(store, calendar, config=config, seed=0)
+    if corporate_events is not None and execution_states is None:
+        raise ValueError("CORPORATE_ACCOUNT_REQUIRES_EXECUTION_STATES")
+    if execution_states is None:
+        engine = BacktestEngineV2(store, calendar, config=config, seed=0)
+    else:
+        required = {"symbol", "trade_date", "listed", "delisted", "universe_member",
+                    "eligibility_status", "st_status", "suspension_status", "board"}
+        if not required <= set(execution_states):
+            raise ValueError("EXECUTION_STATES_FIELDS_MISSING")
+        if execution_states.duplicated(["symbol", "trade_date"]).any():
+            raise ValueError("EXECUTION_STATES_DUPLICATE")
+        master = DegradedStateMasterV1(execution_states)
+        if corporate_events is None:
+            engine = StateGatedPilotEngine(
+                store, calendar, config=config, seed=0, security_master=master)
+        else:
+            if any(event["record_date"] < calendar[0]
+                   or event["effective_date"] > calendar[-1]
+                   or event["payment_date"] != event["effective_date"]
+                   for event in corporate_events):
+                raise ValueError("CORPORATE_EVENT_OUTSIDE_SUPPORTED_ACCOUNT_WINDOW")
+            action_dataset = SimpleNamespace(
+                dataset_id="ALL_51_S1_PERSONAL_CASH_DIVIDENDS_V1",
+                events=corporate_events, coverage_symbols=SYMBOLS,
+                manifest_sha256=actions_hash,
+            )
+            engine = IndividualDividendPilotEngine(
+                store, calendar, config=config, seed=0, security_master=master,
+                action_dataset=action_dataset)
     signals = []
     for symbol in SYMBOLS:
         for item in decisions[symbol]:
@@ -202,12 +272,26 @@ def run_chain(frame: pd.DataFrame, decisions: dict, definition: dict,
     order_fill_qty = {order_id: 0 for order_id in orders}
     cash = config.initial_cash
     quantities = {symbol: 0 for symbol in SYMBOLS}
+    independent_lots = []
+    entitlements = {}
+    independent_dividend_income = 0.0
+    independent_dividend_tax = 0.0
     checks = []
     issues = list(result.ledger.check_invariants())
     trade_index = 0
+    state_rows = (execution_states.set_index(["symbol", "trade_date"])
+                  if execution_states is not None else None)
+    t1_sell_checks = 0
     snapshots = {int(s.timestamp.strftime("%Y%m%d")): s
                  for s in result.equity_curve if s.timestamp.hour == 15 and s.timestamp.minute == 30}
     for day in calendar:
+        for event in corporate_events or ():
+            if event["payment_date"] == day:
+                if event["event_id"] not in entitlements:
+                    issues.append(f"DIVIDEND_ENTITLEMENT_MISSING:{event['event_id']}")
+                amount = entitlements.get(event["event_id"], 0) * float(event["terms"]["cash_per_share"])
+                cash += amount
+                independent_dividend_income += amount
         while trade_index < len(trades) and int(trades[trade_index].fill_time.strftime("%Y%m%d")) <= day:
             trade = trades[trade_index]
             order = orders.get(trade.order_id)
@@ -234,11 +318,64 @@ def run_chain(frame: pd.DataFrame, decisions: dict, definition: dict,
                 issues.append(f"NEXT_OPEN_PRICE_MISMATCH:{trade.trade_id}")
             if trade.reality_flag != "OK":
                 issues.append(f"UNSUPPORTED_TRADE:{trade.trade_id}")
+            if state_rows is not None:
+                key = (trade.symbol, trade_day)
+                if key not in state_rows.index:
+                    issues.append(f"FILL_WITHOUT_EXECUTION_STATE:{trade.trade_id}")
+                else:
+                    state = state_rows.loc[key]
+                    if (state["suspension_status"] != "TRADING"
+                            or not known_bool(state["listed"], True)
+                            or not known_bool(state["delisted"], False)
+                            or (side == "BUY" and (state["st_status"] != "NORMAL"
+                                or not known_bool(state["universe_member"], True)
+                                or state["eligibility_status"] != "ELIGIBLE"))):
+                        issues.append(f"FILL_CONFLICTS_WITH_EXECUTION_STATE:{trade.trade_id}")
             cash += -gross - trade.fee if side == "BUY" else gross - trade.fee
             quantities[trade.symbol] += trade.quantity if side == "BUY" else -trade.quantity
+            if side == "BUY":
+                independent_lots.append({"symbol": trade.symbol, "buy_date": trade_day,
+                                         "remaining": trade.quantity, "dividends": {}})
+            else:
+                remaining = trade.quantity
+                for lot in independent_lots:
+                    if lot["symbol"] != trade.symbol or lot["remaining"] <= 0 or remaining <= 0:
+                        continue
+                    sold = min(lot["remaining"], remaining)
+                    t1_sell_checks += 1
+                    if trade_day <= lot["buy_date"]:
+                        issues.append(f"T1_SELLABILITY_VIOLATION:{trade.trade_id}")
+                    for event in corporate_events or ():
+                        if event["symbol"] != trade.symbol:
+                            continue
+                        entitled = min(sold, lot["dividends"].get(event["event_id"], 0))
+                        if entitled:
+                            bought = pd.Timestamp(str(lot["buy_date"]))
+                            sold_at = pd.Timestamp(str(trade_day))
+                            rate = (0.20 if sold_at <= bought + pd.DateOffset(months=1)
+                                    else 0.10 if sold_at <= bought + pd.DateOffset(years=1) else 0.0)
+                            tax = round(entitled * float(event["terms"]["cash_per_share"]) * rate, 4)
+                            cash -= tax
+                            independent_dividend_tax += tax
+                            lot["dividends"][event["event_id"]] -= entitled
+                    lot["remaining"] -= sold
+                    remaining -= sold
+                if remaining:
+                    issues.append(f"INDEPENDENT_LOT_SELL_EXCEEDED:{trade.trade_id}")
             if cash < -1e-6 or quantities[trade.symbol] < 0:
                 issues.append(f"INDEPENDENT_ACCOUNT_NEGATIVE:{trade.trade_id}")
             trade_index += 1
+        for event in corporate_events or ():
+            if event["record_date"] == day:
+                entitled = 0
+                for lot in independent_lots:
+                    if lot["symbol"] == event["symbol"] and lot["remaining"]:
+                        lot["dividends"][event["event_id"]] = lot["remaining"]
+                        entitled += lot["remaining"]
+                entitlements[event["event_id"]] = entitled
+        if any(sum(lot["remaining"] for lot in independent_lots if lot["symbol"] == symbol)
+               != quantities[symbol] for symbol in SYMBOLS):
+            issues.append(f"INDEPENDENT_LOT_QUANTITY_MISMATCH:{day}")
         market_value = sum(quantities[symbol] * float(store.get_daily_bar(symbol, day)["close"])
                            for symbol in SYMBOLS)
         snapshot = snapshots[day]
@@ -256,13 +393,20 @@ def run_chain(frame: pd.DataFrame, decisions: dict, definition: dict,
     for order in orders.values():
         if order_fill_qty[order.order_id] != order.filled_quantity:
             issues.append(f"ORDER_FILL_QUANTITY_MISMATCH:{order.order_id}")
-    if not trades:
-        issues.append("NO_EXECUTED_TRADES")
+    if corporate_events is not None:
+        if not np.isclose(result.ledger.action_income, independent_dividend_income,
+                          rtol=0, atol=1e-4):
+            issues.append("DIVIDEND_INCOME_MISMATCH")
+        if not np.isclose(result.ledger.dividend_tax_withheld, independent_dividend_tax,
+                          rtol=0, atol=1e-4):
+            issues.append("DIVIDEND_TAX_MISMATCH")
     return {
         "status": "RECONCILED_DIAGNOSTIC" if not issues else "RECONCILIATION_FAILED",
         "account_dates": [calendar[0], calendar[-1]],
         "n_account_days": len(calendar), "n_signals": len(signals),
         "n_orders": len(orders), "n_trades": len(trades),
+        "n_no_trade_days": len(calendar) - len({int(t.fill_time.strftime("%Y%m%d")) for t in trades}),
+        "n_independent_t1_lot_checks": t1_sell_checks,
         "execution_assumptions": {
             "initial_cash": config.initial_cash, "max_positions": config.max_positions,
             "max_position_weight": config.max_position_weight,
@@ -274,6 +418,9 @@ def run_chain(frame: pd.DataFrame, decisions: dict, definition: dict,
             "fill_reference": "NEXT_SESSION_OPEN_DAILY_BAR",
             "daily_volume_participation_limit": 0.10,
             "index_filter_enabled": False, "pit_engine_gate_enabled": False,
+            "historical_execution_state_gate": execution_states is not None,
+            "account_tax_profile": ("INDIVIDUAL_A_SHARE_2015_101"
+                                    if corporate_events is not None else "NOT_MODELED"),
         },
         "run_identity": result.context.to_dict(),
         "engine_summary": result.summary(),
@@ -295,7 +442,15 @@ def run_chain(frame: pd.DataFrame, decisions: dict, definition: dict,
         "order_status_counts": {status: sum(o.status.value == status for o in orders.values())
                                 for status in sorted({o.status.value for o in orders.values()})},
         "sizing_skips": result.sizing_skips,
-        "scope": "MECHANICAL_INTEGRATION_ONLY; no alpha, PIT eligibility or corporate-action certification",
+        "corporate_account": ({"events": list(corporate_events),
+                               "event_audit": result.ledger.action_audit,
+                               "independent_entitlements": entitlements,
+                               "dividend_income": independent_dividend_income,
+                               "dividend_tax_withheld": independent_dividend_tax}
+                              if corporate_events is not None else None),
+        "scope": ("S1_PERSONAL_DIVIDEND_ACCOUNT_DIAGNOSTIC; no alpha or PIT source-publication certification"
+                  if corporate_events is not None
+                  else "MECHANICAL_INTEGRATION_ONLY; no alpha, PIT eligibility or corporate-action certification"),
     }
 
 

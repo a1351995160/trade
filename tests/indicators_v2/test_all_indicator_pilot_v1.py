@@ -9,8 +9,10 @@ from scripts.probe_all_indicator_strategy_v1 import (
     BUY_VOTES,
     INDICATOR_COUNT,
     decision_trace,
+    known_bool,
     pilot_registry,
     probe,
+    run_chain,
     sha256_file,
     strategy_definition,
 )
@@ -75,6 +77,13 @@ def test_vendor_turnover_uses_reported_percentage_without_float_shares():
     assert result.ready().tolist() == [True, True]
 
 
+def test_unknown_execution_state_flag_never_qualifies():
+    assert known_bool(True, True)
+    assert known_bool(np.bool_(False), False)
+    assert not known_bool(pd.NA, True)
+    assert not known_bool("True", True)
+
+
 def test_file_hash_rejects_paths_outside_pilot_roots(tmp_path):
     sample = tmp_path / "sample.json"
     sample.write_text("{}", encoding="utf-8")
@@ -135,6 +144,95 @@ def test_full_catalog_reaches_reconciled_account_with_explicit_vendor_turn(tmp_p
     assert all(sum(item["status"] == "COMPUTABLE"
                    for item in sample["indicators"].values()) == INDICATOR_COUNT
                for sample in result["samples"].values())
+
+    execution_states = pd.DataFrame(states)
+    execution_states["board"] = execution_states.symbol.map(
+        {"000001.SZ": "SZ_MAIN", "600000.SH": "SH_MAIN"})
+    gated = run_chain(pd.DataFrame(bars), result["decision_trace"], result["strategy"],
+                      "daily", "turn", "states", "actions",
+                      execution_states=execution_states, historical_states_hash="historical")
+    assert gated["trades"] == result["chain"]["trades"]
+    assert gated["independent_account_checks"] == result["chain"]["independent_account_checks"]
+    assert gated["execution_assumptions"]["historical_execution_state_gate"] is True
+    assert gated["n_no_trade_days"] > 0
+    assert gated["n_independent_t1_lot_checks"] > 0
+
+    first_buy = next(trade for trade in gated["trades"] if trade["side"] == "BUY")
+    blocked_states = execution_states.copy()
+    blocked_states.loc[(blocked_states.symbol == first_buy["symbol"])
+                       & (blocked_states.trade_date == first_buy["date"]), "st_status"] = "ST"
+    blocked = run_chain(pd.DataFrame(bars), result["decision_trace"], result["strategy"],
+                        "daily", "turn", "states", "actions",
+                        execution_states=blocked_states, historical_states_hash="historical")
+    assert not any(trade["symbol"] == first_buy["symbol"]
+                   and trade["date"] == first_buy["date"] and trade["side"] == "BUY"
+                   for trade in blocked["trades"])
+    assert any("KNOWN_INELIGIBLE" in order["last_event_message"]
+               for order in blocked["orders"])
+
+    suspended_states = execution_states.copy()
+    suspended_states.loc[(suspended_states.symbol == first_buy["symbol"])
+                         & (suspended_states.trade_date == first_buy["date"]),
+                         "suspension_status"] = "SUSPENDED"
+    suspended = run_chain(pd.DataFrame(bars), result["decision_trace"], result["strategy"],
+                          "daily", "turn", "states", "actions",
+                          execution_states=suspended_states, historical_states_hash="historical")
+    assert not any(trade["symbol"] == first_buy["symbol"]
+                   and trade["date"] == first_buy["date"] and trade["side"] == "BUY"
+                   for trade in suspended["trades"])
+    assert any("SUSPENDED" in order["last_event_message"] for order in suspended["orders"])
+
+    missing_states = execution_states.loc[~(
+        (execution_states.symbol == first_buy["symbol"])
+        & (execution_states.trade_date == first_buy["date"]))]
+    missing = run_chain(pd.DataFrame(bars), result["decision_trace"], result["strategy"],
+                        "daily", "turn", "states", "actions",
+                        execution_states=missing_states, historical_states_hash="historical")
+    assert not any(trade["symbol"] == first_buy["symbol"]
+                   and trade["date"] == first_buy["date"] and trade["side"] == "BUY"
+                   for trade in missing["trades"])
+    assert any("EXECUTION_STATE_UNKNOWN" in order["last_event_message"]
+               for order in missing["orders"])
+
+    no_signals = run_chain(pd.DataFrame(bars), {symbol: [] for symbol in result["decision_trace"]},
+                           result["strategy"], "daily", "turn", "states", "actions",
+                           execution_states=execution_states, historical_states_hash="historical")
+    assert no_signals["issues"] == []
+    assert no_signals["n_no_trade_days"] == no_signals["n_account_days"]
+    assert no_signals["n_trades"] == 0
+
+    missing_bars = pd.DataFrame(bars)
+    missing_bars = missing_bars.loc[~((missing_bars.symbol == first_buy["symbol"])
+                                      & (missing_bars.date == first_buy["date"]))]
+    with pytest.raises(ValueError, match="ACCOUNT_DAILY_COVERAGE_INCOMPLETE"):
+        run_chain(missing_bars, result["decision_trace"], result["strategy"],
+                  "daily", "turn", "states", "actions",
+                  execution_states=execution_states, historical_states_hash="historical")
+
+    first_buy = next(trade for trade in gated["trades"] if trade["side"] == "BUY"
+                     and any(later["symbol"] == trade["symbol"] and later["side"] == "SELL"
+                             and later["date"] > trade["date"] for later in gated["trades"]))
+    account_days = [item["date"] for item in gated["independent_account_checks"]]
+    record_date = first_buy["date"]
+    payment_date = account_days[account_days.index(record_date) + 1]
+    corporate = run_chain(pd.DataFrame(bars), result["decision_trace"], result["strategy"],
+                          "daily", "turn", "states", "actions",
+                          execution_states=execution_states, historical_states_hash="historical",
+                          corporate_events=({
+                              "event_id": "SYNTHETIC_DIVIDEND", "symbol": first_buy["symbol"],
+                              "event_type": "CASH_DIVIDEND", "record_date": record_date,
+                              "effective_date": payment_date, "payment_date": payment_date,
+                              "terms": {"cash_per_share": 0.1,
+                                        "tax_rule": {"kind": "DEFERRED_INDIVIDUAL_2015_101",
+                                                     "source": "SYNTHETIC_TAX_RULE"}},
+                              "units": "CNY_PER_SHARE", "source": "SYNTHETIC_ACTION",
+                              "source_published_at": "SYNTHETIC_BEFORE_RECORD",
+                          },))
+    assert corporate["issues"] == []
+    assert corporate["corporate_account"]["dividend_income"] > 0
+    assert corporate["corporate_account"]["dividend_tax_withheld"] > 0
+    assert any(item["phase"] == "DEFERRED_INDIVIDUAL_TAX"
+               for item in corporate["corporate_account"]["event_audit"])
 
     missing_turn = probe(daily_path, states_path=states_path, actions_path=actions_path,
                          fixture_root=tmp_path)
