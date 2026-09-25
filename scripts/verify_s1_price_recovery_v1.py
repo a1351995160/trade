@@ -33,11 +33,12 @@ from chanlun_trader.research_factory.strategy_interface_v1 import prepare, run a
 from chanlun_trader.research_factory.common import stable_hash
 from scripts.probe_all_indicator_strategy_v1 import (
     ACCOUNT_START_DATE, START_DATE, END_DATE, STRATEGY_ID, SYMBOLS,
-    IndividualDividendPilotEngine,
+    IndividualDividendPilotEngine, approved_existing_file,
 )
 from scripts.s1_causal_price_strategy_v1 import Causal51AccountBackend, Causal51VoteStrategy
 from scripts.s1_public_entry_strategy_v1 import input_identity
 from scripts.verify_s1_corporate_chain_v1 import ACCOUNT_END_DATE, ACTION_REPORT, checked_events
+from scripts.verify_fixed_strategy_state_v1 import _historical_path
 from scripts.verify_s1_public_entry_v1 import (
     CORPORATE_REPORT, PILOT_REPORT, REPORT_PATH as PUBLIC_REPORT,
     _account_material, _file_hash, _load_bundle,
@@ -62,6 +63,28 @@ def _replay_identity(input_identity: str) -> str:
     return stable_hash({"input_identity": input_identity,
                         "code_sha256": {str(path.relative_to(ROOT)): _file_hash(path)
                                         for path in REPLAY_SOURCE_FILES}})
+
+
+def _source_paths(daily: Path, turn: Path, states: Path, historical: Path,
+                  manifest: Path, actions: Path) -> dict[str, Path]:
+    return {"daily": approved_existing_file(daily),
+            "turn": approved_existing_file(turn),
+            "states": approved_existing_file(states),
+            "historical_states": _historical_path(historical, None),
+            "turn_manifest": approved_existing_file(manifest),
+            "corporate_actions": approved_existing_file(actions)}
+
+
+def _worker_package(path: Path) -> Path:
+    """恢复子进程只读取本次受控临时目录里的固定包名。"""
+    temporary_root = Path(tempfile.gettempdir()).resolve(strict=True)
+    resolved = Path(path).resolve(strict=True)
+    if (resolved.name != "PROCESS_PACKAGE.json"
+            or resolved.parent.parent != temporary_root
+            or not resolved.parent.name.startswith("s1_price_recovery_")
+            or not resolved.is_file()):
+        raise PermissionError("RESTART_WORKER_PACKAGE_PATH_NOT_ALLOWED")
+    return resolved
 
 
 def _engine(bundle: dict, decisions: dict, events: tuple[dict, ...], definition: dict):
@@ -129,8 +152,13 @@ def _engine_chain_parity(result, chain: dict) -> bool:
 
 
 def _restart_worker(package_path: Path, phase: str) -> int:
+    package_path = _worker_package(package_path)
     package = json.loads(package_path.read_text(encoding="utf-8"))
-    paths = {key: Path(value) for key, value in package["paths"].items()}
+    references = package["paths"]
+    paths = _source_paths(
+        Path(references["daily"]), Path(references["turn"]),
+        Path(references["states"]), Path(references["historical_states"]),
+        Path(references["turn_manifest"]), Path(references["corporate_actions"]))
     hashes = package["source_hashes"]
     for key, path in paths.items():
         if _file_hash(path) != hashes[key + "_sha256"]:
@@ -145,18 +173,20 @@ def _restart_worker(package_path: Path, phase: str) -> int:
     if stable_hash(package["decisions"]) != package["decisions_sha256"]:
         raise ValueError("RESTART_WORKER_DECISIONS_CHANGED")
     engine = _engine(bundle, package["decisions"], events, strategy.definition)
-    checkpoint = Path(package["checkpoint_path"])
+    checkpoint = package_path.parent / "PROCESS_CHECKPOINT_20240718.json"
     if phase == "interrupt":
         try:
-            run_recoverable(engine, checkpoint, input_identity=package["replay_identity"],
-                            stop_after_date=package["interrupt_after_date"])
+            run_recoverable(engine, checkpoint, checkpoint_root=package_path.parent,
+                            input_identity=package["replay_identity"],
+                            stop_after_date=20240718)
         except ReplayInterrupted:
             os._exit(17)
         raise ValueError("RESTART_WORKER_INTERRUPTION_NOT_REACHED")
     if phase != "resume":
         raise ValueError("RESTART_WORKER_PHASE_INVALID")
-    result = run_recoverable(engine, checkpoint, input_identity=package["replay_identity"])
-    Path(package["result_path"]).write_text(json.dumps({
+    result = run_recoverable(engine, checkpoint, checkpoint_root=package_path.parent,
+                             input_identity=package["replay_identity"])
+    (package_path.parent / "PROCESS_RESULT.json").write_text(json.dumps({
         "economic_result_sha256": stable_hash(economic_state(engine)),
         "trade_count": len(result.trades),
         "dividend_income": result.ledger.action_income,
@@ -168,13 +198,15 @@ def _restart_worker(package_path: Path, phase: str) -> int:
 def run(daily_path: Path, turn_path: Path, states_path: Path,
         historical_path: Path, turn_manifest_path: Path,
         action_path: Path = ACTION_REPORT) -> dict:
+    paths = _source_paths(daily_path, turn_path, states_path, historical_path,
+                          turn_manifest_path, action_path)
+    daily_path, turn_path, states_path = paths["daily"], paths["turn"], paths["states"]
+    historical_path, turn_manifest_path, action_path = (
+        paths["historical_states"], paths["turn_manifest"], paths["corporate_actions"])
     frozen = json.loads(PUBLIC_REPORT.read_text(encoding="utf-8"))
     corporate = json.loads(CORPORATE_REPORT.read_text(encoding="utf-8"))
     pilot = json.loads(PILOT_REPORT.read_text(encoding="utf-8"))
     events = checked_events(json.loads(action_path.read_text(encoding="utf-8")))
-    paths = {"daily": daily_path, "turn": turn_path, "states": states_path,
-             "historical_states": historical_path, "turn_manifest": turn_manifest_path,
-             "corporate_actions": action_path}
     hashes = {"daily_sha256": _file_hash(daily_path),
               "turn_sha256": _file_hash(turn_path),
               "states_sha256": _file_hash(states_path),
@@ -239,6 +271,7 @@ def run(daily_path: Path, turn_path: Path, states_path: Path,
             try:
                 run_recoverable(_engine(bundle, outcome["submitted_decisions"], events,
                                         strategy.definition), checkpoint,
+                                checkpoint_root=temp,
                                 input_identity=replay_identity, stop_after_date=day)
             except ReplayInterrupted:
                 pass
@@ -247,7 +280,7 @@ def run(daily_path: Path, turn_path: Path, states_path: Path,
             recorded = json.loads(checkpoint.read_text(encoding="utf-8"))
             resumed = _engine(bundle, outcome["submitted_decisions"], events, strategy.definition)
             resumed_result = run_recoverable(
-                resumed, checkpoint, input_identity=replay_identity)
+                resumed, checkpoint, checkpoint_root=temp, input_identity=replay_identity)
             resumed_hash = stable_hash(economic_state(resumed))
             restarts.append({"interrupted_after_date": day,
                              "checkpoint_event_index": recorded["event_index"],
@@ -270,7 +303,6 @@ def run(daily_path: Path, turn_path: Path, states_path: Path,
             "input_identity": bundle["input_identity"],
             "replay_identity": replay_identity,
             "interrupt_after_date": 20240718,
-            "checkpoint_path": str(checkpoint), "result_path": str(result_path),
         }
         package_path.write_text(json.dumps(package, ensure_ascii=False, default=str),
                                 encoding="utf-8")
@@ -350,14 +382,22 @@ def main() -> int:
     result = run(args.daily_parquet, args.turn_parquet, args.states_parquet,
                  args.historical_states_parquet, args.turn_manifest_json,
                  args.action_snapshot_json)
-    REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    REPORT_PATH.write_text(json.dumps(result, ensure_ascii=False, indent=2, default=str) + "\n",
-                           encoding="utf-8")
+    _write_fixed_report(result)
     print(json.dumps({"status": result["status"], "s1_baseline_status": result["s1_baseline_status"],
                       "source_qualification": result["strict_source_qualification"]["strict_pit_status"],
                       "blockers": result["blockers"], "report": str(REPORT_PATH)},
                      ensure_ascii=False))
     return 2 if result["blockers"] else 0
+
+
+def _write_fixed_report(result: dict) -> None:
+    root = ROOT.resolve(strict=True)
+    target = (root / "reports" / "s1_trusted_baseline_20260925" /
+              "PRICE_PIT_RESTART.json").resolve(strict=False)
+    if target != REPORT_PATH.resolve(strict=False) or not target.is_relative_to(root):
+        raise PermissionError("S1_REPORT_PATH_NOT_ALLOWED")
+    target.write_text(json.dumps(result, ensure_ascii=False, indent=2, default=str) + "\n",
+                      encoding="utf-8")
 
 
 if __name__ == "__main__":

@@ -5,6 +5,7 @@ from dataclasses import asdict
 import json
 import os
 from pathlib import Path
+import re
 import tempfile
 
 from .common import stable_hash
@@ -16,6 +17,16 @@ VERSION = "ENGINE_REPLAY_RECOVERY_V1"
 
 class ReplayInterrupted(RuntimeError):
     pass
+
+
+def _checkpoint_file(path: Path, root: Path) -> Path:
+    """只允许调用方指定目录下的单层 JSON 回执，拒绝符号链接逃逸。"""
+    trusted_root = Path(root).resolve(strict=True)
+    candidate = Path(path).resolve(strict=False)
+    if (not candidate.is_relative_to(trusted_root) or candidate.parent != trusted_root
+            or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,80}\.json", candidate.name)):
+        raise PermissionError("ENGINE_REPLAY_CHECKPOINT_PATH_NOT_ALLOWED")
+    return candidate
 
 
 def economic_state(engine) -> dict:
@@ -45,7 +56,8 @@ def economic_state(engine) -> dict:
     return material
 
 
-def _read_receipt(path: Path, input_identity: str) -> dict | None:
+def _read_receipt(path: Path, root: Path, input_identity: str) -> dict | None:
+    path = _checkpoint_file(path, root)
     if not path.exists():
         return None
     receipt = json.loads(path.read_text(encoding="utf-8"))
@@ -56,8 +68,8 @@ def _read_receipt(path: Path, input_identity: str) -> dict | None:
     return receipt
 
 
-def _write_receipt(path: Path, body: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
+def _write_receipt(path: Path, root: Path, body: dict) -> None:
+    path = _checkpoint_file(path, root)
     payload = json.dumps({**body, "receipt_hash": stable_hash(body)},
                          ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     descriptor, temporary = tempfile.mkstemp(prefix=".replay_", suffix=".json", dir=path.parent)
@@ -72,13 +84,14 @@ def _write_receipt(path: Path, body: dict) -> None:
             os.unlink(temporary)
 
 
-def run_recoverable(engine, checkpoint_path: Path, *, input_identity: str,
+def run_recoverable(engine, checkpoint_path: Path, *, checkpoint_root: Path,
+                    input_identity: str,
                     stop_after_date: int | None = None):
     """重放并核对前缀，随后继续；仅支持无外部副作用的预置 Signal 回测。"""
     if not input_identity or engine.fill_hook is not None:
         raise ValueError("ENGINE_REPLAY_REQUIRES_PURE_PRELOADED_SIGNALS")
-    path = Path(checkpoint_path)
-    previous = _read_receipt(path, input_identity)
+    path = _checkpoint_file(checkpoint_path, checkpoint_root)
+    previous = _read_receipt(path, checkpoint_root, input_identity)
     engine._build()
     pending = sorted(engine.signals, key=lambda signal:
                      (signal.generated_at, -signal.score, signal.signal_id))
@@ -98,7 +111,7 @@ def run_recoverable(engine, checkpoint_path: Path, *, input_identity: str,
         body = {"version": VERSION, "input_identity": input_identity,
                 "event_index": index, "event_timestamp": str(event.timestamp),
                 "state_hash": state_hash, "complete": False}
-        _write_receipt(path, body)
+        _write_receipt(path, checkpoint_root, body)
         if stop_after_date == event.date:
             raise ReplayInterrupted(f"ENGINE_REPLAY_INTERRUPTED_AFTER:{event.date}")
     if not prefix_verified:
@@ -111,5 +124,5 @@ def run_recoverable(engine, checkpoint_path: Path, *, input_identity: str,
             "event_index": len(engine.clock.events) - 1,
             "event_timestamp": str(engine.clock.events[-1].timestamp),
             "state_hash": state_hash, "complete": True, "final_hash": final_hash}
-    _write_receipt(path, body)
+    _write_receipt(path, checkpoint_root, body)
     return result

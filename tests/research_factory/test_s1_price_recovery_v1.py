@@ -21,6 +21,7 @@ from chanlun_trader.research_factory.source_availability_v1 import (
     availability_at_decision, s1_source_qualification,
 )
 from chanlun_trader.research_factory.common import stable_hash
+from scripts.verify_s1_price_recovery_v1 import _worker_package
 
 
 def _event(published="2024-06-06"):
@@ -81,6 +82,13 @@ def test_source_qualification_requires_observed_timestamps_for_every_row():
                                        "strict_pit_status"] == "BLOCKED"
 
 
+def test_restart_worker_rejects_package_outside_its_managed_directory(tmp_path):
+    package = tmp_path / "PROCESS_PACKAGE.json"
+    package.write_text("{}", encoding="utf-8")
+    with pytest.raises(PermissionError, match="PACKAGE_PATH_NOT_ALLOWED"):
+        _worker_package(package)
+
+
 def _engine(close_on_third=10.5, close_on_second=10.2):
     dates = [20240102, 20240103, 20240104]
     store = MarketDataStore()
@@ -118,7 +126,7 @@ config=EngineConfig(initial_cash=100000,max_positions=1,max_position_weight=.5,s
 engine=BacktestEngineV2(store,dates,config=config,seed=0)
 engine.add_signal(Signal(strategy_id="TEST",signal_id="BUY-1",symbol="000001.SZ",generated_at=pd.Timestamp("2024-01-02 15:30",tz="Asia/Shanghai"),direction=Side.BUY))
 try:
-    run_recoverable(engine,sys.argv[1],input_identity="BOUND_INPUT",stop_after_date=20240103)
+    run_recoverable(engine,sys.argv[1],checkpoint_root=os.path.dirname(sys.argv[1]),input_identity="BOUND_INPUT",stop_after_date=20240103)
 except ReplayInterrupted:
     os._exit(17)
 '''
@@ -133,15 +141,22 @@ except ReplayInterrupted:
     continuous = _engine()
     continuous.run()
     resumed = _engine()
-    run_recoverable(resumed, checkpoint, input_identity="BOUND_INPUT")
+    run_recoverable(resumed, checkpoint, checkpoint_root=tmp_path,
+                    input_identity="BOUND_INPUT")
     assert stable_hash(economic_state(resumed)) == stable_hash(economic_state(continuous))
     assert len(resumed.ledger.trades) == len(continuous.ledger.trades) == 1
+    with pytest.raises(PermissionError, match="CHECKPOINT_PATH_NOT_ALLOWED"):
+        run_recoverable(_engine(), tmp_path.parent / "escaped.json",
+                        checkpoint_root=tmp_path, input_identity="BOUND_INPUT")
     with pytest.raises(ValueError, match="RECEIPT_OR_INPUT_CONFLICT"):
-        run_recoverable(_engine(), checkpoint, input_identity="CHANGED_INPUT")
+        run_recoverable(_engine(), checkpoint, checkpoint_root=tmp_path,
+                        input_identity="CHANGED_INPUT")
     with pytest.raises(ValueError, match="PREFIX_DIVERGED"):
         run_recoverable(_engine(close_on_second=11.0), checkpoint,
+                        checkpoint_root=tmp_path,
                         input_identity="BOUND_INPUT")
     receipt["state_hash"] = "tampered"
     checkpoint.write_text(json.dumps(receipt), encoding="utf-8")
     with pytest.raises(ValueError, match="RECEIPT_OR_INPUT_CONFLICT"):
-        run_recoverable(_engine(), checkpoint, input_identity="BOUND_INPUT")
+        run_recoverable(_engine(), checkpoint, checkpoint_root=tmp_path,
+                        input_identity="BOUND_INPUT")

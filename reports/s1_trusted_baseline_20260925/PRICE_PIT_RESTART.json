@@ -33,7 +33,7 @@
   "public_reference_sha256": "426064a7b66cfddb22c3eb02c4a4ca7011a71bdd16a8a58dc2c15d3552d448a1",
   "strategy_plan_id": "4fa5698d7dd4eae824792b1928fed38ef74c7f15e12d61a31179174a100d8a8e",
   "input_identity": "d5b05a5c7d23b991178dcf7c65074d0dc4fe0fca4abce3e93add308e5dab3691",
-  "replay_identity": "0d06cc405c56fd0db8b4e9a9b5fcf594dff7b905f5f3099544cc65a91490e80f",
+  "replay_identity": "d28ab2e27b31c1e63e589959bf94dee37c85b9a2f6b782866ebe4e805bd3d895",
   "feature_mode": "CAUSAL_HFQ_CASH_DIVIDEND_ONLY",
   "execution_and_valuation_mode": "RAW",
   "price_evidence": {
@@ -121,7 +121,7 @@
     },
     {
       "dataset": "parquet",
-      "path": "reports\\all_indicator_fixed_strategy_pilot_20260925\\BAOSTOCK_TURN.parquet",
+      "path": "E:\\worktrees\\s1-trusted-baseline\\trade-system-contract-port-v1\\reports\\all_indicator_fixed_strategy_pilot_20260925\\BAOSTOCK_TURN.parquet",
       "requested": [
         20231009,
         20240731
