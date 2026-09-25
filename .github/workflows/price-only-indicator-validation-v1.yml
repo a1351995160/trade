@@ -69,6 +69,7 @@ jobs:
           python -m pytest
           tests/exits_v2
           tests/entrypoints_v2
+          tests/research_factory/test_s1_public_entry_v1.py
           -q
           --junitxml=junit/price-only-a0-chain-${{ matrix.os }}.xml
 

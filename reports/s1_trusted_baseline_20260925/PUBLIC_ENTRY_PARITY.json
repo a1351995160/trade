@@ -1,0 +1,3843 @@
+{
+  "purpose": "S1_FIXED_51_PUBLIC_STRATEGY_ENTRY_PARITY_DIAGNOSTIC",
+  "public_entry": "chanlun_trader.research_factory.strategy_interface_v1.run",
+  "strategy_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1",
+  "indicator_count": 51,
+  "catalog_sha256": "a74f3936989489ad8080d0f62fa9e1acd8fe09426c25fc72be3cbdda20d75f6f",
+  "scope": {
+    "symbols": [
+      "000001.SZ",
+      "600000.SH"
+    ],
+    "feature_dates": [
+      20231009,
+      20240731
+    ],
+    "account_dates": [
+      20240201,
+      20240731
+    ]
+  },
+  "sources": {
+    "daily_sha256": "63762647b9bbebf07f7ad768587a17eb351dc04247c760e0343ddae441ed9437",
+    "turn_sha256": "218e50a3c11b19fd8bbc1d07c55f37c92a983a5172bf84c52feceb744f8640f2",
+    "states_sha256": "53a6309a1c5bf6ba3862b0bec91c211b241dbbbf448f93c65c064e8e5e891b1d",
+    "historical_states_sha256": "b5025955c95c8de4b725b9dae5777bd483d028799d17c3252c1037226f88fc67",
+    "actions_sha256": "80f43348cd93f71297e48afba2cb25bdfeb75df5ff9f1de6f5fd2b86bb15c9c1",
+    "corporate_actions_sha256": "3b288d35d0097a6717d7ce0c2758822d3305a0782a6a0da27261464df4fa68cb",
+    "turn_manifest_sha256": "f7cf54e429a66f23f1fb0bcdbbbee2d93f231d322e43f067bf71a31eecb758db"
+  },
+  "frozen_references": {
+    "pilot_report_sha256": "416cc20b9bd77c685138164bf62c7bff4162f2ec00cd6d61078bc534951175f1",
+    "corporate_report_sha256": "07ed81c73a981c6631a5985048a7eea3e3e4b3dfb32b2ba10a990a21ecbbf030"
+  },
+  "governance": {
+    "receipt_id": "dee845db9e926b47516d2445e266813ef370db48c462a7f012288bfe7d279b72",
+    "plan_id": "94d7bc94dddac4acea1b98272d15292a7a4418be6e7f0c95e765381b0f46e9a5",
+    "input_identity": "d5b05a5c7d23b991178dcf7c65074d0dc4fe0fca4abce3e93add308e5dab3691",
+    "execution_budget_used": 1,
+    "purpose": "FROZEN_REFERENCE_DIAGNOSTIC_NOT_SEARCH_CANDIDATE"
+  },
+  "decision_parity": true,
+  "state_rejection_parity": true,
+  "account_parity": true,
+  "daily_decisions": [
+    {
+      "symbol": "000001.SZ",
+      "date": 20240102,
+      "rising_votes": 16,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240103,
+      "rising_votes": 12,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240104,
+      "rising_votes": 13,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240105,
+      "rising_votes": 40,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240108,
+      "rising_votes": 10,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240109,
+      "rising_votes": 15,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240110,
+      "rising_votes": 9,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240111,
+      "rising_votes": 30,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240112,
+      "rising_votes": 29,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240115,
+      "rising_votes": 24,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240116,
+      "rising_votes": 40,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240117,
+      "rising_votes": 19,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240118,
+      "rising_votes": 23,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240119,
+      "rising_votes": 10,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240122,
+      "rising_votes": 15,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240123,
+      "rising_votes": 21,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240124,
+      "rising_votes": 43,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240125,
+      "rising_votes": 45,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240126,
+      "rising_votes": 42,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240129,
+      "rising_votes": 39,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240130,
+      "rising_votes": 23,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240131,
+      "rising_votes": 20,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240201,
+      "rising_votes": 16,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240202,
+      "rising_votes": 14,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240205,
+      "rising_votes": 35,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240206,
+      "rising_votes": 44,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240207,
+      "rising_votes": 26,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240208,
+      "rising_votes": 32,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240219,
+      "rising_votes": 35,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240220,
+      "rising_votes": 31,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240221,
+      "rising_votes": 48,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240222,
+      "rising_votes": 35,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240223,
+      "rising_votes": 32,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240226,
+      "rising_votes": 23,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240227,
+      "rising_votes": 21,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240228,
+      "rising_votes": 28,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240229,
+      "rising_votes": 29,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240301,
+      "rising_votes": 16,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240304,
+      "rising_votes": 12,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240305,
+      "rising_votes": 32,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240306,
+      "rising_votes": 9,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240307,
+      "rising_votes": 36,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240308,
+      "rising_votes": 17,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240311,
+      "rising_votes": 30,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240312,
+      "rising_votes": 34,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240313,
+      "rising_votes": 16,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240314,
+      "rising_votes": 6,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240315,
+      "rising_votes": 39,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240318,
+      "rising_votes": 15,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240319,
+      "rising_votes": 11,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240320,
+      "rising_votes": 20,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240321,
+      "rising_votes": 21,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240322,
+      "rising_votes": 11,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240325,
+      "rising_votes": 18,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240326,
+      "rising_votes": 40,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240327,
+      "rising_votes": 14,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240328,
+      "rising_votes": 14,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240329,
+      "rising_votes": 29,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240401,
+      "rising_votes": 36,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240402,
+      "rising_votes": 16,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240403,
+      "rising_votes": 9,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240408,
+      "rising_votes": 7,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240409,
+      "rising_votes": 8,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240410,
+      "rising_votes": 10,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240411,
+      "rising_votes": 7,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240412,
+      "rising_votes": 10,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240415,
+      "rising_votes": 31,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240416,
+      "rising_votes": 15,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240417,
+      "rising_votes": 42,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240418,
+      "rising_votes": 46,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240419,
+      "rising_votes": 20,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240422,
+      "rising_votes": 25,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240423,
+      "rising_votes": 27,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240424,
+      "rising_votes": 18,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240425,
+      "rising_votes": 37,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240426,
+      "rising_votes": 31,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240429,
+      "rising_votes": 45,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240430,
+      "rising_votes": 25,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240506,
+      "rising_votes": 40,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240507,
+      "rising_votes": 24,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240508,
+      "rising_votes": 23,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240509,
+      "rising_votes": 25,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240510,
+      "rising_votes": 42,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240513,
+      "rising_votes": 33,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240514,
+      "rising_votes": 22,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240515,
+      "rising_votes": 16,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240516,
+      "rising_votes": 47,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240517,
+      "rising_votes": 43,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240520,
+      "rising_votes": 26,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240521,
+      "rising_votes": 41,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240522,
+      "rising_votes": 36,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240523,
+      "rising_votes": 21,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240524,
+      "rising_votes": 19,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240527,
+      "rising_votes": 40,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240528,
+      "rising_votes": 19,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240529,
+      "rising_votes": 15,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240530,
+      "rising_votes": 9,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240531,
+      "rising_votes": 9,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240603,
+      "rising_votes": 14,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240604,
+      "rising_votes": 16,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240605,
+      "rising_votes": 11,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240606,
+      "rising_votes": 16,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240607,
+      "rising_votes": 24,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240611,
+      "rising_votes": 10,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240612,
+      "rising_votes": 15,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240613,
+      "rising_votes": 10,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240614,
+      "rising_votes": 9,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240617,
+      "rising_votes": 6,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240618,
+      "rising_votes": 14,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240619,
+      "rising_votes": 24,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240620,
+      "rising_votes": 7,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240621,
+      "rising_votes": 10,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240624,
+      "rising_votes": 18,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240625,
+      "rising_votes": 20,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240626,
+      "rising_votes": 14,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240627,
+      "rising_votes": 30,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240628,
+      "rising_votes": 22,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240701,
+      "rising_votes": 40,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240702,
+      "rising_votes": 34,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240703,
+      "rising_votes": 11,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240704,
+      "rising_votes": 13,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240705,
+      "rising_votes": 15,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240708,
+      "rising_votes": 7,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240709,
+      "rising_votes": 30,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240710,
+      "rising_votes": 24,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240711,
+      "rising_votes": 14,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240712,
+      "rising_votes": 39,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240715,
+      "rising_votes": 30,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240716,
+      "rising_votes": 23,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240717,
+      "rising_votes": 40,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240718,
+      "rising_votes": 29,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240719,
+      "rising_votes": 23,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240722,
+      "rising_votes": 17,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240723,
+      "rising_votes": 16,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240724,
+      "rising_votes": 11,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240725,
+      "rising_votes": 11,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240726,
+      "rising_votes": 10,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240729,
+      "rising_votes": 20,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240730,
+      "rising_votes": 4,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "date": 20240731,
+      "rising_votes": 40,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240102,
+      "rising_votes": 12,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240103,
+      "rising_votes": 30,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240104,
+      "rising_votes": 21,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240105,
+      "rising_votes": 46,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240108,
+      "rising_votes": 12,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240109,
+      "rising_votes": 16,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240110,
+      "rising_votes": 8,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240111,
+      "rising_votes": 11,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240112,
+      "rising_votes": 4,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240115,
+      "rising_votes": 14,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240116,
+      "rising_votes": 38,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240117,
+      "rising_votes": 8,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240118,
+      "rising_votes": 29,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240119,
+      "rising_votes": 33,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240122,
+      "rising_votes": 28,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240123,
+      "rising_votes": 33,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240124,
+      "rising_votes": 43,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240125,
+      "rising_votes": 39,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240126,
+      "rising_votes": 49,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240129,
+      "rising_votes": 39,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240130,
+      "rising_votes": 24,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240131,
+      "rising_votes": 25,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240201,
+      "rising_votes": 23,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240202,
+      "rising_votes": 40,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240205,
+      "rising_votes": 41,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240206,
+      "rising_votes": 43,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240207,
+      "rising_votes": 30,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240208,
+      "rising_votes": 30,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240219,
+      "rising_votes": 44,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240220,
+      "rising_votes": 25,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240221,
+      "rising_votes": 47,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240222,
+      "rising_votes": 20,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240223,
+      "rising_votes": 40,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240226,
+      "rising_votes": 22,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240227,
+      "rising_votes": 28,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240228,
+      "rising_votes": 18,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240229,
+      "rising_votes": 25,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240301,
+      "rising_votes": 11,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240304,
+      "rising_votes": 11,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240305,
+      "rising_votes": 36,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240306,
+      "rising_votes": 18,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240307,
+      "rising_votes": 25,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240308,
+      "rising_votes": 12,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240311,
+      "rising_votes": 17,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240312,
+      "rising_votes": 11,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240313,
+      "rising_votes": 9,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240314,
+      "rising_votes": 7,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240315,
+      "rising_votes": 30,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240318,
+      "rising_votes": 14,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240319,
+      "rising_votes": 5,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240320,
+      "rising_votes": 15,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240321,
+      "rising_votes": 35,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240322,
+      "rising_votes": 7,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240325,
+      "rising_votes": 17,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240326,
+      "rising_votes": 41,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240327,
+      "rising_votes": 43,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240328,
+      "rising_votes": 22,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240329,
+      "rising_votes": 20,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240401,
+      "rising_votes": 46,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240402,
+      "rising_votes": 34,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240403,
+      "rising_votes": 19,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240408,
+      "rising_votes": 47,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240409,
+      "rising_votes": 22,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240410,
+      "rising_votes": 31,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240411,
+      "rising_votes": 25,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240412,
+      "rising_votes": 16,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240415,
+      "rising_votes": 43,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240416,
+      "rising_votes": 23,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240417,
+      "rising_votes": 46,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240418,
+      "rising_votes": 33,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240419,
+      "rising_votes": 29,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240422,
+      "rising_votes": 20,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240423,
+      "rising_votes": 37,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240424,
+      "rising_votes": 29,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240425,
+      "rising_votes": 35,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240426,
+      "rising_votes": 39,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240429,
+      "rising_votes": 29,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240430,
+      "rising_votes": 49,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240506,
+      "rising_votes": 37,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240507,
+      "rising_votes": 24,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240508,
+      "rising_votes": 21,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240509,
+      "rising_votes": 24,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240510,
+      "rising_votes": 46,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240513,
+      "rising_votes": 34,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240514,
+      "rising_votes": 23,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240515,
+      "rising_votes": 22,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240516,
+      "rising_votes": 44,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240517,
+      "rising_votes": 45,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240520,
+      "rising_votes": 47,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240521,
+      "rising_votes": 37,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240522,
+      "rising_votes": 40,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240523,
+      "rising_votes": 24,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240524,
+      "rising_votes": 22,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240527,
+      "rising_votes": 35,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240528,
+      "rising_votes": 24,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240529,
+      "rising_votes": 22,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240530,
+      "rising_votes": 22,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240531,
+      "rising_votes": 12,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240603,
+      "rising_votes": 15,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240604,
+      "rising_votes": 23,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240605,
+      "rising_votes": 13,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240606,
+      "rising_votes": 13,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240607,
+      "rising_votes": 28,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240611,
+      "rising_votes": 14,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240612,
+      "rising_votes": 9,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240613,
+      "rising_votes": 23,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240614,
+      "rising_votes": 24,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240617,
+      "rising_votes": 7,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240618,
+      "rising_votes": 8,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240619,
+      "rising_votes": 33,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240620,
+      "rising_votes": 12,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240621,
+      "rising_votes": 10,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240624,
+      "rising_votes": 14,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240625,
+      "rising_votes": 29,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240626,
+      "rising_votes": 21,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240627,
+      "rising_votes": 35,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240628,
+      "rising_votes": 28,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240701,
+      "rising_votes": 32,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240702,
+      "rising_votes": 46,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240703,
+      "rising_votes": 28,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240704,
+      "rising_votes": 28,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240705,
+      "rising_votes": 24,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240708,
+      "rising_votes": 37,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240709,
+      "rising_votes": 48,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240710,
+      "rising_votes": 40,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240711,
+      "rising_votes": 25,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240712,
+      "rising_votes": 49,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240715,
+      "rising_votes": 37,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240716,
+      "rising_votes": 27,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240717,
+      "rising_votes": 48,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240718,
+      "rising_votes": 22,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240719,
+      "rising_votes": 21,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240722,
+      "rising_votes": 15,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240723,
+      "rising_votes": 21,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240724,
+      "rising_votes": 11,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240725,
+      "rising_votes": 18,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240726,
+      "rising_votes": 11,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240729,
+      "rising_votes": 30,
+      "decision_at_close": "BUY",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240730,
+      "rising_votes": 5,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    },
+    {
+      "symbol": "600000.SH",
+      "date": 20240731,
+      "rising_votes": 16,
+      "decision_at_close": "SELL",
+      "frozen_equal": true
+    }
+  ],
+  "daily_account": [
+    {
+      "date": 20240201,
+      "public": {
+        "date": 20240201,
+        "cash": 1000000.0,
+        "market_value": 0.0,
+        "equity": 1000000.0,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240202,
+      "public": {
+        "date": 20240202,
+        "cash": 1000000.0,
+        "market_value": 0.0,
+        "equity": 1000000.0,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240205,
+      "public": {
+        "date": 20240205,
+        "cash": 500058.6459,
+        "market_value": 502970.0,
+        "equity": 1003028.6459,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 73000
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240206,
+      "public": {
+        "date": 20240206,
+        "cash": 24.2585,
+        "market_value": 1030816.0,
+        "equity": 1030840.2585,
+        "position_quantities": {
+          "000001.SZ": 53700,
+          "600000.SH": 73000
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240207,
+      "public": {
+        "date": 20240207,
+        "cash": 24.2585,
+        "market_value": 1022677.0,
+        "equity": 1022701.2585,
+        "position_quantities": {
+          "000001.SZ": 53700,
+          "600000.SH": 73000
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240208,
+      "public": {
+        "date": 20240208,
+        "cash": 24.2585,
+        "market_value": 1027359.0,
+        "equity": 1027383.2585,
+        "position_quantities": {
+          "000001.SZ": 53700,
+          "600000.SH": 73000
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240219,
+      "public": {
+        "date": 20240219,
+        "cash": 24.2585,
+        "market_value": 1046557.0,
+        "equity": 1046581.2585,
+        "position_quantities": {
+          "000001.SZ": 53700,
+          "600000.SH": 73000
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240220,
+      "public": {
+        "date": 20240220,
+        "cash": 24.2585,
+        "market_value": 1045634.0,
+        "equity": 1045658.2585,
+        "position_quantities": {
+          "000001.SZ": 53700,
+          "600000.SH": 73000
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240221,
+      "public": {
+        "date": 20240221,
+        "cash": 518147.0747,
+        "market_value": 579960.0,
+        "equity": 1098107.0747,
+        "position_quantities": {
+          "000001.SZ": 53700,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240222,
+      "public": {
+        "date": 20240222,
+        "cash": 567.6322,
+        "market_value": 1100124.0,
+        "equity": 1100691.6322,
+        "position_quantities": {
+          "000001.SZ": 53700,
+          "600000.SH": 71400
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240223,
+      "public": {
+        "date": 20240223,
+        "cash": 514461.8423,
+        "market_value": 582645.0,
+        "equity": 1097106.8423,
+        "position_quantities": {
+          "000001.SZ": 53700,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240226,
+      "public": {
+        "date": 20240226,
+        "cash": 643.3709,
+        "market_value": 1066737.0,
+        "equity": 1067380.3709,
+        "position_quantities": {
+          "000001.SZ": 100900,
+          "600000.SH": 600
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240227,
+      "public": {
+        "date": 20240227,
+        "cash": 1061462.5058,
+        "market_value": 0.0,
+        "equity": 1061462.5058,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240228,
+      "public": {
+        "date": 20240228,
+        "cash": 531073.7017,
+        "market_value": 528240.0,
+        "equity": 1059313.7017,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 74400
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240229,
+      "public": {
+        "date": 20240229,
+        "cash": 534352.8376,
+        "market_value": 532677.0,
+        "equity": 1067029.8376,
+        "position_quantities": {
+          "000001.SZ": 50300,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240301,
+      "public": {
+        "date": 20240301,
+        "cash": 1009.3551,
+        "market_value": 1055294.0,
+        "equity": 1056303.3551,
+        "position_quantities": {
+          "000001.SZ": 100600,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240304,
+      "public": {
+        "date": 20240304,
+        "cash": 1050435.3948,
+        "market_value": 0.0,
+        "equity": 1050435.3948,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240305,
+      "public": {
+        "date": 20240305,
+        "cash": 1050435.3948,
+        "market_value": 0.0,
+        "equity": 1050435.3948,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240306,
+      "public": {
+        "date": 20240306,
+        "cash": 835.5805,
+        "market_value": 1041104.0,
+        "equity": 1041939.5805,
+        "position_quantities": {
+          "000001.SZ": 50400,
+          "600000.SH": 73100
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240307,
+      "public": {
+        "date": 20240307,
+        "cash": 1040121.4011,
+        "market_value": 0.0,
+        "equity": 1040121.4011,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240308,
+      "public": {
+        "date": 20240308,
+        "cash": 520940.6083,
+        "market_value": 520038.0,
+        "equity": 1040978.6083,
+        "position_quantities": {
+          "000001.SZ": 50100,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240311,
+      "public": {
+        "date": 20240311,
+        "cash": 1040067.9306,
+        "market_value": 0.0,
+        "equity": 1040067.9306,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240312,
+      "public": {
+        "date": 20240312,
+        "cash": 520658.3607,
+        "market_value": 522720.0,
+        "equity": 1043378.3607,
+        "position_quantities": {
+          "000001.SZ": 49500,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240313,
+      "public": {
+        "date": 20240313,
+        "cash": 881.799,
+        "market_value": 1020604.0,
+        "equity": 1021485.799,
+        "position_quantities": {
+          "000001.SZ": 98800,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240314,
+      "public": {
+        "date": 20240314,
+        "cash": 1016741.6922,
+        "market_value": 0.0,
+        "equity": 1016741.6922,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240315,
+      "public": {
+        "date": 20240315,
+        "cash": 1016741.6922,
+        "market_value": 0.0,
+        "equity": 1016741.6922,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240318,
+      "public": {
+        "date": 20240318,
+        "cash": 974.5239,
+        "market_value": 1015691.0,
+        "equity": 1016665.5239,
+        "position_quantities": {
+          "000001.SZ": 48000,
+          "600000.SH": 71900
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240319,
+      "public": {
+        "date": 20240319,
+        "cash": 1013691.9258,
+        "market_value": 0.0,
+        "equity": 1013691.9258,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240320,
+      "public": {
+        "date": 20240320,
+        "cash": 1013691.9258,
+        "market_value": 0.0,
+        "equity": 1013691.9258,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240321,
+      "public": {
+        "date": 20240321,
+        "cash": 1013691.9258,
+        "market_value": 0.0,
+        "equity": 1013691.9258,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240322,
+      "public": {
+        "date": 20240322,
+        "cash": 506837.5939,
+        "market_value": 503360.0,
+        "equity": 1010197.5939,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 71500
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240325,
+      "public": {
+        "date": 20240325,
+        "cash": 1010741.7321,
+        "market_value": 0.0,
+        "equity": 1010741.7321,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240326,
+      "public": {
+        "date": 20240326,
+        "cash": 1010741.7321,
+        "market_value": 0.0,
+        "equity": 1010741.7321,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240327,
+      "public": {
+        "date": 20240327,
+        "cash": 505340.7334,
+        "market_value": 503334.0,
+        "equity": 1008674.7334,
+        "position_quantities": {
+          "000001.SZ": 47800,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240328,
+      "public": {
+        "date": 20240328,
+        "cash": 503630.3752,
+        "market_value": 501183.0,
+        "equity": 1004813.3752,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 69900
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240329,
+      "public": {
+        "date": 20240329,
+        "cash": 1001147.6672,
+        "market_value": 0.0,
+        "equity": 1001147.6672,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240401,
+      "public": {
+        "date": 20240401,
+        "cash": 500823.8675,
+        "market_value": 505400.0,
+        "equity": 1006223.8675,
+        "position_quantities": {
+          "000001.SZ": 47500,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240402,
+      "public": {
+        "date": 20240402,
+        "cash": 590.6405,
+        "market_value": 996975.0,
+        "equity": 997565.6405,
+        "position_quantities": {
+          "000001.SZ": 94500,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240403,
+      "public": {
+        "date": 20240403,
+        "cash": 993937.8209,
+        "market_value": 0.0,
+        "equity": 993937.8209,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240408,
+      "public": {
+        "date": 20240408,
+        "cash": 993937.8209,
+        "market_value": 0.0,
+        "equity": 993937.8209,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240409,
+      "public": {
+        "date": 20240409,
+        "cash": 496867.4544,
+        "market_value": 494406.0,
+        "equity": 991273.4544,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 68100
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240410,
+      "public": {
+        "date": 20240410,
+        "cash": 990405.8927,
+        "market_value": 0.0,
+        "equity": 990405.8927,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240411,
+      "public": {
+        "date": 20240411,
+        "cash": 497429.3594,
+        "market_value": 493044.0,
+        "equity": 990473.3594,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 68100
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240412,
+      "public": {
+        "date": 20240412,
+        "cash": 986891.6671,
+        "market_value": 0.0,
+        "equity": 986891.6671,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240415,
+      "public": {
+        "date": 20240415,
+        "cash": 986891.6671,
+        "market_value": 0.0,
+        "equity": 986891.6671,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240416,
+      "public": {
+        "date": 20240416,
+        "cash": 975.9998,
+        "market_value": 985366.0,
+        "equity": 986341.9998,
+        "position_quantities": {
+          "000001.SZ": 47900,
+          "600000.SH": 67900
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240417,
+      "public": {
+        "date": 20240417,
+        "cash": 983657.3956,
+        "market_value": 0.0,
+        "equity": 983657.3956,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240418,
+      "public": {
+        "date": 20240418,
+        "cash": 473.451,
+        "market_value": 991497.0,
+        "equity": 991970.451,
+        "position_quantities": {
+          "000001.SZ": 46400,
+          "600000.SH": 66900
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240419,
+      "public": {
+        "date": 20240419,
+        "cash": 473.451,
+        "market_value": 987062.0,
+        "equity": 987535.451,
+        "position_quantities": {
+          "000001.SZ": 46400,
+          "600000.SH": 66900
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240422,
+      "public": {
+        "date": 20240422,
+        "cash": 493307.7079,
+        "market_value": 487701.0,
+        "equity": 981008.7079,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 66900
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240423,
+      "public": {
+        "date": 20240423,
+        "cash": 982160.4232,
+        "market_value": 0.0,
+        "equity": 982160.4232,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240424,
+      "public": {
+        "date": 20240424,
+        "cash": 670.4521,
+        "market_value": 979402.0,
+        "equity": 980072.4521,
+        "position_quantities": {
+          "000001.SZ": 46600,
+          "600000.SH": 66400
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240425,
+      "public": {
+        "date": 20240425,
+        "cash": 489114.5441,
+        "market_value": 492024.0,
+        "equity": 981138.5441,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 66400
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240426,
+      "public": {
+        "date": 20240426,
+        "cash": 304.7122,
+        "market_value": 981348.0,
+        "equity": 981652.7122,
+        "position_quantities": {
+          "000001.SZ": 46100,
+          "600000.SH": 66400
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240429,
+      "public": {
+        "date": 20240429,
+        "cash": 304.7122,
+        "market_value": 991029.0,
+        "equity": 991333.7122,
+        "position_quantities": {
+          "000001.SZ": 46100,
+          "600000.SH": 66400
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240430,
+      "public": {
+        "date": 20240430,
+        "cash": 304.7122,
+        "market_value": 1008699.0,
+        "equity": 1009003.7122,
+        "position_quantities": {
+          "000001.SZ": 46100,
+          "600000.SH": 66400
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240506,
+      "public": {
+        "date": 20240506,
+        "cash": 504675.0505,
+        "market_value": 521240.0,
+        "equity": 1025915.0505,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 66400
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240507,
+      "public": {
+        "date": 20240507,
+        "cash": 4028.5201,
+        "market_value": 1019728.0,
+        "equity": 1023756.5201,
+        "position_quantities": {
+          "000001.SZ": 46000,
+          "600000.SH": 66400
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240508,
+      "public": {
+        "date": 20240508,
+        "cash": 1019475.6431,
+        "market_value": 0.0,
+        "equity": 1019475.6431,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240509,
+      "public": {
+        "date": 20240509,
+        "cash": 1019475.6431,
+        "market_value": 0.0,
+        "equity": 1019475.6431,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240510,
+      "public": {
+        "date": 20240510,
+        "cash": 1019475.6431,
+        "market_value": 0.0,
+        "equity": 1019475.6431,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240513,
+      "public": {
+        "date": 20240513,
+        "cash": 68.645,
+        "market_value": 1023331.0,
+        "equity": 1023399.645,
+        "position_quantities": {
+          "000001.SZ": 46700,
+          "600000.SH": 64200
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240514,
+      "public": {
+        "date": 20240514,
+        "cash": 68.645,
+        "market_value": 1015393.0,
+        "equity": 1015461.645,
+        "position_quantities": {
+          "000001.SZ": 46700,
+          "600000.SH": 64200
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240515,
+      "public": {
+        "date": 20240515,
+        "cash": 1014501.0397,
+        "market_value": 0.0,
+        "equity": 1014501.0397,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240516,
+      "public": {
+        "date": 20240516,
+        "cash": 1014501.0397,
+        "market_value": 0.0,
+        "equity": 1014501.0397,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240517,
+      "public": {
+        "date": 20240517,
+        "cash": 262.1834,
+        "market_value": 1031406.0,
+        "equity": 1031668.1834,
+        "position_quantities": {
+          "000001.SZ": 45300,
+          "600000.SH": 63000
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240520,
+      "public": {
+        "date": 20240520,
+        "cash": 262.1834,
+        "market_value": 1039674.0,
+        "equity": 1039936.1834,
+        "position_quantities": {
+          "000001.SZ": 45300,
+          "600000.SH": 63000
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240521,
+      "public": {
+        "date": 20240521,
+        "cash": 262.1834,
+        "market_value": 1053675.0,
+        "equity": 1053937.1834,
+        "position_quantities": {
+          "000001.SZ": 45300,
+          "600000.SH": 63000
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240522,
+      "public": {
+        "date": 20240522,
+        "cash": 262.1834,
+        "market_value": 1061058.0,
+        "equity": 1061320.1834,
+        "position_quantities": {
+          "000001.SZ": 45300,
+          "600000.SH": 63000
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240523,
+      "public": {
+        "date": 20240523,
+        "cash": 262.1834,
+        "market_value": 1053180.0,
+        "equity": 1053442.1834,
+        "position_quantities": {
+          "000001.SZ": 45300,
+          "600000.SH": 63000
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240524,
+      "public": {
+        "date": 20240524,
+        "cash": 1049613.6591,
+        "market_value": 0.0,
+        "equity": 1049613.6591,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240527,
+      "public": {
+        "date": 20240527,
+        "cash": 1049613.6591,
+        "market_value": 0.0,
+        "equity": 1049613.6591,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240528,
+      "public": {
+        "date": 20240528,
+        "cash": 1673.8897,
+        "market_value": 1039640.0,
+        "equity": 1041313.8897,
+        "position_quantities": {
+          "000001.SZ": 45500,
+          "600000.SH": 61000
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240529,
+      "public": {
+        "date": 20240529,
+        "cash": 1037978.8776,
+        "market_value": 0.0,
+        "equity": 1037978.8776,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240530,
+      "public": {
+        "date": 20240530,
+        "cash": 1037978.8776,
+        "market_value": 0.0,
+        "equity": 1037978.8776,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240531,
+      "public": {
+        "date": 20240531,
+        "cash": 1037978.8776,
+        "market_value": 0.0,
+        "equity": 1037978.8776,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240603,
+      "public": {
+        "date": 20240603,
+        "cash": 1037978.8776,
+        "market_value": 0.0,
+        "equity": 1037978.8776,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240604,
+      "public": {
+        "date": 20240604,
+        "cash": 1037978.8776,
+        "market_value": 0.0,
+        "equity": 1037978.8776,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240605,
+      "public": {
+        "date": 20240605,
+        "cash": 1037978.8776,
+        "market_value": 0.0,
+        "equity": 1037978.8776,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240606,
+      "public": {
+        "date": 20240606,
+        "cash": 1037978.8776,
+        "market_value": 0.0,
+        "equity": 1037978.8776,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240607,
+      "public": {
+        "date": 20240607,
+        "cash": 1037978.8776,
+        "market_value": 0.0,
+        "equity": 1037978.8776,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240611,
+      "public": {
+        "date": 20240611,
+        "cash": 519419.8402,
+        "market_value": 506115.0,
+        "equity": 1025534.8402,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 62100
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240612,
+      "public": {
+        "date": 20240612,
+        "cash": 1024646.4159,
+        "market_value": 0.0,
+        "equity": 1024646.4159,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240613,
+      "public": {
+        "date": 20240613,
+        "cash": 1024646.4159,
+        "market_value": 0.0,
+        "equity": 1024646.4159,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240614,
+      "public": {
+        "date": 20240614,
+        "cash": 1024646.4159,
+        "market_value": 0.0,
+        "equity": 1024646.4159,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240617,
+      "public": {
+        "date": 20240617,
+        "cash": 1024646.4159,
+        "market_value": 0.0,
+        "equity": 1024646.4159,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240618,
+      "public": {
+        "date": 20240618,
+        "cash": 1024646.4159,
+        "market_value": 0.0,
+        "equity": 1024646.4159,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240619,
+      "public": {
+        "date": 20240619,
+        "cash": 1024646.4159,
+        "market_value": 0.0,
+        "equity": 1024646.4159,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240620,
+      "public": {
+        "date": 20240620,
+        "cash": 512755.9753,
+        "market_value": 512500.0,
+        "equity": 1025255.9753,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 62500
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240621,
+      "public": {
+        "date": 20240621,
+        "cash": 1024359.4847,
+        "market_value": 0.0,
+        "equity": 1024359.4847,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240624,
+      "public": {
+        "date": 20240624,
+        "cash": 1024359.4847,
+        "market_value": 0.0,
+        "equity": 1024359.4847,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240625,
+      "public": {
+        "date": 20240625,
+        "cash": 1024359.4847,
+        "market_value": 0.0,
+        "equity": 1024359.4847,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240626,
+      "public": {
+        "date": 20240626,
+        "cash": 512860.782,
+        "market_value": 511483.0,
+        "equity": 1024343.782,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 62300
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240627,
+      "public": {
+        "date": 20240627,
+        "cash": 1023449.6929,
+        "market_value": 0.0,
+        "equity": 1023449.6929,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240628,
+      "public": {
+        "date": 20240628,
+        "cash": 651.7773,
+        "market_value": 1024673.0,
+        "equity": 1025324.7773,
+        "position_quantities": {
+          "000001.SZ": 50600,
+          "600000.SH": 62100
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240701,
+      "public": {
+        "date": 20240701,
+        "cash": 510312.1851,
+        "market_value": 514188.0,
+        "equity": 1024500.1851,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 62100
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240702,
+      "public": {
+        "date": 20240702,
+        "cash": 856.0329,
+        "market_value": 1043473.0,
+        "equity": 1044329.0329,
+        "position_quantities": {
+          "000001.SZ": 49400,
+          "600000.SH": 62100
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240703,
+      "public": {
+        "date": 20240703,
+        "cash": 856.0329,
+        "market_value": 1039027.0,
+        "equity": 1039883.0329,
+        "position_quantities": {
+          "000001.SZ": 49400,
+          "600000.SH": 62100
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240704,
+      "public": {
+        "date": 20240704,
+        "cash": 507921.1195,
+        "market_value": 528700.0,
+        "equity": 1036621.1195,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 62200
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240705,
+      "public": {
+        "date": 20240705,
+        "cash": 3433.5291,
+        "market_value": 1010808.0,
+        "equity": 1014241.5291,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 121200
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240708,
+      "public": {
+        "date": 20240708,
+        "cash": 1012478.2176,
+        "market_value": 0.0,
+        "equity": 1012478.2176,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240709,
+      "public": {
+        "date": 20240709,
+        "cash": 506185.226,
+        "market_value": 515808.0,
+        "equity": 1021993.226,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 59700
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240710,
+      "public": {
+        "date": 20240710,
+        "cash": 37.7007,
+        "market_value": 1027821.0,
+        "equity": 1027858.7007,
+        "position_quantities": {
+          "000001.SZ": 50200,
+          "600000.SH": 59700
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240711,
+      "public": {
+        "date": 20240711,
+        "cash": 511683.6382,
+        "market_value": 513420.0,
+        "equity": 1025103.6382,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 59700
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240712,
+      "public": {
+        "date": 20240712,
+        "cash": 1025995.195,
+        "market_value": 0.0,
+        "equity": 1025995.195,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240715,
+      "public": {
+        "date": 20240715,
+        "cash": 169.4927,
+        "market_value": 1028441.0,
+        "equity": 1028610.4927,
+        "position_quantities": {
+          "000001.SZ": 49700,
+          "600000.SH": 58000
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240716,
+      "public": {
+        "date": 20240716,
+        "cash": 169.4927,
+        "market_value": 1025790.0,
+        "equity": 1025959.4927,
+        "position_quantities": {
+          "000001.SZ": 49700,
+          "600000.SH": 58000
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240717,
+      "public": {
+        "date": 20240717,
+        "cash": 511184.0341,
+        "market_value": 524320.0,
+        "equity": 1035504.0341,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 58000
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240718,
+      "public": {
+        "date": 20240718,
+        "cash": 15348.6529,
+        "market_value": 1023955.0,
+        "equity": 1039303.6529,
+        "position_quantities": {
+          "000001.SZ": 49500,
+          "600000.SH": 58000
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240719,
+      "public": {
+        "date": 20240719,
+        "cash": 520552.6707,
+        "market_value": 513315.0,
+        "equity": 1033867.6707,
+        "position_quantities": {
+          "000001.SZ": 49500,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240722,
+      "public": {
+        "date": 20240722,
+        "cash": 1032473.6418,
+        "market_value": 0.0,
+        "equity": 1032473.6418,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240723,
+      "public": {
+        "date": 20240723,
+        "cash": 1032473.6418,
+        "market_value": 0.0,
+        "equity": 1032473.6418,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240724,
+      "public": {
+        "date": 20240724,
+        "cash": 1032473.6418,
+        "market_value": 0.0,
+        "equity": 1032473.6418,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240725,
+      "public": {
+        "date": 20240725,
+        "cash": 1032473.6418,
+        "market_value": 0.0,
+        "equity": 1032473.6418,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240726,
+      "public": {
+        "date": 20240726,
+        "cash": 1032473.6418,
+        "market_value": 0.0,
+        "equity": 1032473.6418,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240729,
+      "public": {
+        "date": 20240729,
+        "cash": 1032473.6418,
+        "market_value": 0.0,
+        "equity": 1032473.6418,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240730,
+      "public": {
+        "date": 20240730,
+        "cash": 516870.2232,
+        "market_value": 505917.0,
+        "equity": 1022787.2232,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 60300
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    },
+    {
+      "date": 20240731,
+      "public": {
+        "date": 20240731,
+        "cash": 1025510.9064,
+        "market_value": 0.0,
+        "equity": 1025510.9064,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      "frozen_equal": true
+    }
+  ],
+  "trade_count": 94,
+  "order_count": 106,
+  "no_trade_days": 46,
+  "economic_result_sha256": "6dc98531999cef81070725c0962ef18646d3006150c7b198c06e37ccbac66589",
+  "read_audit": [
+    {
+      "dataset": "parquet",
+      "path": "E:\\llmwiki\\autonomous-strategy-research-v1\\execution-data-v1\\baostock-account-v1\\DAILY.parquet",
+      "requested": [
+        20231009,
+        20240731
+      ],
+      "date_column": "date",
+      "physical_rows": 1020151,
+      "rows_materialized": 1020151,
+      "max_date_materialized": 20240731
+    },
+    {
+      "dataset": "parquet",
+      "path": "E:\\worktrees\\s1-trusted-baseline\\trade-system-contract-port-v1\\reports\\all_indicator_fixed_strategy_pilot_20260925\\BAOSTOCK_TURN.parquet",
+      "requested": [
+        20231009,
+        20240731
+      ],
+      "date_column": "date",
+      "physical_rows": 400,
+      "rows_materialized": 400,
+      "max_date_materialized": 20240731
+    },
+    {
+      "dataset": "parquet",
+      "path": "E:\\llmwiki\\autonomous-strategy-research-v1\\execution-data-v1\\baostock-account-v1\\STATES.parquet",
+      "requested": [
+        20240201,
+        20240731
+      ],
+      "date_column": "trade_date",
+      "physical_rows": 654546,
+      "rows_materialized": 654546,
+      "max_date_materialized": 20240731
+    },
+    {
+      "dataset": "parquet",
+      "path": "E:\\llmwiki\\autonomous-strategy-research-v1\\execution-data-v1\\materialized-v3\\HISTORICAL_POOL_AND_STATE.parquet",
+      "requested": [
+        20240131,
+        20240731
+      ],
+      "date_column": "trade_date",
+      "physical_rows": 660212,
+      "rows_materialized": 660212,
+      "max_date_materialized": 20240731
+    }
+  ],
+  "public_entry_step_status": "PASSED_MODELED",
+  "blockers": [],
+  "s1_baseline_status": "NOT_PASSED",
+  "remaining_s1_work": [
+    "vendor turn and historical state publication times at the decision date",
+    "dividend-adjusted indicator features versus raw execution prices",
+    "full trading-engine checkpoint restart and independent replay",
+    "real suspension and missing-data scenarios beyond synthetic negative tests"
+  ],
+  "strategy_effectiveness": "NOT_ASSESSED",
+  "paper_eligibility": "NOT_ASSESSED"
+}

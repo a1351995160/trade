@@ -2334,3 +2334,18 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 ### Notes
 - `STATE_GATE` 与 `CORPORATE_CHAIN` 仅标记 `PASSED_MODELED`；**S1 仍为 `NOT_PASSED`**。供应商历史发布时间、复权指标与原始成交价分离、公共策略入口一致性和整引擎中断恢复尚未证实；收益不构成策略有效性证据。个人账户税务模型不自动适用于其他投资者身份。
 - 本轮修改文件为上述脚本、账本、读取器、两份文档、对应测试、三份报告和本记录。实现基线为 `4e3c2f1`；回滚时在本隔离分支撤销本轮提交或在合并后对对应提交执行 `git revert`，保留原试验与用户主工作区未提交改动。
+
+## 2026-09-25 - Task: 固定 51 指标规则经公共策略入口逐日核对
+
+### What was done
+- 新增 `scripts/s1_public_entry_strategy_v1.py`：把已冻结的 51 指标等权投票规则实现为 `strategy_interface_v1.run` 可调用的本地策略插件；入口自行计算每项指标及每日投票，并在接入既有模型账户组件前检查买卖意图与前一日历史状态。规则与输入由计划和内容身份绑定。
+- 新增 `scripts/verify_s1_public_entry_v1.py`：受控读取同一批真实数据，先核对原报告、源码和输入哈希，再经公共策略入口运行；逐日与 `PROBE.json` 的 280 条决策及 `CORPORATE_CHAIN.json` 的 118 日账户、106 个订单、94 笔成交和公司行动结果核对。证据写入 `reports/s1_trusted_baseline_20260925/PUBLIC_ENTRY_PARITY.json`。
+- `tests/research_factory/test_s1_public_entry_v1.py` 覆盖每项指标可改变买卖、缺失/未来数据拒绝、合成数据公共入口及账户一致性；`.github/workflows/price-only-indicator-validation-v1.yml` 纳入此测试；更新 `docs/S1_FIXED_STRATEGY_BASELINE_V1.md` 的验收状态与复跑命令。
+
+### Testing
+- 本机真实快照受控复跑：`public_entry_step_status=PASSED_MODELED`，两证券各 140 条决策均与冻结报告一致；118 日逐日现金、持股、资产一致，94 笔成交与 106 个订单一致，最大账本复算差异 0，`blockers=[]`。新报告 SHA-256 为 `426064a7b66cfddb22c3eb02c4a4ca7011a71bdd16a8a58dc2c15d3552d448a1`；该文件含一次性诊断回执，因此全文件哈希不作为重复运行的确定性要求，经济结果哈希为 `6dc98531999cef81070725c0962ef18646d3006150c7b198c06e37ccbac66589`。
+- 按 Windows CI 的 `PYTHONPATH` 与价格指标任务作用域运行相关指标、条件、退出、入口及策略接口回归：352 passed，1 条既有 Starlette 弃用警告；pytest 退出码为 0。GitHub 远端 CI 尚待推送后验证。
+
+### Notes
+- 此次证明固定参照规则通过公共 `run` 函数的同决策和同模型账户，不代表任意 AI 新策略自动接入，也不证明策略有效。BaoStock `turn` 与历史状态在当时的真实发布时间、分红前后指标复权口径、整引擎中断恢复仍缺证；S1 继续为 `NOT_PASSED`，不授予 Paper 资格。
+- 本次新增两个脚本、一份测试、一份报告，修改工作流、S1 说明和本记录；报告不包含 E 盘原始行情文件。回滚时在隔离分支撤销本轮提交，或合并后对本轮提交执行 `git revert`；先前 `CORPORATE_CHAIN.json` 及用户原工作区的未提交改动不受影响。

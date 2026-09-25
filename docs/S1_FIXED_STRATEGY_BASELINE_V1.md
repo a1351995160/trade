@@ -1,6 +1,6 @@
 # 固定策略可信基线：范围与验收
 
-日期：2026-09-25。状态：**S1 尚未通过；固定策略的历史状态、真实分红和个人账户模型已完成限定范围的贯通诊断**。
+日期：2026-09-25。状态：**S1 尚未通过；固定策略的公共策略入口、历史状态、真实分红和个人账户模型已完成限定范围的贯通诊断**。
 
 ## 这次要回答什么
 
@@ -39,11 +39,18 @@
 
 合成负例证明：把预计成交日改成 ST 或停牌会阻止买入，删掉成交日状态会阻止成交，缺少行情日会直接报错；完整窗口没有任何信号时仍形成正确的零交易账户结果。分红账本在股权登记后恢复并重复处理到账日，不会重复入账。它们验证了这些边界的代码行为，不能代替真实历史中恰好发生过停牌或断线的证据。
 
+[公共策略入口逐日对照报告](../reports/s1_trusted_baseline_20260925/PUBLIC_ENTRY_PARITY.json)调用现有 `strategy_interface_v1.run`，由固定 51 指标规则插件在每个收盘日重新计算投票，再交给同一账户执行组件。它不是把旧报告的买卖结果直接喂回入口。入口的规则源码、51 项指标目录、数据内容与预算用途均绑定到当次计划和输入身份；此用途仅为已冻结参照策略的诊断，不是新策略筛选资格。逐日规则结果与此前冻结的 `PROBE.json` 中两只证券各 140 条决策完全相同；前一日证券状态对买入的拒绝结果相同。账户期 118 日的每日现金、持股、资产，以及 106 个订单、94 笔成交、公司行动账本，均与此前冻结的 `CORPORATE_CHAIN.json` 一致，账户独立复算仍无差异。公共入口使用明确传入的本次固定策略账户后端；这证明此固定规则的入口一致性，尚不证明系统能自动接纳任意 AI 新策略。
+
+复跑命令（需要本机现有的 E 盘快照；GitHub CI 没有这些真实数据）：
+
+```powershell
+python scripts/verify_s1_public_entry_v1.py --daily-parquet E:/llmwiki/autonomous-strategy-research-v1/execution-data-v1/baostock-account-v1/DAILY.parquet --turn-parquet reports/all_indicator_fixed_strategy_pilot_20260925/BAOSTOCK_TURN.parquet --states-parquet E:/llmwiki/autonomous-strategy-research-v1/execution-data-v1/baostock-account-v1/STATES.parquet --original-actions-json reports/all_indicator_fixed_strategy_pilot_20260925/BAOSTOCK_ACTION_SCREEN_V2.json --turn-manifest-json reports/all_indicator_fixed_strategy_pilot_20260925/BAOSTOCK_TURN.manifest.json --historical-states-parquet E:/llmwiki/autonomous-strategy-research-v1/execution-data-v1/materialized-v3/HISTORICAL_POOL_AND_STATE.parquet --report reports/s1_trusted_baseline_20260925/PUBLIC_ENTRY_PARITY.json
+```
+
 **尚未通过的验收项：**
 
-1. 51 指标规则尚未通过现有公共策略入口产生与此诊断路径一致的决策和账户结果。当前试验仍由专用脚本装配；不能把“脚本可跑”冒充“系统公共路径已贯通”。
-2. BaoStock `turn` 与历史证券状态缺乏供应商当时发布时间的独立证据；上游 `available_at` 是建模时间。它可用于受限历史诊断，尚不足以证明所有输入在当年决策时已可见。
-3. 本试验的指标使用未复权日线，执行也使用未复权价。现金分红日附近的指标变化可能受除息影响；“复权特征与未复权成交价分离”尚未验证。不能为了改善本次结果事后更改已冻结的 51 票规则。
-4. 已验证分红账本的恢复幂等和整段重复执行；整个交易引擎从中断检查点恢复的同结果能力尚未在本固定策略上验证。真实样本中未观察到停牌与缺数，只有合成异常验证。
+1. BaoStock `turn` 与历史证券状态缺乏供应商当时发布时间的独立证据；上游 `available_at` 是建模时间。它可用于受限历史诊断，尚不足以证明所有输入在当年决策时已可见。
+2. 本试验的指标使用未复权日线，执行也使用未复权价。现金分红日附近的指标变化可能受除息影响；“复权特征与未复权成交价分离”尚未验证。不能为了改善本次结果事后更改已冻结的 51 票规则。
+3. 已验证分红账本的恢复幂等和整段重复执行；整个交易引擎从中断检查点恢复的同结果能力尚未在本固定策略上验证。真实样本中未观察到停牌与缺数，只有合成异常验证。
 
-因此 S1 保持 **未通过**，不进入策略有效性判断或 Paper。下一项开发应聚焦公共策略入口与这份固定规则的同决策、同账户核对，并在数据可用时间缺证的地方保留阻塞结论。
+因此 S1 保持 **未通过**，不进入策略有效性判断或 Paper。下一项验收应先确定分红日前后指标采用什么价格口径，再以事前约定的口径处理历史数据可见时间和整引擎中断恢复；现有入口一致性不能替代这三项证据。
