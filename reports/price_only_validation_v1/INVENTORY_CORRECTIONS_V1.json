@@ -1,0 +1,113 @@
+{
+  "correction_id": "ACTUAL_DATA_INVENTORY_CORRECTIONS_V1",
+  "generated_at": "2026-09-22",
+  "purpose": "更正上一轮五份盘点材料中的互相矛盾声明。原件保留（不抹掉历史事故），修正写入本文件与新版状态映射。",
+  "original_materials": {
+    "root": "reports/actual_data_inventory_20260922/",
+    "files": [
+      "ACTUAL_DATA_CAPABILITY.json",
+      "ACTUAL_DATA_INVENTORY.md",
+      "INDICATOR_DATA_SUPPORT_MATRIX.json",
+      "NEXT_MINIMAL_SCOPE.md",
+      "READ_ACCESS_LOG.json"
+    ],
+    "status": "PRESERVED_UNMODIFIED"
+  },
+  "workspace_identity_correction": {
+    "issue": "上一轮材料声明 baseline_match=true，易被读成『实际读取器来自新 main』。",
+    "facts": {
+      "data_reading_workspace_head": "d14178f4743afd7ef74b7db4345fdbcc257e3474",
+      "origin_main_at_that_time": "f5acb0317719a42eb7071504048e341b50a7ac12",
+      "same_source_identity": false
+    },
+    "corrected_statement": "baseline_match=true 只表示远端 main 与任务基准一致，**不表示实际读取器来自新 main**。上一轮读取工作区停在 d14178f，不含 V1/V2 指标模块。本轮已在 f5acb03 的干净工作区重做。",
+    "this_round_workspace": {
+      "path": "E:/llmwiki/trade-price-only-validation-v1",
+      "head": "f5acb0317719a42eb7071504048e341b50a7ac12",
+      "branch": "codex/price-only-indicator-validation-v1"
+    }
+  },
+  "corrections": [
+    {
+      "id": "C1",
+      "issue": "『本轮未读封存期任何数据』的无条件断言与事实矛盾。",
+      "fact": "上一轮确实发生 gbbq 整文件越界物化：pytdx GbbqReader().get_df() 读取整文件，物化 192797 条记录，datetime 达 20260930（> RESEARCH_END=20250731）。",
+      "corrected_statement": "必须分列：原件字节读取（整文件）、解码/物化（192797 条）、返回（DataFrame）、事故统计、策略或绩效用途（未使用）。不得把『未用于回测』写成『未读取』。",
+      "incident_statistics_source": "INCIDENT_READING（来自事故读取，非合规核验）",
+      "strategy_use_evidence_level": "NOT_USED_DOWNSTREAM（本轮与上一轮均未用于策略、绩效或收益判断；证据层级=自我报告+无下游引用）",
+      "unconditional_zero_read_claim": "REMOVED"
+    },
+    {
+      "id": "C2",
+      "issue": "『9521』被表述为数据规模，易被读成 9521 只已认证 A 股。",
+      "fact": "9521 是 .day **文件数**（sh 4835 + sz 4337 + bj 349），不是已认证证券数。",
+      "corrected_statement": "9521 是文件计数口径。两个实读样本各 382 行（窗口 20240102..20250731），日志合计 764 行；总表须明确每样本/总量口径。",
+      "sample_detail": {
+        "sh600000.day": {"rows_materialized": 382, "requested": [20240101, 20250731]},
+        "sz000001.day": {"rows_materialized": 382, "requested": [20240101, 20250731]},
+        "total_rows_in_log": 764
+      }
+    },
+    {
+      "id": "C3",
+      "issue": "4,172,730 被当作可用数据量。",
+      "fact": "4,172,730 是 Parquet **元数据总行数**；实际获准切片为 1,709,439 行、4536 个证券。",
+      "corrected_statement": "不能将切片数值验收外推到全文件。切片验收仅覆盖 20240102..20250731 与 4536 个证券。",
+      "slice_scope": {"rows": 1709439, "symbols": 4536, "window": [20240102, 20250731]}
+    },
+    {
+      "id": "C4",
+      "issue": "5m 行数被表述为已核验。",
+      "fact": "116,422,452 是**元数据计数**；冻结清单声明 116,422,256，差异 196 未解释。末分区只读了 trade_date/symbol。",
+      "corrected_statement": "不能描述为『全套 OHLCVA 已逐值验证』。保留两个独立维度：①冻结声明（FROZEN/READY/行数）；②完整性待核（196 行差异，OPEN_NOT_IN_THIS_SCOPE）。",
+      "dimensions": {
+        "freeze_declaration": "FROZEN, coverage_status=READY, declared_rows=116422256",
+        "integrity_reconciliation": "OPEN_NOT_IN_THIS_SCOPE (196 rows, +0.000168%)"
+      }
+    },
+    {
+      "id": "C5",
+      "issue": "PIT 主表字段存在被当作历史完整性证明。",
+      "fact": "5182 条记录 10 字段全备，但范围仅限训练窗 2022-08-01..2024-07-31。",
+      "corrected_statement": "字段存在**不**证明：全市场历史完整性、退市历史齐备、逐日 ST/停牌齐备。仅证明该窗口内的成员资格与生命周期字段可用。"
+    },
+    {
+      "id": "C6",
+      "issue": "整型成交量被当作单位已证明。",
+      "fact": "volume 为 int64，但这不证明单位是股。",
+      "corrected_statement": "保持 `UNIT_IDENTITY_UNVERIFIED`。绝对量阈值、成交容量、成交均价用途**不能**据此通过。合成量价公式照常验收（公式正确性与单位身份是两件事）。",
+      "unit_status": "UNIT_IDENTITY_UNVERIFIED"
+    },
+    {
+      "id": "C7",
+      "issue": "『没有找到』的搜索范围未限定。",
+      "fact": "上一轮只搜索了 data/ 下的文件名模式，未检查所有文件的列结构。",
+      "corrected_statement": "限定到实际搜索的根、文件类型、字段与时间。不能据文件名没 qfq/hfq 就证明全部文件没有复权列；也不能把本机单次端口拒绝说成供应商永久无服务。本轮不扩大搜索。",
+      "searched": {"root": "data/", "method": "文件名模式匹配", "types": ["parquet", "json", "csv"]},
+      "not_established": ["全库列结构扫描", "供应商服务可用性"]
+    },
+    {
+      "id": "C8",
+      "issue": "历史流通股本与复权落盘被当作所有账户回测的共同前置。",
+      "corrected_statement": "不设为共同前置。历史流通股本用于相关规模/换手率/容量模型；复权可由受控事件与固定转换生成，但**没有当前证据时不能假定已经可用**。两者只冻结相应能力。"
+    },
+    {
+      "id": "C9",
+      "issue": "ST/停牌被表述为『只有显式使用该因子的策略才需要』。",
+      "corrected_statement": "真实订单的**交易资格与价格限制**也依赖相应状态（涨停不可买、停牌不可成交、ST 有价格限制）。纯公式验收不依赖它，但账户级回测依赖。"
+    },
+    {
+      "id": "C10",
+      "issue": "prev_close 缺失的处理未按指标合同区分。",
+      "corrected_statement": "按具体指标的已批准公式/初始化合同处理，并区分三种首行：窗口首行、数据集首行、上市首日。有明确 H-L 首根定义的可按合同计算；要求真实前收而缺失的判 UNKNOWN。不得假造前收，也不顺手改掉现有版本。",
+      "implementation_reference": "TRUE_RANGE/ATR 段首取 H-L；NATR 依赖 ATR；BAR_SHAPE 的 gap_pct 在无前收时判 UNKNOWN"
+    }
+  ],
+  "not_established": [
+    "全库列结构扫描（是否有复权列）",
+    "数据供应商服务可用性（本机单次探测不足）",
+    "5m 196 行差异的根因",
+    "全量 .day 逐文件质量"
+  ],
+  "no_rescan_statement": "本轮未因更正这些文字而重新扫描数百万行情；证据不足项标 NOT_ESTABLISHED。"
+}

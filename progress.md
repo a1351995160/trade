@@ -2050,3 +2050,212 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 - tests/pr15_dependency/test_dependency_execution_v1.py：新增四项防护测试（共 14 项）。
 - scripts/emit_v2_acceptance_scope_v1.py、reports/v2_acceptance/、ACCEPTANCE_SCOPE.json、docs/EXTENSIBLE_BACKTEST_ACCEPTANCE_V2.md：分母 192/139、§6.7 防误用与风险降级说明。
 - 回滚点 c6af41a；可 git revert 本次提交。
+
+## 2026-09-23 - Task: 纯指标验收 V1（公式/条件/合成入口 + 真实 RAW 小样本）
+### What was done
+按五份盘点材料推进现有 OHLC(VA) 指标的公式、参数、条件消费与合成入口验收，不开展盈利搜索。先在含 V1/V2 的 main（f5acb03）新建干净工作区，旧工作区与数据未动。实现 gbbq 访问边界并在真实访问链上证明拒绝先于文件打开；更正上一轮盘点的十项互相矛盾声明（原件保留）。A0 为 25 项此前缺 oracle 的指标补独立朴素参考与逐值对照，并补齐条件消费与合成账户接线；A1 在两证券、单一窗口上做真实 RAW 数值小样本。过程中复现并修复一个真实公式缺陷（PSY 恒为 100%）。
+### Testing
+- 访问边界：8 项守卫测试（open 探针证明拒绝在打开前、覆盖直接与间接调用、全量缓存同样禁止、合成夹具不误伤、环境变量不能放开、正常价格路径正对照）；4 项有界读取边界测试（合成 .day 上证明物理限窗、拒绝越过封存期、物化量不随文件增长）。实际生效证据：原会真实读取 gbbq 的测试从 29.85s 通过变为 0.56s 内失败于 FORBIDDEN_GBBQ_ACCESS，未读取文件，已改为显式 skip。
+- A0：公式增量 158 项 + 条件消费 41 项全部通过；覆盖两个以上参数、常数/递增/递减/振荡/跳变/缺口/零量/非有限/短于预热、追加未来不改历史、条件 TRUE/FALSE/UNKNOWN 正反例、不可能条件不产生成交、25 项经公开服务进入合成账户链产生真实成交。
+- 真实缺陷：PSY 分子 counts 与分母 totals 数学恒等导致恒输出 100%；交替涨跌序列复现（期望约 50%）；修复后新增三项回归测试；既有测试全部通过说明原测试未覆盖振荡序列。
+- A1：600000.SH / 000001.SZ，2024-01-02..2024-07-31，每证券物化 140 行，max_date_materialized=20240731 未触碰封存期；8 个指标与独立参考逐值一致。
+- 跨平台：修复 Linux 下 Path("E:/") 被当作相对路径导致守卫失效（Ubuntu 曾 fail、Windows pass），现双平台均通过。
+- 本轮目标套件 491 项通过（另 2 项因 gbbq 禁令显式跳过）；完整套件零新增失败 nodeid（基线 194 覆盖本次 193）；因果未确认，不声明全系统零回归。
+### Notes
+- src/chanlun_trader/price_only_scope.py：新增 gbbq 路径边界（按真实路径身份、跨平台规范化、拒绝先于 open）。
+- src/chanlun_trader/tdx_data.py：_load_gbbq 接入守卫。
+- src/chanlun_trader/engine/indicators_v2.py：修复 PSY 分子/分母语义。
+- tests/indicators_v2/_oracle_price_only_v1.py、test_price_only_formula_increment_v1.py：28 个独立 oracle 与 158 项公式验收。
+- tests/conditions_v2/test_price_only_condition_consumption_v1.py：41 项条件消费与合成账户接线。
+- tests/price_only_scope/{test_gbbq_access_guard_v1,test_bounded_read_boundary_v1,test_real_raw_sample_v1}.py：访问边界与真实 RAW 小样本。
+- tests/pit/test_qfq_pit_safety.py、tests/test_tdx_data.py：因 gbbq 禁令显式 skip，不伪装通过。
+- reports/price_only_validation_v1/{PRICE_ONLY_VALIDATION_V1.md,INVENTORY_CORRECTIONS_V1.json,PRICE_ONLY_CAPABILITY_MATRIX_V1.json,REGRESSION_RECONCILIATION_V1.json}、reports/junit-price-only-v1.xml：交付文档、十项更正、能力矩阵、回归对账与脱敏 JUnit。
+- .github/workflows/price-only-indicator-validation-v1.yml：双平台 CI。
+- 回滚点 f5acb0317719a42eb7071504048e341b50a7ac12；可 git revert 本分支提交，不影响 main 与旧工作区。
+
+### Testing（PR #16 定点收尾追加）
+- PR16-01：以合成哨兵复现五类绕过（相对/绝对不一致、.. 遍历、符号链接别名、显式清单被 basename 白名单早退、Windows 扩展路径）；修复为基于可信组合根的绝对身份判定，覆盖实际入口 TdxData._load_gbbq，open 探针证明拒绝先于打开；新增 19 项身份绕过测试。
+- PR16-02：模块级无条件 skip 改为工作区级任务激活条件（离开本任务语义不变、环境变量不能放开真实数据）；合成可证 QFQ 性质拆出并实际执行 4 项，真实集成标 real_data_integration 并在任务激活时 skip 2 项；未删断言、未扩大 skip、未吞异常。
+- PR16-03：修复 naive_wilder_rma 跨缺口继承旧段状态（[1,1,NaN,10,10,10] window=2 由 [NaN,2,NaN,11,15.5,17.75] 改为 [NaN,2,NaN,NaN,20,20]）；补 NATR/Keltner 缺口等值断言与无缺口正对照；证据口径由 230/20 修正为 226（162+41+8+19+4+11）。
+- 目标套件 517 项通过、3 项分类 skip；完整套件零新增失败 nodeid（基线 194 覆盖本次 193）；5 项 skip 已逐项分类；因果未确认，不用数量相同冒充零回归。
+- 双平台 CI 与 SonarCloud 全部通过（ubuntu 与 windows 各两次运行）。
+### Notes
+- src/chanlun_trader/price_only_scope.py：身份判定重写（解析 . / .. / 符号链接 / Windows 扩展前缀；清单先于白名单；无法解析 fail closed）。
+- tests/price_only_scope/task_scope.py：任务激活条件（工作区级标记，非环境变量）。
+- tests/price_only_scope/test_gbbq_identity_bypass_v1.py：19 项绕过测试（含 open 探针与实际入口）。
+- tests/pit/test_qfq_pit_synthetic_v1.py：4 项合成可证 QFQ 性质（实际执行）。
+- tests/pit/test_qfq_pit_safety.py：改为 real_data_integration 分类 + 任务激活 skip。
+- tests/indicators_v2/_oracle_price_only_v1.py：naive_wilder_rma 按段独立播种。
+- tests/indicators_v2/test_price_only_formula_increment_v1.py：补 RMA 缺口反例与 NATR/Keltner 缺口等值断言（162 项）。
+- pyproject.toml：注册 real_data_integration 标记。
+- reports/price_only_validation_v1/{PRICE_ONLY_CAPABILITY_MATRIX_V1.json,REGRESSION_RECONCILIATION_V1.json}、reports/junit-price-only-v1.xml：三项关闭矩阵、逐 nodeid 对账与脱敏 JUnit。
+- 回滚点 3bcd5f7dd38519d83f0d3551575d888c8cf28ba7；可 git revert 本次提交。
+
+### Testing（PR #16 残留收尾追加）
+- PR16-01：复现 cwd 反例（相对清单 + 同一绝对路径，cwd 变化使判定由拒绝翻转为放行）；改为在组合根一次性解析并冻结禁止身份，检查时不读 cwd；环境变量至多追加约束、真实 gbbq 根身份始终保留；无法解析则 fail closed。新增 10 项作用域与冻结身份测试。
+- PR16-02：改用显式激活（tests/conftest.py 组合根），生产 _load_gbbq 与真实测试分类消费同一 task_scope_active()；报告文件存在性不再作为激活开关；退出恢复原有权限。junction 改为 Windows 临时目录原生 mklink /J 实际创建并检查入口拦截（本机实际执行通过）；POSIX 标 NOT_APPLICABLE。
+- PR16-03：新增 scripts/emit_price_only_evidence_v1.py，从实际 collect-only 与 JUnit 自动派生计数；修正 226 -> 249（六部分 245 + 合成 QFQ 4）；errors 与 failures 分开、skipped 不计 passed；移除 PENDING_COMMIT 占位；25 项逐行证据含证明强度分级；完整套件 JUnit 含本机路径，加入 .gitignore 不推送。
+- 目标套件 528 项通过、2 项分类 skip；完整套件失败集合与基线逐条完全一致（各 194 含 errors），零新增零消除；因果未确认。
+- 双平台 CI 与 SonarCloud 全部通过。
+### Notes
+- src/chanlun_trader/price_only_scope.py：冻结禁止身份（_build_frozen_denylist / rebuild_frozen_denylist / frozen_denylist）；显式任务作用域（activate_task_scope / deactivate_task_scope / task_scope_active）。
+- src/chanlun_trader/tdx_data.py：_load_gbbq 按作用域启用守卫。
+- tests/conftest.py：组合根显式激活任务作用域。
+- tests/price_only_scope/test_task_scope_v1.py：10 项作用域/冻结身份/不串扰测试。
+- tests/price_only_scope/test_gbbq_identity_bypass_v1.py：junction 原生创建测试；清单测试适配冻结入口。
+- tests/pit/test_qfq_pit_safety.py、tests/test_tdx_data.py：统一消费 task_scope_active()。
+- scripts/emit_price_only_evidence_v1.py：自动计数与逐项证据生成。
+- reports/price_only_validation_v1/{EVIDENCE_COUNTS_V1.json,PRICE_ONLY_CAPABILITY_MATRIX_V1.json}、reports/junit-price-only-v1.xml：计数证据、残留关闭矩阵、脱敏 JUnit。
+- .gitignore：排除含本机路径的完整套件 JUnit。
+- 回滚点 8f94f503816282d0a05949c807d4ad63d0e7ab06；可 git revert 本次提交。
+
+### Testing（PR #16 运行时政策与证据收尾）
+- 身份两方向：在 C 盘 NTFS 临时目录原生 mklink /J 复现"清单列别名、访问目标本体"放行；修复为冻结身份闭包（realpath + 父目录解析），两方向一致拒绝；保留 cwd/绝对/相对/.. /basename 正反例。
+- 外层任务保护：修复 _restore_scope 无条件 deactivate 缺陷；新增验收序列（外层激活 → 受保护缓存拒绝 → 内部清理 → 仍拒绝）与"外层未激活时正常/异常退出均恢复"测试。
+- vendor 入口：新增 test_vendor_entry_guard_v1.py，用受保护合成目标驱动真实 GbbqReader 与 TdxData，open 探针证明拒绝先于打开且 vendor get_df 未被调用；junction 在 NTFS 原生创建并验证 opened=[]；POSIX 标 NOT_APPLICABLE；硬链接如实列限制。
+- 证据：计数纳入新增文件，由实际 collection 派生为 262 + 合成 QFQ 4 = 266；收集失败抛 CollectionError 并让 main 返回非零；JUnit 缺失标 NOT_ESTABLISHED；新增证据回归测试（删映射/失败状态降级、nodeid 实存校验）。
+- 目标套件 542 项通过、2 项分类 skip；完整套件零新增失败 nodeid（基线 194 覆盖本次 193）；因果未确认。
+- 双平台 CI 与 SonarCloud 全部通过。
+### Notes
+- src/chanlun_trader/price_only_scope.py：冻结身份闭包（含 realpath 与父目录解析），两方向一致拒绝。
+- tests/price_only_scope/test_task_scope_v1.py：保存/恢复进入前政策；外层任务保护验收序列（13 项）。
+- tests/price_only_scope/test_vendor_entry_guard_v1.py：vendor 入口拒绝证据与 junction 两方向（4 项）。
+- tests/price_only_scope/test_evidence_regression_v1.py：证据回归（7 项）。
+- scripts/emit_price_only_evidence_v1.py：纳入全部新增文件；CollectionError；NOT_ESTABLISHED；逐项精确 nodeid 与证明强度。
+- reports/price_only_validation_v1/{EVIDENCE_COUNTS_V1.json,PRICE_ONLY_CAPABILITY_MATRIX_V1.json}、reports/junit-price-only-v1.xml：派生计数、运行时关闭矩阵、脱敏 JUnit。
+- 回滚点 b63cb1b6f843cfc54306602c0756d2b4a1c994d4；可 git revert 本次提交。
+
+## 2026-09-23 - Task: PR #16 合并前定点收尾（作用域恢复、受控 reader、证据推导）
+### What was done
+在 PR #16 原分支完成三项残留的代码、测试与证据收尾。任务作用域新增完整政策快照与恢复，修复了第二个 fixture（vendor 入口测试）在 finally 中无条件 deactivate 会关闭外层任务的同类缺陷，并补 pytest 顺序回归。gbbq 受控入口拆分为间接（TdxData）与直接（受控 wrapper）两条路径各自作证，新增静态检查发现并整改了两处绕过 wrapper 的直接调用点；裸 vendor 调用如实标为不支持。证据生成器原地改造为按 JUnit testcase outcome 推导状态，参数化按最差聚合，并补输入变异测试。过程中修复了 CI 暴露的三个真实缺陷。
+### Testing
+- 目标套件 558 passed / 2 skipped；price_only_scope 82 passed。
+- 作用域：外层激活→受保护合成缓存拒绝→内部清理→仍拒绝；pytest 顺序回归（子会话内两用例顺序执行）；正常/异常退出恢复；原未激活保持原状。
+- 受控 reader：路径 A 间接（open 探针 + vendor get_df 未执行）；路径 B 直接（open/decode 前拒绝）；正对照（未受保护输入确实到达 vendor）。
+- 证据变异：删映射、改 failure/error/skip、删 testcase、混合参数、缺失/损坏 JUnit 均降级；无关变异不误伤；空 JUnit 全降级。
+- CI 暴露并修复的真实缺陷：①脱敏用 `<workspace>` 破坏 XML；②node_diff_vs_base 引用未定义常量 NOT_ESTABLISHED；③Sonar S8707 路径穿越（--junit/--out 直接当路径）+ 盘符路径跨平台语义差异。
+- 完整套件零新增失败 nodeid（基线 194 覆盖本次 193）；因果未确认。
+- 双平台 CI 与 SonarCloud 全部通过。
+### Notes
+- src/chanlun_trader/price_only_scope.py：新增 snapshot/restore_task_scope（含 reason、冻结禁止集合、环境清单）、controlled_gbbq_reader 与 CONTROLLED_READER_POLICY；移除重复的 is_forbidden_gbbq_path 定义。
+- src/chanlun_trader/tdx_data.py：改用受控 wrapper；清理因本轮改动产生的未用导入。
+- src/chanlun_trader/data/tdx/owner_export_v1.py：直接 vendor 调用改经受控 wrapper。
+- scripts/emit_price_only_evidence_v1.py：状态由 JUnit outcome 推导、参数化最差聚合、resolve_within_repo 路径限制、--junit/--out 参数、node_diff_vs_base。
+- tests/price_only_scope/test_task_scope_v1.py：保存/恢复完整政策、外层任务保护、monkeypatch 化。
+- tests/price_only_scope/test_vendor_entry_guard_v1.py：路径 A/B 分开作证、正对照、junction 两方向、monkeypatch 化。
+- tests/price_only_scope/test_controlled_reader_boundary_v1.py（新增）：AST 静态检查防调用点绕过。
+- tests/price_only_scope/test_scope_order_regression_v1.py（新增）：完整 pytest 顺序回归。
+- tests/price_only_scope/test_evidence_mutation_v1.py（新增）：输入变异测试与路径穿越回归。
+- tests/price_only_scope/test_evidence_regression_v1.py（删除）：其断言方式正是本轮禁止的模式，已被变异测试取代。
+- .github/workflows/price-only-indicator-validation-v1.yml：新增用本次 CI 实际 JUnit 运行生成器的步骤。
+- reports/price_only_validation_v1/{EVIDENCE_COUNTS_V1.json,PRICE_ONLY_CAPABILITY_MATRIX_V1.json}、reports/junit-price-only-v1.xml：派生证据、关闭矩阵、脱敏 JUnit。
+- 回滚点 1b03623b39f08ef4f947b72e24f714897aaca308；可 git revert 本轮提交。
+
+### Testing（补充：A1 重读门控与边界自查）
+- 边界自查发现：审计日志累计 73 条真实数据根读取（E:\new_tdx_mock\vipdoc，全部在 A1 授权窗口 20240102-20240731，未触碰封存期），原因是目标套件包含真实样本测试且本轮多次运行套件。
+- 已用任务作用域门控：test_real_raw_sample_v1.py 标 real_data_integration，任务激活时显式 skip。
+- 验证：运行前后真实数据根读取计数均为 73，新增 0；目标套件 547 passed / 13 skipped。
+- 历史 73 条读取如实保留在审计日志，不抹除。
+### Notes
+- tests/price_only_scope/test_real_raw_sample_v1.py：加 real_data_integration 标记与任务作用域门控，停止重复真实采样。
+- reports/price_only_validation_v1/EVIDENCE_COUNTS_V1.json、reports/junit-price-only-v1.xml：按门控后状态重生成并脱敏。
+- 回滚点 f45488c07a7195f8323d25f9ec97c80988ad5aa7。
+
+## 2026-09-23 - Task: PR #16 相对链接绑定、证据逐项适用、顺序回归接真实 fixture
+### What was done
+修复相对符号链接按 cwd 而非组合根解析的绕过；把证据生成器从"函数全体参数替单项作证"改为逐项适用，结果诚实收缩；把顺序回归接到仓库真实 fixture 并补防退化变异。过程中修复 Sonar 阻断的 5 个 CRITICAL 与 1 个 BUG。
+### Testing
+- 相对链接：复现 cwd != 组合根时目标本体可读；修复后 cwd 等于/不同于组合根、冻结后改 cwd 三种情况判定一致。新增 9 项交叉覆盖（绝对/相对 × 列别名/列目标 × cwd 位置），受保护情况经受控 wrapper 与 TdxData 入口验证 open=0，允许夹具保留正对照。
+- 证据逐项适用：复现条件套件实际只覆盖 11 个指标而生成器签 25 项；修复后 11 VERIFIED / 14 PARTIAL。17 项变异测试（删 DEMA 条件/账户节点、仅留单参数、账户 failure/error/skip、缺期望节点、错指标节点、缺/损坏 JUnit、有效输入正对照、CLI 穿越）。
+- 顺序回归：改为加载真实 _restore_scope 并驱动 setup/teardown；下一测试经受控 wrapper 验证 opened=[]；变异用例证明坏 fixture 下回归会失败。
+- Sonar：S1192×2、S3776×3、S4143（重复字典赋值 BUG）全部修复；质量门通过。
+- 目标套件 558 passed / 13 skipped；完整套件零新增失败 nodeid（基线 194 覆盖本次 193），因果 UNCONFIRMED；真实读取新增 0。
+- 双平台 CI 与 SonarCloud 全部通过。
+### Notes
+- src/chanlun_trader/price_only_scope.py：新增 _anchored_path/_resolve_real_paths 统一以组合根为解析基准；拆出 _split_drive/_fold_segments/_matches_root_basename/_windows_form_normalised 降低复杂度。
+- scripts/emit_price_only_evidence_v1.py：新增 build_expected_coverage/collect_parameterized_nodeids；resolve_dimension 改为按期望覆盖判定；拆出 _case_outcome/_merge_worst；提取 CONDITION_MODULE/FORMULA_MODULE；删除重复字典赋值；加 CLI --junit/--out 与路径限制。
+- tests/price_only_scope/test_relative_link_binding_v1.py（新增）：9 项相对链接交叉覆盖。
+- tests/price_only_scope/test_evidence_mutation_v1.py：重写为复核指定的 5 类输入变异。
+- tests/price_only_scope/test_scope_order_regression_v1.py：改为加载真实 fixture + 防退化变异。
+- reports/price_only_validation_v1/{EVIDENCE_COUNTS_V1.json,PRICE_ONLY_CAPABILITY_MATRIX_V1.json}、reports/junit-price-only-v1.xml：逐项证据、关闭矩阵、脱敏 JUnit。
+- 回滚点 8e4e20386b4970d1bfca7e35a1d1ae53acee0380。
+
+## 2026-09-23 - Task: PR #16 读入身份绑定与证据适用性收尾
+### What was done
+修复守卫与实际打开使用不同文件身份的绕过（相对 cache_dir 被按组合根解释、读取却按 cwd 打开）；把证据生成器的适用性剩余补齐：映射既有单独条件测试、区分注册输出与已验证输出、计数补入新文件。
+### Testing
+- 读入身份：复现组合根 T/source、cwd T/outside、清单列绝对哨兵时，cache_dir 用相对写法会真实读出同一哨兵；修复后守卫/exists/读取消费同一已解析绝对对象。新增 9 项交叉覆盖（绝对/相对 cache_dir × cwd 位置 × 冻结后变 cwd），open 探针证明拒绝先于打开，受控 reader 绑定验证，允许合成输入正对照。
+- 证据适用性：CCI/NATR/PSY 的既有单独测试补入映射（原被误标"无覆盖"）；DEMA 注册 3 输出仅 dema 被断言，新增 validated_outputs/tested_params 与 registered_* 分列。24 项变异测试全部通过。
+- 目标套件 574 passed / 13 skipped；完整套件零新增失败 nodeid（基线 194 覆盖本次 193），因果 UNCONFIRMED。
+- 真实数据读取：运行前后计数均为 73，新增 0；用合成哨兵验证开关，未读取真实文件。
+- 双平台 CI 与 SonarCloud 全部通过。
+### Notes
+- src/chanlun_trader/price_only_scope.py：新增 resolve_input_path()（唯一输入解析边界，相对项按组合根锚定）；controlled_gbbq_reader 绑定守卫与 vendor 打开同一对象。
+- src/chanlun_trader/tdx_data.py：新增 _resolve_cache_dir()；__init__ 解析 cache_dir 为绝对；_load_gbbq 的守卫、exists、读取共用同一对象。
+- scripts/emit_price_only_evidence_v1.py：新增 SINGLE_CONDITION_TESTS 与 VALIDATED_BY_DIMENSION；行内区分 registered_* 与 validated_outputs/tested_params；计数补入两个新测试文件。
+- tests/price_only_scope/test_read_path_identity_v1.py（新增）：9 项读入身份交叉覆盖。
+- tests/price_only_scope/test_evidence_mutation_v1.py：补 7 项适用性变异。
+- tests/price_only_scope/test_scope_order_regression_v1.py：措辞改为准确说明手动驱动 generator fixture。
+- reports/price_only_validation_v1/{EVIDENCE_COUNTS_V1.json,PRICE_ONLY_CAPABILITY_MATRIX_V1.json}、reports/junit-price-only-v1.xml：逐项证据、关闭矩阵、脱敏 JUnit。
+- 回滚点 40e18ab3a53242bd4ef702f2883318d91d6aa16f。
+
+## 2026-09-23 - Task: PR #16 证据适用范围修正（声明不得超过实际断言）
+### What was done
+逐项核对本 PR 25 项指标的证据映射，把声明收窄到实际测试断言范围；参数证据从"参数名"改为"实际取值与组合"；补最小输入变异回归。
+### Testing
+- 核对方法：从测试源码 AST 提取每个指标对应测试函数中所有 .value("<output>") 调用与 @pytest.mark.parametrize 实际取值。
+- 全量核对发现 5 项声明超过/偏离断言：DONCHIAN（middle 未断言）、KELTNER（middle/atr 未断言）、ROLLING_VOLATILITY（return 未断言）、MACD_HIST_RAW（dif/dea 未断言）、DRAWDOWN_FROM_PEAK（peak 实际已断言，原先漏声明，已补正）。
+- 每行新增 unvalidated_registered_outputs，保证 validated ∪ unvalidated = registered。
+- 参数证据改为 tested_parameter_sets：DEMA=[{window:5},{window:20}]、MACD_HIST_RAW=[{fast:12,slow:26,signal:9}]、KELTNER=[{window:20,atr_window:10}]；条件维度记录注入阈值。不从注册默认值推导范围。
+- 新增 7 项变异测试（合计 31 项）：声明不得超断言、已知四项修正、参数须为取值字典、注册默认值不得扩大范围、兄弟输出 passed 不得附带认证、删 testcase 只降级该范围、合格主输出正对照。
+- 目标套件 581 passed / 13 skipped；完整套件失败集合与基线逐条完全一致（各 194 含 errors），零新增零消除，因果 UNCONFIRMED。
+- 真实数据读取：运行前后计数均为 73，新增 0。
+- 双平台 CI 与 SonarCloud 全部通过。
+### Notes
+- scripts/emit_price_only_evidence_v1.py：VALIDATED_BY_DIMENSION 逐项改为实际断言的输出与取值；tested_params 改为 tested_parameter_sets；新增 unvalidated_registered_outputs。
+- tests/price_only_scope/test_evidence_mutation_v1.py：补 7 项证据范围变异；修正既有测试对新字段的引用。
+- reports/price_only_validation_v1/EVIDENCE_COUNTS_V1.json、reports/junit-price-only-v1.xml：重新生成并脱敏。
+- 回滚点 d2e91789ed861200fae5eaadb86d2a063bf775e5。
+
+## 2026-09-24 - Task: PR #16 合并前全链路复核与修复
+### What was done
+独立检查 PR #16 的指标计算、访问边界、pytest 任务作用域、证据生成器及正式报告；修复无效行跨段比较、KELTNER 预热、TRIX 信号线、负成交额/无效 OHLC 的 ready、OWNER gbbq 读取前守卫与有界 `.day` 请求起点越界。证据仅列本次 JUnit 中通过的参数节点，账户参数从测试源码取值；未绑定当前源码的旧完整套件及节点差集标为未建立。PR 保持 Draft，未合并。
+### Testing
+- 本机 Windows Python 3.13.5：A0 公式/条件 291 passed；访问边界全集 98 passed / 23 分类 skipped；账户入口 37 passed；既有 V1/V2 回归 152 passed / 2 分类 skipped；受影响 OWNER 合成测试 12 passed。
+- 证据变异测试 33 项通过（包含删参数节点、空 JUnit、实际 JUnit 身份及无身份节点清单）；目标新测试仅使用合成数据。`compileall`、JSON 语法与 `git diff --check` 通过。
+- 本轮 A1 真实 RAW 样本 11 项按任务作用域分类跳过；未重新读取真实样本。当前源码完整套件未执行，因此没有当前 HEAD 的全量失败集合对账；旧对账仅保留为历史原件。
+### Notes
+- `src/chanlun_trader/engine/indicators_v2.py` 与 `tests/indicators_v2/`：指标计算及独立 oracle/边界回归。
+- `src/chanlun_trader/data/tdx/owner_export_v1.py`、`src/chanlun_trader/research/io_safety.py` 与 `tests/price_only_scope/`：读取前守卫、有界读取及合成哨兵。
+- `tests/conftest.py`、`.github/workflows/price-only-indicator-validation-v1.yml`：price-only 作用域改为显式 CI 选用。
+- `scripts/emit_price_only_evidence_v1.py`、`reports/price_only_validation_v1/`、`reports/junit-price-only-v1.xml`：证据范围、计数及历史状态；`progress.md` 与报告说明记录本轮结果。
+- 合并前复核补充：普通 pytest 关闭任务作用域后，A1 样本测试原本会在真实文件存在时重新读取；现改为默认跳过，仅未来另行明确授权且设置 `CHANLUN_RUN_A1_RAW_SAMPLE=1` 才执行。证据参数匹配同时覆盖 `[20]` 与 `[20-形状]` 两种 pytest 节点格式；生成器逐项核对 25 项公式测试源码中进入逐值断言的输出与参数组合，漂移时拒绝签发。
+- 本轮补充验证：证据变异 34 passed；普通 pytest 且未设置 A1 开关时 11 skipped，新增真实读取 0。完整本机套件与当前 SHA 的远端 CI 状态尚未建立，不把既有基线结果冒充当前结论。
+- 源码提交 `0ea0dcd` 后重跑 A0 目标套件 291 passed、完整 price_only_scope 99 passed / 23 skipped；据新 JUnit 重生成证据，新增测试子集 333 项、指标 14 VERIFIED / 11 PARTIAL，JUnit SHA256 与报告一致。
+- 回滚点 `04bb3a25d634b4362b549a1a7d3e8332b907e666`；可对本轮提交按逆序执行 `git revert`，不需改动旧工作区。
+
+## 2026-09-24 - Task: PR #16 独立复核的三项阻塞修复
+### What was done
+按 P1/P2 复核意见修复：gbbq 保护测试改为自行保存、激活、恢复任务作用域并只使用合成哨兵；`TRIX_V1` 的 `trix_ma` 恢复公开契约的算术滚动均值，修正 oracle 和公开入口回归；目标 pytest JUnit 写入运行时源码树指纹，生成器核对身份后才签发 VERIFIED。同步更新正式报告、能力矩阵及 `docs/PRICE_ONLY_VALIDATION_RUNBOOK_V1.md`。PR 保持 Draft，未合并或部署。
+### Testing
+- 普通 pytest 下两个 gbbq 模块 25 passed / 2 skipped；没有真实 gbbq 或项目缓存读取。
+- 已提交源码 `168f2343b5dac90bc51a68704110585cb2cc1c05` 上：A0 公式/条件 291 passed；账户入口链 37 passed；既有 V1/V2 回归 152 passed / 2 skipped；完整 price-only 访问与证据套件 100 passed / 23 skipped，其中 11 项 A1 默认跳过。
+- 重新生成的 `reports/junit-price-only-v1.xml` 记录 `COMMITTED_SOURCE` 和源码树指纹；`EVIDENCE_COUNTS_V1.json` 的 JUnit 哈希相符、`junit_source_binding=MATCHED`，25 项为 14 VERIFIED / 11 PARTIAL，新增文件子集 334 项。证据变异测试共 35 项，旧或缺身份 JUnit 会降级。
+- `PRICE_ONLY_CAPABILITY_MATRIX_V1.json` 解析与 `git diff --check` 通过；本轮未读取或重跑 A1 真实 RAW。
+### Notes
+- 源码及测试：`src/chanlun_trader/engine/indicators_v2.py`、`scripts/emit_price_only_evidence_v1.py`、`tests/conftest.py`、`tests/indicators_v2/`、`tests/price_only_scope/`。
+- 正式证据及说明：`reports/junit-price-only-v1.xml`、`reports/price_only_validation_v1/`、`docs/PRICE_ONLY_VALIDATION_RUNBOOK_V1.md`、本文件。
+- 当前源码完整套件未重跑；A1 PASS 仅为历史记录。以本轮开始前的 `eef298075d16c0b571f5429f6e95dcc2735a2512` 为回滚点，按逆序 `git revert` 本轮提交即可撤回，不触及旧工作区。
+
+## 2026-09-25 - Task: PR #16 重复 JUnit testcase 的证据误认证修复
+### What was done
+根据独立复核的 P2 复现，`parse_junit_outcomes` 对同一精确 nodeid 改用既有最差 outcome 合并逻辑；去参数基名仍按最差结果聚合。增加失败记录在通过记录之前和之后的两项回归。重新生成目标 JUnit 与 25 项证据，更新正式报告、能力矩阵和证据生成说明。PR 保持 Draft，未合并或部署。
+### Testing
+- 合成重复 JUnit 的两种排列均通过真实解析器与 `bound_indicator_evidence`：精确节点及基名为 failed，DEMA 条件和综合状态降为 PARTIAL，TEMA 正对照保持 VERIFIED；2 passed。
+- 已提交源码 `d6a4fd41ad26e35909b262b1baf82dac2e1a40ae` 上 A0 公式/条件 291 passed；完整 price-only 套件 102 passed / 23 skipped，其中 11 项 A1 默认跳过，另 12 项为本机链接能力限制。
+- 重新生成 `reports/junit-price-only-v1.xml` 与 `EVIDENCE_COUNTS_V1.json`；运行时源码身份 `MATCHED`、JUnit SHA256 相符、25 项仍为 14 VERIFIED / 11 PARTIAL，新增文件子集 336 项，证据变异测试共 37 项。
+- 本轮未读取或重跑 A1 真实 RAW/gbbq；当前源码完整仓库套件未重跑。
+### Notes
+- `scripts/emit_price_only_evidence_v1.py`：重复精确 nodeid 按最差结果合并；`tests/price_only_scope/test_evidence_mutation_v1.py`：两种排列的合成负向回归。
+- `reports/junit-price-only-v1.xml`、`reports/price_only_validation_v1/`、`docs/PRICE_ONLY_VALIDATION_RUNBOOK_V1.md`：新源码身份的正式证据、计数与适用范围；本文件记录验证和回滚。
+- 以本轮开始前的 `a3d8deb742aa42d1189a51509b62afd520188fd7` 为回滚点，按逆序 `git revert` 本轮提交即可撤回，不触及旧工作区。

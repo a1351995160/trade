@@ -10,7 +10,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from pytdx.reader import GbbqReader
 
 # .day 每条记录 32 字节：日期、开、高、低、收（均为 uint32，价格单位：分）
 # 成交额 float32，成交量 uint32，保留 4 字节
@@ -108,25 +107,65 @@ def list_a_stocks(vipdoc: str | os.PathLike) -> list[dict]:
     return stocks
 
 
+def _resolve_cache_dir(cache_dir: str | None) -> Path | None:
+    """在输入边界把缓存目录解析为**绝对路径**（唯一身份）。
+
+    相对路径按项目组合根解释（与守卫的锚定基准一致），因此守卫、``exists``
+    与实际读取消费的是同一个对象，不会出现"守卫按组合根、读取按 cwd"的双重解释。
+    """
+    if not cache_dir:
+        return None
+    from chanlun_trader.price_only_scope import resolve_input_path
+
+    return resolve_input_path(cache_dir)
+
+
 class TdxData:
     """通达信本地数据源：日线读取 + 前复权。"""
 
     def __init__(self, vipdoc: str, gbbq_path: str, cache_dir: str | None = None):
         self.vipdoc = Path(vipdoc)
         self.gbbq_path = gbbq_path
-        self.cache_dir = Path(cache_dir) if cache_dir else None
+        # 缓存目录在**输入边界**解析一次：守卫、exists 与实际读取必须消费
+        # 同一个已解析绝对对象。若保留相对形式，守卫会按组合根锚定，
+        # 而 pd.read_csv 会按 cwd 打开 —— 同一哨兵被两种身份解释，
+        # 形成"守卫拒绝 A、真实读取 B"的绕过（已复现）。
+        self.cache_dir = _resolve_cache_dir(cache_dir)
         self._gbbq_df: pd.DataFrame | None = None
         self._day_cache: dict[str, pd.DataFrame] = {}
         self._qfq_cache: dict[str, pd.DataFrame] = {}
 
     def _load_gbbq(self) -> pd.DataFrame:
+        # 本任务作用域激活时禁止打开真实 gbbq 原件与全量缓存：
+        # 在**任何 open 之前**拒绝。守卫覆盖直接 _load_gbbq 与经 TdxData 构造
+        # 的间接调用；作用域未激活时不限制（既有语义不被永久改变）。
+        #
+        # 关键：守卫、exists 与读取消费**同一个已解析绝对对象**。
+        # 原件路径同样在输入边界解析一次，避免"guard A 再 read B"。
+        from .price_only_scope import (
+            assert_gbbq_read_disabled,
+            controlled_gbbq_reader,
+            guard_gbbq_path,
+            resolve_input_path,
+            task_scope_active,
+        )
+
+        gbbq_file = resolve_input_path(self.gbbq_path)
+        cache_file = (self.cache_dir / "gbbq.csv") if self.cache_dir else None
+
+        if task_scope_active():
+            assert_gbbq_read_disabled()
+            guard_gbbq_path(gbbq_file, label="TdxData.gbbq_path")
+            if cache_file is not None:
+                guard_gbbq_path(cache_file, label="TdxData.gbbq_cache")
         if self._gbbq_df is not None:
             return self._gbbq_df
-        cache_file = self.cache_dir / "gbbq.csv" if self.cache_dir else None
         if cache_file is not None and cache_file.exists():
+            # 读取消费与守卫相同的已解析对象
             self._gbbq_df = pd.read_csv(cache_file, dtype={"code": str})
         else:
-            self._gbbq_df = GbbqReader().get_df(self.gbbq_path)
+            # 直接 vendor 调用必须经受控 wrapper：本任务禁止绕过同一政策。
+            self._gbbq_df = controlled_gbbq_reader(gbbq_file)
             if cache_file is not None:
                 cache_file.parent.mkdir(parents=True, exist_ok=True)
                 self._gbbq_df.to_csv(cache_file, index=False)

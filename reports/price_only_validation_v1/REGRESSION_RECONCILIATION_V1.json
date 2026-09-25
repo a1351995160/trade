@@ -1,0 +1,64 @@
+{
+  "note": "历史对账原件：BASE_SHA 干净工作树 vs 3bcd5f7 HEAD；本次源码未重跑完整套件，不得把这些数字当作当前回归结论。",
+  "status": "HISTORICAL_NOT_CURRENT_HEAD",
+  "base_sha": "f5acb0317719a42eb7071504048e341b50a7ac12",
+  "reviewed_head": "3bcd5f7dd38519d83f0d3551575d888c8cf28ba7",
+  "isolated_env": {
+    "CHANLUN_TEST_ISOLATION": "1"
+  },
+  "baseline": {
+    "failed_incl_errors": 194,
+    "passed": 2155,
+    "skipped": 1
+  },
+  "head": {
+    "failed_incl_errors": 193,
+    "passed": 2401,
+    "skipped": 5
+  },
+  "new_failures_by_nodeid": [],
+  "no_longer_failing_by_nodeid": [
+    "tests/research_factory/test_train_search_batch_v1.py::test_sixty_session_compounding_and_amount_units"
+  ],
+  "skip_classification": {
+    "head_skips": [
+      {
+        "file": "tests\\research_factory\\test_raw_bootstrap_validation_audit_v1.py",
+        "line": 11,
+        "count": 1
+      },
+      {
+        "file": "tests\\pit\\test_qfq_pit_safety.py",
+        "line": 36,
+        "count": 1
+      },
+      {
+        "file": "tests\\pit\\test_qfq_pit_safety.py",
+        "line": 63,
+        "count": 1
+      },
+      {
+        "file": "tests\\price_only_scope\\test_gbbq_identity_bypass_v1.py",
+        "line": 110,
+        "count": 1
+      },
+      {
+        "file": "tests\\test_tdx_data.py",
+        "line": 59,
+        "count": 1
+      }
+    ],
+    "reasons": {
+      "tests/pit/test_qfq_pit_safety.py": "REAL_DATA_INTEGRATION 分类；合成可证性质已拆到 test_qfq_pit_synthetic_v1.py 并实际执行",
+      "tests/price_only_scope/test_gbbq_identity_bypass_v1.py": "junction 别名需 Windows 管理员权限，本机未覆盖（已标注范围）"
+    },
+    "not_counted_as_pass": true
+  },
+  "not_executed": [
+    "真实 gbbq 集成（本任务禁止）",
+    "封存期数据（硬锁）",
+    "junction 别名形式"
+  ],
+  "causality": "UNCONFIRMED",
+  "claim": "仅记录 3bcd5f7 历史 HEAD 的逐 nodeid 对账；当前 HEAD 完整套件状态 NOT_RUN"
+}

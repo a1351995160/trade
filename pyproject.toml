@@ -15,3 +15,6 @@ where = ["src"]
 testpaths = ["tests"]
 pythonpath = ["src", "."]
 addopts = "-ra"
+markers = [
+    "real_data_integration: 需要真实本机数据（gbbq/.day）的集成测试；本任务禁止执行",
+]

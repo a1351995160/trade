@@ -74,3 +74,6 @@ frontend/node_modules/
 .env
 .env.*
 !.env.example
+
+# 完整套件 JUnit 含本机路径与错误文本，不推送
+reports/junit-full-local.xml

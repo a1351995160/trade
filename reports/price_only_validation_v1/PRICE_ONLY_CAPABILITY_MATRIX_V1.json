@@ -1,0 +1,284 @@
+{
+  "matrix_id": "PRICE_ONLY_CAPABILITY_MATRIX_V1",
+  "generated_at": "2026-09-24",
+  "base_sha": "f5acb0317719a42eb7071504048e341b50a7ac12",
+  "workspace": "E:/llmwiki/trade-price-only-validation-v1",
+  "branch": "codex/price-only-indicator-validation-v1",
+  "scope": "现有 OHLC(VA) 指标的公式、参数、条件消费与合成入口验收。不开展盈利搜索。",
+  "dimension_rule": "逐维度分别判定。四项维度：公式实现存在 / 独立数值预期符合 / 条件或退出实际消费 / 合成账户接线验证。全部为真才记 VERIFIED。",
+  "dimensions": {
+    "FORMULA_IMPLEMENTED": "指标实现存在于当前 main 源码",
+    "FORMULA_VALIDATED": "有独立朴素参考或手算序列逐值对照，且参数/边界符合",
+    "CONDITION_CONSUMED": "条件层实际消费该输出，TRUE/FALSE/UNKNOWN 正反例齐备",
+    "ACCOUNT_WIRED": "经公开服务进入合成账户链并产生真实成交"
+  },
+  "this_round_added_oracles": [
+    "DEMA",
+    "TEMA",
+    "CCI",
+    "NATR",
+    "PSY",
+    "DONCHIAN",
+    "KELTNER",
+    "ROLLING_VOLATILITY",
+    "HISTORICAL_RETURN",
+    "PRICE_EXTREMES",
+    "PRIOR_BREAKOUT",
+    "DRAWDOWN_FROM_PEAK",
+    "MACD_HIST_RAW",
+    "TRIX",
+    "VOLUME_MA",
+    "AMOUNT_MA",
+    "RVOL_PRIOR",
+    "RVOL_INCL_CURRENT",
+    "ACCUMULATION_DISTRIBUTION",
+    "CHAIKIN_MONEY_FLOW",
+    "PVT",
+    "VWAP_SESSION_PROXY",
+    "MFI",
+    "ROLLING_SLOPE",
+    "TRUE_RANGE"
+  ],
+  "real_defect_found_and_fixed": {
+    "indicator": "PSY",
+    "defect": "分子 counts(窗口内非 NaN 计数) 与分母 totals(isfinite 的 1/NaN 之和) 数学恒等，导致 counts/totals 恒为 1.0，PSY 恒输出 100%，丢失『上涨根数占比』语义。",
+    "reproduction": "交替涨跌序列（约 50% 上涨）下 PSY 恒为 100.0；期望约 50%。",
+    "fix": "分子改为 sum(up)（上涨根数），分母改为 count(up)（可比较根数，含上涨与下跌）。",
+    "regression_tests": [
+      "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_psy_is_not_constant_one_hundred",
+      "tests/indicators_v2/test_price_only_formula_increment_v1.py::test_psy_monotonic_up_is_one_hundred",
+      "tests/price_only_scope/test_real_raw_sample_v1.py::test_psy_on_real_raw_is_not_constant_one_hundred"
+    ],
+    "note": "既有测试全部通过，说明原测试未覆盖振荡序列下的 PSY。"
+  },
+  "a0_results": {
+    "formula_oracle_tests": 166,
+    "condition_consumption_tests": 41,
+    "note": "25 个账户服务用例属于 41 条条件套件内部，不重复累加",
+    "indicators_with_new_oracle": 25,
+    "all_passed": true
+  },
+  "a1_results": {
+    "status": "PASS",
+    "current_review": "NOT_RERUN",
+    "symbols": [
+      "600000.SH",
+      "000001.SZ"
+    ],
+    "window": [
+      20240102,
+      20240731
+    ],
+    "rows_per_symbol": 140,
+    "source": "TDX .day 经 read_day_file_range 有界读取",
+    "max_date_materialized": 20240731,
+    "sealed_period_touched": false,
+    "price_view": "RAW_CALLER_SERIES",
+    "corporate_action_normalized": false,
+    "historical_trade_eligibility_certified": false,
+    "profitability_validated": false,
+    "verified_indicators": [
+      "EMA",
+      "DEMA",
+      "TEMA",
+      "TRUE_RANGE",
+      "NATR",
+      "PSY",
+      "CCI",
+      "MACD_HIST_RAW"
+    ],
+    "prohibited_actions_performed": {
+      "strategy_signal_search": false,
+      "return_ranking": false,
+      "parameter_optimization": false,
+      "live_signal_list": false,
+      "real_account_backtest": false,
+      "performance_or_winrate": false
+    }
+  },
+  "access_incident_prevention": {
+    "guard_module": "src/chanlun_trader/price_only_scope.py",
+    "covers": [
+      "TdxData._load_gbbq",
+      "TdxData 构造传入的 gbbq 路径",
+      "真实全量缓存 data/cache/gbbq.csv"
+    ],
+    "rejection_point": "真实文件 open 之前（由 open 探针证明）",
+    "test_nodeid": "tests/price_only_scope/test_gbbq_access_guard_v1.py",
+    "tests": 8,
+    "scope_limitation": "进程内路径守卫，不是 OS 沙箱，不能约束任意恶意 Python。",
+    "affected_existing_tests": {
+      "tests/pit/test_qfq_pit_safety.py": "显式 skip（TASK_FORBIDS_REAL_GBBQ_ACCESS），不伪装通过"
+    }
+  },
+  "open_items": [
+    "5m 196 行差异对账（OPEN_NOT_IN_THIS_SCOPE）",
+    "gbbq 物理限窗读取实现（后续独立范围）",
+    "历史流通股本（换手率/容量模型）",
+    "ST/停牌落盘（账户级交易资格）",
+    "复权落盘或受控事件转换",
+    "全库列结构扫描",
+    "数据供应商服务可用性",
+    "gbbq 日期索引/解码/物理限窗（本轮明确不实现）",
+    "junction 别名（Windows 需管理员，本机未覆盖）"
+  ],
+  "capability_ceiling": {
+    "formula_and_condition": "SUPPORTED",
+    "public_synthetic_consumption": "SUPPORTED",
+    "real_raw_numeric_sample": "HISTORICAL_PASS（两证券、单一窗口；本轮未重跑）",
+    "real_account_backtest": "NOT_ESTABLISHED",
+    "formal_trial": "NOT_ESTABLISHED",
+    "real_performance_experiments": 0
+  },
+  "access_boundary_tests": {
+    "gbbq_access_guard": 8,
+    "gbbq_identity_bypass": 19,
+    "bounded_read_boundary": 5,
+    "subtotal": 32,
+    "note": "按当前 collection 计数；旧口径 20 项已过时。"
+  },
+  "real_raw_sample_tests": 11,
+  "new_tests_actual_total": 336,
+  "new_tests_breakdown": {
+    "formula": 166,
+    "condition_and_service": 41,
+    "gbbq_guard": 8,
+    "gbbq_identity_bypass": 19,
+    "bounded_read": 5,
+    "real_raw_sample": 11,
+    "task_scope": 15,
+    "vendor_entry_guard": 7,
+    "controlled_reader_boundary": 3,
+    "scope_order_regression": 2,
+    "evidence_mutation": 37,
+    "relative_link_binding": 9,
+    "read_path_identity": 9,
+    "qfq_synthetic": 4,
+    "note": "13 个新增文件组成部分 332 + 合成 QFQ 4 = 336；子集口径，由 scripts/emit_price_only_evidence_v1.py 派生"
+  },
+  "qfq_synthetic_split": {
+    "synthetic_executed": "tests/pit/test_qfq_pit_synthetic_v1.py (4 项，实际执行)",
+    "real_integration_not_executed": "tests/pit/test_qfq_pit_safety.py (2 项，任务激活时 skip)",
+    "marker": "real_data_integration"
+  },
+  "skip_classification": {
+    "local_scope_suite": {"passed": 102, "skipped": 23, "a1_real_sample": 11, "platform_link_cases": 12},
+    "local_regression_suite": {"passed": 152, "qfq_real_data_integration_skipped": 2},
+    "note": "A1 本轮不重跑；平台链接能力不足与真实数据集成均显式分类 skip"
+  },
+  "pr16_remediation": {
+    "PR16-01": {
+      "status": "CLOSED",
+      "bypasses_reproduced_and_fixed": [
+        "相对与绝对路径不一致（绝对被放行）",
+        "scratch/../ 父目录遍历别名被放行",
+        "符号链接别名指向禁止目标被放行",
+        "显式清单因 basename 白名单早退失效",
+        "Windows 扩展路径 \\\\?\\ 与父目录别名被放行"
+      ],
+      "fix": "改为基于可信组合根的绝对身份判定：解析 . / .. / 符号链接与 Windows 扩展前缀，相对与绝对一致拒绝；显式清单先于白名单；无法解析则 fail closed。",
+      "scope_note": "junction 依赖本机文件系统和权限；当前工作树所在卷不支持，相关测试明确分类跳过。",
+      "entry_covered": "TdxData._load_gbbq（实际调用入口，非仅 guard helper）"
+    },
+    "PR16-02": {
+      "status": "CLOSED",
+      "skip_scope_fix": "pytest 仅在 CHANLUN_PRICE_ONLY_TASK_SCOPE=1 时全局激活；gbbq 保护用例自行保存、激活及恢复作用域，并仅使用合成哨兵。A1 真实样本需另行明确授权并设置 CHANLUN_RUN_A1_RAW_SAMPLE=1，默认不重读。",
+      "qfq_split": "合成可证性质拆到 test_qfq_pit_synthetic_v1.py 并实际执行（4 项）；真实本机集成标 real_data_integration 且任务激活时 skip（2 项）。",
+      "no_assertions_removed": true
+    },
+    "PR16-03": {
+      "status": "CLOSED",
+      "oracle_fix": "naive_wilder_rma 改为按连续段独立播种；[1,1,NaN,10,10,10] window=2 -> [NaN,2,NaN,NaN,20,20]",
+      "evidence_counts_corrected": "当前新增文件子集 332 项 + 合成 QFQ 4 项 = 336；以 EVIDENCE_COUNTS_V1.json 实际 collection 为准",
+      "note": "25 个账户服务用例属于 41 条条件套件内部，不重复累加"
+    }
+  },
+  "evidence_counts_ref": "reports/price_only_validation_v1/EVIDENCE_COUNTS_V1.json",
+  "pr16_residual_closure": {
+    "PR16-01": {
+      "status": "CLOSED",
+      "cwd_counterexample": "已复现：相对清单 external/cache/gbbq.csv，同一绝对路径在 cwd 变化后由拒绝翻转为放行",
+      "fix": "禁止集合在组合根一次性解析为绝对身份并冻结；检查时不重新读取 cwd",
+      "env_var_rule": "环境变量至多追加约束；真实 gbbq 根身份始终保留，不被移除",
+      "entry_covered": "TdxData._load_gbbq 与受控 controlled_gbbq_reader 走同一限制；裸 vendor 调用不在认证范围"
+    },
+    "PR16-02": {
+      "status": "CLOSED",
+      "scope_activation": "显式激活（tests/conftest.py 组合根调用 activate_task_scope）；不由报告文件推断",
+      "shared_scope": "生产 _load_gbbq 与真实测试分类消费同一 task_scope_active()",
+      "qfq_split": "合成可证 4 项实际执行；真实集成标 real_data_integration 并任务激活时 skip",
+      "junction": "Windows 临时目录原生 mklink /J 实际创建并检查拦截；POSIX 标 NOT_APPLICABLE"
+    },
+    "PR16-03": {
+      "status": "CLOSED",
+      "counts_source": "从实际 pytest --collect-only 与 JUnit 自动生成（scripts/emit_price_only_evidence_v1.py）",
+      "corrected": "226 -> 249（六部分 245 + 合成 QFQ 4）",
+      "full_suite_accounting": "errors 与 failures 分开记录；skipped 不计为 passed",
+      "indicator_evidence": "25 项逐行含 indicator/outputs/params/input-domain/formula/condition/account/nodeid/JUnit/status 与证明强度"
+    }
+  },
+  "new_tests_note": "由 scripts/emit_price_only_evidence_v1.py 从实际 collection 派生，不硬编码",
+  "pr16_runtime_closure": {
+    "identity_two_directions": {
+      "status": "CLOSED",
+      "reproduced": "清单列别名、访问目标本体 -> False（放行）",
+      "fix": "冻结时解析身份闭包（含 realpath 与父目录解析后拼基名），两方向一致拒绝"
+    },
+    "outer_task_not_closed_by_cleanup": {
+      "status": "CLOSED",
+      "defect": "_restore_scope yield 后无条件 deactivate，会关闭外层仍在运行的任务",
+      "fix": "保存/恢复进入前政策；新增验收序列（外层激活 → 缓存拒绝 → 内部清理 → 仍拒绝）"
+    },
+    "vendor_entry_evidence": {
+      "status": "CLOSED",
+      "note": "用受保护合成目标驱动真实 GbbqReader 与 TdxData 入口，open 探针证明拒绝先于打开，且 vendor get_df 从未被调用"
+    },
+    "junction": {
+      "status": "CLOSED_WITH_PLATFORM_NOTE",
+      "note": "E 盘为 exFAT 不支持 junction；在 C 盘 NTFS 临时目录原生创建并验证两方向拒绝与 opened=[]"
+    },
+    "hardlink": "LIMITATION（未测试，如实列出，不扩展 OS 级隔离）",
+    "evidence_regression": "CLOSED（删映射/失败状态降级；收集失败停止签证）"
+  },
+  "pr16_final_scoped_closeout": {
+    "TASK_SCOPE_PARENT_RESTORATION": {
+      "status": "IMPLEMENTED_AND_TESTED",
+      "source": "src/chanlun_trader/price_only_scope.py: snapshot_task_scope/restore_task_scope",
+      "fixtures_fixed": [
+        "tests/price_only_scope/test_task_scope_v1.py::_restore_scope",
+        "tests/price_only_scope/test_vendor_entry_guard_v1.py::_scope"
+      ],
+      "evidence": "保存 active/reason/冻结禁止集合/环境清单；外层激活→缓存拒绝→内部清理→仍拒绝；pytest 顺序回归"
+    },
+    "CONTROLLED_READER_BOUNDARY": {
+      "status": "IMPLEMENTED_AND_TESTED",
+      "source": "src/chanlun_trader/price_only_scope.py: controlled_gbbq_reader + CONTROLLED_READER_POLICY",
+      "path_a_indirect": "TdxData._load_gbbq -> 拒绝，vendor get_df 未执行",
+      "path_b_direct": "controlled_gbbq_reader -> 拒绝，open/decode 前；另有静态检查防调用点绕过",
+      "call_sites_rewired": [
+        "src/chanlun_trader/tdx_data.py",
+        "src/chanlun_trader/data/tdx/owner_export_v1.py"
+      ],
+      "bare_vendor": "UNSUPPORTED_NOT_PROTECTED（如实标注，未列为已关闭）"
+    },
+    "EVIDENCE_STATUS_FROM_ACTUAL_RESULTS": {
+      "status": "IMPLEMENTED_AND_TESTED",
+      "source": "scripts/emit_price_only_evidence_v1.py",
+      "derivation": "状态由 JUnit testcase outcome 推导；精确 nodeid 重复与参数化基名均按最差结果聚合；运行时源码树指纹与当前源码匹配后才签发 VERIFIED",
+      "mutation_tests": "tests/price_only_scope/test_evidence_mutation_v1.py（37 项）",
+      "counts": {
+        "subset_parts_total": 332,
+        "qfq_synthetic": 4,
+        "subset_total": 336,
+        "node_diff_status": "NOT_ESTABLISHED",
+        "node_diff_reason": "旧节点清单缺源码身份 manifest"
+      }
+    },
+    "not_covered": [
+      "硬链接别名（未认证范围）",
+      "OS 级隔离 / 任意恶意 Python（不要求）",
+      "gbbq 日期索引/解码/物理限窗（后续独立范围）",
+      "A1 真实数据重验（本任务禁止，skip 不计通过）"
+    ]
+  }
+}
