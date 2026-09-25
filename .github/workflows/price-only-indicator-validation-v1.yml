@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - "codex/**"
+      - main
 
 permissions:
   contents: read

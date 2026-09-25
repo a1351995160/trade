@@ -1,0 +1,31 @@
+{
+  "dataset_id": "ALL_51_BAOSTOCK_ACTION_SCREEN_20240201_20240531_V2",
+  "provider": "BaoStock",
+  "api": "query_dividend_data",
+  "query_year_type": "report",
+  "queried_report_years": [
+    2022,
+    2023,
+    2024
+  ],
+  "symbols": [
+    "000001.SZ",
+    "600000.SH"
+  ],
+  "account_dates": [
+    20240201,
+    20240531
+  ],
+  "query_counts": {
+    "000001.SZ:2022": 1,
+    "000001.SZ:2023": 1,
+    "000001.SZ:2024": 2,
+    "600000.SH:2022": 1,
+    "600000.SH:2023": 1,
+    "600000.SH:2024": 1
+  },
+  "account_window_events": [],
+  "response_records_sha256": "f68883970d3886613756c5db045bc13467a50732a4f5f86afdbf5b9062e4d659",
+  "fetched_at_utc": "2026-09-25T12:19:24.072767+00:00",
+  "coverage_limit": "BaoStock dividend/stock distribution records only; no independent TDX gbbq cross-check"
+}
