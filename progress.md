@@ -2246,3 +2246,16 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 - 源码及测试：`src/chanlun_trader/engine/indicators_v2.py`、`scripts/emit_price_only_evidence_v1.py`、`tests/conftest.py`、`tests/indicators_v2/`、`tests/price_only_scope/`。
 - 正式证据及说明：`reports/junit-price-only-v1.xml`、`reports/price_only_validation_v1/`、`docs/PRICE_ONLY_VALIDATION_RUNBOOK_V1.md`、本文件。
 - 当前源码完整套件未重跑；A1 PASS 仅为历史记录。以本轮开始前的 `eef298075d16c0b571f5429f6e95dcc2735a2512` 为回滚点，按逆序 `git revert` 本轮提交即可撤回，不触及旧工作区。
+
+## 2026-09-25 - Task: PR #16 重复 JUnit testcase 的证据误认证修复
+### What was done
+根据独立复核的 P2 复现，`parse_junit_outcomes` 对同一精确 nodeid 改用既有最差 outcome 合并逻辑；去参数基名仍按最差结果聚合。增加失败记录在通过记录之前和之后的两项回归。重新生成目标 JUnit 与 25 项证据，更新正式报告、能力矩阵和证据生成说明。PR 保持 Draft，未合并或部署。
+### Testing
+- 合成重复 JUnit 的两种排列均通过真实解析器与 `bound_indicator_evidence`：精确节点及基名为 failed，DEMA 条件和综合状态降为 PARTIAL，TEMA 正对照保持 VERIFIED；2 passed。
+- 已提交源码 `d6a4fd41ad26e35909b262b1baf82dac2e1a40ae` 上 A0 公式/条件 291 passed；完整 price-only 套件 102 passed / 23 skipped，其中 11 项 A1 默认跳过，另 12 项为本机链接能力限制。
+- 重新生成 `reports/junit-price-only-v1.xml` 与 `EVIDENCE_COUNTS_V1.json`；运行时源码身份 `MATCHED`、JUnit SHA256 相符、25 项仍为 14 VERIFIED / 11 PARTIAL，新增文件子集 336 项，证据变异测试共 37 项。
+- 本轮未读取或重跑 A1 真实 RAW/gbbq；当前源码完整仓库套件未重跑。
+### Notes
+- `scripts/emit_price_only_evidence_v1.py`：重复精确 nodeid 按最差结果合并；`tests/price_only_scope/test_evidence_mutation_v1.py`：两种排列的合成负向回归。
+- `reports/junit-price-only-v1.xml`、`reports/price_only_validation_v1/`、`docs/PRICE_ONLY_VALIDATION_RUNBOOK_V1.md`：新源码身份的正式证据、计数与适用范围；本文件记录验证和回滚。
+- 以本轮开始前的 `a3d8deb742aa42d1189a51509b62afd520188fd7` 为回滚点，按逆序 `git revert` 本轮提交即可撤回，不触及旧工作区。

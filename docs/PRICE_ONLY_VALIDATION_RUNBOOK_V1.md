@@ -6,4 +6,4 @@
 
 生成逐项证据时，先在**已提交的源码**上运行 A0 公式与条件测试，并使用 `--junitxml` 保存本次 JUnit。测试进程会记录 HEAD、`src/`、`scripts/`、`tests/`、`.github/workflows/` 的 Git 树指纹，以及这些路径有无未提交修改。随后运行 `scripts/emit_price_only_evidence_v1.py --junit <本次 JUnit> --out <输出 JSON>`。
 
-生成器核对运行时与生成时的源码树指纹。JUnit 缺身份、身份不符或任一端存在未提交源码修改时，25 项指标不得从该 JUnit 获得 VERIFIED，命令返回非零；仅报告或文档提交使 HEAD 变化而源码树不变时仍可复用。已提交的正式结果见 `reports/price_only_validation_v1/`；完整套件与 A1 的当前源码状态需分别看报告中的限定说明。
+生成器核对运行时与生成时的源码树指纹。JUnit 缺身份、身份不符或任一端存在未提交源码修改时，25 项指标不得从该 JUnit 获得 VERIFIED，命令返回非零；仅报告或文档提交使 HEAD 变化而源码树不变时仍可复用。同一精确 testcase 重复出现时按最差 outcome 合并，失败或跳过不能被后续通过记录覆盖。已提交的正式结果见 `reports/price_only_validation_v1/`；完整套件与 A1 的当前源码状态需分别看报告中的限定说明。

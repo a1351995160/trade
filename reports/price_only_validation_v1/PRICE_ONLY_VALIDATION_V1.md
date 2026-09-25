@@ -95,12 +95,12 @@
 | --- | --- |
 | 公式增量（`test_price_only_formula_increment_v1.py`） | 166 |
 | 条件消费（`test_price_only_condition_consumption_v1.py`） | 41 |
-| 其余范围、守卫与证据测试（10 个文件） | 112 |
+| 其余范围、守卫与证据测试（10 个文件） | 114 |
 | 真实 RAW 小样本（`test_real_raw_sample_v1.py`，本轮只收集不执行） | 11 |
 | 合成 QFQ（`test_qfq_pit_synthetic_v1.py`） | 4 |
-| **新增文件子集合计** | **334** |
+| **新增文件子集合计** | **336** |
 
-计数由 `scripts/emit_price_only_evidence_v1.py` 的实际 collection 得出。当前 A0 公式/条件 JUnit 为 291 passed；25 项逐项证据为 14 VERIFIED / 11 PARTIAL。完整 BASE/HEAD 节点清单缺源码身份绑定，差集状态为 `NOT_ESTABLISHED`，不能拿子集 334 冒充全量新增数。
+计数由 `scripts/emit_price_only_evidence_v1.py` 的实际 collection 得出。当前 A0 公式/条件 JUnit 为 291 passed；25 项逐项证据为 14 VERIFIED / 11 PARTIAL。完整 BASE/HEAD 节点清单缺源码身份绑定，差集状态为 `NOT_ESTABLISHED`，不能拿子集 336 冒充全量新增数。
 
 覆盖要求：至少两个参数设置；常数/递增/递减/振荡/跳变/缺口/零成交量/非有限值/短于预热；追加未来尾段不改变历史值；条件 TRUE/FALSE/UNKNOWN 正反例齐备；不以全部拒单制造通过；入口测试实际消费指标输出（不以 list-indicators 作证）。实际覆盖以逐项 `tested_parameter_sets` 为准，单组合指标不视为满足“至少两个参数设置”。
 
@@ -126,6 +126,7 @@
 - `read_day_file_range` 在请求起点晚于文件最后记录时返回空结果，物理 payload 读取计数为 0。
 - 证据行把源码断言输出与本次已验证输出分开，`tested_parameter_sets` 只列本次 JUnit 中实际通过的参数节点；生成器从 25 项公式测试源码 AST 复核进入逐值断言的输出与实际参数组合，声明漂移则拒绝签发，账户配置取自参数化测试源码，维度 JUnit 字段指向实际消费文件。旧完整套件 JUnit 与旧回归对账标为历史记录，当前源码完整套件未重跑。
 - pytest 在目标 JUnit 中记录测试运行时的源码/测试树指纹及提交身份；生成器比较该指纹与当前已提交源码。缺失、失配或运行时存在未提交源码时，逐项证据全部降为 PARTIAL，生成命令返回非零。仅文档提交号变化而代码/测试树不变时可继续复用。
+- JUnit 内同一精确 testcase 重复出现时按最差 outcome 聚合，避免后一个 passed 覆盖先前 failure；失败在前、失败在后两种排列均经真实解析和逐项生成路径验证。TRIX 条件与账户证据只消费 `trix`，不将其扩写为 `trix_ma` 阈值敏感性覆盖。
 
 ---
 
