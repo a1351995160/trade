@@ -189,6 +189,42 @@ def test_account_outcome_mutation_downgrades_only_account(tmp_path: Path, kind: 
     assert formula["status"] == "VERIFIED", "公式维度被误伤"
 
 
+@pytest.mark.parametrize("failure_first", [True, False])
+def test_duplicate_exact_node_keeps_worst_outcome(tmp_path: Path, failure_first: bool):
+    """同一精确 nodeid 的失败无论出现顺序如何都不能被通过记录覆盖。"""
+    module = _load_module()
+    coverage = _real_coverage()
+    node = next(n for n in coverage[("DEMA", "condition")]
+                if "test_condition_layer_consumes_each_new_indicator[DEMA-" in n)
+    cases = [_node_to_case(n) for nodes in coverage.values() for n in nodes]
+    duplicate = _node_to_case(node, "failure")
+    if failure_first:
+        cases.insert(0, duplicate)
+    else:
+        cases.append(duplicate)
+    junit = tmp_path / "duplicate.xml"
+    current = {"head": "synthetic-head", "code_test_tree_sha256": "synthetic-tree",
+               "status": "COMMITTED_SOURCE"}
+    properties = {
+        "price_only_source_head": current["head"],
+        "price_only_code_test_tree_sha256": current["code_test_tree_sha256"],
+        "price_only_source_status": current["status"],
+    }
+    _write_junit(junit, cases, properties)
+
+    outcomes = module.parse_junit_outcomes(junit)
+    rows, binding = module.bound_indicator_evidence(
+        outcomes, junit, current, "duplicate.xml")
+    dema = next(row for row in rows if row["indicator"] == "DEMA")
+    assert binding["status"] == "MATCHED"
+    assert outcomes[node] == "failed"
+    assert outcomes[node.split("[", 1)[0]] == "failed"
+    assert dema["dimensions"]["condition"]["outcome"] == "failed"
+    assert dema["dimensions"]["condition"]["status"] == "PARTIAL"
+    assert dema["status"] == "PARTIAL"
+    assert next(row for row in rows if row["indicator"] == "TEMA")["status"] == "VERIFIED"
+
+
 # ==========================================================================
 # 4) 缺期望节点 / 错指标节点 / 缺 JUnit → 均不能 VERIFIED
 # ==========================================================================

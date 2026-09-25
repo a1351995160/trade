@@ -411,9 +411,9 @@ def _case_outcome(case) -> str:
 
 
 def _merge_worst(outcomes: dict, key: str, outcome: str) -> None:
-    """按**最差** outcome 合并去参数键。
+    """按**最差** outcome 合并同一精确节点或去参数键。
 
-    否则先出现的 passed 参数会掩盖后续失败/跳过的兄弟参数，
+    否则重复 testcase 或兄弟参数中的 passed 可能掩盖失败/跳过，
     使整维度被误判 VERIFIED。
     """
     previous = outcomes.get(key)
@@ -442,7 +442,7 @@ def parse_junit_outcomes(path: Path) -> dict:
         name = case.get("name") or ""
         module_path = classname.replace(".", "/") + ".py"
         outcome = _case_outcome(case)
-        outcomes[f"{module_path}::{name}"] = outcome
+        _merge_worst(outcomes, f"{module_path}::{name}", outcome)
         if "[" in name:
             _merge_worst(outcomes, f"{module_path}::{name.split('[', 1)[0]}", outcome)
     return outcomes
