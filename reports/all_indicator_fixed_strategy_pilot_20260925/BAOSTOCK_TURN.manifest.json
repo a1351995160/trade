@@ -1,0 +1,31 @@
+{
+  "dataset_id": "ALL_51_BAOSTOCK_TURN_20231009_20240731_V1",
+  "provider": "BaoStock",
+  "api": "query_history_k_data_plus",
+  "fields": [
+    "date",
+    "code",
+    "volume",
+    "turn",
+    "tradestatus"
+  ],
+  "frequency": "d",
+  "adjustflag": "3",
+  "requested_dates": [
+    20231009,
+    20240731
+  ],
+  "symbols": [
+    "000001.SZ",
+    "600000.SH"
+  ],
+  "rows_by_symbol": {
+    "000001.SZ": 200,
+    "600000.SH": 200
+  },
+  "fetched_at_utc": "2026-09-25T12:11:40.743765+00:00",
+  "provider_turn_unit": "percent",
+  "historical_available_at_verified": false,
+  "normalized_records_sha256": "a201f2a57eb2e798c2d7941930b653e0848a2926f309fd6dd4865ba801bbf519",
+  "parquet_sha256": "218e50a3c11b19fd8bbc1d07c55f37c92a983a5172bf84c52feceb744f8640f2"
+}

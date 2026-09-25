@@ -2259,3 +2259,62 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 - `scripts/emit_price_only_evidence_v1.py`：重复精确 nodeid 按最差结果合并；`tests/price_only_scope/test_evidence_mutation_v1.py`：两种排列的合成负向回归。
 - `reports/junit-price-only-v1.xml`、`reports/price_only_validation_v1/`、`docs/PRICE_ONLY_VALIDATION_RUNBOOK_V1.md`：新源码身份的正式证据、计数与适用范围；本文件记录验证和回滚。
 - 以本轮开始前的 `a3d8deb742aa42d1189a51509b62afd520188fd7` 为回滚点，按逆序 `git revert` 本轮提交即可撤回，不触及旧工作区。
+
+## 2026-09-25 - Task: 51 指标固定策略真实数据首次试验
+
+### What was done
+- 在隔离工作树 `origin/main@69b7d9f` 上新增 `scripts/probe_all_indicator_strategy_v1.py`：冻结 51 个指标的版本、输出和公式指纹，定义每指标一票的固定买卖规则，并通过受控日期读取做输入预检；少一项即不产出判断或账户结果。
+- 使用现有 BaoStock 日线快照对 `000001.SZ` 和 `600000.SH` 各 200 根日线实算；每只股票 50/51 项可计算，`TURNOVER_RATE` 因缺历史流通股本阻塞。正式输出见 `reports/all_indicator_fixed_strategy_pilot_20260925/PROBE.json`。
+- `docs/ALL_INDICATOR_PILOT_V1.md` 说明固定规则、证据分层、数据阻塞、复验命令与继续账户核对所需输入；`tests/indicators_v2/test_all_indicator_pilot_v1.py` 验证全指标参与和缺项拒绝。
+
+### Testing
+- `python -m pytest -q -p no:cacheprovider tests/indicators_v2/test_all_indicator_pilot_v1.py`：3 passed；pytest 退出时仍出现既有临时目录权限警告，进程退出码为 0。
+- 真实数据探针按预期返回 `BLOCKED`：审计记录日期下推读取 1,020,151 行，最高日期 2024-07-31；两只样本各 50 项在样本末根已就绪，唯一阻塞为 `DATA_DEPENDENCY_NOT_MET:TURNOVER_RATE:float_shares`。报告 JSON 解析及 51 个唯一 ID 一致性复查通过。
+- BaoStock 补查 `turn` 的单次限定窗口登录约 10 秒后超时，没有取得新增行情。本次未运行真实交易、账户或统计验证。
+
+### Notes
+- 改动文件仅为上述脚本、测试、文档、报告与本条记录；未改业务引擎、数据或原研究产物。此工作树与原有未提交工作区隔离。
+- 回滚点为 `69b7d9fc234bbde876594ad7a7bc9c72dab81b53`；删除本次新建的四个文件并恢复本工作树的 `progress.md` 到该提交即可撤回。不要对原工作区执行此回滚。
+
+## 2026-09-25 - Task: BaoStock 历史换手率接入并跑通 51 指标固定策略链路
+
+### What was done
+- 在试验专用注册表为 `TURNOVER_RATE` 增加显式版本 `TURNOVER_RATE_BAOSTOCK_TURN_V1`，直接使用 BaoStock 日线百分比 `turn`；原有通用 `TURNOVER_RATE_V1` 和默认注册表不变。固定策略冻结 51 个指标各一票，不以缺项替代运行。
+- `scripts/fetch_all_indicator_turn_v1.py` 冻结两只样本证券 2023-10-09 至 2024-07-31 的 400 条换手率和来源哈希；`scripts/fetch_all_indicator_actions_v1.py` 冻结 2024-02-01 至 2024-05-31 的 BaoStock 分红/送股窗口筛查。`scripts/probe_all_indicator_strategy_v1.py` 验证原始日线、逐日换手率及成交量、历史状态和公司行动后，提交固定买卖信号给既有事件引擎，导出订单、成交、费用、每日账户和独立复算。
+- 更新 `tests/indicators_v2/test_all_indicator_pilot_v1.py`、`docs/ALL_INDICATOR_PILOT_V1.md`，将报告 `reports/all_indicator_fixed_strategy_pilot_20260925/PROBE.json` 从首轮阻塞诊断更新为完整链路结果。此前 progress 条目记录的是首次受缺流通股本阻塞的历史状态；该同名报告现已由本轮结果取代。
+
+### Testing
+- 目标测试 4 passed，包含全指标临界票数参与、缺项拒绝、供应商换手率原值、合成端到端账户及成交量/公司行动/账户快照篡改负例；未跑完整仓库套件。
+- 真实 BaoStock 样本两只证券各 200 日、51/51 指标可计算；306 次分日截断重算与完整序列对应值一致。限定无公司行动窗口内 76 个交易日产生 152 信号、74 订单、68 成交；逐日独立现金、持股和资产复算最大差异 0，账本不变量和订单/成交数量、下一开盘参考价、费用检查通过。
+- 相同快照、源码和命令连续两次生成完全相同的报告 SHA-256：`5ddbf1ccc2712d19a6963dd292ebb468579ddabf3a40be5fbcea4ff0d84a0b79`。`blockers=[]`、`account_status=RECONCILED_DIAGNOSTIC`。受控物理读取最高日期 2024-07-31，未触及封存测试区间。
+
+### Notes
+- 所有实现和数据快照仅位于隔离工作树；未改既有引擎、默认指标或用户原工作区。新增/更新文件为上述 3 个脚本、1 个测试、1 个文档、`reports/all_indicator_fixed_strategy_pilot_20260925/` 内 4 个正式证据文件及本条记录。
+- +3.80% 仅为两只银行股、76 日模拟账户诊断观察；历史 `turn` 发布时间、独立公司行动覆盖、引擎 PIT 历史资格接线、样本外统计和 Paper 资格尚未通过。该固定投票规则交易频繁、指标经济方向混杂，不能据此认定策略有效。
+- 回滚整个隔离试验的基线为 `69b7d9fc234bbde876594ad7a7bc9c72dab81b53`：仅在此工作树删除试验新增脚本、测试、文档和报告文件，并把 `progress.md` 恢复到该提交；原工作区不受影响。若只撤销本轮，请依据本条列出的新增快照和本轮差异逆向恢复首轮试验文件，不覆盖用户其他未提交改动。
+
+## 2026-09-25 - Task: 固定策略诊断链路进入分支与主分支 CI
+
+### What was done
+- 为 `.github/workflows/price-only-indicator-validation-v1.yml` 增加 `main` 推送触发，使本次 PR 验收后，合并提交也能运行相关指标验收。试验文档明确 GitHub CI 只覆盖合成回归；本地 E 盘真实行情与状态不在 CI 内。
+
+### Testing
+- 本地按 CI 的 Windows `PYTHONPATH` 运行 `tests/indicators_v2 tests/conditions_v2`：295 passed；暂不把远端 PR 或 `main` CI 记为已通过，远端执行状态以 GitHub Checks 为准。
+- 暂存文件 `git diff --cached --check` 无空白错误；公司行动与换手率快照的冻结哈希随报告提交。
+
+### Notes
+- 新增改动文件为上述工作流、试验文档及本记录。11 KB 的两证券换手率冻结快照是刻意纳入版本管理的试验证据；仓库一般忽略 `*.parquet`，本次仅对该明确文件单独暂存。
+- 如需撤销主分支 CI 触发，删除工作流 `push.branches` 中的 `main` 并通过新 PR 回滚；不影响其它工作流。试验整体仍可以 `69b7d9fc234bbde876594ad7a7bc9c72dab81b53` 为基线在隔离工作树回退。
+
+## 2026-09-25 - Task: PR #17 路径边界与 SonarCloud 安全告警修复
+
+### What was done
+- PR 首轮 SonarCloud 报告脚本路径穿越：将真实试验输入限制在工作树与指定 E 盘数据目录，文件哈希也执行同一边界检查；固定报告输出仅允许 `reports/all_indicator_fixed_strategy_pilot_20260925/PROBE.json`。合成测试显式声明临时夹根目录，正式 CLI 不接受此例外。
+- 更新目标测试和试验说明；重新生成该报告，将本轮脚本源码指纹写入报告。前一条记录中的报告 SHA-256 属于修复前运行，当前报告以本条哈希为准。
+
+### Testing
+- 目标测试 5 passed；按 CI Windows 路径运行 `tests/indicators_v2 tests/conditions_v2`：296 passed。越界文件拒绝、原有负例与真实 51/51 指标链路均通过。
+- 相同输入在当前检出状态连续两次生成相同报告 SHA-256 `416cc20b9bd77c685138164bf62c7bff4162f2ec00cd6d61078bc534951175f1`；`blockers=[]`、76 日账户逐日复算差异 0。远端 SonarCloud 对本次修复的复检以更新后的 PR 检查结果为准。
+
+### Notes
+- 本次修改为 `scripts/probe_all_indicator_strategy_v1.py`、对应测试、说明文档和报告；未扩大真实数据日期范围。回滚本轮时可在隔离分支上对本轮后续提交执行 `git revert`，保留此前固定策略试验提交；如仅撤销路径限制，须同步恢复测试与报告源码指纹。
