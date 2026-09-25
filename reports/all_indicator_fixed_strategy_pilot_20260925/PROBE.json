@@ -501,8 +501,8 @@
       "purpose": "mechanical integration probe; no claim of predictive merit"
     }
   },
-  "code_head": "69b7d9fc234bbde876594ad7a7bc9c72dab81b53",
-  "probe_source_sha256": "c27bdd3a037533a2aa229b6a23a730c45556cd11232a67aee2c1b4570bd1577c",
+  "code_head": "e86b0aebcec43464bcd7967810cae877696ca3b8",
+  "probe_source_sha256": "c5bf774a24f4eef31bc935309e4ee814a624bd686b0e60055e40e24c4b1f5b79",
   "input": {
     "path": "E:\\llmwiki\\autonomous-strategy-research-v1\\execution-data-v1\\baostock-account-v1\\DAILY.parquet",
     "sha256": "63762647b9bbebf07f7ad768587a17eb351dc04247c760e0343ddae441ed9437",
@@ -550,7 +550,7 @@
     },
     {
       "dataset": "parquet",
-      "path": "reports\\all_indicator_fixed_strategy_pilot_20260925\\BAOSTOCK_TURN.parquet",
+      "path": "E:\\worktrees\\all-indicator-realdata-pilot\\trade-system-contract-port-v1\\reports\\all_indicator_fixed_strategy_pilot_20260925\\BAOSTOCK_TURN.parquet",
       "requested": [
         20231009,
         20240731
@@ -2564,7 +2564,7 @@
       "fill_model": "DailyBarFillModel",
       "risk_model": "RiskManagerV2",
       "mode": "DAILY",
-      "code_commit": "69b7d9fc234bbde876594ad7a7bc9c72dab81b53",
+      "code_commit": "e86b0aebcec43464bcd7967810cae877696ca3b8",
       "dirty_worktree": true,
       "strategy_hash": "a74f3936989489ad8080d0f62fa9e1acd8fe09426c25fc72be3cbdda20d75f6f",
       "data_manifest_hash": "fe6fbb7c78cfda662cd857e36e498020f411b3155e7a2285a56dc1e06e0a15f7",
@@ -2575,7 +2575,7 @@
       "fee_model_version": "ChinaAStockFeeModel",
       "slippage_model_version": "FixedBpsSlippage",
       "calendar_version": "0a599f9996215d4167501685eb961e6af8b2e3933b12adde0269d3996d7cc9ab",
-      "manifest_hash": "2a43fc62ac172d6f0a9f377cc6baa9f14b511913b9f00c5d1e7402d4c5ae2ff5",
+      "manifest_hash": "f1e1b839025c4b27e31f2fec45a985f71e946b372b0a64cd81507c7157c4277f",
       "reproducibility_status": "PASS"
     },
     "engine_summary": {

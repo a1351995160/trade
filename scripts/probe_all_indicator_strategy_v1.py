@@ -14,6 +14,10 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
+EXTERNAL_DATA_ROOT = Path(
+    "E:/llmwiki/autonomous-strategy-research-v1/execution-data-v1/baostock-account-v1"
+).resolve()
+REPORT_PATH = ROOT / "reports/all_indicator_fixed_strategy_pilot_20260925/PROBE.json"
 
 from chanlun_trader.engine.custom_indicators_v2 import register_custom_indicators  # noqa: E402
 from chanlun_trader.engine.indicator_registry_v2 import default_registry  # noqa: E402
@@ -65,9 +69,21 @@ def pilot_registry():
     return registry
 
 
-def sha256_file(path: Path) -> str:
+def approved_existing_file(path: Path, *, fixture_root: Path | None = None) -> Path:
+    """Keep this fixed pilot inside its known source roots, including tests."""
+    resolved = path.resolve(strict=True)
+    roots = (ROOT, EXTERNAL_DATA_ROOT)
+    if fixture_root is not None:
+        roots = (*roots, fixture_root.resolve(strict=True))
+    if not resolved.is_file() or not any(resolved.is_relative_to(root) for root in roots):
+        raise ValueError(f"PILOT_INPUT_PATH_NOT_ALLOWED:{path}")
+    return resolved
+
+
+def sha256_file(path: Path, *, fixture_root: Path | None = None) -> str:
+    safe_path = approved_existing_file(path, fixture_root=fixture_root)
     digest = hashlib.sha256()
-    with path.open("rb") as stream:
+    with safe_path.open("rb") as stream:
         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
@@ -285,7 +301,17 @@ def run_chain(frame: pd.DataFrame, decisions: dict, definition: dict,
 
 def probe(daily_path: Path, turn_path: Path | None = None,
           states_path: Path | None = None, actions_path: Path | None = None,
-          turn_manifest_path: Path | None = None) -> dict:
+          turn_manifest_path: Path | None = None,
+          fixture_root: Path | None = None) -> dict:
+    daily_path = approved_existing_file(daily_path, fixture_root=fixture_root)
+    turn_path = (approved_existing_file(turn_path, fixture_root=fixture_root)
+                 if turn_path is not None else None)
+    states_path = (approved_existing_file(states_path, fixture_root=fixture_root)
+                   if states_path is not None else None)
+    actions_path = (approved_existing_file(actions_path, fixture_root=fixture_root)
+                    if actions_path is not None else None)
+    turn_manifest_path = (approved_existing_file(turn_manifest_path, fixture_root=fixture_root)
+                          if turn_manifest_path is not None else None)
     audit = []
     reader = GuardedResearchReader(audit_sink=audit.append)
     frame = reader.read_parquet(
@@ -317,7 +343,7 @@ def probe(daily_path: Path, turn_path: Path | None = None,
     samples = {}
     blockers = set()
     if turn_manifest is not None and (turn_path is None
-            or turn_manifest.get("parquet_sha256") != sha256_file(turn_path)
+            or turn_manifest.get("parquet_sha256") != sha256_file(turn_path, fixture_root=fixture_root)
             or turn_manifest.get("provider") != "BaoStock"
             or turn_manifest.get("api") != "query_history_k_data_plus"
             or turn_manifest.get("adjustflag") != "3"
@@ -440,10 +466,10 @@ def probe(daily_path: Path, turn_path: Path | None = None,
     # Missing any vote blocks the entire diagnostic chain.
     decisions = ({symbol: decision_trace(result_series[symbol], definition)
                   for symbol in SYMBOLS} if not blockers else {})
-    daily_hash = sha256_file(daily_path)
-    turn_hash = sha256_file(turn_path) if turn_path is not None else None
-    states_hash = sha256_file(states_path) if states_path is not None else None
-    actions_hash = sha256_file(actions_path) if actions_path is not None else None
+    daily_hash = sha256_file(daily_path, fixture_root=fixture_root)
+    turn_hash = sha256_file(turn_path, fixture_root=fixture_root) if turn_path is not None else None
+    states_hash = sha256_file(states_path, fixture_root=fixture_root) if states_path is not None else None
+    actions_hash = sha256_file(actions_path, fixture_root=fixture_root) if actions_path is not None else None
     chain = run_chain(frame, decisions, definition, daily_hash, turn_hash,
                       states_hash, actions_hash) if not blockers else None
     if chain is not None and chain["issues"]:
@@ -460,7 +486,8 @@ def probe(daily_path: Path, turn_path: Path | None = None,
              "provider": "BaoStock", "field": "turn", "unit": "percent",
              "historical_available_at_verified": False,
              "manifest_path": str(turn_manifest_path.resolve()) if turn_manifest_path else None,
-             "manifest_sha256": sha256_file(turn_manifest_path) if turn_manifest_path else None,
+             "manifest_sha256": (sha256_file(turn_manifest_path, fixture_root=fixture_root)
+                                  if turn_manifest_path else None),
              "provenance_manifest_matched": turn_manifest is not None and
                  "BAOSTOCK_TURN_MANIFEST_INVALID" not in blockers}
             if turn_path is not None else None),
@@ -503,13 +530,15 @@ def main() -> int:
     parser.add_argument("--actions-json", type=Path)
     parser.add_argument("--report", type=Path, required=True)
     args = parser.parse_args()
+    if args.report.resolve() != REPORT_PATH.resolve():
+        parser.error(f"--report must be {REPORT_PATH}")
     result = probe(args.daily_parquet, args.turn_parquet,
                    args.states_parquet, args.actions_json, args.turn_manifest_json)
-    args.report.parent.mkdir(parents=True, exist_ok=True)
-    args.report.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    REPORT_PATH.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({"signal_status": result["signal_status"],
                       "blockers": result["blockers"],
-                      "report": str(args.report)}, ensure_ascii=False))
+                      "report": str(REPORT_PATH)}, ensure_ascii=False))
     return 2 if result["blockers"] else 0
 
 

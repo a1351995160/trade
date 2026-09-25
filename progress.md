@@ -2305,3 +2305,16 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 ### Notes
 - 新增改动文件为上述工作流、试验文档及本记录。11 KB 的两证券换手率冻结快照是刻意纳入版本管理的试验证据；仓库一般忽略 `*.parquet`，本次仅对该明确文件单独暂存。
 - 如需撤销主分支 CI 触发，删除工作流 `push.branches` 中的 `main` 并通过新 PR 回滚；不影响其它工作流。试验整体仍可以 `69b7d9fc234bbde876594ad7a7bc9c72dab81b53` 为基线在隔离工作树回退。
+
+## 2026-09-25 - Task: PR #17 路径边界与 SonarCloud 安全告警修复
+
+### What was done
+- PR 首轮 SonarCloud 报告脚本路径穿越：将真实试验输入限制在工作树与指定 E 盘数据目录，文件哈希也执行同一边界检查；固定报告输出仅允许 `reports/all_indicator_fixed_strategy_pilot_20260925/PROBE.json`。合成测试显式声明临时夹根目录，正式 CLI 不接受此例外。
+- 更新目标测试和试验说明；重新生成该报告，将本轮脚本源码指纹写入报告。前一条记录中的报告 SHA-256 属于修复前运行，当前报告以本条哈希为准。
+
+### Testing
+- 目标测试 5 passed；按 CI Windows 路径运行 `tests/indicators_v2 tests/conditions_v2`：296 passed。越界文件拒绝、原有负例与真实 51/51 指标链路均通过。
+- 相同输入在当前检出状态连续两次生成相同报告 SHA-256 `416cc20b9bd77c685138164bf62c7bff4162f2ec00cd6d61078bc534951175f1`；`blockers=[]`、76 日账户逐日复算差异 0。远端 SonarCloud 对本次修复的复检以更新后的 PR 检查结果为准。
+
+### Notes
+- 本次修改为 `scripts/probe_all_indicator_strategy_v1.py`、对应测试、说明文档和报告；未扩大真实数据日期范围。回滚本轮时可在隔离分支上对本轮后续提交执行 `git revert`，保留此前固定策略试验提交；如仅撤销路径限制，须同步恢复测试与报告源码指纹。

@@ -11,6 +11,7 @@ from scripts.probe_all_indicator_strategy_v1 import (
     decision_trace,
     pilot_registry,
     probe,
+    sha256_file,
     strategy_definition,
 )
 from chanlun_trader.engine.engine import BacktestEngineV2
@@ -74,6 +75,14 @@ def test_vendor_turnover_uses_reported_percentage_without_float_shares():
     assert result.ready().tolist() == [True, True]
 
 
+def test_file_hash_rejects_paths_outside_pilot_roots(tmp_path):
+    sample = tmp_path / "sample.json"
+    sample.write_text("{}", encoding="utf-8")
+    with pytest.raises(ValueError, match="PILOT_INPUT_PATH_NOT_ALLOWED"):
+        sha256_file(sample)
+    assert len(sha256_file(sample, fixture_root=tmp_path)) == 64
+
+
 def test_full_catalog_reaches_reconciled_account_with_explicit_vendor_turn(tmp_path, monkeypatch):
     dates = pd.bdate_range("2023-10-09", "2024-05-31")
     bars = []
@@ -112,7 +121,7 @@ def test_full_catalog_reaches_reconciled_account_with_explicit_vendor_turn(tmp_p
         "account_window_events": [],
     }), encoding="utf-8")
 
-    result = probe(daily_path, turn_path, states_path, actions_path)
+    result = probe(daily_path, turn_path, states_path, actions_path, fixture_root=tmp_path)
 
     assert result["blockers"] == []
     assert result["signal_status"] == "FIXED_RULE_SIGNALS_SUBMITTED"
@@ -127,14 +136,15 @@ def test_full_catalog_reaches_reconciled_account_with_explicit_vendor_turn(tmp_p
                    for item in sample["indicators"].values()) == INDICATOR_COUNT
                for sample in result["samples"].values())
 
-    missing_turn = probe(daily_path, states_path=states_path, actions_path=actions_path)
+    missing_turn = probe(daily_path, states_path=states_path, actions_path=actions_path,
+                         fixture_root=tmp_path)
     assert any("TURNOVER_RATE:vendor_turn" in reason for reason in missing_turn["blockers"])
     assert missing_turn["chain"] is None
 
     bad_turn = pd.DataFrame(turns)
     bad_turn.loc[0, "volume"] += 1
     bad_turn.to_parquet(turn_path)
-    mismatch = probe(daily_path, turn_path, states_path, actions_path)
+    mismatch = probe(daily_path, turn_path, states_path, actions_path, fixture_root=tmp_path)
     assert "BAOSTOCK_TURN_VOLUME_MISMATCH:000001.SZ" in mismatch["blockers"]
     assert mismatch["chain"] is None
 
@@ -146,7 +156,8 @@ def test_full_catalog_reaches_reconciled_account_with_explicit_vendor_turn(tmp_p
         "account_dates": [20240201, 20240531],
         "account_window_events": [{"symbol": "000001.SZ", "ex_date": "2024-03-01"}],
     }), encoding="utf-8")
-    action_blocked = probe(daily_path, turn_path, states_path, actions_path)
+    action_blocked = probe(daily_path, turn_path, states_path, actions_path,
+                           fixture_root=tmp_path)
     assert "ACCOUNT_CORPORATE_ACTION_SCREEN_INVALID_OR_EVENT_PRESENT" in action_blocked["blockers"]
     assert action_blocked["chain"] is None
 
@@ -166,6 +177,7 @@ def test_full_catalog_reaches_reconciled_account_with_explicit_vendor_turn(tmp_p
         return engine_result
 
     monkeypatch.setattr(BacktestEngineV2, "run", corrupted_run)
-    corrupted = probe(daily_path, turn_path, states_path, actions_path)
+    corrupted = probe(daily_path, turn_path, states_path, actions_path,
+                      fixture_root=tmp_path)
     assert "ACCOUNT_RECONCILIATION_FAILED" in corrupted["blockers"]
     assert any(issue.startswith("DAILY_ACCOUNT_MISMATCH:") for issue in corrupted["chain"]["issues"])
