@@ -204,19 +204,41 @@ class GuardedResearchReader:
 
     def read_parquet(self, path, columns=None, date_column="date",
                      start_date: int = 0, end_date: int = RESEARCH_END,
-                     date_columns: Iterable[str] | None = None) -> pd.DataFrame:
+                     date_columns: Iterable[str] | None = None,
+                     date_format: str = "int") -> pd.DataFrame:
         self.guard.check_range(start_date, end_date, f"parquet {path}")
+        if date_format not in {"int", "iso"}:
+            raise ValueError(f"UNSUPPORTED_PARQUET_DATE_FORMAT:{date_format}")
         path = str(path)
         col_list = list(columns) if columns is not None else None
         filters = None
         filter_columns = list(date_columns) if date_columns is not None else ([date_column] if date_column else [])
+        lower, upper = start_date, end_date
+        if date_format == "iso":
+            lower = f"{start_date:08d}"
+            upper = f"{end_date:08d}"
+            lower = f"{lower[:4]}-{lower[4:6]}-{lower[6:]}"
+            upper = f"{upper[:4]}-{upper[4:6]}-{upper[6:]}"
         for col in filter_columns:
-            current = ds.field(col) >= start_date
-            current = current & (ds.field(col) <= end_date)
+            current = ds.field(col) >= lower
+            current = current & (ds.field(col) <= upper)
             filters = current if filters is None else filters & current
         table = ds.dataset(path, format="parquet").to_table(columns=col_list, filter=filters)
         df = table.to_pandas()
-        max_date = int(df[date_column].max()) if date_column in df and len(df) else None
+        if date_format == "iso":
+            for col in filter_columns:
+                if col not in df:
+                    continue
+                dates = df[col].astype(str)
+                if not dates.str.fullmatch(r"\d{4}-\d{2}-\d{2}").all():
+                    raise ValueError(f"PARQUET_ISO_DATE_INVALID:{col}")
+                try:
+                    pd.to_datetime(dates, format="%Y-%m-%d", errors="raise")
+                except ValueError as exc:
+                    raise ValueError(f"PARQUET_ISO_DATE_INVALID:{col}") from exc
+                self.guard.check_int_iterable(dates.str.replace("-", "", regex=False).astype(int), col)
+        max_date = (int(str(df[date_column].max()).replace("-", ""))
+                    if date_column in df and len(df) else None)
         audit = dict(dataset="parquet", path=path, requested=[start_date, end_date],
                      date_column=date_column, physical_rows=table.num_rows,
                      rows_materialized=len(df), max_date_materialized=max_date)
@@ -225,7 +247,8 @@ class GuardedResearchReader:
         else:
             self.audit_sink(audit)
         for col in filter_columns:
-            self.guard.check_frame(df, col)
+            if date_format == "int":
+                self.guard.check_frame(df, col)
         return df
 
     def read_5m(self, path, start_date: int = 0,

@@ -1,0 +1,3674 @@
+{
+  "purpose": "FIXED_STRATEGY_S1_STATE_QUALIFICATION_DIAGNOSTIC",
+  "strategy_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1",
+  "source_code": {
+    "git_head": "4e3c2f1da56f7b2a7bbbb035cc87a72f4e4b5dd3",
+    "sha256": {
+      "scripts\\probe_all_indicator_strategy_v1.py": "4f4fb7e75c4625fd72e580370ff4b3287d44de6d6d07b4fce023eea1a4c6abef",
+      "scripts\\verify_fixed_strategy_state_v1.py": "0d350f6854f5fe29c5f0557a3e0f1aa991ed8c0c9cb01bb366b1feb5470bd894",
+      "src\\chanlun_trader\\engine\\individual_dividend_accounting_v1.py": "7c229373e44fc09d5a55cbb1216e4c3b87f469e242b8b2eb6349104b6a1bd8ae",
+      "src\\chanlun_trader\\engine\\corporate_accounting_v1.py": "4b7bae19955516a0e380dd4896eb54aa55394426ddba823283d63a98d9358c59",
+      "src\\chanlun_trader\\engine\\corporate_action_engine_v1.py": "3a48e33e9d2aa08cf35272e0af0f673b187c45e980f8c348b75a8fd305ddfeba",
+      "src\\chanlun_trader\\engine\\custom_indicators_v2.py": "41935d278f579653f4394da290eba89c81482ede9a7878bd3217aaaaa7cea331",
+      "src\\chanlun_trader\\engine\\engine.py": "fd975196d087a6068f634c4e86cf009f3a6494a211c4da4cf5fac2fb90da8e16",
+      "src\\chanlun_trader\\engine\\indicator_registry_v2.py": "0eb71b9616d6af25bdfeddeaa582187e3799aff38e77d68ecda0168896d328e0",
+      "src\\chanlun_trader\\engine\\indicators_v2.py": "26bd38a7fc869a9eb7c8121c37af918f902cd80b11eeecd1549eb128fc0ffebe",
+      "src\\chanlun_trader\\engine\\ledger.py": "7cbc232cfb1519ec6a60f1495cf116146fab595067b2fded0631115ddee78287",
+      "src\\chanlun_trader\\engine\\official_valuation.py": "2ea3130b96d029eaeba839ae72825f415e2c4da362376e4768b8c9e66be98810",
+      "src\\chanlun_trader\\research\\io_safety.py": "4c97cf9c540ac2588c7ba5299c2d045db0f09b4889c2d1e3bddc085268707f70",
+      "src\\chanlun_trader\\research_factory\\degraded_execution_v2.py": "25c792bcfbde35c9f03156b141f19341c9e1220905fabbaffa74cb12965ff122"
+    }
+  },
+  "scope": {
+    "symbols": [
+      "000001.SZ",
+      "600000.SH"
+    ],
+    "account_dates": [
+      20240201,
+      20240531
+    ],
+    "state_availability": "MODELED_NEXT_SESSION_OPEN_NOT_VENDOR_PUBLICATION_TIME"
+  },
+  "sources": {
+    "daily_sha256": "63762647b9bbebf07f7ad768587a17eb351dc04247c760e0343ddae441ed9437",
+    "turn_sha256": "218e50a3c11b19fd8bbc1d07c55f37c92a983a5172bf84c52feceb744f8640f2",
+    "states_sha256": "53a6309a1c5bf6ba3862b0bec91c211b241dbbbf448f93c65c064e8e5e891b1d",
+    "historical_states_sha256": "b5025955c95c8de4b725b9dae5777bd483d028799d17c3252c1037226f88fc67",
+    "actions_sha256": "80f43348cd93f71297e48afba2cb25bdfeb75df5ff9f1de6f5fd2b86bb15c9c1",
+    "corporate_actions_sha256": null,
+    "turn_manifest_sha256": "f7cf54e429a66f23f1fb0bcdbbbee2d93f231d322e43f067bf71a31eecb758db"
+  },
+  "state_content_parity": true,
+  "state_issues": [],
+  "decision_state_rejections": [],
+  "execution_state_gate": "WIRED",
+  "same_economic_result_as_prior_pilot": true,
+  "gated_chain": {
+    "status": "RECONCILED_DIAGNOSTIC",
+    "account_dates": [
+      20240201,
+      20240531
+    ],
+    "n_account_days": 76,
+    "n_signals": 152,
+    "n_orders": 74,
+    "n_trades": 68,
+    "n_no_trade_days": 27,
+    "n_independent_t1_lot_checks": 36,
+    "execution_assumptions": {
+      "initial_cash": 1000000.0,
+      "max_positions": 2,
+      "max_position_weight": 0.5,
+      "fee_commission_rate": 0.00025,
+      "min_commission": 5.0,
+      "sell_stamp_tax_rate": 0.0005,
+      "slippage_fraction": 0.001,
+      "lot_size": 100,
+      "fill_reference": "NEXT_SESSION_OPEN_DAILY_BAR",
+      "daily_volume_participation_limit": 0.1,
+      "index_filter_enabled": false,
+      "pit_engine_gate_enabled": false,
+      "historical_execution_state_gate": true,
+      "account_tax_profile": "NOT_MODELED"
+    },
+    "run_identity": {
+      "engine_version": "2.0.0",
+      "data_version": "local",
+      "strategy_version": "",
+      "config_hash": "d5dcfafd324c",
+      "random_seed": 0,
+      "start_time": "2024-02-01 09:30:00+08:00",
+      "end_time": "2024-05-31 15:30:00+08:00",
+      "universe_version": "",
+      "fee_model": "ChinaAStockFeeModel",
+      "slippage_model": "FixedBpsSlippage",
+      "fill_model": "DailyBarFillModel",
+      "risk_model": "RiskManagerV2",
+      "mode": "DAILY",
+      "code_commit": "4e3c2f1da56f7b2a7bbbb035cc87a72f4e4b5dd3",
+      "dirty_worktree": true,
+      "strategy_hash": "a74f3936989489ad8080d0f62fa9e1acd8fe09426c25fc72be3cbdda20d75f6f",
+      "data_manifest_hash": "f5cdc340c1256b545f3b89c10022533b9e5333aec73f5c017095dfaf0a6a1635",
+      "universe_version_hash": "fc086529041cf4b493501d5147aa56fb9f0f550981c8a7a49a5eb6c00365e9df",
+      "feature_version_hash": "93ae84459f2e180f2782eea4b5399a45598cd8b5676822745b2283c583ae8711",
+      "label_version_hash": "f6206c8a4c14e0845af7a62134dcdf12e7cbf53c79a53853517f1ba3b46a9eeb",
+      "execution_model_version": "ALL_51_PILOT_STATE_GATED_V1",
+      "fee_model_version": "ChinaAStockFeeModel",
+      "slippage_model_version": "FixedBpsSlippage",
+      "calendar_version": "0a599f9996215d4167501685eb961e6af8b2e3933b12adde0269d3996d7cc9ab",
+      "manifest_hash": "39eee8161308c3d9d693161ba44563e005fdd9e856c6901aed5ec0d9060e99ca",
+      "reproducibility_status": "PASS"
+    },
+    "engine_summary": {
+      "engine_version": "2.0.0",
+      "mode": "DAILY",
+      "initial_cash": 1000000.0,
+      "final_equity": 1037978.8776,
+      "total_return": 0.03797887760000007,
+      "n_trades": 68,
+      "unsupported_trade_count": 0,
+      "run_certification": "VALID",
+      "realized_pnl": 37978.8775999999,
+      "total_fees": 17816.572399999997,
+      "turnover": 35589546.209999986,
+      "n_events": 478
+    },
+    "official_valuation": {
+      "event": "AFTER_CLOSE",
+      "start_date": 20240201,
+      "end_date": 20240531,
+      "calendar_identity": "f5cdc340c1256b545f3b89c10022533b9e5333aec73f5c017095dfaf0a6a1635",
+      "n_days": 76,
+      "points": [
+        {
+          "date": 20240201,
+          "timestamp": "2024-02-01T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 1,
+          "equity": 1000000.0
+        },
+        {
+          "date": 20240202,
+          "timestamp": "2024-02-02T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 2,
+          "equity": 1000000.0
+        },
+        {
+          "date": 20240205,
+          "timestamp": "2024-02-05T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 3,
+          "equity": 1003028.6459
+        },
+        {
+          "date": 20240206,
+          "timestamp": "2024-02-06T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 4,
+          "equity": 1030840.2585
+        },
+        {
+          "date": 20240207,
+          "timestamp": "2024-02-07T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 5,
+          "equity": 1022701.2585
+        },
+        {
+          "date": 20240208,
+          "timestamp": "2024-02-08T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 6,
+          "equity": 1027383.2585
+        },
+        {
+          "date": 20240219,
+          "timestamp": "2024-02-19T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 7,
+          "equity": 1046581.2585
+        },
+        {
+          "date": 20240220,
+          "timestamp": "2024-02-20T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 8,
+          "equity": 1045658.2585
+        },
+        {
+          "date": 20240221,
+          "timestamp": "2024-02-21T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 9,
+          "equity": 1098107.0747
+        },
+        {
+          "date": 20240222,
+          "timestamp": "2024-02-22T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 10,
+          "equity": 1100691.6322
+        },
+        {
+          "date": 20240223,
+          "timestamp": "2024-02-23T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 11,
+          "equity": 1097106.8423
+        },
+        {
+          "date": 20240226,
+          "timestamp": "2024-02-26T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 12,
+          "equity": 1067380.3709
+        },
+        {
+          "date": 20240227,
+          "timestamp": "2024-02-27T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 13,
+          "equity": 1061462.5058
+        },
+        {
+          "date": 20240228,
+          "timestamp": "2024-02-28T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 14,
+          "equity": 1059313.7017
+        },
+        {
+          "date": 20240229,
+          "timestamp": "2024-02-29T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 15,
+          "equity": 1067029.8376
+        },
+        {
+          "date": 20240301,
+          "timestamp": "2024-03-01T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 16,
+          "equity": 1056303.3551
+        },
+        {
+          "date": 20240304,
+          "timestamp": "2024-03-04T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 17,
+          "equity": 1050435.3948
+        },
+        {
+          "date": 20240305,
+          "timestamp": "2024-03-05T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 18,
+          "equity": 1050435.3948
+        },
+        {
+          "date": 20240306,
+          "timestamp": "2024-03-06T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 19,
+          "equity": 1041939.5805
+        },
+        {
+          "date": 20240307,
+          "timestamp": "2024-03-07T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 20,
+          "equity": 1040121.4011
+        },
+        {
+          "date": 20240308,
+          "timestamp": "2024-03-08T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 21,
+          "equity": 1040978.6083
+        },
+        {
+          "date": 20240311,
+          "timestamp": "2024-03-11T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 22,
+          "equity": 1040067.9306
+        },
+        {
+          "date": 20240312,
+          "timestamp": "2024-03-12T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 23,
+          "equity": 1043378.3607
+        },
+        {
+          "date": 20240313,
+          "timestamp": "2024-03-13T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 24,
+          "equity": 1021485.799
+        },
+        {
+          "date": 20240314,
+          "timestamp": "2024-03-14T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 25,
+          "equity": 1016741.6922
+        },
+        {
+          "date": 20240315,
+          "timestamp": "2024-03-15T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 26,
+          "equity": 1016741.6922
+        },
+        {
+          "date": 20240318,
+          "timestamp": "2024-03-18T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 27,
+          "equity": 1016665.5239
+        },
+        {
+          "date": 20240319,
+          "timestamp": "2024-03-19T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 28,
+          "equity": 1013691.9258
+        },
+        {
+          "date": 20240320,
+          "timestamp": "2024-03-20T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 29,
+          "equity": 1013691.9258
+        },
+        {
+          "date": 20240321,
+          "timestamp": "2024-03-21T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 30,
+          "equity": 1013691.9258
+        },
+        {
+          "date": 20240322,
+          "timestamp": "2024-03-22T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 31,
+          "equity": 1010197.5939
+        },
+        {
+          "date": 20240325,
+          "timestamp": "2024-03-25T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 32,
+          "equity": 1010741.7321
+        },
+        {
+          "date": 20240326,
+          "timestamp": "2024-03-26T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 33,
+          "equity": 1010741.7321
+        },
+        {
+          "date": 20240327,
+          "timestamp": "2024-03-27T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 34,
+          "equity": 1008674.7334
+        },
+        {
+          "date": 20240328,
+          "timestamp": "2024-03-28T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 35,
+          "equity": 1004813.3752
+        },
+        {
+          "date": 20240329,
+          "timestamp": "2024-03-29T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 36,
+          "equity": 1001147.6672
+        },
+        {
+          "date": 20240401,
+          "timestamp": "2024-04-01T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 37,
+          "equity": 1006223.8675
+        },
+        {
+          "date": 20240402,
+          "timestamp": "2024-04-02T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 38,
+          "equity": 997565.6405
+        },
+        {
+          "date": 20240403,
+          "timestamp": "2024-04-03T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 39,
+          "equity": 993937.8209
+        },
+        {
+          "date": 20240408,
+          "timestamp": "2024-04-08T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 40,
+          "equity": 993937.8209
+        },
+        {
+          "date": 20240409,
+          "timestamp": "2024-04-09T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 41,
+          "equity": 991273.4544
+        },
+        {
+          "date": 20240410,
+          "timestamp": "2024-04-10T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 42,
+          "equity": 990405.8927
+        },
+        {
+          "date": 20240411,
+          "timestamp": "2024-04-11T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 43,
+          "equity": 990473.3594
+        },
+        {
+          "date": 20240412,
+          "timestamp": "2024-04-12T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 44,
+          "equity": 986891.6671
+        },
+        {
+          "date": 20240415,
+          "timestamp": "2024-04-15T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 45,
+          "equity": 986891.6671
+        },
+        {
+          "date": 20240416,
+          "timestamp": "2024-04-16T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 46,
+          "equity": 986341.9998
+        },
+        {
+          "date": 20240417,
+          "timestamp": "2024-04-17T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 47,
+          "equity": 983657.3956
+        },
+        {
+          "date": 20240418,
+          "timestamp": "2024-04-18T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 48,
+          "equity": 991970.451
+        },
+        {
+          "date": 20240419,
+          "timestamp": "2024-04-19T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 49,
+          "equity": 987535.451
+        },
+        {
+          "date": 20240422,
+          "timestamp": "2024-04-22T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 50,
+          "equity": 981008.7079
+        },
+        {
+          "date": 20240423,
+          "timestamp": "2024-04-23T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 51,
+          "equity": 982160.4232
+        },
+        {
+          "date": 20240424,
+          "timestamp": "2024-04-24T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 52,
+          "equity": 980072.4521
+        },
+        {
+          "date": 20240425,
+          "timestamp": "2024-04-25T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 53,
+          "equity": 981138.5441
+        },
+        {
+          "date": 20240426,
+          "timestamp": "2024-04-26T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 54,
+          "equity": 981652.7122
+        },
+        {
+          "date": 20240429,
+          "timestamp": "2024-04-29T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 55,
+          "equity": 991333.7122
+        },
+        {
+          "date": 20240430,
+          "timestamp": "2024-04-30T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 56,
+          "equity": 1009003.7122
+        },
+        {
+          "date": 20240506,
+          "timestamp": "2024-05-06T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 57,
+          "equity": 1025915.0505
+        },
+        {
+          "date": 20240507,
+          "timestamp": "2024-05-07T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 58,
+          "equity": 1023756.5201
+        },
+        {
+          "date": 20240508,
+          "timestamp": "2024-05-08T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 59,
+          "equity": 1019475.6431
+        },
+        {
+          "date": 20240509,
+          "timestamp": "2024-05-09T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 60,
+          "equity": 1019475.6431
+        },
+        {
+          "date": 20240510,
+          "timestamp": "2024-05-10T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 61,
+          "equity": 1019475.6431
+        },
+        {
+          "date": 20240513,
+          "timestamp": "2024-05-13T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 62,
+          "equity": 1023399.645
+        },
+        {
+          "date": 20240514,
+          "timestamp": "2024-05-14T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 63,
+          "equity": 1015461.645
+        },
+        {
+          "date": 20240515,
+          "timestamp": "2024-05-15T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 64,
+          "equity": 1014501.0397
+        },
+        {
+          "date": 20240516,
+          "timestamp": "2024-05-16T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 65,
+          "equity": 1014501.0397
+        },
+        {
+          "date": 20240517,
+          "timestamp": "2024-05-17T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 66,
+          "equity": 1031668.1834
+        },
+        {
+          "date": 20240520,
+          "timestamp": "2024-05-20T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 67,
+          "equity": 1039936.1834
+        },
+        {
+          "date": 20240521,
+          "timestamp": "2024-05-21T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 68,
+          "equity": 1053937.1834
+        },
+        {
+          "date": 20240522,
+          "timestamp": "2024-05-22T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 69,
+          "equity": 1061320.1834
+        },
+        {
+          "date": 20240523,
+          "timestamp": "2024-05-23T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 70,
+          "equity": 1053442.1834
+        },
+        {
+          "date": 20240524,
+          "timestamp": "2024-05-24T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 71,
+          "equity": 1049613.6591
+        },
+        {
+          "date": 20240527,
+          "timestamp": "2024-05-27T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 72,
+          "equity": 1049613.6591
+        },
+        {
+          "date": 20240528,
+          "timestamp": "2024-05-28T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 73,
+          "equity": 1041313.8897
+        },
+        {
+          "date": 20240529,
+          "timestamp": "2024-05-29T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 74,
+          "equity": 1037978.8776
+        },
+        {
+          "date": 20240530,
+          "timestamp": "2024-05-30T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 75,
+          "equity": 1037978.8776
+        },
+        {
+          "date": 20240531,
+          "timestamp": "2024-05-31T15:30:00+08:00",
+          "event_kind": "AFTER_CLOSE",
+          "event_sequence": 77,
+          "equity": 1037978.8776
+        }
+      ]
+    },
+    "independent_account_checks": [
+      {
+        "date": 20240201,
+        "cash": 1000000.0,
+        "market_value": 0.0,
+        "equity": 1000000.0,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240202,
+        "cash": 1000000.0,
+        "market_value": 0.0,
+        "equity": 1000000.0,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240205,
+        "cash": 500058.6459,
+        "market_value": 502970.0,
+        "equity": 1003028.6459,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 73000
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240206,
+        "cash": 24.2585,
+        "market_value": 1030816.0,
+        "equity": 1030840.2585,
+        "position_quantities": {
+          "000001.SZ": 53700,
+          "600000.SH": 73000
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240207,
+        "cash": 24.2585,
+        "market_value": 1022677.0,
+        "equity": 1022701.2585,
+        "position_quantities": {
+          "000001.SZ": 53700,
+          "600000.SH": 73000
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240208,
+        "cash": 24.2585,
+        "market_value": 1027359.0,
+        "equity": 1027383.2585,
+        "position_quantities": {
+          "000001.SZ": 53700,
+          "600000.SH": 73000
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240219,
+        "cash": 24.2585,
+        "market_value": 1046557.0,
+        "equity": 1046581.2585,
+        "position_quantities": {
+          "000001.SZ": 53700,
+          "600000.SH": 73000
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240220,
+        "cash": 24.2585,
+        "market_value": 1045634.0,
+        "equity": 1045658.2585,
+        "position_quantities": {
+          "000001.SZ": 53700,
+          "600000.SH": 73000
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240221,
+        "cash": 518147.0747,
+        "market_value": 579960.0,
+        "equity": 1098107.0747,
+        "position_quantities": {
+          "000001.SZ": 53700,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240222,
+        "cash": 567.6322,
+        "market_value": 1100124.0,
+        "equity": 1100691.6322,
+        "position_quantities": {
+          "000001.SZ": 53700,
+          "600000.SH": 71400
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240223,
+        "cash": 514461.8423,
+        "market_value": 582645.0,
+        "equity": 1097106.8423,
+        "position_quantities": {
+          "000001.SZ": 53700,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240226,
+        "cash": 643.3709,
+        "market_value": 1066737.0,
+        "equity": 1067380.3709,
+        "position_quantities": {
+          "000001.SZ": 100900,
+          "600000.SH": 600
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240227,
+        "cash": 1061462.5058,
+        "market_value": 0.0,
+        "equity": 1061462.5058,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240228,
+        "cash": 531073.7017,
+        "market_value": 528240.0,
+        "equity": 1059313.7017,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 74400
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240229,
+        "cash": 534352.8376,
+        "market_value": 532677.0,
+        "equity": 1067029.8376,
+        "position_quantities": {
+          "000001.SZ": 50300,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240301,
+        "cash": 1009.3551,
+        "market_value": 1055294.0,
+        "equity": 1056303.3551,
+        "position_quantities": {
+          "000001.SZ": 100600,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240304,
+        "cash": 1050435.3948,
+        "market_value": 0.0,
+        "equity": 1050435.3948,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240305,
+        "cash": 1050435.3948,
+        "market_value": 0.0,
+        "equity": 1050435.3948,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240306,
+        "cash": 835.5805,
+        "market_value": 1041104.0,
+        "equity": 1041939.5805,
+        "position_quantities": {
+          "000001.SZ": 50400,
+          "600000.SH": 73100
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240307,
+        "cash": 1040121.4011,
+        "market_value": 0.0,
+        "equity": 1040121.4011,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240308,
+        "cash": 520940.6083,
+        "market_value": 520038.0,
+        "equity": 1040978.6083,
+        "position_quantities": {
+          "000001.SZ": 50100,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240311,
+        "cash": 1040067.9306,
+        "market_value": 0.0,
+        "equity": 1040067.9306,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240312,
+        "cash": 520658.3607,
+        "market_value": 522720.0,
+        "equity": 1043378.3607,
+        "position_quantities": {
+          "000001.SZ": 49500,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240313,
+        "cash": 881.799,
+        "market_value": 1020604.0,
+        "equity": 1021485.799,
+        "position_quantities": {
+          "000001.SZ": 98800,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240314,
+        "cash": 1016741.6922,
+        "market_value": 0.0,
+        "equity": 1016741.6922,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240315,
+        "cash": 1016741.6922,
+        "market_value": 0.0,
+        "equity": 1016741.6922,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240318,
+        "cash": 974.5239,
+        "market_value": 1015691.0,
+        "equity": 1016665.5239,
+        "position_quantities": {
+          "000001.SZ": 48000,
+          "600000.SH": 71900
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240319,
+        "cash": 1013691.9258,
+        "market_value": 0.0,
+        "equity": 1013691.9258,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240320,
+        "cash": 1013691.9258,
+        "market_value": 0.0,
+        "equity": 1013691.9258,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240321,
+        "cash": 1013691.9258,
+        "market_value": 0.0,
+        "equity": 1013691.9258,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240322,
+        "cash": 506837.5939,
+        "market_value": 503360.0,
+        "equity": 1010197.5939,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 71500
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240325,
+        "cash": 1010741.7321,
+        "market_value": 0.0,
+        "equity": 1010741.7321,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240326,
+        "cash": 1010741.7321,
+        "market_value": 0.0,
+        "equity": 1010741.7321,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240327,
+        "cash": 505340.7334,
+        "market_value": 503334.0,
+        "equity": 1008674.7334,
+        "position_quantities": {
+          "000001.SZ": 47800,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240328,
+        "cash": 503630.3752,
+        "market_value": 501183.0,
+        "equity": 1004813.3752,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 69900
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240329,
+        "cash": 1001147.6672,
+        "market_value": 0.0,
+        "equity": 1001147.6672,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240401,
+        "cash": 500823.8675,
+        "market_value": 505400.0,
+        "equity": 1006223.8675,
+        "position_quantities": {
+          "000001.SZ": 47500,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240402,
+        "cash": 590.6405,
+        "market_value": 996975.0,
+        "equity": 997565.6405,
+        "position_quantities": {
+          "000001.SZ": 94500,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240403,
+        "cash": 993937.8209,
+        "market_value": 0.0,
+        "equity": 993937.8209,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240408,
+        "cash": 993937.8209,
+        "market_value": 0.0,
+        "equity": 993937.8209,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240409,
+        "cash": 496867.4544,
+        "market_value": 494406.0,
+        "equity": 991273.4544,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 68100
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240410,
+        "cash": 990405.8927,
+        "market_value": 0.0,
+        "equity": 990405.8927,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240411,
+        "cash": 497429.3594,
+        "market_value": 493044.0,
+        "equity": 990473.3594,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 68100
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240412,
+        "cash": 986891.6671,
+        "market_value": 0.0,
+        "equity": 986891.6671,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240415,
+        "cash": 986891.6671,
+        "market_value": 0.0,
+        "equity": 986891.6671,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240416,
+        "cash": 975.9998,
+        "market_value": 985366.0,
+        "equity": 986341.9998,
+        "position_quantities": {
+          "000001.SZ": 47900,
+          "600000.SH": 67900
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240417,
+        "cash": 983657.3956,
+        "market_value": 0.0,
+        "equity": 983657.3956,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240418,
+        "cash": 473.451,
+        "market_value": 991497.0,
+        "equity": 991970.451,
+        "position_quantities": {
+          "000001.SZ": 46400,
+          "600000.SH": 66900
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240419,
+        "cash": 473.451,
+        "market_value": 987062.0,
+        "equity": 987535.451,
+        "position_quantities": {
+          "000001.SZ": 46400,
+          "600000.SH": 66900
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240422,
+        "cash": 493307.7079,
+        "market_value": 487701.0,
+        "equity": 981008.7079,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 66900
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240423,
+        "cash": 982160.4232,
+        "market_value": 0.0,
+        "equity": 982160.4232,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240424,
+        "cash": 670.4521,
+        "market_value": 979402.0,
+        "equity": 980072.4521,
+        "position_quantities": {
+          "000001.SZ": 46600,
+          "600000.SH": 66400
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240425,
+        "cash": 489114.5441,
+        "market_value": 492024.0,
+        "equity": 981138.5441,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 66400
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240426,
+        "cash": 304.7122,
+        "market_value": 981348.0,
+        "equity": 981652.7122,
+        "position_quantities": {
+          "000001.SZ": 46100,
+          "600000.SH": 66400
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240429,
+        "cash": 304.7122,
+        "market_value": 991029.0,
+        "equity": 991333.7122,
+        "position_quantities": {
+          "000001.SZ": 46100,
+          "600000.SH": 66400
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240430,
+        "cash": 304.7122,
+        "market_value": 1008699.0,
+        "equity": 1009003.7122,
+        "position_quantities": {
+          "000001.SZ": 46100,
+          "600000.SH": 66400
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240506,
+        "cash": 504675.0505,
+        "market_value": 521240.0,
+        "equity": 1025915.0505,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 66400
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240507,
+        "cash": 4028.5201,
+        "market_value": 1019728.0,
+        "equity": 1023756.5201,
+        "position_quantities": {
+          "000001.SZ": 46000,
+          "600000.SH": 66400
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240508,
+        "cash": 1019475.6431,
+        "market_value": 0.0,
+        "equity": 1019475.6431,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240509,
+        "cash": 1019475.6431,
+        "market_value": 0.0,
+        "equity": 1019475.6431,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240510,
+        "cash": 1019475.6431,
+        "market_value": 0.0,
+        "equity": 1019475.6431,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240513,
+        "cash": 68.645,
+        "market_value": 1023331.0,
+        "equity": 1023399.645,
+        "position_quantities": {
+          "000001.SZ": 46700,
+          "600000.SH": 64200
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240514,
+        "cash": 68.645,
+        "market_value": 1015393.0,
+        "equity": 1015461.645,
+        "position_quantities": {
+          "000001.SZ": 46700,
+          "600000.SH": 64200
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240515,
+        "cash": 1014501.0397,
+        "market_value": 0.0,
+        "equity": 1014501.0397,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240516,
+        "cash": 1014501.0397,
+        "market_value": 0.0,
+        "equity": 1014501.0397,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240517,
+        "cash": 262.1834,
+        "market_value": 1031406.0,
+        "equity": 1031668.1834,
+        "position_quantities": {
+          "000001.SZ": 45300,
+          "600000.SH": 63000
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240520,
+        "cash": 262.1834,
+        "market_value": 1039674.0,
+        "equity": 1039936.1834,
+        "position_quantities": {
+          "000001.SZ": 45300,
+          "600000.SH": 63000
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240521,
+        "cash": 262.1834,
+        "market_value": 1053675.0,
+        "equity": 1053937.1834,
+        "position_quantities": {
+          "000001.SZ": 45300,
+          "600000.SH": 63000
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240522,
+        "cash": 262.1834,
+        "market_value": 1061058.0,
+        "equity": 1061320.1834,
+        "position_quantities": {
+          "000001.SZ": 45300,
+          "600000.SH": 63000
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240523,
+        "cash": 262.1834,
+        "market_value": 1053180.0,
+        "equity": 1053442.1834,
+        "position_quantities": {
+          "000001.SZ": 45300,
+          "600000.SH": 63000
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240524,
+        "cash": 1049613.6591,
+        "market_value": 0.0,
+        "equity": 1049613.6591,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240527,
+        "cash": 1049613.6591,
+        "market_value": 0.0,
+        "equity": 1049613.6591,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240528,
+        "cash": 1673.8897,
+        "market_value": 1039640.0,
+        "equity": 1041313.8897,
+        "position_quantities": {
+          "000001.SZ": 45500,
+          "600000.SH": 61000
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240529,
+        "cash": 1037978.8776,
+        "market_value": 0.0,
+        "equity": 1037978.8776,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240530,
+        "cash": 1037978.8776,
+        "market_value": 0.0,
+        "equity": 1037978.8776,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      },
+      {
+        "date": 20240531,
+        "cash": 1037978.8776,
+        "market_value": 0.0,
+        "equity": 1037978.8776,
+        "position_quantities": {
+          "000001.SZ": 0,
+          "600000.SH": 0
+        },
+        "max_abs_ledger_delta": 0.0
+      }
+    ],
+    "issues": [],
+    "trades": [
+      {
+        "id": "tr-000001",
+        "order_id": "ord-000001",
+        "symbol": "600000.SH",
+        "side": "BUY",
+        "date": 20240205,
+        "quantity": 73000,
+        "price": 6.8468,
+        "gross_value": 499816.4,
+        "fee": 124.9541,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000002",
+        "order_id": "ord-000002",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "date": 20240206,
+        "quantity": 53700,
+        "price": 9.3093,
+        "gross_value": 499909.41000000003,
+        "fee": 124.9774,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000003",
+        "order_id": "ord-000004",
+        "symbol": "600000.SH",
+        "side": "SELL",
+        "date": 20240221,
+        "quantity": 73000,
+        "price": 7.1029,
+        "gross_value": 518511.7,
+        "fee": 388.8838,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000004",
+        "order_id": "ord-000006",
+        "symbol": "600000.SH",
+        "side": "BUY",
+        "date": 20240222,
+        "quantity": 71400,
+        "price": 7.2472,
+        "gross_value": 517450.08,
+        "fee": 129.3625,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000005",
+        "order_id": "ord-000007",
+        "symbol": "600000.SH",
+        "side": "SELL",
+        "date": 20240223,
+        "quantity": 71400,
+        "price": 7.2028,
+        "gross_value": 514279.92,
+        "fee": 385.7099,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000006",
+        "order_id": "ord-000008",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "date": 20240226,
+        "quantity": 47200,
+        "price": 10.7908,
+        "gross_value": 509325.76000000007,
+        "fee": 127.3314,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000007",
+        "order_id": "ord-000009",
+        "symbol": "600000.SH",
+        "side": "BUY",
+        "date": 20240226,
+        "quantity": 600,
+        "price": 7.2673,
+        "gross_value": 4360.38,
+        "fee": 5.0,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000008",
+        "order_id": "ord-000010",
+        "symbol": "000001.SZ",
+        "side": "SELL",
+        "date": 20240227,
+        "quantity": 100900,
+        "price": 10.4795,
+        "gross_value": 1057381.55,
+        "fee": 793.0362,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000009",
+        "order_id": "ord-000011",
+        "symbol": "600000.SH",
+        "side": "SELL",
+        "date": 20240227,
+        "quantity": 600,
+        "price": 7.0629,
+        "gross_value": 4237.74,
+        "fee": 7.1189,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000010",
+        "order_id": "ord-000012",
+        "symbol": "600000.SH",
+        "side": "BUY",
+        "date": 20240228,
+        "quantity": 74400,
+        "price": 7.1271,
+        "gross_value": 530256.24,
+        "fee": 132.5641,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000011",
+        "order_id": "ord-000013",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "date": 20240229,
+        "quantity": 50300,
+        "price": 10.4304,
+        "gross_value": 524649.12,
+        "fee": 131.1623,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000012",
+        "order_id": "ord-000014",
+        "symbol": "600000.SH",
+        "side": "SELL",
+        "date": 20240229,
+        "quantity": 74400,
+        "price": 7.1029,
+        "gross_value": 528455.76,
+        "fee": 396.3418,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000013",
+        "order_id": "ord-000015",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "date": 20240301,
+        "quantity": 50300,
+        "price": 10.6006,
+        "gross_value": 533210.18,
+        "fee": 133.3025,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000014",
+        "order_id": "ord-000016",
+        "symbol": "000001.SZ",
+        "side": "SELL",
+        "date": 20240304,
+        "quantity": 100600,
+        "price": 10.4395,
+        "gross_value": 1050213.7,
+        "fee": 787.6603,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000015",
+        "order_id": "ord-000017",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "date": 20240306,
+        "quantity": 50400,
+        "price": 10.4104,
+        "gross_value": 524684.1599999999,
+        "fee": 131.171,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000016",
+        "order_id": "ord-000018",
+        "symbol": "600000.SH",
+        "side": "BUY",
+        "date": 20240306,
+        "quantity": 73100,
+        "price": 7.1772,
+        "gross_value": 524653.32,
+        "fee": 131.1633,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000017",
+        "order_id": "ord-000019",
+        "symbol": "000001.SZ",
+        "side": "SELL",
+        "date": 20240307,
+        "quantity": 50400,
+        "price": 10.3197,
+        "gross_value": 520112.87999999995,
+        "fee": 390.0847,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000018",
+        "order_id": "ord-000020",
+        "symbol": "600000.SH",
+        "side": "SELL",
+        "date": 20240307,
+        "quantity": 73100,
+        "price": 7.1129,
+        "gross_value": 519952.99,
+        "fee": 389.9647,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000019",
+        "order_id": "ord-000021",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "date": 20240308,
+        "quantity": 50100,
+        "price": 10.3603,
+        "gross_value": 519051.03,
+        "fee": 129.7628,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000020",
+        "order_id": "ord-000022",
+        "symbol": "000001.SZ",
+        "side": "SELL",
+        "date": 20240311,
+        "quantity": 50100,
+        "price": 10.3696,
+        "gross_value": 519516.96,
+        "fee": 389.6377,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000021",
+        "order_id": "ord-000023",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "date": 20240312,
+        "quantity": 49500,
+        "price": 10.4905,
+        "gross_value": 519279.75000000006,
+        "fee": 129.8199,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000022",
+        "order_id": "ord-000024",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "date": 20240313,
+        "quantity": 49300,
+        "price": 10.5405,
+        "gross_value": 519646.64999999997,
+        "fee": 129.9117,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000023",
+        "order_id": "ord-000025",
+        "symbol": "000001.SZ",
+        "side": "SELL",
+        "date": 20240314,
+        "quantity": 98800,
+        "price": 10.2897,
+        "gross_value": 1016622.36,
+        "fee": 762.4668,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000024",
+        "order_id": "ord-000026",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "date": 20240318,
+        "quantity": 48000,
+        "price": 10.5706,
+        "gross_value": 507388.80000000005,
+        "fee": 126.8472,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000025",
+        "order_id": "ord-000027",
+        "symbol": "600000.SH",
+        "side": "BUY",
+        "date": 20240318,
+        "quantity": 71900,
+        "price": 7.0671,
+        "gross_value": 508124.49,
+        "fee": 127.0311,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000026",
+        "order_id": "ord-000028",
+        "symbol": "000001.SZ",
+        "side": "SELL",
+        "date": 20240319,
+        "quantity": 48000,
+        "price": 10.5195,
+        "gross_value": 504936.00000000006,
+        "fee": 378.702,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000027",
+        "order_id": "ord-000029",
+        "symbol": "600000.SH",
+        "side": "SELL",
+        "date": 20240319,
+        "quantity": 71900,
+        "price": 7.0729,
+        "gross_value": 508541.51,
+        "fee": 381.4061,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000028",
+        "order_id": "ord-000030",
+        "symbol": "600000.SH",
+        "side": "BUY",
+        "date": 20240322,
+        "quantity": 71500,
+        "price": 7.0871,
+        "gross_value": 506727.65,
+        "fee": 126.6819,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000029",
+        "order_id": "ord-000031",
+        "symbol": "600000.SH",
+        "side": "SELL",
+        "date": 20240325,
+        "quantity": 71500,
+        "price": 7.0529,
+        "gross_value": 504282.35000000003,
+        "fee": 378.2118,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000030",
+        "order_id": "ord-000032",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "date": 20240327,
+        "quantity": 47800,
+        "price": 10.5706,
+        "gross_value": 505274.68000000005,
+        "fee": 126.3187,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000031",
+        "order_id": "ord-000034",
+        "symbol": "000001.SZ",
+        "side": "SELL",
+        "date": 20240328,
+        "quantity": 47800,
+        "price": 10.4995,
+        "gross_value": 501876.1,
+        "fee": 376.4071,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000032",
+        "order_id": "ord-000035",
+        "symbol": "600000.SH",
+        "side": "BUY",
+        "date": 20240328,
+        "quantity": 69900,
+        "price": 7.1972,
+        "gross_value": 503084.27999999997,
+        "fee": 125.7711,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000033",
+        "order_id": "ord-000036",
+        "symbol": "600000.SH",
+        "side": "SELL",
+        "date": 20240329,
+        "quantity": 69900,
+        "price": 7.1229,
+        "gross_value": 497890.70999999996,
+        "fee": 373.418,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000034",
+        "order_id": "ord-000037",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "date": 20240401,
+        "quantity": 47500,
+        "price": 10.5305,
+        "gross_value": 500198.75,
+        "fee": 125.0497,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000035",
+        "order_id": "ord-000038",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "date": 20240402,
+        "quantity": 47000,
+        "price": 10.6406,
+        "gross_value": 500108.19999999995,
+        "fee": 125.027,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000036",
+        "order_id": "ord-000040",
+        "symbol": "000001.SZ",
+        "side": "SELL",
+        "date": 20240403,
+        "quantity": 94500,
+        "price": 10.5195,
+        "gross_value": 994092.7500000001,
+        "fee": 745.5696,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000037",
+        "order_id": "ord-000041",
+        "symbol": "600000.SH",
+        "side": "BUY",
+        "date": 20240409,
+        "quantity": 68100,
+        "price": 7.2973,
+        "gross_value": 496946.13,
+        "fee": 124.2365,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000038",
+        "order_id": "ord-000042",
+        "symbol": "600000.SH",
+        "side": "SELL",
+        "date": 20240410,
+        "quantity": 68100,
+        "price": 7.2527,
+        "gross_value": 493908.87,
+        "fee": 370.4317,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000039",
+        "order_id": "ord-000043",
+        "symbol": "600000.SH",
+        "side": "BUY",
+        "date": 20240411,
+        "quantity": 68100,
+        "price": 7.2372,
+        "gross_value": 492853.31999999995,
+        "fee": 123.2133,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000040",
+        "order_id": "ord-000044",
+        "symbol": "600000.SH",
+        "side": "SELL",
+        "date": 20240412,
+        "quantity": 68100,
+        "price": 7.1928,
+        "gross_value": 489829.68,
+        "fee": 367.3723,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000041",
+        "order_id": "ord-000045",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "date": 20240416,
+        "quantity": 47900,
+        "price": 10.2903,
+        "gross_value": 492905.37,
+        "fee": 123.2263,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000042",
+        "order_id": "ord-000046",
+        "symbol": "600000.SH",
+        "side": "BUY",
+        "date": 20240416,
+        "quantity": 67900,
+        "price": 7.2572,
+        "gross_value": 492763.88,
+        "fee": 123.191,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000043",
+        "order_id": "ord-000047",
+        "symbol": "000001.SZ",
+        "side": "SELL",
+        "date": 20240417,
+        "quantity": 47900,
+        "price": 10.2497,
+        "gross_value": 490960.63,
+        "fee": 368.2205,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000044",
+        "order_id": "ord-000048",
+        "symbol": "600000.SH",
+        "side": "SELL",
+        "date": 20240417,
+        "quantity": 67900,
+        "price": 7.2527,
+        "gross_value": 492458.33,
+        "fee": 369.3437,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000045",
+        "order_id": "ord-000049",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "date": 20240418,
+        "quantity": 46400,
+        "price": 10.5906,
+        "gross_value": 491403.84,
+        "fee": 122.851,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000046",
+        "order_id": "ord-000050",
+        "symbol": "600000.SH",
+        "side": "BUY",
+        "date": 20240418,
+        "quantity": 66900,
+        "price": 7.3473,
+        "gross_value": 491534.37,
+        "fee": 122.8836,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000047",
+        "order_id": "ord-000051",
+        "symbol": "000001.SZ",
+        "side": "SELL",
+        "date": 20240422,
+        "quantity": 46400,
+        "price": 10.6294,
+        "gross_value": 493204.16000000003,
+        "fee": 369.9031,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000048",
+        "order_id": "ord-000052",
+        "symbol": "600000.SH",
+        "side": "SELL",
+        "date": 20240423,
+        "quantity": 66900,
+        "price": 7.3127,
+        "gross_value": 489219.63,
+        "fee": 366.9147,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000049",
+        "order_id": "ord-000053",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "date": 20240424,
+        "quantity": 46600,
+        "price": 10.5305,
+        "gross_value": 490721.3,
+        "fee": 122.6803,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000050",
+        "order_id": "ord-000054",
+        "symbol": "600000.SH",
+        "side": "BUY",
+        "date": 20240424,
+        "quantity": 66400,
+        "price": 7.3874,
+        "gross_value": 490523.36000000004,
+        "fee": 122.6308,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000051",
+        "order_id": "ord-000055",
+        "symbol": "000001.SZ",
+        "side": "SELL",
+        "date": 20240425,
+        "quantity": 46600,
+        "price": 10.4895,
+        "gross_value": 488810.69999999995,
+        "fee": 366.608,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000052",
+        "order_id": "ord-000056",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "date": 20240426,
+        "quantity": 46100,
+        "price": 10.6006,
+        "gross_value": 488687.66,
+        "fee": 122.1719,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000053",
+        "order_id": "ord-000058",
+        "symbol": "000001.SZ",
+        "side": "SELL",
+        "date": 20240506,
+        "quantity": 46100,
+        "price": 10.949,
+        "gross_value": 504748.89999999997,
+        "fee": 378.5617,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000054",
+        "order_id": "ord-000059",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "date": 20240507,
+        "quantity": 46000,
+        "price": 10.8809,
+        "gross_value": 500521.4,
+        "fee": 125.1304,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000055",
+        "order_id": "ord-000061",
+        "symbol": "000001.SZ",
+        "side": "SELL",
+        "date": 20240508,
+        "quantity": 46000,
+        "price": 10.8292,
+        "gross_value": 498143.2,
+        "fee": 373.6074,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000056",
+        "order_id": "ord-000062",
+        "symbol": "600000.SH",
+        "side": "SELL",
+        "date": 20240508,
+        "quantity": 66400,
+        "price": 7.8022,
+        "gross_value": 518066.08,
+        "fee": 388.5496,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000057",
+        "order_id": "ord-000063",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "date": 20240513,
+        "quantity": 46700,
+        "price": 10.9109,
+        "gross_value": 509539.02999999997,
+        "fee": 127.3848,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000058",
+        "order_id": "ord-000064",
+        "symbol": "600000.SH",
+        "side": "BUY",
+        "date": 20240513,
+        "quantity": 64200,
+        "price": 7.9379,
+        "gross_value": 509613.18,
+        "fee": 127.4033,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000059",
+        "order_id": "ord-000065",
+        "symbol": "000001.SZ",
+        "side": "SELL",
+        "date": 20240515,
+        "quantity": 46700,
+        "price": 10.8891,
+        "gross_value": 508520.97,
+        "fee": 381.3907,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000060",
+        "order_id": "ord-000066",
+        "symbol": "600000.SH",
+        "side": "SELL",
+        "date": 20240515,
+        "quantity": 64200,
+        "price": 7.8921,
+        "gross_value": 506672.82,
+        "fee": 380.0046,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000061",
+        "order_id": "ord-000067",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "date": 20240517,
+        "quantity": 45300,
+        "price": 11.1912,
+        "gross_value": 506961.36,
+        "fee": 126.7403,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000062",
+        "order_id": "ord-000068",
+        "symbol": "600000.SH",
+        "side": "BUY",
+        "date": 20240517,
+        "quantity": 63000,
+        "price": 8.048,
+        "gross_value": 507024.0,
+        "fee": 126.756,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000063",
+        "order_id": "ord-000069",
+        "symbol": "000001.SZ",
+        "side": "SELL",
+        "date": 20240524,
+        "quantity": 45300,
+        "price": 11.3586,
+        "gross_value": 514544.57999999996,
+        "fee": 385.9084,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000064",
+        "order_id": "ord-000070",
+        "symbol": "600000.SH",
+        "side": "SELL",
+        "date": 20240524,
+        "quantity": 63000,
+        "price": 8.5015,
+        "gross_value": 535594.5,
+        "fee": 401.6959,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000065",
+        "order_id": "ord-000071",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "date": 20240528,
+        "quantity": 45500,
+        "price": 11.5115,
+        "gross_value": 523773.25,
+        "fee": 130.9433,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000066",
+        "order_id": "ord-000072",
+        "symbol": "600000.SH",
+        "side": "BUY",
+        "date": 20240528,
+        "quantity": 61000,
+        "price": 8.5886,
+        "gross_value": 523904.6,
+        "fee": 130.9761,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000067",
+        "order_id": "ord-000073",
+        "symbol": "000001.SZ",
+        "side": "SELL",
+        "date": 20240529,
+        "quantity": 45500,
+        "price": 11.3686,
+        "gross_value": 517271.30000000005,
+        "fee": 387.9535,
+        "reality_flag": "OK"
+      },
+      {
+        "id": "tr-000068",
+        "order_id": "ord-000074",
+        "symbol": "600000.SH",
+        "side": "SELL",
+        "date": 20240529,
+        "quantity": 61000,
+        "price": 8.5215,
+        "gross_value": 519811.5,
+        "fee": 389.8586,
+        "reality_flag": "OK"
+      }
+    ],
+    "orders": [
+      {
+        "id": "ord-000001",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240202",
+        "symbol": "600000.SH",
+        "side": "BUY",
+        "created_at": "2024-02-02 15:30:00+08:00",
+        "quantity": 73000,
+        "filled_quantity": 73000,
+        "status": "FILLED",
+        "last_event_message": "filled 73000 @ 6.8468"
+      },
+      {
+        "id": "ord-000002",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240205",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "created_at": "2024-02-05 15:30:00+08:00",
+        "quantity": 53700,
+        "filled_quantity": 53700,
+        "status": "FILLED",
+        "last_event_message": "filled 53700 @ 9.3093"
+      },
+      {
+        "id": "ord-000003",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240205",
+        "symbol": "600000.SH",
+        "side": "BUY",
+        "created_at": "2024-02-05 15:30:00+08:00",
+        "quantity": 0,
+        "filled_quantity": 0,
+        "status": "REJECTED",
+        "last_event_message": "SIZING_ZERO_AT_FILL"
+      },
+      {
+        "id": "ord-000004",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240220",
+        "symbol": "600000.SH",
+        "side": "SELL",
+        "created_at": "2024-02-20 15:30:00+08:00",
+        "quantity": 73000,
+        "filled_quantity": 73000,
+        "status": "FILLED",
+        "last_event_message": "filled 73000 @ 7.1029"
+      },
+      {
+        "id": "ord-000005",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240221",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "created_at": "2024-02-21 15:30:00+08:00",
+        "quantity": 48600,
+        "filled_quantity": 0,
+        "status": "REJECTED",
+        "last_event_message": "INSUFFICIENT_CASH"
+      },
+      {
+        "id": "ord-000006",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240221",
+        "symbol": "600000.SH",
+        "side": "BUY",
+        "created_at": "2024-02-21 15:30:00+08:00",
+        "quantity": 71400,
+        "filled_quantity": 71400,
+        "status": "FILLED",
+        "last_event_message": "filled 71400 @ 7.2472"
+      },
+      {
+        "id": "ord-000007",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240222",
+        "symbol": "600000.SH",
+        "side": "SELL",
+        "created_at": "2024-02-22 15:30:00+08:00",
+        "quantity": 71400,
+        "filled_quantity": 71400,
+        "status": "FILLED",
+        "last_event_message": "filled 71400 @ 7.2028"
+      },
+      {
+        "id": "ord-000008",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240223",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "created_at": "2024-02-23 15:30:00+08:00",
+        "quantity": 47200,
+        "filled_quantity": 47200,
+        "status": "FILLED",
+        "last_event_message": "filled 47200 @ 10.7908"
+      },
+      {
+        "id": "ord-000009",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240223",
+        "symbol": "600000.SH",
+        "side": "BUY",
+        "created_at": "2024-02-23 15:30:00+08:00",
+        "quantity": 600,
+        "filled_quantity": 600,
+        "status": "FILLED",
+        "last_event_message": "filled 600 @ 7.2673"
+      },
+      {
+        "id": "ord-000010",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240226",
+        "symbol": "000001.SZ",
+        "side": "SELL",
+        "created_at": "2024-02-26 15:30:00+08:00",
+        "quantity": 100900,
+        "filled_quantity": 100900,
+        "status": "FILLED",
+        "last_event_message": "filled 100900 @ 10.4795"
+      },
+      {
+        "id": "ord-000011",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240226",
+        "symbol": "600000.SH",
+        "side": "SELL",
+        "created_at": "2024-02-26 15:30:00+08:00",
+        "quantity": 600,
+        "filled_quantity": 600,
+        "status": "FILLED",
+        "last_event_message": "filled 600 @ 7.0629"
+      },
+      {
+        "id": "ord-000012",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240227",
+        "symbol": "600000.SH",
+        "side": "BUY",
+        "created_at": "2024-02-27 15:30:00+08:00",
+        "quantity": 74400,
+        "filled_quantity": 74400,
+        "status": "FILLED",
+        "last_event_message": "filled 74400 @ 7.1271"
+      },
+      {
+        "id": "ord-000013",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240228",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "created_at": "2024-02-28 15:30:00+08:00",
+        "quantity": 50300,
+        "filled_quantity": 50300,
+        "status": "FILLED",
+        "last_event_message": "filled 50300 @ 10.4304"
+      },
+      {
+        "id": "ord-000014",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240228",
+        "symbol": "600000.SH",
+        "side": "SELL",
+        "created_at": "2024-02-28 15:30:00+08:00",
+        "quantity": 74400,
+        "filled_quantity": 74400,
+        "status": "FILLED",
+        "last_event_message": "filled 74400 @ 7.1029"
+      },
+      {
+        "id": "ord-000015",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240229",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "created_at": "2024-02-29 15:30:00+08:00",
+        "quantity": 50300,
+        "filled_quantity": 50300,
+        "status": "FILLED",
+        "last_event_message": "filled 50300 @ 10.6006"
+      },
+      {
+        "id": "ord-000016",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240301",
+        "symbol": "000001.SZ",
+        "side": "SELL",
+        "created_at": "2024-03-01 15:30:00+08:00",
+        "quantity": 100600,
+        "filled_quantity": 100600,
+        "status": "FILLED",
+        "last_event_message": "filled 100600 @ 10.4395"
+      },
+      {
+        "id": "ord-000017",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240305",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "created_at": "2024-03-05 15:30:00+08:00",
+        "quantity": 50400,
+        "filled_quantity": 50400,
+        "status": "FILLED",
+        "last_event_message": "filled 50400 @ 10.4104"
+      },
+      {
+        "id": "ord-000018",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240305",
+        "symbol": "600000.SH",
+        "side": "BUY",
+        "created_at": "2024-03-05 15:30:00+08:00",
+        "quantity": 73100,
+        "filled_quantity": 73100,
+        "status": "FILLED",
+        "last_event_message": "filled 73100 @ 7.1772"
+      },
+      {
+        "id": "ord-000019",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240306",
+        "symbol": "000001.SZ",
+        "side": "SELL",
+        "created_at": "2024-03-06 15:30:00+08:00",
+        "quantity": 50400,
+        "filled_quantity": 50400,
+        "status": "FILLED",
+        "last_event_message": "filled 50400 @ 10.3197"
+      },
+      {
+        "id": "ord-000020",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240306",
+        "symbol": "600000.SH",
+        "side": "SELL",
+        "created_at": "2024-03-06 15:30:00+08:00",
+        "quantity": 73100,
+        "filled_quantity": 73100,
+        "status": "FILLED",
+        "last_event_message": "filled 73100 @ 7.1129"
+      },
+      {
+        "id": "ord-000021",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240307",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "created_at": "2024-03-07 15:30:00+08:00",
+        "quantity": 50100,
+        "filled_quantity": 50100,
+        "status": "FILLED",
+        "last_event_message": "filled 50100 @ 10.3603"
+      },
+      {
+        "id": "ord-000022",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240308",
+        "symbol": "000001.SZ",
+        "side": "SELL",
+        "created_at": "2024-03-08 15:30:00+08:00",
+        "quantity": 50100,
+        "filled_quantity": 50100,
+        "status": "FILLED",
+        "last_event_message": "filled 50100 @ 10.3696"
+      },
+      {
+        "id": "ord-000023",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240311",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "created_at": "2024-03-11 15:30:00+08:00",
+        "quantity": 49500,
+        "filled_quantity": 49500,
+        "status": "FILLED",
+        "last_event_message": "filled 49500 @ 10.4905"
+      },
+      {
+        "id": "ord-000024",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240312",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "created_at": "2024-03-12 15:30:00+08:00",
+        "quantity": 49300,
+        "filled_quantity": 49300,
+        "status": "FILLED",
+        "last_event_message": "filled 49300 @ 10.5405"
+      },
+      {
+        "id": "ord-000025",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240313",
+        "symbol": "000001.SZ",
+        "side": "SELL",
+        "created_at": "2024-03-13 15:30:00+08:00",
+        "quantity": 98800,
+        "filled_quantity": 98800,
+        "status": "FILLED",
+        "last_event_message": "filled 98800 @ 10.2897"
+      },
+      {
+        "id": "ord-000026",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240315",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "created_at": "2024-03-15 15:30:00+08:00",
+        "quantity": 48000,
+        "filled_quantity": 48000,
+        "status": "FILLED",
+        "last_event_message": "filled 48000 @ 10.5706"
+      },
+      {
+        "id": "ord-000027",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240315",
+        "symbol": "600000.SH",
+        "side": "BUY",
+        "created_at": "2024-03-15 15:30:00+08:00",
+        "quantity": 71900,
+        "filled_quantity": 71900,
+        "status": "FILLED",
+        "last_event_message": "filled 71900 @ 7.0671"
+      },
+      {
+        "id": "ord-000028",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240318",
+        "symbol": "000001.SZ",
+        "side": "SELL",
+        "created_at": "2024-03-18 15:30:00+08:00",
+        "quantity": 48000,
+        "filled_quantity": 48000,
+        "status": "FILLED",
+        "last_event_message": "filled 48000 @ 10.5195"
+      },
+      {
+        "id": "ord-000029",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240318",
+        "symbol": "600000.SH",
+        "side": "SELL",
+        "created_at": "2024-03-18 15:30:00+08:00",
+        "quantity": 71900,
+        "filled_quantity": 71900,
+        "status": "FILLED",
+        "last_event_message": "filled 71900 @ 7.0729"
+      },
+      {
+        "id": "ord-000030",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240321",
+        "symbol": "600000.SH",
+        "side": "BUY",
+        "created_at": "2024-03-21 15:30:00+08:00",
+        "quantity": 71500,
+        "filled_quantity": 71500,
+        "status": "FILLED",
+        "last_event_message": "filled 71500 @ 7.0871"
+      },
+      {
+        "id": "ord-000031",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240322",
+        "symbol": "600000.SH",
+        "side": "SELL",
+        "created_at": "2024-03-22 15:30:00+08:00",
+        "quantity": 71500,
+        "filled_quantity": 71500,
+        "status": "FILLED",
+        "last_event_message": "filled 71500 @ 7.0529"
+      },
+      {
+        "id": "ord-000032",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240326",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "created_at": "2024-03-26 15:30:00+08:00",
+        "quantity": 47800,
+        "filled_quantity": 47800,
+        "status": "FILLED",
+        "last_event_message": "filled 47800 @ 10.5706"
+      },
+      {
+        "id": "ord-000033",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240326",
+        "symbol": "600000.SH",
+        "side": "BUY",
+        "created_at": "2024-03-26 15:30:00+08:00",
+        "quantity": 70700,
+        "filled_quantity": 0,
+        "status": "REJECTED",
+        "last_event_message": "INSUFFICIENT_CASH"
+      },
+      {
+        "id": "ord-000034",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240327",
+        "symbol": "000001.SZ",
+        "side": "SELL",
+        "created_at": "2024-03-27 15:30:00+08:00",
+        "quantity": 47800,
+        "filled_quantity": 47800,
+        "status": "FILLED",
+        "last_event_message": "filled 47800 @ 10.4995"
+      },
+      {
+        "id": "ord-000035",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240327",
+        "symbol": "600000.SH",
+        "side": "BUY",
+        "created_at": "2024-03-27 15:30:00+08:00",
+        "quantity": 69900,
+        "filled_quantity": 69900,
+        "status": "FILLED",
+        "last_event_message": "filled 69900 @ 7.1972"
+      },
+      {
+        "id": "ord-000036",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240328",
+        "symbol": "600000.SH",
+        "side": "SELL",
+        "created_at": "2024-03-28 15:30:00+08:00",
+        "quantity": 69900,
+        "filled_quantity": 69900,
+        "status": "FILLED",
+        "last_event_message": "filled 69900 @ 7.1229"
+      },
+      {
+        "id": "ord-000037",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240329",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "created_at": "2024-03-29 15:30:00+08:00",
+        "quantity": 47500,
+        "filled_quantity": 47500,
+        "status": "FILLED",
+        "last_event_message": "filled 47500 @ 10.5305"
+      },
+      {
+        "id": "ord-000038",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240401",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "created_at": "2024-04-01 15:30:00+08:00",
+        "quantity": 47000,
+        "filled_quantity": 47000,
+        "status": "FILLED",
+        "last_event_message": "filled 47000 @ 10.6406"
+      },
+      {
+        "id": "ord-000039",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240401",
+        "symbol": "600000.SH",
+        "side": "BUY",
+        "created_at": "2024-04-01 15:30:00+08:00",
+        "quantity": 0,
+        "filled_quantity": 0,
+        "status": "REJECTED",
+        "last_event_message": "SIZING_ZERO_AT_FILL"
+      },
+      {
+        "id": "ord-000040",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240402",
+        "symbol": "000001.SZ",
+        "side": "SELL",
+        "created_at": "2024-04-02 15:30:00+08:00",
+        "quantity": 94500,
+        "filled_quantity": 94500,
+        "status": "FILLED",
+        "last_event_message": "filled 94500 @ 10.5195"
+      },
+      {
+        "id": "ord-000041",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240408",
+        "symbol": "600000.SH",
+        "side": "BUY",
+        "created_at": "2024-04-08 15:30:00+08:00",
+        "quantity": 68100,
+        "filled_quantity": 68100,
+        "status": "FILLED",
+        "last_event_message": "filled 68100 @ 7.2973"
+      },
+      {
+        "id": "ord-000042",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240409",
+        "symbol": "600000.SH",
+        "side": "SELL",
+        "created_at": "2024-04-09 15:30:00+08:00",
+        "quantity": 68100,
+        "filled_quantity": 68100,
+        "status": "FILLED",
+        "last_event_message": "filled 68100 @ 7.2527"
+      },
+      {
+        "id": "ord-000043",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240410",
+        "symbol": "600000.SH",
+        "side": "BUY",
+        "created_at": "2024-04-10 15:30:00+08:00",
+        "quantity": 68100,
+        "filled_quantity": 68100,
+        "status": "FILLED",
+        "last_event_message": "filled 68100 @ 7.2372"
+      },
+      {
+        "id": "ord-000044",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240411",
+        "symbol": "600000.SH",
+        "side": "SELL",
+        "created_at": "2024-04-11 15:30:00+08:00",
+        "quantity": 68100,
+        "filled_quantity": 68100,
+        "status": "FILLED",
+        "last_event_message": "filled 68100 @ 7.1928"
+      },
+      {
+        "id": "ord-000045",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240415",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "created_at": "2024-04-15 15:30:00+08:00",
+        "quantity": 47900,
+        "filled_quantity": 47900,
+        "status": "FILLED",
+        "last_event_message": "filled 47900 @ 10.2903"
+      },
+      {
+        "id": "ord-000046",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240415",
+        "symbol": "600000.SH",
+        "side": "BUY",
+        "created_at": "2024-04-15 15:30:00+08:00",
+        "quantity": 67900,
+        "filled_quantity": 67900,
+        "status": "FILLED",
+        "last_event_message": "filled 67900 @ 7.2572"
+      },
+      {
+        "id": "ord-000047",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240416",
+        "symbol": "000001.SZ",
+        "side": "SELL",
+        "created_at": "2024-04-16 15:30:00+08:00",
+        "quantity": 47900,
+        "filled_quantity": 47900,
+        "status": "FILLED",
+        "last_event_message": "filled 47900 @ 10.2497"
+      },
+      {
+        "id": "ord-000048",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240416",
+        "symbol": "600000.SH",
+        "side": "SELL",
+        "created_at": "2024-04-16 15:30:00+08:00",
+        "quantity": 67900,
+        "filled_quantity": 67900,
+        "status": "FILLED",
+        "last_event_message": "filled 67900 @ 7.2527"
+      },
+      {
+        "id": "ord-000049",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240417",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "created_at": "2024-04-17 15:30:00+08:00",
+        "quantity": 46400,
+        "filled_quantity": 46400,
+        "status": "FILLED",
+        "last_event_message": "filled 46400 @ 10.5906"
+      },
+      {
+        "id": "ord-000050",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240417",
+        "symbol": "600000.SH",
+        "side": "BUY",
+        "created_at": "2024-04-17 15:30:00+08:00",
+        "quantity": 66900,
+        "filled_quantity": 66900,
+        "status": "FILLED",
+        "last_event_message": "filled 66900 @ 7.3473"
+      },
+      {
+        "id": "ord-000051",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240419",
+        "symbol": "000001.SZ",
+        "side": "SELL",
+        "created_at": "2024-04-19 15:30:00+08:00",
+        "quantity": 46400,
+        "filled_quantity": 46400,
+        "status": "FILLED",
+        "last_event_message": "filled 46400 @ 10.6294"
+      },
+      {
+        "id": "ord-000052",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240422",
+        "symbol": "600000.SH",
+        "side": "SELL",
+        "created_at": "2024-04-22 15:30:00+08:00",
+        "quantity": 66900,
+        "filled_quantity": 66900,
+        "status": "FILLED",
+        "last_event_message": "filled 66900 @ 7.3127"
+      },
+      {
+        "id": "ord-000053",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240423",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "created_at": "2024-04-23 15:30:00+08:00",
+        "quantity": 46600,
+        "filled_quantity": 46600,
+        "status": "FILLED",
+        "last_event_message": "filled 46600 @ 10.5305"
+      },
+      {
+        "id": "ord-000054",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240423",
+        "symbol": "600000.SH",
+        "side": "BUY",
+        "created_at": "2024-04-23 15:30:00+08:00",
+        "quantity": 66400,
+        "filled_quantity": 66400,
+        "status": "FILLED",
+        "last_event_message": "filled 66400 @ 7.3874"
+      },
+      {
+        "id": "ord-000055",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240424",
+        "symbol": "000001.SZ",
+        "side": "SELL",
+        "created_at": "2024-04-24 15:30:00+08:00",
+        "quantity": 46600,
+        "filled_quantity": 46600,
+        "status": "FILLED",
+        "last_event_message": "filled 46600 @ 10.4895"
+      },
+      {
+        "id": "ord-000056",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240425",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "created_at": "2024-04-25 15:30:00+08:00",
+        "quantity": 46100,
+        "filled_quantity": 46100,
+        "status": "FILLED",
+        "last_event_message": "filled 46100 @ 10.6006"
+      },
+      {
+        "id": "ord-000057",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240425",
+        "symbol": "600000.SH",
+        "side": "BUY",
+        "created_at": "2024-04-25 15:30:00+08:00",
+        "quantity": 0,
+        "filled_quantity": 0,
+        "status": "REJECTED",
+        "last_event_message": "SIZING_ZERO_AT_FILL"
+      },
+      {
+        "id": "ord-000058",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240430",
+        "symbol": "000001.SZ",
+        "side": "SELL",
+        "created_at": "2024-04-30 15:30:00+08:00",
+        "quantity": 46100,
+        "filled_quantity": 46100,
+        "status": "FILLED",
+        "last_event_message": "filled 46100 @ 10.949"
+      },
+      {
+        "id": "ord-000059",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240506",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "created_at": "2024-05-06 15:30:00+08:00",
+        "quantity": 46000,
+        "filled_quantity": 46000,
+        "status": "FILLED",
+        "last_event_message": "filled 46000 @ 10.8809"
+      },
+      {
+        "id": "ord-000060",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240506",
+        "symbol": "600000.SH",
+        "side": "BUY",
+        "created_at": "2024-05-06 15:30:00+08:00",
+        "quantity": 500,
+        "filled_quantity": 0,
+        "status": "REJECTED",
+        "last_event_message": "MAX_POSITIONS"
+      },
+      {
+        "id": "ord-000061",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240507",
+        "symbol": "000001.SZ",
+        "side": "SELL",
+        "created_at": "2024-05-07 15:30:00+08:00",
+        "quantity": 46000,
+        "filled_quantity": 46000,
+        "status": "FILLED",
+        "last_event_message": "filled 46000 @ 10.8292"
+      },
+      {
+        "id": "ord-000062",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240507",
+        "symbol": "600000.SH",
+        "side": "SELL",
+        "created_at": "2024-05-07 15:30:00+08:00",
+        "quantity": 66400,
+        "filled_quantity": 66400,
+        "status": "FILLED",
+        "last_event_message": "filled 66400 @ 7.8022"
+      },
+      {
+        "id": "ord-000063",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240510",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "created_at": "2024-05-10 15:30:00+08:00",
+        "quantity": 46700,
+        "filled_quantity": 46700,
+        "status": "FILLED",
+        "last_event_message": "filled 46700 @ 10.9109"
+      },
+      {
+        "id": "ord-000064",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240510",
+        "symbol": "600000.SH",
+        "side": "BUY",
+        "created_at": "2024-05-10 15:30:00+08:00",
+        "quantity": 64200,
+        "filled_quantity": 64200,
+        "status": "FILLED",
+        "last_event_message": "filled 64200 @ 7.9379"
+      },
+      {
+        "id": "ord-000065",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240514",
+        "symbol": "000001.SZ",
+        "side": "SELL",
+        "created_at": "2024-05-14 15:30:00+08:00",
+        "quantity": 46700,
+        "filled_quantity": 46700,
+        "status": "FILLED",
+        "last_event_message": "filled 46700 @ 10.8891"
+      },
+      {
+        "id": "ord-000066",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240514",
+        "symbol": "600000.SH",
+        "side": "SELL",
+        "created_at": "2024-05-14 15:30:00+08:00",
+        "quantity": 64200,
+        "filled_quantity": 64200,
+        "status": "FILLED",
+        "last_event_message": "filled 64200 @ 7.8921"
+      },
+      {
+        "id": "ord-000067",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240516",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "created_at": "2024-05-16 15:30:00+08:00",
+        "quantity": 45300,
+        "filled_quantity": 45300,
+        "status": "FILLED",
+        "last_event_message": "filled 45300 @ 11.1912"
+      },
+      {
+        "id": "ord-000068",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240516",
+        "symbol": "600000.SH",
+        "side": "BUY",
+        "created_at": "2024-05-16 15:30:00+08:00",
+        "quantity": 63000,
+        "filled_quantity": 63000,
+        "status": "FILLED",
+        "last_event_message": "filled 63000 @ 8.048"
+      },
+      {
+        "id": "ord-000069",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240523",
+        "symbol": "000001.SZ",
+        "side": "SELL",
+        "created_at": "2024-05-23 15:30:00+08:00",
+        "quantity": 45300,
+        "filled_quantity": 45300,
+        "status": "FILLED",
+        "last_event_message": "filled 45300 @ 11.3586"
+      },
+      {
+        "id": "ord-000070",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240523",
+        "symbol": "600000.SH",
+        "side": "SELL",
+        "created_at": "2024-05-23 15:30:00+08:00",
+        "quantity": 63000,
+        "filled_quantity": 63000,
+        "status": "FILLED",
+        "last_event_message": "filled 63000 @ 8.5015"
+      },
+      {
+        "id": "ord-000071",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240527",
+        "symbol": "000001.SZ",
+        "side": "BUY",
+        "created_at": "2024-05-27 15:30:00+08:00",
+        "quantity": 45500,
+        "filled_quantity": 45500,
+        "status": "FILLED",
+        "last_event_message": "filled 45500 @ 11.5115"
+      },
+      {
+        "id": "ord-000072",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240527",
+        "symbol": "600000.SH",
+        "side": "BUY",
+        "created_at": "2024-05-27 15:30:00+08:00",
+        "quantity": 61000,
+        "filled_quantity": 61000,
+        "status": "FILLED",
+        "last_event_message": "filled 61000 @ 8.5886"
+      },
+      {
+        "id": "ord-000073",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240528",
+        "symbol": "000001.SZ",
+        "side": "SELL",
+        "created_at": "2024-05-28 15:30:00+08:00",
+        "quantity": 45500,
+        "filled_quantity": 45500,
+        "status": "FILLED",
+        "last_event_message": "filled 45500 @ 11.3686"
+      },
+      {
+        "id": "ord-000074",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240528",
+        "symbol": "600000.SH",
+        "side": "SELL",
+        "created_at": "2024-05-28 15:30:00+08:00",
+        "quantity": 61000,
+        "filled_quantity": 61000,
+        "status": "FILLED",
+        "last_event_message": "filled 61000 @ 8.5215"
+      }
+    ],
+    "order_status_counts": {
+      "FILLED": 68,
+      "REJECTED": 6
+    },
+    "sizing_skips": [
+      {
+        "ts": "2024-02-06 15:30:00+08:00",
+        "date": 20240206,
+        "symbol": "000001.SZ",
+        "strategy_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240206",
+        "reason": "SIZING_ZERO_AT_INTENT",
+        "reference_price": 9.3093,
+        "available_cash": 24.2585,
+        "current_equity": 1030840.2585,
+        "max_positions": 2,
+        "board_lot_cost": 930.93,
+        "behavior": "NO_ORDER_NO_FALLBACK_KEEP_CASH",
+        "bar_open": 9.3
+      },
+      {
+        "ts": "2024-02-06 15:30:00+08:00",
+        "date": 20240206,
+        "symbol": "600000.SH",
+        "strategy_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240206",
+        "reason": "SIZING_ZERO_AT_INTENT",
+        "reference_price": 6.89689,
+        "available_cash": 24.2585,
+        "current_equity": 1030840.2585,
+        "max_positions": 2,
+        "board_lot_cost": 689.689,
+        "behavior": "NO_ORDER_NO_FALLBACK_KEEP_CASH",
+        "bar_open": 6.89
+      },
+      {
+        "ts": "2024-02-07 15:30:00+08:00",
+        "date": 20240207,
+        "symbol": "000001.SZ",
+        "strategy_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240207",
+        "reason": "SIZING_ZERO_AT_INTENT",
+        "reference_price": 9.62962,
+        "available_cash": 24.2585,
+        "current_equity": 1022701.2585,
+        "max_positions": 2,
+        "board_lot_cost": 962.962,
+        "behavior": "NO_ORDER_NO_FALLBACK_KEEP_CASH",
+        "bar_open": 9.62
+      },
+      {
+        "ts": "2024-02-07 15:30:00+08:00",
+        "date": 20240207,
+        "symbol": "600000.SH",
+        "strategy_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240207",
+        "reason": "SIZING_ZERO_AT_INTENT",
+        "reference_price": 7.02702,
+        "available_cash": 24.2585,
+        "current_equity": 1022701.2585,
+        "max_positions": 2,
+        "board_lot_cost": 702.702,
+        "behavior": "NO_ORDER_NO_FALLBACK_KEEP_CASH",
+        "bar_open": 7.02
+      },
+      {
+        "ts": "2024-02-08 15:30:00+08:00",
+        "date": 20240208,
+        "symbol": "000001.SZ",
+        "strategy_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240208",
+        "reason": "SIZING_ZERO_AT_INTENT",
+        "reference_price": 9.58958,
+        "available_cash": 24.2585,
+        "current_equity": 1027383.2585,
+        "max_positions": 2,
+        "board_lot_cost": 958.958,
+        "behavior": "NO_ORDER_NO_FALLBACK_KEEP_CASH",
+        "bar_open": 9.58
+      },
+      {
+        "ts": "2024-02-08 15:30:00+08:00",
+        "date": 20240208,
+        "symbol": "600000.SH",
+        "strategy_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240208",
+        "reason": "SIZING_ZERO_AT_INTENT",
+        "reference_price": 6.95695,
+        "available_cash": 24.2585,
+        "current_equity": 1027383.2585,
+        "max_positions": 2,
+        "board_lot_cost": 695.695,
+        "behavior": "NO_ORDER_NO_FALLBACK_KEEP_CASH",
+        "bar_open": 6.95
+      },
+      {
+        "ts": "2024-02-19 15:30:00+08:00",
+        "date": 20240219,
+        "symbol": "000001.SZ",
+        "strategy_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240219",
+        "reason": "SIZING_ZERO_AT_INTENT",
+        "reference_price": 9.76976,
+        "available_cash": 24.2585,
+        "current_equity": 1046581.2585,
+        "max_positions": 2,
+        "board_lot_cost": 976.976,
+        "behavior": "NO_ORDER_NO_FALLBACK_KEEP_CASH",
+        "bar_open": 9.76
+      },
+      {
+        "ts": "2024-02-19 15:30:00+08:00",
+        "date": 20240219,
+        "symbol": "600000.SH",
+        "strategy_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240219",
+        "reason": "SIZING_ZERO_AT_INTENT",
+        "reference_price": 6.98698,
+        "available_cash": 24.2585,
+        "current_equity": 1046581.2585,
+        "max_positions": 2,
+        "board_lot_cost": 698.698,
+        "behavior": "NO_ORDER_NO_FALLBACK_KEEP_CASH",
+        "bar_open": 6.98
+      },
+      {
+        "ts": "2024-02-20 15:30:00+08:00",
+        "date": 20240220,
+        "symbol": "000001.SZ",
+        "strategy_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240220",
+        "reason": "SIZING_ZERO_AT_INTENT",
+        "reference_price": 9.79979,
+        "available_cash": 24.2585,
+        "current_equity": 1045658.2585,
+        "max_positions": 2,
+        "board_lot_cost": 979.979,
+        "behavior": "NO_ORDER_NO_FALLBACK_KEEP_CASH",
+        "bar_open": 9.79
+      },
+      {
+        "ts": "2024-02-22 15:30:00+08:00",
+        "date": 20240222,
+        "symbol": "000001.SZ",
+        "strategy_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240222",
+        "reason": "SIZING_ZERO_AT_INTENT",
+        "reference_price": 10.66065,
+        "available_cash": 567.6322,
+        "current_equity": 1100691.6322,
+        "max_positions": 2,
+        "board_lot_cost": 1066.065,
+        "behavior": "NO_ORDER_NO_FALLBACK_KEEP_CASH",
+        "bar_open": 10.65
+      },
+      {
+        "ts": "2024-04-02 15:30:00+08:00",
+        "date": 20240402,
+        "symbol": "600000.SH",
+        "strategy_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240402",
+        "reason": "SIZING_ZERO_AT_INTENT",
+        "reference_price": 7.24724,
+        "available_cash": 590.6405,
+        "current_equity": 997565.6405,
+        "max_positions": 2,
+        "board_lot_cost": 724.724,
+        "behavior": "NO_ORDER_NO_FALLBACK_KEEP_CASH",
+        "bar_open": 7.24
+      },
+      {
+        "ts": "2024-04-18 15:30:00+08:00",
+        "date": 20240418,
+        "symbol": "000001.SZ",
+        "strategy_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240418",
+        "reason": "SIZING_ZERO_AT_INTENT",
+        "reference_price": 10.59058,
+        "available_cash": 473.451,
+        "current_equity": 991970.451,
+        "max_positions": 2,
+        "board_lot_cost": 1059.058,
+        "behavior": "NO_ORDER_NO_FALLBACK_KEEP_CASH",
+        "bar_open": 10.58
+      },
+      {
+        "ts": "2024-04-18 15:30:00+08:00",
+        "date": 20240418,
+        "symbol": "600000.SH",
+        "strategy_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240418",
+        "reason": "SIZING_ZERO_AT_INTENT",
+        "reference_price": 7.34734,
+        "available_cash": 473.451,
+        "current_equity": 991970.451,
+        "max_positions": 2,
+        "board_lot_cost": 734.734,
+        "behavior": "NO_ORDER_NO_FALLBACK_KEEP_CASH",
+        "bar_open": 7.34
+      },
+      {
+        "ts": "2024-04-19 15:30:00+08:00",
+        "date": 20240419,
+        "symbol": "600000.SH",
+        "strategy_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240419",
+        "reason": "SIZING_ZERO_AT_INTENT",
+        "reference_price": 7.32732,
+        "available_cash": 473.451,
+        "current_equity": 987535.451,
+        "max_positions": 2,
+        "board_lot_cost": 732.732,
+        "behavior": "NO_ORDER_NO_FALLBACK_KEEP_CASH",
+        "bar_open": 7.32
+      },
+      {
+        "ts": "2024-04-24 15:30:00+08:00",
+        "date": 20240424,
+        "symbol": "600000.SH",
+        "strategy_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240424",
+        "reason": "SIZING_ZERO_AT_INTENT",
+        "reference_price": 7.38738,
+        "available_cash": 670.4521,
+        "current_equity": 980072.4521,
+        "max_positions": 2,
+        "board_lot_cost": 738.738,
+        "behavior": "NO_ORDER_NO_FALLBACK_KEEP_CASH",
+        "bar_open": 7.38
+      },
+      {
+        "ts": "2024-04-26 15:30:00+08:00",
+        "date": 20240426,
+        "symbol": "000001.SZ",
+        "strategy_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240426",
+        "reason": "SIZING_ZERO_AT_INTENT",
+        "reference_price": 10.60059,
+        "available_cash": 304.7122,
+        "current_equity": 981652.7122,
+        "max_positions": 2,
+        "board_lot_cost": 1060.059,
+        "behavior": "NO_ORDER_NO_FALLBACK_KEEP_CASH",
+        "bar_open": 10.59
+      },
+      {
+        "ts": "2024-04-26 15:30:00+08:00",
+        "date": 20240426,
+        "symbol": "600000.SH",
+        "strategy_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240426",
+        "reason": "SIZING_ZERO_AT_INTENT",
+        "reference_price": 7.41741,
+        "available_cash": 304.7122,
+        "current_equity": 981652.7122,
+        "max_positions": 2,
+        "board_lot_cost": 741.741,
+        "behavior": "NO_ORDER_NO_FALLBACK_KEEP_CASH",
+        "bar_open": 7.41
+      },
+      {
+        "ts": "2024-04-29 15:30:00+08:00",
+        "date": 20240429,
+        "symbol": "000001.SZ",
+        "strategy_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240429",
+        "reason": "SIZING_ZERO_AT_INTENT",
+        "reference_price": 10.57056,
+        "available_cash": 304.7122,
+        "current_equity": 991333.7122,
+        "max_positions": 2,
+        "board_lot_cost": 1057.056,
+        "behavior": "NO_ORDER_NO_FALLBACK_KEEP_CASH",
+        "bar_open": 10.56
+      },
+      {
+        "ts": "2024-04-29 15:30:00+08:00",
+        "date": 20240429,
+        "symbol": "600000.SH",
+        "strategy_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240429",
+        "reason": "SIZING_ZERO_AT_INTENT",
+        "reference_price": 7.39739,
+        "available_cash": 304.7122,
+        "current_equity": 991333.7122,
+        "max_positions": 2,
+        "board_lot_cost": 739.739,
+        "behavior": "NO_ORDER_NO_FALLBACK_KEEP_CASH",
+        "bar_open": 7.39
+      },
+      {
+        "ts": "2024-04-30 15:30:00+08:00",
+        "date": 20240430,
+        "symbol": "600000.SH",
+        "strategy_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240430",
+        "reason": "SIZING_ZERO_AT_INTENT",
+        "reference_price": 7.58758,
+        "available_cash": 304.7122,
+        "current_equity": 1009003.7122,
+        "max_positions": 2,
+        "board_lot_cost": 758.758,
+        "behavior": "NO_ORDER_NO_FALLBACK_KEEP_CASH",
+        "bar_open": 7.58
+      },
+      {
+        "ts": "2024-05-13 15:30:00+08:00",
+        "date": 20240513,
+        "symbol": "000001.SZ",
+        "strategy_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240513",
+        "reason": "SIZING_ZERO_AT_INTENT",
+        "reference_price": 10.9109,
+        "available_cash": 68.645,
+        "current_equity": 1023399.645,
+        "max_positions": 2,
+        "board_lot_cost": 1091.09,
+        "behavior": "NO_ORDER_NO_FALLBACK_KEEP_CASH",
+        "bar_open": 10.9
+      },
+      {
+        "ts": "2024-05-13 15:30:00+08:00",
+        "date": 20240513,
+        "symbol": "600000.SH",
+        "strategy_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240513",
+        "reason": "SIZING_ZERO_AT_INTENT",
+        "reference_price": 7.93793,
+        "available_cash": 68.645,
+        "current_equity": 1023399.645,
+        "max_positions": 2,
+        "board_lot_cost": 793.793,
+        "behavior": "NO_ORDER_NO_FALLBACK_KEEP_CASH",
+        "bar_open": 7.93
+      },
+      {
+        "ts": "2024-05-17 15:30:00+08:00",
+        "date": 20240517,
+        "symbol": "000001.SZ",
+        "strategy_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240517",
+        "reason": "SIZING_ZERO_AT_INTENT",
+        "reference_price": 11.19118,
+        "available_cash": 262.1834,
+        "current_equity": 1031668.1834,
+        "max_positions": 2,
+        "board_lot_cost": 1119.118,
+        "behavior": "NO_ORDER_NO_FALLBACK_KEEP_CASH",
+        "bar_open": 11.18
+      },
+      {
+        "ts": "2024-05-17 15:30:00+08:00",
+        "date": 20240517,
+        "symbol": "600000.SH",
+        "strategy_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240517",
+        "reason": "SIZING_ZERO_AT_INTENT",
+        "reference_price": 8.04804,
+        "available_cash": 262.1834,
+        "current_equity": 1031668.1834,
+        "max_positions": 2,
+        "board_lot_cost": 804.804,
+        "behavior": "NO_ORDER_NO_FALLBACK_KEEP_CASH",
+        "bar_open": 8.04
+      },
+      {
+        "ts": "2024-05-20 15:30:00+08:00",
+        "date": 20240520,
+        "symbol": "000001.SZ",
+        "strategy_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240520",
+        "reason": "SIZING_ZERO_AT_INTENT",
+        "reference_price": 11.44143,
+        "available_cash": 262.1834,
+        "current_equity": 1039936.1834,
+        "max_positions": 2,
+        "board_lot_cost": 1144.143,
+        "behavior": "NO_ORDER_NO_FALLBACK_KEEP_CASH",
+        "bar_open": 11.43
+      },
+      {
+        "ts": "2024-05-20 15:30:00+08:00",
+        "date": 20240520,
+        "symbol": "600000.SH",
+        "strategy_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240520",
+        "reason": "SIZING_ZERO_AT_INTENT",
+        "reference_price": 8.2082,
+        "available_cash": 262.1834,
+        "current_equity": 1039936.1834,
+        "max_positions": 2,
+        "board_lot_cost": 820.82,
+        "behavior": "NO_ORDER_NO_FALLBACK_KEEP_CASH",
+        "bar_open": 8.2
+      },
+      {
+        "ts": "2024-05-21 15:30:00+08:00",
+        "date": 20240521,
+        "symbol": "000001.SZ",
+        "strategy_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240521",
+        "reason": "SIZING_ZERO_AT_INTENT",
+        "reference_price": 11.33132,
+        "available_cash": 262.1834,
+        "current_equity": 1053937.1834,
+        "max_positions": 2,
+        "board_lot_cost": 1133.132,
+        "behavior": "NO_ORDER_NO_FALLBACK_KEEP_CASH",
+        "bar_open": 11.32
+      },
+      {
+        "ts": "2024-05-21 15:30:00+08:00",
+        "date": 20240521,
+        "symbol": "600000.SH",
+        "strategy_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240521",
+        "reason": "SIZING_ZERO_AT_INTENT",
+        "reference_price": 8.31831,
+        "available_cash": 262.1834,
+        "current_equity": 1053937.1834,
+        "max_positions": 2,
+        "board_lot_cost": 831.831,
+        "behavior": "NO_ORDER_NO_FALLBACK_KEEP_CASH",
+        "bar_open": 8.31
+      },
+      {
+        "ts": "2024-05-22 15:30:00+08:00",
+        "date": 20240522,
+        "symbol": "000001.SZ",
+        "strategy_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:000001.SZ:20240522",
+        "reason": "SIZING_ZERO_AT_INTENT",
+        "reference_price": 11.57156,
+        "available_cash": 262.1834,
+        "current_equity": 1061320.1834,
+        "max_positions": 2,
+        "board_lot_cost": 1157.156,
+        "behavior": "NO_ORDER_NO_FALLBACK_KEEP_CASH",
+        "bar_open": 11.56
+      },
+      {
+        "ts": "2024-05-22 15:30:00+08:00",
+        "date": 20240522,
+        "symbol": "600000.SH",
+        "strategy_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1",
+        "signal_id": "ALL_51_EQUAL_VOTE_BAOSTOCK_TURN_V1:600000.SH:20240522",
+        "reason": "SIZING_ZERO_AT_INTENT",
+        "reference_price": 8.41841,
+        "available_cash": 262.1834,
+        "current_equity": 1061320.1834,
+        "max_positions": 2,
+        "board_lot_cost": 841.841,
+        "behavior": "NO_ORDER_NO_FALLBACK_KEEP_CASH",
+        "bar_open": 8.41
+      }
+    ],
+    "corporate_account": null,
+    "scope": "MECHANICAL_INTEGRATION_ONLY; no alpha, PIT eligibility or corporate-action certification"
+  },
+  "read_audit": [
+    {
+      "dataset": "parquet",
+      "path": "E:\\llmwiki\\autonomous-strategy-research-v1\\execution-data-v1\\baostock-account-v1\\DAILY.parquet",
+      "requested": [
+        20231009,
+        20240731
+      ],
+      "date_column": "date",
+      "physical_rows": 1020151,
+      "rows_materialized": 1020151,
+      "max_date_materialized": 20240731
+    },
+    {
+      "dataset": "parquet",
+      "path": "E:\\worktrees\\s1-trusted-baseline\\trade-system-contract-port-v1\\reports\\all_indicator_fixed_strategy_pilot_20260925\\BAOSTOCK_TURN.parquet",
+      "requested": [
+        20231009,
+        20240731
+      ],
+      "date_column": "date",
+      "physical_rows": 400,
+      "rows_materialized": 400,
+      "max_date_materialized": 20240731
+    },
+    {
+      "dataset": "parquet",
+      "path": "E:\\llmwiki\\autonomous-strategy-research-v1\\execution-data-v1\\baostock-account-v1\\STATES.parquet",
+      "requested": [
+        20240201,
+        20240531
+      ],
+      "date_column": "trade_date",
+      "physical_rows": 421572,
+      "rows_materialized": 421572,
+      "max_date_materialized": 20240531
+    },
+    {
+      "dataset": "parquet",
+      "path": "E:\\llmwiki\\autonomous-strategy-research-v1\\execution-data-v1\\baostock-account-v1\\DAILY.parquet",
+      "requested": [
+        20231009,
+        20240731
+      ],
+      "date_column": "date",
+      "physical_rows": 1020151,
+      "rows_materialized": 1020151,
+      "max_date_materialized": 20240731
+    },
+    {
+      "dataset": "parquet",
+      "path": "E:\\llmwiki\\autonomous-strategy-research-v1\\execution-data-v1\\baostock-account-v1\\STATES.parquet",
+      "requested": [
+        20240201,
+        20240531
+      ],
+      "date_column": "trade_date",
+      "physical_rows": 421572,
+      "rows_materialized": 421572,
+      "max_date_materialized": 20240531
+    },
+    {
+      "dataset": "parquet",
+      "path": "E:\\llmwiki\\autonomous-strategy-research-v1\\execution-data-v1\\materialized-v3\\HISTORICAL_POOL_AND_STATE.parquet",
+      "requested": [
+        20240131,
+        20240531
+      ],
+      "date_column": "trade_date",
+      "physical_rows": 427196,
+      "rows_materialized": 427196,
+      "max_date_materialized": 20240531
+    }
+  ],
+  "blockers": [],
+  "state_step_status": "PASSED_MODELED",
+  "s1_baseline_status": "NOT_PASSED",
+  "remaining_s1_work": [
+    "same fixed strategy through the public strategy entry",
+    "real corporate-action account reconciliation beyond the event-free window",
+    "full-engine checkpoint restart and real suspension/missing-data cases remain unverified",
+    "vendor turnover and historical state publication timestamps remain unverified",
+    "adjusted indicator features versus raw execution prices remain unverified"
+  ]
+}

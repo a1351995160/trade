@@ -2318,3 +2318,19 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 
 ### Notes
 - 本次修改为 `scripts/probe_all_indicator_strategy_v1.py`、对应测试、说明文档和报告；未扩大真实数据日期范围。回滚本轮时可在隔离分支上对本轮后续提交执行 `git revert`，保留此前固定策略试验提交；如仅撤销路径限制，须同步恢复测试与报告源码指纹。
+
+## 2026-09-25 - Task: 固定 51 指标策略扩大至真实公司行动窗口并核对模型账户
+
+### What was done
+- 在独立分支 `codex/s1-trusted-baseline` 冻结 2024-02-01 至 2024-07-31 的两证券账户范围；`docs/S1_FIXED_STRATEGY_BASELINE_V1.md` 区分模型诊断、S1 验收和策略有效性。
+- `src/chanlun_trader/research/io_safety.py` 增加 ISO 字符串日期 Parquet 的受控区间读取；`scripts/verify_fixed_strategy_state_v1.py` 对上游历史状态与账户状态逐日核对，约束前一日状态的建模可用时间，并在成交时接入现有历史交易状态门禁。
+- `scripts/fetch_s1_actions_v1.py` 冻结 BaoStock 公司行动快照；`scripts/verify_s1_corporate_chain_v1.py` 对照发行人公告和原始查询记录，驱动 `src/chanlun_trader/engine/individual_dividend_accounting_v1.py` 按个人 A 股现金分红到账与卖出补税核算。`scripts/probe_all_indicator_strategy_v1.py` 扩展原链路，独立复算每日现金、持股、费用、T+1、分红及税，不改变 51 指标投票规则。
+- 更新 `docs/DATA_ACCESS_POLICY.md` 和受影响测试；正式证据为 `reports/s1_trusted_baseline_20260925/BAOSTOCK_ACTIONS.json`、`STATE_GATE.json`、`CORPORATE_CHAIN.json`。
+
+### Testing
+- 相关回归 254 passed，邻接条件、退出、公共入口和 PIT 回归 159 passed；源码编译和 `git diff --check` 通过。合成用例覆盖 ST、停牌、缺交易状态、缺行情、零交易、公司行动快照篡改、非法 ISO 日期及未知状态标志，以及分红账本恢复后不重复到账与补税。
+- 本机受控读取真实数据至 2024-07-31；76 日状态接线结果与原 68 笔成交及每日账户一致。扩大窗口为 118 个交易日、94 笔模拟成交、46 个无成交日，50 次独立逐 lot T+1 检查；逐日账户复算最大差异为零，重复执行的经济哈希一致。浦发银行 58,000 股分红入账 18,618 元、卖出补税 3,723.60 元，均与独立复算一致。
+
+### Notes
+- `STATE_GATE` 与 `CORPORATE_CHAIN` 仅标记 `PASSED_MODELED`；**S1 仍为 `NOT_PASSED`**。供应商历史发布时间、复权指标与原始成交价分离、公共策略入口一致性和整引擎中断恢复尚未证实；收益不构成策略有效性证据。个人账户税务模型不自动适用于其他投资者身份。
+- 本轮修改文件为上述脚本、账本、读取器、两份文档、对应测试、三份报告和本记录。实现基线为 `4e3c2f1`；回滚时在本隔离分支撤销本轮提交或在合并后对对应提交执行 `git revert`，保留原试验与用户主工作区未提交改动。
