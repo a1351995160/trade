@@ -76,6 +76,12 @@ jobs:
           tests/research_factory/test_bounded_real_research_loop_v1.py
           tests/research_factory/test_bounded_process_recovery_v1.py
           tests/research_factory/test_research_diagnostics_v1.py
+          tests/research_factory/test_strategy_qualification_v1.py
+          tests/research_factory/test_forward_snapshot_v1.py
+          tests/research_factory/test_forward_paper_v1.py
+          tests/research_factory/test_forward_paper_process_recovery_v1.py
+          tests/research_factory/test_portfolio_execution_v1.py
+          tests/research_factory/test_strategy_lifecycle_cli_v1.py
           tests/research_factory/test_codex_runtime_protocol_v1.py
           tests/research_factory/test_etf_account_governance_v1.py
           tests/research_factory/test_strategy_backend_migration_v1.py

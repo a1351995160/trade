@@ -1,0 +1,533 @@
+{
+  "source": "completed real bounded research 20260926",
+  "real_observation_days": 0,
+  "reviews": [
+    {
+      "candidate_id": "CANDIDATE_001",
+      "strategy_id": "BS_90f4cac69ec8b8e645817a73ec1a5b7ee26da318d56ad59486a3e292a8babab1",
+      "archive_hash": "5ef045f1d4e8e3adcf277038020de4895ef2c1e2c9b5e198d060f4635deb55fd",
+      "review": {
+        "schema_version": "BOUNDED_STRATEGY_REVIEW_V1",
+        "strategy_id": "BS_90f4cac69ec8b8e645817a73ec1a5b7ee26da318d56ad59486a3e292a8babab1",
+        "archive_hash": "5ef045f1d4e8e3adcf277038020de4895ef2c1e2c9b5e198d060f4635deb55fd",
+        "source_profile": "S1_MODELED_DAILY",
+        "review_state": "EXPLORATORY_REVIEW_ONLY",
+        "qualification": "BLOCKED",
+        "strategy_qualified": false,
+        "current_rule_executable": true,
+        "historical_account_state": "COMPLETE",
+        "metrics": {
+          "initial_cash": 1000000.0,
+          "ending_equity": 1086215.8025,
+          "net_return": 0.08621580249999994,
+          "max_drawdown": 0.03019872223081031,
+          "total_fees": 23389.4775,
+          "dividend_tax_withheld": 0.0,
+          "trade_count": 93,
+          "account_days": 118,
+          "account_gain_before_recorded_costs": 109605.28
+        },
+        "diagnostic": {
+          "schema_version": "RESEARCH_DIAGNOSTICS_V1",
+          "trial_id": "CANDIDATE_001",
+          "result_hash": "4d32bdfc8a9226255c1324c2ceb195c6f83c03bf3a9e43a00b5ea416804cef85",
+          "account_state": "COMPLETE",
+          "metrics": {
+            "initial_cash": 1000000.0,
+            "ending_equity": 1086215.8025,
+            "net_return": 0.08621580249999994,
+            "max_drawdown": 0.03019872223081031,
+            "total_fees": 23389.4775,
+            "dividend_tax_withheld": 0.0,
+            "trade_count": 93,
+            "account_days": 118,
+            "account_gain_before_recorded_costs": 109605.28
+          },
+          "reason_codes": [
+            "EXECUTION_FILTERS_OBSERVED",
+            "LIMITED_SAMPLE",
+            "INDEPENDENT_CONFIRMATION_REQUIRED"
+          ],
+          "benchmark": {
+            "status": "NOT_RUN"
+          },
+          "evidence_paths": [
+            "chain.issues",
+            "chain.independent_account_checks",
+            "chain.execution_assumptions",
+            "chain.trades",
+            "chain.orders",
+            "chain.corporate_account",
+            "decision_state_rejections"
+          ],
+          "qualification": "NOT_ASSESSED",
+          "execution_authorization_granted": false,
+          "limitations": [
+            "历史发布时间按既有假设处理，未取得严格历史资格。",
+            "费用加回只解释原成交路径，不代表另一种成本下可实现的账户。",
+            "样本提示是描述性规则，不能代替独立统计确认。"
+          ],
+          "diagnostic_hash": "d27cf9c10411c54ca20c5d8b60487d2430c38804d9439fbe06bc7145b861c9e8"
+        },
+        "reason_codes": [
+          "EXECUTION_FILTERS_OBSERVED",
+          "LIMITED_SAMPLE",
+          "INDEPENDENT_CONFIRMATION_REQUIRED",
+          "FORMAL_STATISTICAL_METHOD_NOT_APPROVED"
+        ],
+        "assessment": {
+          "economic": "本次历史探索的净收益和回撤仅描述已见样本，不证明未来有效。",
+          "sample": "账户天数和成交笔数不是独立样本数量，不能替代预登记统计检验。",
+          "execution": "账户证据已核对。",
+          "cost": "列出实际记录的费用；尚无独立成本压力复验，费用加回不等于重新回测。",
+          "independence": "本轮数据已经用于候选生成和比较；尚缺冻结后独立确认窗口与批准的统计方法。",
+          "publication": "历史发布时间仍按建模假设处理，不能据此宣称严格历史可得。"
+        },
+        "review_hash": "1776b8be16eb40c601fe2cf78916a64c4a9c5b5e9653e7711ebd1e3f0d1dcac0"
+      },
+      "engineering_admission": {
+        "allowed": true,
+        "strategy_qualified": false,
+        "reason_codes": [],
+        "archive_hash": "5ef045f1d4e8e3adcf277038020de4895ef2c1e2c9b5e198d060f4635deb55fd",
+        "review_hash": "1776b8be16eb40c601fe2cf78916a64c4a9c5b5e9653e7711ebd1e3f0d1dcac0",
+        "purpose": "ENGINEERING_OBSERVATION",
+        "source_profile": "S1_MODELED_DAILY"
+      },
+      "formal_admission": {
+        "allowed": false,
+        "strategy_qualified": false,
+        "reason_codes": [
+          "INDEPENDENT_CONFIRMATION_REQUIRED",
+          "FORMAL_STATISTICAL_METHOD_NOT_APPROVED"
+        ],
+        "archive_hash": "5ef045f1d4e8e3adcf277038020de4895ef2c1e2c9b5e198d060f4635deb55fd",
+        "review_hash": "1776b8be16eb40c601fe2cf78916a64c4a9c5b5e9653e7711ebd1e3f0d1dcac0",
+        "purpose": "FORMAL_OBSERVATION",
+        "source_profile": "S1_MODELED_DAILY"
+      }
+    },
+    {
+      "candidate_id": "CANDIDATE_002",
+      "strategy_id": "BS_f2696e294d1c5ae7899c5f7a8f04fcc14d7ddb509d03a358a428172aad089e17",
+      "archive_hash": "84fe15858e8f192c2b1e7a589158e08a7f3c1c84ffc3f941111aa9d7afce3595",
+      "review": {
+        "schema_version": "BOUNDED_STRATEGY_REVIEW_V1",
+        "strategy_id": "BS_f2696e294d1c5ae7899c5f7a8f04fcc14d7ddb509d03a358a428172aad089e17",
+        "archive_hash": "84fe15858e8f192c2b1e7a589158e08a7f3c1c84ffc3f941111aa9d7afce3595",
+        "source_profile": "S1_MODELED_DAILY",
+        "review_state": "EXPLORATORY_REVIEW_ONLY",
+        "qualification": "BLOCKED",
+        "strategy_qualified": false,
+        "current_rule_executable": true,
+        "historical_account_state": "COMPLETE",
+        "metrics": {
+          "initial_cash": 1000000.0,
+          "ending_equity": 1142759.5578,
+          "net_return": 0.14275955780000005,
+          "max_drawdown": 0.06709955307104136,
+          "total_fees": 24544.7422,
+          "dividend_tax_withheld": 0.0,
+          "trade_count": 85,
+          "account_days": 118,
+          "account_gain_before_recorded_costs": 167304.30000000008
+        },
+        "diagnostic": {
+          "schema_version": "RESEARCH_DIAGNOSTICS_V1",
+          "trial_id": "CANDIDATE_002",
+          "result_hash": "6e68a1f1bca5540e8d927a32498154600cf1cbd18c72912b57e19a6da6e13dff",
+          "account_state": "COMPLETE",
+          "metrics": {
+            "initial_cash": 1000000.0,
+            "ending_equity": 1142759.5578,
+            "net_return": 0.14275955780000005,
+            "max_drawdown": 0.06709955307104136,
+            "total_fees": 24544.7422,
+            "dividend_tax_withheld": 0.0,
+            "trade_count": 85,
+            "account_days": 118,
+            "account_gain_before_recorded_costs": 167304.30000000008
+          },
+          "reason_codes": [
+            "EXECUTION_FILTERS_OBSERVED",
+            "LIMITED_SAMPLE",
+            "INDEPENDENT_CONFIRMATION_REQUIRED"
+          ],
+          "benchmark": {
+            "status": "NOT_RUN"
+          },
+          "evidence_paths": [
+            "chain.issues",
+            "chain.independent_account_checks",
+            "chain.execution_assumptions",
+            "chain.trades",
+            "chain.orders",
+            "chain.corporate_account",
+            "decision_state_rejections"
+          ],
+          "qualification": "NOT_ASSESSED",
+          "execution_authorization_granted": false,
+          "limitations": [
+            "历史发布时间按既有假设处理，未取得严格历史资格。",
+            "费用加回只解释原成交路径，不代表另一种成本下可实现的账户。",
+            "样本提示是描述性规则，不能代替独立统计确认。"
+          ],
+          "diagnostic_hash": "a0f21c02697956ded246acce25c0c8f7cba72a27e7bf8fd3fb628556ec5912ba"
+        },
+        "reason_codes": [
+          "EXECUTION_FILTERS_OBSERVED",
+          "LIMITED_SAMPLE",
+          "INDEPENDENT_CONFIRMATION_REQUIRED",
+          "FORMAL_STATISTICAL_METHOD_NOT_APPROVED"
+        ],
+        "assessment": {
+          "economic": "本次历史探索的净收益和回撤仅描述已见样本，不证明未来有效。",
+          "sample": "账户天数和成交笔数不是独立样本数量，不能替代预登记统计检验。",
+          "execution": "账户证据已核对。",
+          "cost": "列出实际记录的费用；尚无独立成本压力复验，费用加回不等于重新回测。",
+          "independence": "本轮数据已经用于候选生成和比较；尚缺冻结后独立确认窗口与批准的统计方法。",
+          "publication": "历史发布时间仍按建模假设处理，不能据此宣称严格历史可得。"
+        },
+        "review_hash": "b74ad55306f519c0185aced4c0ae356cb6e6e6d54948af72977a84dbdc58faf0"
+      },
+      "engineering_admission": {
+        "allowed": true,
+        "strategy_qualified": false,
+        "reason_codes": [],
+        "archive_hash": "84fe15858e8f192c2b1e7a589158e08a7f3c1c84ffc3f941111aa9d7afce3595",
+        "review_hash": "b74ad55306f519c0185aced4c0ae356cb6e6e6d54948af72977a84dbdc58faf0",
+        "purpose": "ENGINEERING_OBSERVATION",
+        "source_profile": "S1_MODELED_DAILY"
+      },
+      "formal_admission": {
+        "allowed": false,
+        "strategy_qualified": false,
+        "reason_codes": [
+          "INDEPENDENT_CONFIRMATION_REQUIRED",
+          "FORMAL_STATISTICAL_METHOD_NOT_APPROVED"
+        ],
+        "archive_hash": "84fe15858e8f192c2b1e7a589158e08a7f3c1c84ffc3f941111aa9d7afce3595",
+        "review_hash": "b74ad55306f519c0185aced4c0ae356cb6e6e6d54948af72977a84dbdc58faf0",
+        "purpose": "FORMAL_OBSERVATION",
+        "source_profile": "S1_MODELED_DAILY"
+      }
+    },
+    {
+      "candidate_id": "CANDIDATE_003",
+      "strategy_id": "BS_d0d990fc441c78beaf9730d1063f6a461647ffbe2a78a0087e97fd2c01232ea8",
+      "archive_hash": "04f6bb19bf01192f6916f67f51eb4fdd5d98e48ac388f3339f723643aee9af88",
+      "review": {
+        "schema_version": "BOUNDED_STRATEGY_REVIEW_V1",
+        "strategy_id": "BS_d0d990fc441c78beaf9730d1063f6a461647ffbe2a78a0087e97fd2c01232ea8",
+        "archive_hash": "04f6bb19bf01192f6916f67f51eb4fdd5d98e48ac388f3339f723643aee9af88",
+        "source_profile": "S1_MODELED_DAILY",
+        "review_state": "EXPLORATORY_REVIEW_ONLY",
+        "qualification": "BLOCKED",
+        "strategy_qualified": false,
+        "current_rule_executable": true,
+        "historical_account_state": "COMPLETE",
+        "metrics": {
+          "initial_cash": 1000000.0,
+          "ending_equity": 976739.5993,
+          "net_return": -0.023260400700000017,
+          "max_drawdown": 0.05707257189999998,
+          "total_fees": 11106.0607,
+          "dividend_tax_withheld": 7004.219999999999,
+          "trade_count": 46,
+          "account_days": 118,
+          "account_gain_before_recorded_costs": -5150.119999999999
+        },
+        "diagnostic": {
+          "schema_version": "RESEARCH_DIAGNOSTICS_V1",
+          "trial_id": "CANDIDATE_003",
+          "result_hash": "70f467b0a1b5df3799401daf77fc3025afaee68d1aaf0dc7b315cf803f29d22e",
+          "account_state": "COMPLETE",
+          "metrics": {
+            "initial_cash": 1000000.0,
+            "ending_equity": 976739.5993,
+            "net_return": -0.023260400700000017,
+            "max_drawdown": 0.05707257189999998,
+            "total_fees": 11106.0607,
+            "dividend_tax_withheld": 7004.219999999999,
+            "trade_count": 46,
+            "account_days": 118,
+            "account_gain_before_recorded_costs": -5150.119999999999
+          },
+          "reason_codes": [
+            "EXECUTION_FILTERS_OBSERVED",
+            "EXPLORATORY_LOSS",
+            "LIMITED_SAMPLE",
+            "INDEPENDENT_CONFIRMATION_REQUIRED"
+          ],
+          "benchmark": {
+            "status": "NOT_RUN"
+          },
+          "evidence_paths": [
+            "chain.issues",
+            "chain.independent_account_checks",
+            "chain.execution_assumptions",
+            "chain.trades",
+            "chain.orders",
+            "chain.corporate_account",
+            "decision_state_rejections"
+          ],
+          "qualification": "NOT_ASSESSED",
+          "execution_authorization_granted": false,
+          "limitations": [
+            "历史发布时间按既有假设处理，未取得严格历史资格。",
+            "费用加回只解释原成交路径，不代表另一种成本下可实现的账户。",
+            "样本提示是描述性规则，不能代替独立统计确认。"
+          ],
+          "diagnostic_hash": "3d7cfb9175abca7ac43d84487cea2e6de1661573215996d69e779e361401f571"
+        },
+        "reason_codes": [
+          "EXECUTION_FILTERS_OBSERVED",
+          "EXPLORATORY_LOSS",
+          "LIMITED_SAMPLE",
+          "INDEPENDENT_CONFIRMATION_REQUIRED",
+          "FORMAL_STATISTICAL_METHOD_NOT_APPROVED"
+        ],
+        "assessment": {
+          "economic": "本次历史探索的净收益和回撤仅描述已见样本，不证明未来有效。",
+          "sample": "账户天数和成交笔数不是独立样本数量，不能替代预登记统计检验。",
+          "execution": "账户证据已核对。",
+          "cost": "列出实际记录的费用；尚无独立成本压力复验，费用加回不等于重新回测。",
+          "independence": "本轮数据已经用于候选生成和比较；尚缺冻结后独立确认窗口与批准的统计方法。",
+          "publication": "历史发布时间仍按建模假设处理，不能据此宣称严格历史可得。"
+        },
+        "review_hash": "88b7b58d1ae962de5b2f11be949a7291725ce3e51412d88ce7b212db1efad5e8"
+      },
+      "engineering_admission": {
+        "allowed": true,
+        "strategy_qualified": false,
+        "reason_codes": [],
+        "archive_hash": "04f6bb19bf01192f6916f67f51eb4fdd5d98e48ac388f3339f723643aee9af88",
+        "review_hash": "88b7b58d1ae962de5b2f11be949a7291725ce3e51412d88ce7b212db1efad5e8",
+        "purpose": "ENGINEERING_OBSERVATION",
+        "source_profile": "S1_MODELED_DAILY"
+      },
+      "formal_admission": {
+        "allowed": false,
+        "strategy_qualified": false,
+        "reason_codes": [
+          "INDEPENDENT_CONFIRMATION_REQUIRED",
+          "FORMAL_STATISTICAL_METHOD_NOT_APPROVED"
+        ],
+        "archive_hash": "04f6bb19bf01192f6916f67f51eb4fdd5d98e48ac388f3339f723643aee9af88",
+        "review_hash": "88b7b58d1ae962de5b2f11be949a7291725ce3e51412d88ce7b212db1efad5e8",
+        "purpose": "FORMAL_OBSERVATION",
+        "source_profile": "S1_MODELED_DAILY"
+      }
+    },
+    {
+      "candidate_id": "CANDIDATE_004",
+      "strategy_id": "BS_d0585bac3f7da6975b744bba4b9822825776c4b02f534457139b89e24b518314",
+      "archive_hash": "7bc2d2e9b68292ed8bc4be5ab4b27a8de0b717f69223dfed5598d9d645447360",
+      "review": {
+        "schema_version": "BOUNDED_STRATEGY_REVIEW_V1",
+        "strategy_id": "BS_d0585bac3f7da6975b744bba4b9822825776c4b02f534457139b89e24b518314",
+        "archive_hash": "7bc2d2e9b68292ed8bc4be5ab4b27a8de0b717f69223dfed5598d9d645447360",
+        "source_profile": "S1_MODELED_DAILY",
+        "review_state": "EXPLORATORY_REVIEW_ONLY",
+        "qualification": "BLOCKED",
+        "strategy_qualified": false,
+        "current_rule_executable": true,
+        "historical_account_state": "COMPLETE",
+        "metrics": {
+          "initial_cash": 1000000.0,
+          "ending_equity": 1053097.6957,
+          "net_return": 0.0530976957,
+          "max_drawdown": 0.055416871945280784,
+          "total_fees": 25696.5443,
+          "dividend_tax_withheld": 0.0,
+          "trade_count": 98,
+          "account_days": 118,
+          "account_gain_before_recorded_costs": 78794.24000000005
+        },
+        "diagnostic": {
+          "schema_version": "RESEARCH_DIAGNOSTICS_V1",
+          "trial_id": "CANDIDATE_004",
+          "result_hash": "bc4b4b22d2e5ebe6c72207cb5dc337a0f6c41c57df7ae78ba94b8eec2dc88d02",
+          "account_state": "COMPLETE",
+          "metrics": {
+            "initial_cash": 1000000.0,
+            "ending_equity": 1053097.6957,
+            "net_return": 0.0530976957,
+            "max_drawdown": 0.055416871945280784,
+            "total_fees": 25696.5443,
+            "dividend_tax_withheld": 0.0,
+            "trade_count": 98,
+            "account_days": 118,
+            "account_gain_before_recorded_costs": 78794.24000000005
+          },
+          "reason_codes": [
+            "EXECUTION_FILTERS_OBSERVED",
+            "LIMITED_SAMPLE",
+            "INDEPENDENT_CONFIRMATION_REQUIRED"
+          ],
+          "benchmark": {
+            "status": "NOT_RUN"
+          },
+          "evidence_paths": [
+            "chain.issues",
+            "chain.independent_account_checks",
+            "chain.execution_assumptions",
+            "chain.trades",
+            "chain.orders",
+            "chain.corporate_account",
+            "decision_state_rejections"
+          ],
+          "qualification": "NOT_ASSESSED",
+          "execution_authorization_granted": false,
+          "limitations": [
+            "历史发布时间按既有假设处理，未取得严格历史资格。",
+            "费用加回只解释原成交路径，不代表另一种成本下可实现的账户。",
+            "样本提示是描述性规则，不能代替独立统计确认。"
+          ],
+          "diagnostic_hash": "6eec7cf9ce7c8724f3eaa6d7e601b91b8594ebfae0190e1fd63d350a2ff30e34"
+        },
+        "reason_codes": [
+          "EXECUTION_FILTERS_OBSERVED",
+          "LIMITED_SAMPLE",
+          "INDEPENDENT_CONFIRMATION_REQUIRED",
+          "FORMAL_STATISTICAL_METHOD_NOT_APPROVED"
+        ],
+        "assessment": {
+          "economic": "本次历史探索的净收益和回撤仅描述已见样本，不证明未来有效。",
+          "sample": "账户天数和成交笔数不是独立样本数量，不能替代预登记统计检验。",
+          "execution": "账户证据已核对。",
+          "cost": "列出实际记录的费用；尚无独立成本压力复验，费用加回不等于重新回测。",
+          "independence": "本轮数据已经用于候选生成和比较；尚缺冻结后独立确认窗口与批准的统计方法。",
+          "publication": "历史发布时间仍按建模假设处理，不能据此宣称严格历史可得。"
+        },
+        "review_hash": "77244416d1e07fa6ab1df36fd6f80df4b63b45b06adfe0dc51a910a0ce4f21eb"
+      },
+      "engineering_admission": {
+        "allowed": true,
+        "strategy_qualified": false,
+        "reason_codes": [],
+        "archive_hash": "7bc2d2e9b68292ed8bc4be5ab4b27a8de0b717f69223dfed5598d9d645447360",
+        "review_hash": "77244416d1e07fa6ab1df36fd6f80df4b63b45b06adfe0dc51a910a0ce4f21eb",
+        "purpose": "ENGINEERING_OBSERVATION",
+        "source_profile": "S1_MODELED_DAILY"
+      },
+      "formal_admission": {
+        "allowed": false,
+        "strategy_qualified": false,
+        "reason_codes": [
+          "INDEPENDENT_CONFIRMATION_REQUIRED",
+          "FORMAL_STATISTICAL_METHOD_NOT_APPROVED"
+        ],
+        "archive_hash": "7bc2d2e9b68292ed8bc4be5ab4b27a8de0b717f69223dfed5598d9d645447360",
+        "review_hash": "77244416d1e07fa6ab1df36fd6f80df4b63b45b06adfe0dc51a910a0ce4f21eb",
+        "purpose": "FORMAL_OBSERVATION",
+        "source_profile": "S1_MODELED_DAILY"
+      }
+    },
+    {
+      "candidate_id": "CANDIDATE_005",
+      "strategy_id": "BS_7f1a9044e7630124f4ef29f0f3a2f5bebc35c24cc9841005288123a4274e9ccc",
+      "archive_hash": "1693ffb46c91a4687775e0a8b8094b84d159a978d16da9bef4beb80205589271",
+      "review": {
+        "schema_version": "BOUNDED_STRATEGY_REVIEW_V1",
+        "strategy_id": "BS_7f1a9044e7630124f4ef29f0f3a2f5bebc35c24cc9841005288123a4274e9ccc",
+        "archive_hash": "1693ffb46c91a4687775e0a8b8094b84d159a978d16da9bef4beb80205589271",
+        "source_profile": "S1_MODELED_DAILY",
+        "review_state": "EXPLORATORY_REVIEW_ONLY",
+        "qualification": "BLOCKED",
+        "strategy_qualified": false,
+        "current_rule_executable": true,
+        "historical_account_state": "COMPLETE",
+        "metrics": {
+          "initial_cash": 1000000.0,
+          "ending_equity": 1154540.1242,
+          "net_return": 0.15454012419999996,
+          "max_drawdown": 0.11224451630914765,
+          "total_fees": 12104.8558,
+          "dividend_tax_withheld": 8461.560000000001,
+          "trade_count": 49,
+          "account_days": 118,
+          "account_gain_before_recorded_costs": 175106.53999999995
+        },
+        "diagnostic": {
+          "schema_version": "RESEARCH_DIAGNOSTICS_V1",
+          "trial_id": "CANDIDATE_005",
+          "result_hash": "6a5b7d0e61cac95a50abd46de843ce782dcc37f817b7713875478250103fd45c",
+          "account_state": "COMPLETE",
+          "metrics": {
+            "initial_cash": 1000000.0,
+            "ending_equity": 1154540.1242,
+            "net_return": 0.15454012419999996,
+            "max_drawdown": 0.11224451630914765,
+            "total_fees": 12104.8558,
+            "dividend_tax_withheld": 8461.560000000001,
+            "trade_count": 49,
+            "account_days": 118,
+            "account_gain_before_recorded_costs": 175106.53999999995
+          },
+          "reason_codes": [
+            "EXECUTION_FILTERS_OBSERVED",
+            "LIMITED_SAMPLE",
+            "INDEPENDENT_CONFIRMATION_REQUIRED"
+          ],
+          "benchmark": {
+            "status": "NOT_RUN"
+          },
+          "evidence_paths": [
+            "chain.issues",
+            "chain.independent_account_checks",
+            "chain.execution_assumptions",
+            "chain.trades",
+            "chain.orders",
+            "chain.corporate_account",
+            "decision_state_rejections"
+          ],
+          "qualification": "NOT_ASSESSED",
+          "execution_authorization_granted": false,
+          "limitations": [
+            "历史发布时间按既有假设处理，未取得严格历史资格。",
+            "费用加回只解释原成交路径，不代表另一种成本下可实现的账户。",
+            "样本提示是描述性规则，不能代替独立统计确认。"
+          ],
+          "diagnostic_hash": "b83598d21d2dfef9ea2abdfff88c3accbbf9a0ac5c6c62519554b59789510f97"
+        },
+        "reason_codes": [
+          "EXECUTION_FILTERS_OBSERVED",
+          "LIMITED_SAMPLE",
+          "INDEPENDENT_CONFIRMATION_REQUIRED",
+          "FORMAL_STATISTICAL_METHOD_NOT_APPROVED"
+        ],
+        "assessment": {
+          "economic": "本次历史探索的净收益和回撤仅描述已见样本，不证明未来有效。",
+          "sample": "账户天数和成交笔数不是独立样本数量，不能替代预登记统计检验。",
+          "execution": "账户证据已核对。",
+          "cost": "列出实际记录的费用；尚无独立成本压力复验，费用加回不等于重新回测。",
+          "independence": "本轮数据已经用于候选生成和比较；尚缺冻结后独立确认窗口与批准的统计方法。",
+          "publication": "历史发布时间仍按建模假设处理，不能据此宣称严格历史可得。"
+        },
+        "review_hash": "a3b4ac7296ef74a852331417b68069fe04b8371a95973601b89fbfaca2bf5d24"
+      },
+      "engineering_admission": {
+        "allowed": true,
+        "strategy_qualified": false,
+        "reason_codes": [],
+        "archive_hash": "1693ffb46c91a4687775e0a8b8094b84d159a978d16da9bef4beb80205589271",
+        "review_hash": "a3b4ac7296ef74a852331417b68069fe04b8371a95973601b89fbfaca2bf5d24",
+        "purpose": "ENGINEERING_OBSERVATION",
+        "source_profile": "S1_MODELED_DAILY"
+      },
+      "formal_admission": {
+        "allowed": false,
+        "strategy_qualified": false,
+        "reason_codes": [
+          "INDEPENDENT_CONFIRMATION_REQUIRED",
+          "FORMAL_STATISTICAL_METHOD_NOT_APPROVED"
+        ],
+        "archive_hash": "1693ffb46c91a4687775e0a8b8094b84d159a978d16da9bef4beb80205589271",
+        "review_hash": "a3b4ac7296ef74a852331417b68069fe04b8371a95973601b89fbfaca2bf5d24",
+        "purpose": "FORMAL_OBSERVATION",
+        "source_profile": "S1_MODELED_DAILY"
+      }
+    }
+  ]
+}
