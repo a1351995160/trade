@@ -24,7 +24,7 @@ POLICY = {'version': 'FORMAL_ASSESSMENT_V1', 'warmup_sessions': 60, 'account_ses
 
 # 绑定本轮实际执行的完整校准；调用方不能提交自编 p 值文件批准方法。
 # 新方法必须另作预登记和审核，不能替换本次失败记录。
-CALIBRATION_HASH = '1bfab2a52fb0ebe3d304962057332493a492518d975a223a225e53e28cbeeb02'
+CALIBRATION_HASH = '17e5543ed52a5fc88332bf752634b3d5d8f90762582b31330218f88054970879'
 
 
 def _load_method(path):
@@ -250,7 +250,7 @@ class FormalAssessmentServiceV1:
                              'charged_before_execution': True, 'cost': cost}
                     _put(self.path(batch, key + '_START.json'), start)
                     result_path = self.path(batch, key + '_RESULT.json')
-                    def guard():
+                    def guard(receipt=receipt):
                         _require(source_identity() == plan['source_identity'], 'SOURCE_CHANGED_DURING_RUN')
                         return receipt
                     if result_path.exists():
@@ -279,7 +279,7 @@ class FormalAssessmentServiceV1:
                           'limitations': [METHOD_SPEC['interpretation'], 'NO_BROKER_EXECUTION_AUTHORIZED']}
                 _put(self.path(batch, 'REPORT.json'), report)
                 return report
-            except (ValueError, KeyError, TypeError, OSError, PermissionError) as exc:
+            except (ValueError, KeyError, TypeError, OSError) as exc:
                 _put(self.path(batch, 'FAILED.json'), {'reason': type(exc).__name__ + ':' + str(exc),
                                                     'budget_refunded': False})
                 raise

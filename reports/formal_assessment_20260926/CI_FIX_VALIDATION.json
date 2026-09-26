@@ -1,0 +1,22 @@
+{
+  "source_identity": "f18e24bd8e5a47b8f61e705633a98b328f8ce4947b21440fa7e256dc1cefa7a2",
+  "initial_implementation": "8857d42821f7401d1242a1947560340b57ecd401",
+  "targeted_tests": {
+    "tests": 67,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "validation_input_equivalence_cases": 384,
+  "calibration_records_identical": 26624,
+  "summary_identical": true,
+  "real_cli_matches_saved_review": true,
+  "method_approved": false,
+  "qualified_strategies": 0,
+  "artifacts": {
+    "ci-fix.xml": "a29af1d35ddea98f798acb6df3fe15ec1317b0c961544febe93d6e1a31ad0cf2",
+    "CI_REPLAY_CALIBRATION_SUMMARY.json": "82a4dfbf570d7c3d0e023195865286e1cdd1b25e0c17687c6a8d7378a13610a1",
+    "REPLAY_EQUIVALENCE.json": "858f797586812a5f90c4aaac9ca6cd3d4d221bd5d704ef65366fe470deee55a4",
+    "REAL_STRATEGY_REVIEW_CI_REPLAY.json": "c3262fb518dafa8ba72efb43a6f10be2c68205aee452abfed5d136fe919ad7b3"
+  }
+}

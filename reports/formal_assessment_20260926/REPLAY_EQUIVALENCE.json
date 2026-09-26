@@ -1,0 +1,57 @@
+{
+  "schema_version": "FORMAL_CALIBRATION_CI_REPLAY_EQUIVALENCE_V1",
+  "recorded_at": "2026-09-26T06:17:00.257638+00:00",
+  "purpose_path": "E:\\llmwiki\\autonomous-strategy-research-v1\\formal-method-calibration-20260926-ci-replay-purpose.json",
+  "purpose_sha256": "5cff689567036f6a4684787c1292b63719a660e8f433787221fa19bcfa9853e0",
+  "old": {
+    "root": "E:\\llmwiki\\autonomous-strategy-research-v1\\formal-method-calibration-20260926",
+    "sources": {
+      "src/chanlun_trader/research_factory/formal_statistics_v1.py": "f5130d260de712fe0743c0251f811bf3d9945113ff7fbfc7dd702d9fcf1404da",
+      "src/chanlun_trader/research_factory/holm_family_v1.py": "ed87bf4c6d64686ad83545338fc238d82763a548e76bee54761b1d42e13ea513",
+      "src/chanlun_trader/research_factory/common.py": "0f68c492ad05e3b8c76adb16d54c8bc18f0d5243fc954634e43f946b0523f911",
+      "scripts/calibrate_formal_statistics_v1.py": "33514064dad9708be6a26a315aae750d62351667ece27348f149cec904c7c29a",
+      "tests/research_factory/test_formal_statistics_v1.py": "0602ab1c103428e50fdd0d687ac67b628e4ab02cf3e4e1076b354c11b68f67a0"
+    },
+    "sources_hash": "48f371b6e026afe5c3ded31a5e79383db12cfdad00429a457e384c911b682231",
+    "full_report_sha256": "9d30940e3f7b0404d6ce54307ddee75f4d766857b597a087dee2fc4561f3d4ae",
+    "full_report_payload_hash": "3815a3f2cd37cd2c1877ac46ca0be86d440fc49c1ef3c863c2947527000167bf",
+    "verified_report_hash": "1bfab2a52fb0ebe3d304962057332493a492518d975a223a225e53e28cbeeb02",
+    "records_hash": "cb122871d4a0b4a94ba4cd1a4b12e94f3abc32f975b934f0c9cfeafc06abc7d4",
+    "summary_hash": "c304d52bf8ff99e0fd50506e8b5e399b9e60e64b05763eddf1b1d4b4035a5c63",
+    "preregistration_hash": "d3e9c887012f57c49f7786e7db60357013d9714a76926893e981b8c95bd96f05"
+  },
+  "new": {
+    "root": "E:\\llmwiki\\autonomous-strategy-research-v1\\formal-method-calibration-20260926-ci-replay",
+    "sources": {
+      "src/chanlun_trader/research_factory/formal_statistics_v1.py": "ea4941b7a921d5fa49a616543b32e0ec14152c546a225bcfaca3bfeba97a7c6a",
+      "src/chanlun_trader/research_factory/holm_family_v1.py": "ed87bf4c6d64686ad83545338fc238d82763a548e76bee54761b1d42e13ea513",
+      "src/chanlun_trader/research_factory/common.py": "0f68c492ad05e3b8c76adb16d54c8bc18f0d5243fc954634e43f946b0523f911",
+      "scripts/calibrate_formal_statistics_v1.py": "33514064dad9708be6a26a315aae750d62351667ece27348f149cec904c7c29a",
+      "tests/research_factory/test_formal_statistics_v1.py": "0602ab1c103428e50fdd0d687ac67b628e4ab02cf3e4e1076b354c11b68f67a0"
+    },
+    "sources_hash": "92b4dc834bd0e8b1f8f20e934e59debe32cf5b1f9d404b8d4d89ba1d299c9408",
+    "full_report_sha256": "c5df675c6e2bce45a6933d4296f6ab2dee435ef75b3615d90a3e58bccc602af8",
+    "full_report_payload_hash": "83f7f282e57878befc373d3ab139e7eed8815fab7cfa1c6bbcc86f42d61876ce",
+    "verified_report_hash": "17e5543ed52a5fc88332bf752634b3d5d8f90762582b31330218f88054970879",
+    "records_hash": "cb122871d4a0b4a94ba4cd1a4b12e94f3abc32f975b934f0c9cfeafc06abc7d4",
+    "summary_hash": "c304d52bf8ff99e0fd50506e8b5e399b9e60e64b05763eddf1b1d4b4035a5c63",
+    "preregistration_hash": "e4a6f407691e08ec498d9e5178f4f443834c4219f686f16452abb2289a98aae9"
+  },
+  "method_spec_identical": true,
+  "method_hash": "21c288b76dd2c03cac7618327478efbb364d98d998fda006ad80e993bfe368a8",
+  "calibration_spec_identical": true,
+  "record_count": 26624,
+  "every_record_exactly_equal": true,
+  "mismatched_record_indices": [],
+  "summary_exactly_equal": true,
+  "only_changed_source": [
+    "src/chanlun_trader/research_factory/formal_statistics_v1.py"
+  ],
+  "old_directory_all_files_unchanged": true,
+  "repository_original_summary_unchanged": true,
+  "method_approved": false,
+  "real_strategy_qualification": false,
+  "test_result": "15 passed in 2.13s; exit 0; existing pytest Temp symlink cleanup emitted WinError5 at exit",
+  "wall_seconds_new": 298.0487280999987,
+  "_integrity": "13fa29d8a6059a7b081e76853eed16c136ab5ec2be0be13f349be4f4bc3f8e70"
+}
