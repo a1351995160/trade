@@ -46,7 +46,7 @@ flowchart TD
 
 仓库保留 `reports/formal_assessment_20260926/CALIBRATION_SUMMARY.json` 和数值对照。完整记录、预登记和运行来源保存在 `E:/llmwiki/autonomous-strategy-research-v1/formal-method-calibration-20260926`；摘要附完整文件哈希。摘要本身不能用于批准方法，运行入口要求完整报告并复核所有记录和来源。
 
-CI 静态检查随后要求拆分置信区间入参的复合校验。修复没有改变方法或种子，新源码在 `formal-method-calibration-20260926-ci-replay` 完整重放，26,624 条记录与原记录逐条相同、汇总相同，仍然失败。当前入口绑定该重放报告；原报告未覆盖。仓库新增 `CI_REPLAY_CALIBRATION_SUMMARY.json`、`REPLAY_EQUIVALENCE.json` 记录两次来源和等价对照。配置中的 `calibration_path` 应指向新目录的 `CALIBRATION.json`。
+CI 静态检查随后要求拆分置信区间入参的复合校验。修复没有改变方法或种子，新源码在 `formal-method-calibration-20260926-ci-replay` 完整重放，26,624 条记录与原记录逐条相同、汇总相同，仍然失败。该修复版本绑定对应重放报告；原报告未覆盖。仓库新增 `CI_REPLAY_CALIBRATION_SUMMARY.json`、`REPLAY_EQUIVALENCE.json` 记录两次来源和等价对照。最终使用路径以下段为准。
 
 静态告警进一步定位到概率范围的链式比较后，又用明确的上下界布尔值和类型注解作等价改写。最终绑定目录为 `formal-method-calibration-20260926-ci-range-replay`，实际配置请使用此目录的 `CALIBRATION.json`。第三次完整重放与前两次所有记录及汇总均相同；新增 `CI_RANGE_REPLAY_CALIBRATION_SUMMARY.json`、`RANGE_REPLAY_EQUIVALENCE.json`。这些是同种子的确定性重算，不增加独立样本数量，前两次证据完整保留。
 
