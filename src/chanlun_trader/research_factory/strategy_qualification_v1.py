@@ -208,6 +208,13 @@ class BoundedStrategyArchiveV1:
                       'publication': '历史发布时间仍按建模假设处理，不能据此宣称严格历史可得。'}}
         if not executable:
             report['reason_codes'].append('CURRENT_RULE_NOT_EXECUTABLE')
+        from .formal_assessment_v1 import FormalAssessmentServiceV1
+        formal = FormalAssessmentServiceV1(self.root).assessment_for(strategy_id)
+        if formal is not None:
+            report['formal_assessment'] = formal
+            report['strategy_qualified'] = formal['strategy_qualified']
+            report['qualification'] = formal['decision']
+            report['reason_codes'] = formal['reason_codes']
         report['review_hash'] = stable_hash(report)
         return report
 
@@ -238,12 +245,22 @@ class BoundedStrategyArchiveV1:
             if report['historical_account_state'] != 'COMPLETE':
                 reasons.append(report['historical_account_state'])
             if purpose == 'FORMAL_OBSERVATION':
-                reasons.extend(['INDEPENDENT_CONFIRMATION_REQUIRED', 'FORMAL_STATISTICAL_METHOD_NOT_APPROVED'])
+                formal = report.get('formal_assessment')
+                if formal is None:
+                    reasons.extend(['INDEPENDENT_CONFIRMATION_REQUIRED', 'FORMAL_STATISTICAL_METHOD_NOT_APPROVED'])
+                elif not formal['strategy_qualified']:
+                    reasons.extend(formal['reason_codes'])
+                    reasons.append('FORMAL_ASSESSMENT_NOT_QUALIFIED')
+                else:
+                    from .bounded_research_v1 import source_identity
+                    if formal['source_identity'] != source_identity():
+                        reasons.append('FORMAL_EXECUTION_SOURCE_CHANGED')
                 if report['source_profile'] == 'SYNTHETIC':
                     reasons.append('SYNTHETIC_SOURCE_NOT_QUALIFIED')
-            return {'allowed': not reasons, 'strategy_qualified': False, 'reason_codes': reasons,
+            return {'allowed': not reasons, 'strategy_qualified': bool(not reasons and report['strategy_qualified']), 'reason_codes': reasons,
                     'archive_hash': report['archive_hash'], 'review_hash': report['review_hash'],
-                    'purpose': purpose, 'source_profile': report['source_profile']}
+                    'purpose': purpose, 'source_profile': report['source_profile'],
+                    **({'formal_assessment': report['formal_assessment']} if 'formal_assessment' in report else {})}
 
     def revoke(self, strategy_id, reason):
         _require(isinstance(reason, str) and bool(reason.strip()), 'REVOCATION_REASON_REQUIRED')

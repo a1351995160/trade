@@ -39,3 +39,18 @@ def test_config_path_is_confined_before_read(tmp_path, kind):
     paths = {'outside':outside,'parent':workspace/'..'/'outside.json','extension':workspace/'data.txt'}
     with pytest.raises(ValueError, match='PATH_OUTSIDE'):
         cli.load_config(paths[kind], workspace/'paper')
+
+
+def test_formal_cli_does_not_accept_caller_qualification(tmp_path, capsys):
+    config = tmp_path / 'formal.json'
+    config.write_text(json.dumps({'qualified': True}), encoding='utf-8')
+    assert cli.main(['formal-register', '--archive-root', str(tmp_path/'archives'),
+                     '--config', str(config)]) == 1
+    assert json.loads(capsys.readouterr().out)['status'] == 'BLOCKED'
+    assert not (tmp_path/'formal-assessment-authority-v1').exists()
+
+
+def test_formal_status_requires_existing_authority(tmp_path, capsys):
+    assert cli.main(['formal-status', '--archive-root', str(tmp_path/'archives'),
+                     '--batch-id', 'FA_' + '0'*64]) == 1
+    assert json.loads(capsys.readouterr().out)['status'] == 'BLOCKED'

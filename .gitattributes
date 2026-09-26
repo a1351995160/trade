@@ -1,0 +1,6 @@
+# Preserve the exact five source files bound by the 2026-09-26 calibration.
+/src/chanlun_trader/research_factory/formal_statistics_v1.py text eol=lf
+/scripts/calibrate_formal_statistics_v1.py text eol=lf
+/tests/research_factory/test_formal_statistics_v1.py text eol=lf
+/src/chanlun_trader/research_factory/common.py text eol=crlf
+/src/chanlun_trader/research_factory/holm_family_v1.py text eol=crlf
