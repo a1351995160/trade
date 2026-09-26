@@ -89,4 +89,3 @@ if __name__ == '__main__':
     parser.add_argument('--preregister-only', action='store_true')
     args = parser.parse_args()
     run(args.output, args.workers, preregister_only=args.preregister_only)
-

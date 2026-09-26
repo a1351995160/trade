@@ -27,7 +27,7 @@ POLICY = {'version': 'FORMAL_ASSESSMENT_V1', 'warmup_sessions': 60, 'account_ses
 # 新方法必须另作预登记和审核，不能替换本次失败记录。
 CALIBRATION_HASH = '9aa67aa7f480424cdf46f21725ab420fdc72f777f623478fe66ac6039543d6ec'
 # 只有完成本版预登记校准并核验完整报告后才填入，None 不允许准入。
-V2_CALIBRATION_HASH = '9509c920d5adcd26431e7717d8cf615c74894b9ea067c5e9071b3d2893abebc4'
+V2_CALIBRATION_HASH = '427c509ffa60f2ad7ca122a5fc519b7aa602eb15826d9421e159fb5ee1074e22'
 
 
 def _method(method_hash):

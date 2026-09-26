@@ -1,0 +1,149 @@
+{
+  "spec": {
+    "version": "FORMAL_STATISTICS_CALIBRATION_V2",
+    "method": {
+      "version": "FORMAL_STATISTICS_V2",
+      "sessions": 504,
+      "max_family": 5,
+      "groups": 8,
+      "group_sessions": 63,
+      "degrees_of_freedom": 7,
+      "statistic": "SQRT_8_TIMES_MEAN_GROUP_MEAN_OVER_SAMPLE_SD_GROUP_MEANS",
+      "null": "COMMON_EXPECTED_DAILY_NET_SIMPLE_EXCESS_RETURN_LE_ZERO",
+      "pvalue": "ONE_SIDED_STUDENT_T7_UPPER_TAIL",
+      "adjustment": "HOLM",
+      "alpha_budgets": [
+        0.025,
+        0.015,
+        0.01
+      ],
+      "test_alpha_fraction": 0.5,
+      "maximum_test_alpha": 0.05,
+      "constant_rule": "ALL_ZERO_P1_OTHER_ZERO_GROUP_VARIANCE_UNTESTABLE",
+      "assumptions": [
+        "COMMON_GROUP_EXPECTATION",
+        "APPROXIMATELY_INDEPENDENT_NORMAL_GROUP_MEANS"
+      ],
+      "interpretation": "CONDITIONAL_FINITE_DGP_VALIDATION_NOT_GENERAL_MARKET_GUARANTEE"
+    },
+    "replicates": 8192,
+    "family_size": 5,
+    "seed": 2026092602,
+    "burn_in": 1024,
+    "support": [
+      "IID",
+      "SKEW",
+      "AR_NEG03",
+      "AR03",
+      "AR06",
+      "MA10",
+      "COMMON_SHOCK",
+      "T5",
+      "GARCH",
+      "ZERO",
+      "NEGATIVE_MEAN",
+      "VOL_BREAK",
+      "PREDICTABLE_EXPOSURE",
+      "COST_DRAG"
+    ],
+    "stress": [
+      "AR09",
+      "T3",
+      "MEAN_BREAK",
+      "TREND"
+    ],
+    "families": [
+      "ALL_NULL",
+      "ONE_TRUE_NULL",
+      "THREE_TRUE_NULLS"
+    ],
+    "support_checks": 126,
+    "simultaneous_error": 0.05,
+    "power_simultaneous_error": 0.05,
+    "acceptance": "EVERY_SUPPORT_CP_UPPER_LE_SLOT_BUDGET_AND_BOTH_POWER_GATES",
+    "dgp": {
+      "IID": "NORMAL_0_1",
+      "SKEW": "(CHI_SQUARE_3-3)/SQRT_6",
+      "AR_NEG03": -0.3,
+      "AR03": 0.3,
+      "AR06": 0.6,
+      "AR09": 0.9,
+      "MA10": "SUM_LAST_10_NORMAL/SQRT_10",
+      "COMMON_SHOCK": "SQRT_.75_COMMON+SQRT_.25_PRIVATE",
+      "T5": "T5*SQRT_3/5",
+      "T3": "T3/SQRT_3",
+      "GARCH": {
+        "omega": 0.05,
+        "alpha": 0.05,
+        "beta": 0.9,
+        "initial_variance": 1.0
+      },
+      "MEAN_BREAK": "NORMAL+FIRST_HALF_.5_SECOND_HALF_MINUS_.5",
+      "TREND": "NORMAL+LINEAR_MINUS_.5_TO_.5",
+      "ZERO": "EXACT_ZERO",
+      "NEGATIVE_MEAN": {
+        "normal_mean": -0.05,
+        "sd": 1.0
+      },
+      "VOL_BREAK": {
+        "normal_mean": 0.0,
+        "first_half_sd": 0.5,
+        "second_half_sd": 2.0
+      },
+      "PREDICTABLE_EXPOSURE": {
+        "position": "0.25+0.75*I(previous_private_innovation>0)",
+        "innovation": "INDEPENDENT_NORMAL_0_1",
+        "initial_position": 0.25
+      },
+      "COST_DRAG": {
+        "position": "0.25+0.75*I(previous_private_innovation>0)",
+        "innovation": "INDEPENDENT_NORMAL_0_1",
+        "initial_position": 0.25,
+        "cost_per_absolute_position_change": 0.02,
+        "daily_holding_cost": 0.005
+      }
+    },
+    "mixed_alternative_daily_mean": 0.1259881576697424,
+    "power_iid_annual_sharpe": [
+      0.5,
+      1.0,
+      2.0,
+      4.0
+    ],
+    "power_target_member": 0,
+    "power_alternative": "ONLY_MEMBER_0_SHIFTED_OTHER_FOUR_NULL",
+    "power_gates": [
+      {
+        "slot": 1,
+        "sr": 2.0,
+        "minimum_cp_lower": 0.1
+      },
+      {
+        "slot": 1,
+        "sr": 4.0,
+        "minimum_cp_lower": 0.7
+      }
+    ],
+    "randomness": "SEED_SEQUENCE_MASTER_CONDITION_INDEX_REPLICATE_0_NO_REALIZATION_DEMEANING",
+    "source_hash_encoding": "UTF8_BYTES_WITH_CRLF_AND_CR_NORMALIZED_TO_LF",
+    "confidence": "SUPPORT_AND_POWER_EACH_SIMULTANEOUS_95_PERCENT_JOINT_AT_LEAST_90_PERCENT",
+    "scope": "FINITE_FIXED_DGP_CONDITIONAL_ONLY_NOT_REAL_ENGINE_OR_MARKET_VALIDITY"
+  },
+  "method_hash": "a4f8108d6c1e9f0c6bc211675d94a92a863ffb1b8daab773aff8ff50b18390c4",
+  "sources": {
+    "src/chanlun_trader/research_factory/formal_statistics_v2.py": "b8ead79c87fa399bfcb0cfb881fb7901522bad32c279e6a490140987fd5857cd",
+    "scripts/calibrate_formal_statistics_v2.py": "8d92fdc3de737be0431af2bdfc632a8e7abecc084fecefb512bbde2f58c79fd4",
+    "tests/research_factory/test_formal_statistics_v2.py": "b7d446013ede8dd06af0c0fac6a857ae907af52751339490751d8da220e4e0aa",
+    "src/chanlun_trader/research_factory/formal_statistics_v1.py": "0a28fd6dcf5de4e75866733d789fee06bd479dc876d36c30c37489877efabcbd",
+    "src/chanlun_trader/research_factory/holm_family_v1.py": "74d988789acb355e2e2ea7bfeabc878bf1894cd16f856a98a8ff7044f85ef0fa",
+    "src/chanlun_trader/research_factory/common.py": "c0fa95f20e69dbaba26e4d587b60887882ea6615ebc07680fb73fbd5856ae1fe",
+    "scripts/calibrate_formal_statistics_v1.py": "33514064dad9708be6a26a315aae750d62351667ece27348f149cec904c7c29a",
+    "tests/research_factory/test_formal_statistics_v1.py": "0602ab1c103428e50fdd0d687ac67b628e4ab02cf3e4e1076b354c11b68f67a0",
+    "src/chanlun_trader/research_factory/bounded_research_v1.py": "6d00461ac9088090ba7b928ddcbfb32851ae9c94ebb720d3173b46c7489c86e4",
+    "src/chanlun_trader/research_factory/mutation_boundary.py": "1fa0138cb102cc041ed4be8029417ce6a05362a9e70d29cc3ebea23689281b05",
+    "src/chanlun_trader/research_factory/exploration_governance.py": "8d35a62a551da122f52376a0aad630ceaaef455ae495a0935f725b41ab84f07a"
+  },
+  "recorded_at": "2026-09-26T07:46:52.371253+00:00",
+  "real_data_accessed": false,
+  "_integrity": "304552d5599ea8f34cb38eaed4103eca2fa1e178e191cec648805174d9ca885f"
+}

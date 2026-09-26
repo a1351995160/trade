@@ -2,7 +2,7 @@
         assert stats.t7_upper_tail(0)==.5
 &gt;       assert stats.t7_upper_tail(1.894578605061305)==pytest.approx(.05,abs=1e-12)
 E       assert 0.050000000002109767 == 0.05 ± 1.0e-12
-E         
+E
 E         comparison failed
 E         Obtained: 0.050000000002109767
 E         Expected: 0.05 ± 1.0e-12

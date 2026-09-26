@@ -1,0 +1,164 @@
+{
+  "purpose": "WHITESPACE_ONLY_EQUIVALENCE_REPLAY_NOT_NEW_INDEPENDENT_CALIBRATION",
+  "recorded_at": "2026-09-26T07:48:07.653064+00:00",
+  "old_directory": "E:\\llmwiki\\autonomous-strategy-research-v1\\formal-method-calibration-v2-20260926",
+  "new_directory": "E:\\llmwiki\\autonomous-strategy-research-v1\\formal-method-calibration-v2-20260926-format-replay",
+  "runner_path": "E:\\llmwiki\\autonomous-strategy-research-v1\\replay_formal_statistics_v2_format_equivalence.py",
+  "runner_sha256": "ccf8115fa22992f76651e852bdf5128a464b46ca269ade871a5fb10a96a9957b",
+  "changed_sources": [
+    "scripts/calibrate_formal_statistics_v2.py"
+  ],
+  "old_sources": {
+    "src/chanlun_trader/research_factory/formal_statistics_v2.py": "b8ead79c87fa399bfcb0cfb881fb7901522bad32c279e6a490140987fd5857cd",
+    "scripts/calibrate_formal_statistics_v2.py": "6d9aa8aed470c1a00aaaab187c3ea3b3a7565c8d82f5cba395159fbc784eb5eb",
+    "tests/research_factory/test_formal_statistics_v2.py": "b7d446013ede8dd06af0c0fac6a857ae907af52751339490751d8da220e4e0aa",
+    "src/chanlun_trader/research_factory/formal_statistics_v1.py": "0a28fd6dcf5de4e75866733d789fee06bd479dc876d36c30c37489877efabcbd",
+    "src/chanlun_trader/research_factory/holm_family_v1.py": "74d988789acb355e2e2ea7bfeabc878bf1894cd16f856a98a8ff7044f85ef0fa",
+    "src/chanlun_trader/research_factory/common.py": "c0fa95f20e69dbaba26e4d587b60887882ea6615ebc07680fb73fbd5856ae1fe",
+    "scripts/calibrate_formal_statistics_v1.py": "33514064dad9708be6a26a315aae750d62351667ece27348f149cec904c7c29a",
+    "tests/research_factory/test_formal_statistics_v1.py": "0602ab1c103428e50fdd0d687ac67b628e4ab02cf3e4e1076b354c11b68f67a0",
+    "src/chanlun_trader/research_factory/bounded_research_v1.py": "6d00461ac9088090ba7b928ddcbfb32851ae9c94ebb720d3173b46c7489c86e4",
+    "src/chanlun_trader/research_factory/mutation_boundary.py": "1fa0138cb102cc041ed4be8029417ce6a05362a9e70d29cc3ebea23689281b05",
+    "src/chanlun_trader/research_factory/exploration_governance.py": "8d35a62a551da122f52376a0aad630ceaaef455ae495a0935f725b41ab84f07a"
+  },
+  "new_sources": {
+    "src/chanlun_trader/research_factory/formal_statistics_v2.py": "b8ead79c87fa399bfcb0cfb881fb7901522bad32c279e6a490140987fd5857cd",
+    "scripts/calibrate_formal_statistics_v2.py": "8d92fdc3de737be0431af2bdfc632a8e7abecc084fecefb512bbde2f58c79fd4",
+    "tests/research_factory/test_formal_statistics_v2.py": "b7d446013ede8dd06af0c0fac6a857ae907af52751339490751d8da220e4e0aa",
+    "src/chanlun_trader/research_factory/formal_statistics_v1.py": "0a28fd6dcf5de4e75866733d789fee06bd479dc876d36c30c37489877efabcbd",
+    "src/chanlun_trader/research_factory/holm_family_v1.py": "74d988789acb355e2e2ea7bfeabc878bf1894cd16f856a98a8ff7044f85ef0fa",
+    "src/chanlun_trader/research_factory/common.py": "c0fa95f20e69dbaba26e4d587b60887882ea6615ebc07680fb73fbd5856ae1fe",
+    "scripts/calibrate_formal_statistics_v1.py": "33514064dad9708be6a26a315aae750d62351667ece27348f149cec904c7c29a",
+    "tests/research_factory/test_formal_statistics_v1.py": "0602ab1c103428e50fdd0d687ac67b628e4ab02cf3e4e1076b354c11b68f67a0",
+    "src/chanlun_trader/research_factory/bounded_research_v1.py": "6d00461ac9088090ba7b928ddcbfb32851ae9c94ebb720d3173b46c7489c86e4",
+    "src/chanlun_trader/research_factory/mutation_boundary.py": "1fa0138cb102cc041ed4be8029417ce6a05362a9e70d29cc3ebea23689281b05",
+    "src/chanlun_trader/research_factory/exploration_governance.py": "8d35a62a551da122f52376a0aad630ceaaef455ae495a0935f725b41ab84f07a"
+  },
+  "script_ast_identical": true,
+  "spec_seed_design_identical": true,
+  "added_independent_samples": 0,
+  "old_inventory_before": {
+    "AR03.json": "379b98157902960b6e97fae0d1055b8aba4d2a55d32c6eba764b0ecbe375cc7d",
+    "AR06.json": "e486a58628a4e2e5930051dbadc74fca7ea8d972c803b753b4e6aa975dfa9b3a",
+    "AR09.json": "2d16714d1ed1766d1c96e4a344280849e03dc215168cf8f7e9de0f9087653811",
+    "AR_NEG03.json": "16aa00b6ecf26153d4c737f0a02929e9cb917e5aaa7a36d30ccdcf9dd2fca30a",
+    "CALIBRATION.json": "ca19570361953c3c22561071d0386e228c74934168c20dc216448850b95e21b8",
+    "calibration.mutation.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "COMMON_SHOCK.json": "a86ce1826ac299713fc2e4a1f2095719ef3d238e58ec2266826d530dc59a1b72",
+    "COST_DRAG.json": "dcff0cab0e1dbe7fd225662d56337460489c347432bd20e7fa1f9b6d32655ed5",
+    "GARCH.json": "ea8febcedc50327adc0337cdf691a003bb051a87db14955bf768face04ae44db",
+    "IID.json": "51df36df285e56d30d779684e956b5a0521aa31b4cba8e272c8682e7125edfca",
+    "MA10.json": "614b3c8ae09908113aeacde5158e61fc90066bf1b893e6ba52496dff9acd839a",
+    "MEAN_BREAK.json": "67fff84b6fa18732e7abc365545fe95a8a8b3a34f33ded2e98fb7c1dec84b675",
+    "NEGATIVE_MEAN.json": "cc266841aa2d516139ebc2e480993eeef8377ed423a0a3eb54eb3e97236b5eb9",
+    "PREDICTABLE_EXPOSURE.json": "04f308dd3dcdca265f1286b795cec42d6c721782bdea85e56cb221b140d08ae7",
+    "PREREGISTRATION.json": "3264ade72dafcda39475aba8854128774287810b73f180fc2856b46889fa198d",
+    "SKEW.json": "931627df3b5e6279fe420fada9337619644d2dcf807a59532e164450153c01ea",
+    "T3.json": "919901401ac7a1ba55f915ebebb5c693dd6c895a366e4a69ab888d1214e2e605",
+    "T5.json": "eee090937d6c97f5712ed7b060e7391692b073709c4fc2079c0f1403fbf5d4b4",
+    "TREND.json": "1a5a39f23c8f60bf6c6d9b1bed9a0f0a8106484a4e29e6f5375b6ebd33b6fffd",
+    "VOL_BREAK.json": "81714399442fd35f90c1874266ba54c573f66a19a01c6b626104d73c47746cdf",
+    "ZERO.json": "c9f4f15aa4011e3d653a26ca31af9b14cdfda61308ce6bc4058af5162bcd1eb8"
+  },
+  "conditions": [
+    {
+      "condition": "SKEW",
+      "records_replayed": 8192,
+      "records_hash": "de81f56431fd4107bfe0abb548463fc28193976360c79bae620bcdad3a8f7afe"
+    },
+    {
+      "condition": "IID",
+      "records_replayed": 8192,
+      "records_hash": "aca0bfa4a1aa9c7cbdc1f9fe4e0968b43564fbe7863feaa26a64f08e8d86bfc3"
+    },
+    {
+      "condition": "MA10",
+      "records_replayed": 8192,
+      "records_hash": "2160e450a4bb75f3cf4fced7c3ffcce2e7d9ee9378badcedecf1afc10b0c97c9"
+    },
+    {
+      "condition": "AR_NEG03",
+      "records_replayed": 8192,
+      "records_hash": "72790785ea0ebd0ed705dbb34d57fbc1dfc09ee610c92e3f93168f0141ff7fe1"
+    },
+    {
+      "condition": "AR03",
+      "records_replayed": 8192,
+      "records_hash": "c97b5721595d041a63150bea957d02e24d3d130b887a9fd3baf04c85bc8abcc4"
+    },
+    {
+      "condition": "COMMON_SHOCK",
+      "records_replayed": 8192,
+      "records_hash": "1bf24089bab3cc09d20e66f5c26c246d52a50470e24bd2bb43ef0f716347cf7b"
+    },
+    {
+      "condition": "AR06",
+      "records_replayed": 8192,
+      "records_hash": "5ef8a9aa00ea6b3ea77de46a55920f3bc1dfd2759c9a5a93f0a3a3503fcee602"
+    },
+    {
+      "condition": "T5",
+      "records_replayed": 8192,
+      "records_hash": "94cd6d189383de00f72ba85ebca0b714b888800e44a8e0b16b30a03e56cfd1bb"
+    },
+    {
+      "condition": "ZERO",
+      "records_replayed": 8192,
+      "records_hash": "09fe023bd627cfec0021e383fea6fd7aae2682ce20f770af320ea14d0a65bff2"
+    },
+    {
+      "condition": "NEGATIVE_MEAN",
+      "records_replayed": 8192,
+      "records_hash": "385c21ddcbd5a1d2297555e3b30593ee87c519199db3da36e62f0e8dd78f7e9a"
+    },
+    {
+      "condition": "VOL_BREAK",
+      "records_replayed": 8192,
+      "records_hash": "055086079fef31a08c355a5221085ba1d07977b4dc13fa368788a0361372c49c"
+    },
+    {
+      "condition": "PREDICTABLE_EXPOSURE",
+      "records_replayed": 8192,
+      "records_hash": "a3a0427618ccacb5efc60702352cf275c8d3419471c4611e1eaa825c8acd146e"
+    },
+    {
+      "condition": "COST_DRAG",
+      "records_replayed": 8192,
+      "records_hash": "60bb453d9dbfdd437005729ab223f91e41acd8ca27285bf4646fe36ca2167327"
+    },
+    {
+      "condition": "T3",
+      "records_replayed": 8192,
+      "records_hash": "d59adcca8dd44eab10d2a1f2dbd7ccf6cdf5f4fed5ad32bbb160ef4159d85003"
+    },
+    {
+      "condition": "MEAN_BREAK",
+      "records_replayed": 8192,
+      "records_hash": "d69d65158ab1c3b57c9cd90f6269d209d284b897feba88676d46c7be574c2ac6"
+    },
+    {
+      "condition": "GARCH",
+      "records_replayed": 8192,
+      "records_hash": "0a96216cbbab73f5dfb1b9e37c9cfac6c9131537c579e633bd49ef164afab5e8"
+    },
+    {
+      "condition": "TREND",
+      "records_replayed": 8192,
+      "records_hash": "ec71d777842749d99340804c5f6d9cb1a2a7002670450c3fad98b8cbed642c26"
+    },
+    {
+      "condition": "AR09",
+      "records_replayed": 8192,
+      "records_hash": "0fa0e4fe4102e719766cab3c1d340b83ae9e4dbb09e58307d8a296bf522ad9f7"
+    }
+  ],
+  "records_identical": true,
+  "summary_identical": true,
+  "old_directory_unchanged": true,
+  "sources_unchanged_during_replay": true,
+  "records_replayed": 147456,
+  "verified_report_hash": "427c509ffa60f2ad7ca122a5fc519b7aa602eb15826d9421e159fb5ee1074e22",
+  "calibration_file_sha256": "a0bd9e93e54b06ab83a955750a50f37a671c91bccae09e92f4cfb439f2ff126f",
+  "elapsed_seconds": 621.9522499000013,
+  "_integrity": "d037b060d3a740ab62d972fe667007086be253a6746298d031357129eb09396f"
+}

@@ -50,9 +50,13 @@ flowchart LR
 
 全部支持项中最接近预算的是第三批次MA(10)全零假设场景：同时上界0.9255%，仍低于1%预算。两项功效：强度2识别率23.68%、下界22.76%；强度4识别率88.82%、下界88.12%，分别超过10%和70%的预定门槛。这些是合成过程的识别率，不是市场策略成功概率。
 
+域外场景没有被删除：例如AR(0.9)第一批次全零假设的误判率约1.98%，上界约2.55%，高于2.5%预算，不能按支持范围批准。均值突变、趋势等场景即使此次误判少，也不因此满足共同均值等条件。
+
 独立数值积分与t7实现最大绝对差约5.6e-16。项目CI指定的31个测试路径本地共811通过、23跳过、无失败/错误；跳过来自原有真实行情采样及Windows链接/隔离边界。初次窄测的两处测试基准问题已修复且保留记录，没有放宽断言。
 
 完整报告位于`E:/llmwiki/autonomous-strategy-research-v1/formal-method-calibration-v2-20260926/CALIBRATION.json`（约461MB）。仓库`reports/formal_statistics_v2_20260926/`保存预登记、摘要、环境、独立公式核对及JUnit。完整数据先按固定种子逐条重放，再固定报告身份；常规权威读取校验该完整身份而不重复生成全部模拟。未知或改动的报告不能获得同一身份。记录的生成/汇总计时不含持久化与最后完整重放，不能当成全程时长。
+
+CI发现脚本末尾空行和初次测试日志尾部空格后，进行了纯格式修正。因脚本属于冻结来源，在独立format-replay目录完整重生成147,456条记录并重算摘要，全部与原报告一致；脚本语法树不变，旧目录逐文件哈希不变，新增独立样本为0。最终来源绑定及文件SHA见`FORMAT_REPLAY_CALIBRATION_SUMMARY.json`，对照证明见`FORMAT_EQUIVALENCE.json`，原报告及失败测试证据保留。
 
 V2来源哈希明确归一化换行，避免跨平台签出改变身份；完整数值重放在记录的运行环境验证，不承诺任意NumPy版本之间逐位相同。
 
@@ -60,6 +64,6 @@ V2来源哈希明确归一化换行，避免跨平台签出改变身份；完整
 
 方法校准命令：`python scripts/calibrate_formal_statistics_v2.py --output <独立新目录> --workers 4`。`--preregister-only`只冻结来源。已有目录只能在完全相同来源下恢复；重复读取不是新增独立校准。不要为了试出好结果删除目录或改种子。
 
-统一`formal-review`配置中的`calibration_path`指向上述V2完整报告，其余候选档案配置不变。V1报告仍走V1验证器。真实数据准备评审的实际输出见`REAL_STRATEGY_REVIEW.json`：5个候选继续研究，正式合格0，确认预算消耗0。
+统一`formal-review`配置中的`calibration_path`指向最终绑定的`E:/llmwiki/autonomous-strategy-research-v1/formal-method-calibration-v2-20260926-format-replay/CALIBRATION.json`，其余候选档案配置不变。V1报告仍走V1验证器。真实数据准备评审的初次实际输出见`REAL_STRATEGY_REVIEW.json`，最终来源复核输出见`REAL_STRATEGY_REVIEW_FORMAT_REPLAY.json`：5个候选继续研究，正式合格0，确认预算消耗0。
 
 当前阶段是：**方法在固定场景通过 → 真实账户收益过程适用性审查与独立证据 → 策略评定 → 合格后Paper**。不要将此处第一步的通过直接写成策略有效。
