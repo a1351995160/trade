@@ -1,0 +1,168 @@
+{
+  "purpose": "S1_FIXED_51_PIT_PRICE_RESTART_DIAGNOSTIC",
+  "status": "PASSED_MODELED",
+  "s1_baseline_status": "NOT_PASSED",
+  "strict_source_qualification": {
+    "strict_pit_status": "BLOCKED",
+    "blockers": [
+      "TURN_HISTORICAL_PUBLICATION_UNVERIFIED",
+      "STATE_HISTORICAL_PUBLICATION_UNVERIFIED",
+      "DAILY_HISTORICAL_PUBLICATION_UNVERIFIED"
+    ],
+    "turn_snapshot_fetched_at_utc": "2026-09-25T12:11:40.743765+00:00",
+    "turn_historical_available_at_verified": false,
+    "turn_row_publication_verified": false,
+    "turn_rows": 400,
+    "daily_row_publication_verified": false,
+    "daily_rows": 400,
+    "historical_state_rows": 238,
+    "historical_state_lineages": [
+      "{\"all_stock\": \"baostock.query_all_stock\", \"history\": \"baostock.query_history_k_data_plus\", \"security_master\": \"baostock.query_stock_basic\"}"
+    ],
+    "modeled_available_at_is_source_evidence": false
+  },
+  "source_hashes": {
+    "daily_sha256": "63762647b9bbebf07f7ad768587a17eb351dc04247c760e0343ddae441ed9437",
+    "turn_sha256": "218e50a3c11b19fd8bbc1d07c55f37c92a983a5172bf84c52feceb744f8640f2",
+    "states_sha256": "53a6309a1c5bf6ba3862b0bec91c211b241dbbbf448f93c65c064e8e5e891b1d",
+    "historical_states_sha256": "b5025955c95c8de4b725b9dae5777bd483d028799d17c3252c1037226f88fc67",
+    "actions_sha256": "80f43348cd93f71297e48afba2cb25bdfeb75df5ff9f1de6f5fd2b86bb15c9c1",
+    "corporate_actions_sha256": "3b288d35d0097a6717d7ce0c2758822d3305a0782a6a0da27261464df4fa68cb",
+    "turn_manifest_sha256": "f7cf54e429a66f23f1fb0bcdbbbee2d93f231d322e43f067bf71a31eecb758db"
+  },
+  "public_reference_sha256": "426064a7b66cfddb22c3eb02c4a4ca7011a71bdd16a8a58dc2c15d3552d448a1",
+  "strategy_plan_id": "4fa5698d7dd4eae824792b1928fed38ef74c7f15e12d61a31179174a100d8a8e",
+  "input_identity": "d5b05a5c7d23b991178dcf7c65074d0dc4fe0fca4abce3e93add308e5dab3691",
+  "replay_identity": "d28ab2e27b31c1e63e589959bf94dee37c85b9a2f6b782866ebe4e805bd3d895",
+  "feature_mode": "CAUSAL_HFQ_CASH_DIVIDEND_ONLY",
+  "execution_and_valuation_mode": "RAW",
+  "price_evidence": {
+    "000001.SZ": [
+      {
+        "event_id": "000001.SZ:2023_ANNUAL_CASH_DIVIDEND",
+        "record_date": 20240613,
+        "ex_date": 20240614,
+        "raw_previous_close": 10.8,
+        "raw_ex_reference": 10.08,
+        "cash_per_share": 0.719,
+        "step_factor": 1.0714285714285714,
+        "cumulative_factor": 1.0714285714285714,
+        "source_published_at": "2024-06-06"
+      }
+    ],
+    "600000.SH": [
+      {
+        "event_id": "600000.SH:2023_ANNUAL_CASH_DIVIDEND",
+        "record_date": 20240717,
+        "ex_date": 20240718,
+        "raw_previous_close": 9.04,
+        "raw_ex_reference": 8.72,
+        "cash_per_share": 0.321,
+        "step_factor": 1.0366972477064218,
+        "cumulative_factor": 1.0366972477064218,
+        "source_published_at": "2024-07-11"
+      }
+    ]
+  },
+  "decision_changes_vs_raw_features": {
+    "000001.SZ": 2,
+    "600000.SH": 3
+  },
+  "account_dates": [
+    20240201,
+    20240731
+  ],
+  "account_days": 118,
+  "trade_count": 93,
+  "order_count": 106,
+  "independent_account_issues": [],
+  "account_reconciliation_sha256": "df3ad8691806aa1530a99cf48cc9c6052ca9bbb5916587ed923eee89c22a69bf",
+  "continuous_engine_sha256": "7f53d68c58cec0152b029a711466deb41a4de1e37817f2af3711c3441d3a1e5c",
+  "continuous_matches_public_chain": true,
+  "restart_checks": [
+    {
+      "interrupted_after_date": 20240717,
+      "checkpoint_event_index": 431,
+      "checkpoint_state_sha256": "5cdee97d4e39540624783f14040f10d34d85b32ee5f6583d5aca5d5f0d5cc5f5",
+      "prefix_replay_verified": true,
+      "economic_result_equal": true,
+      "chain_trade_dividend_equal": true
+    },
+    {
+      "interrupted_after_date": 20240718,
+      "checkpoint_event_index": 435,
+      "checkpoint_state_sha256": "3e1154d273931d5e136ce9d8f6f24ba2bd07e18baf4541d8dc76817ee1a79158",
+      "prefix_replay_verified": true,
+      "economic_result_equal": true,
+      "chain_trade_dividend_equal": true
+    }
+  ],
+  "cross_process_restart": {
+    "interrupted_after_date": 20240718,
+    "exit_code": 17,
+    "separate_process_resume": true,
+    "economic_result_equal": true,
+    "trade_count_equal": true,
+    "dividend_income_equal": true,
+    "dividend_tax_equal": true
+  },
+  "read_audit": [
+    {
+      "dataset": "parquet",
+      "path": "E:\\llmwiki\\autonomous-strategy-research-v1\\execution-data-v1\\baostock-account-v1\\DAILY.parquet",
+      "requested": [
+        20231009,
+        20240731
+      ],
+      "date_column": "date",
+      "physical_rows": 1020151,
+      "rows_materialized": 1020151,
+      "max_date_materialized": 20240731
+    },
+    {
+      "dataset": "parquet",
+      "path": "E:\\worktrees\\s1-trusted-baseline\\trade-system-contract-port-v1\\reports\\all_indicator_fixed_strategy_pilot_20260925\\BAOSTOCK_TURN.parquet",
+      "requested": [
+        20231009,
+        20240731
+      ],
+      "date_column": "date",
+      "physical_rows": 400,
+      "rows_materialized": 400,
+      "max_date_materialized": 20240731
+    },
+    {
+      "dataset": "parquet",
+      "path": "E:\\llmwiki\\autonomous-strategy-research-v1\\execution-data-v1\\baostock-account-v1\\STATES.parquet",
+      "requested": [
+        20240201,
+        20240731
+      ],
+      "date_column": "trade_date",
+      "physical_rows": 654546,
+      "rows_materialized": 654546,
+      "max_date_materialized": 20240731
+    },
+    {
+      "dataset": "parquet",
+      "path": "E:\\llmwiki\\autonomous-strategy-research-v1\\execution-data-v1\\materialized-v3\\HISTORICAL_POOL_AND_STATE.parquet",
+      "requested": [
+        20240131,
+        20240731
+      ],
+      "date_column": "trade_date",
+      "physical_rows": 660212,
+      "rows_materialized": 660212,
+      "max_date_materialized": 20240731
+    }
+  ],
+  "blockers": [],
+  "remaining_s1_work": [
+    "TURN_HISTORICAL_PUBLICATION_UNVERIFIED",
+    "STATE_HISTORICAL_PUBLICATION_UNVERIFIED",
+    "DAILY_HISTORICAL_PUBLICATION_UNVERIFIED",
+    "REAL_SUSPENSION_AND_MISSING_DATA_SCENARIOS_NOT_OBSERVED"
+  ],
+  "strategy_effectiveness": "NOT_ASSESSED",
+  "paper_eligibility": "BLOCKED"
+}
