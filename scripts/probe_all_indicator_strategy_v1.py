@@ -213,7 +213,7 @@ def run_chain(frame: pd.DataFrame, decisions: dict, definition: dict,
         max_holding_days=1000, mode="DAILY", feature_price_mode="raw",
         start_date=calendar[0], end_date=calendar[-1],
         enable_index_filter=False, index_filter_enabled=False,
-        strategy_hash=definition["catalog_sha256"], data_manifest_hash=source_hash,
+        strategy_hash=definition.get("rule_identity", definition["catalog_sha256"]), data_manifest_hash=source_hash,
         execution_model_version=("ALL_51_S1_INDIVIDUAL_DIVIDEND_V1" if corporate_events is not None
                                  else "ALL_51_PILOT_STATE_GATED_V1" if execution_states is not None
                                  else "ALL_51_PILOT_ENGINE_V2_NEXT_OPEN_V1"),
@@ -256,7 +256,8 @@ def run_chain(frame: pd.DataFrame, decisions: dict, definition: dict,
                 continue
             timestamp = pd.Timestamp(str(day)).tz_localize("Asia/Shanghai") + pd.Timedelta(hours=15, minutes=30)
             signals.append(Signal(
-                strategy_id=STRATEGY_ID, signal_id=f"{STRATEGY_ID}:{symbol}:{day}",
+                strategy_id=definition.get("execution_strategy_id", STRATEGY_ID),
+                signal_id=f"{definition.get('execution_strategy_id', STRATEGY_ID)}:{symbol}:{day}",
                 symbol=symbol, generated_at=timestamp,
                 direction=Side(item["decision_at_close"]),
                 metadata={"rising_votes": item["rising_votes"]},

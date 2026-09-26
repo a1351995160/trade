@@ -138,6 +138,12 @@ def backend_for(strategy,options=None):
     """按账户能力选后端；注册新候选不修改此处的策略名称列表。"""
     options=options or {}
     if strategy.requirements.asset=='A_SHARE':
+        if 'BOUNDED_INDICATOR_VOTE_V1' in strategy.requirements.capabilities:
+            from .bounded_candidate_v1 import BoundedCandidateAccountBackend
+            if set(options) != {'events'}:raise ValueError('BOUNDED_BACKEND_EVENTS_REQUIRED')
+            backend=BoundedCandidateAccountBackend(tuple(options['events']))
+            backend.check(strategy.requirements)
+            return backend
         from .stock_strategy_v1 import StockAccountBackend
         if options:raise ValueError('STOCK_BACKEND_OPTIONS_UNSUPPORTED')
         backend=StockAccountBackend()

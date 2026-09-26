@@ -1525,6 +1525,14 @@ class AutonomousResearchOrchestratorV2:
     CODE_IDENTITY = "AUTONOMOUS_RESEARCH_ORCHESTRATOR_V2"
     PROMPT_TEMPLATE_VERSION = "AUTONOMOUS_RESEARCH_ORCHESTRATOR_V2_PROMPT_V1"
 
+    @staticmethod
+    def run_bounded_exploration(root, *, loader, invoker, single_step=False):
+        """显式进入已授权的公共账户探索；不改变原正式研究状态或合成控制面许可。"""
+        from .bounded_research_v1 import BoundedResearchSessionV1
+        session = BoundedResearchSessionV1(root)
+        operation = session.tick if single_step else session.run
+        return operation(loader=loader, invoker=invoker)
+
     def __init__(self, root: str | Path = ".", *, objective_id: str = "RESEARCH_OBJECTIVE_SHORT_HORIZON_A_SHARE_V1", runtime: OrchestratorRuntimeV2 | None = None, ai_invoker: AIResearchBatchInvokerV2 | None = None, config: OrchestratorConfigV2 | None = None, crash_at: str | None = None):
         self.root = Path(root).resolve()
         self.objective_id = str(objective_id)
