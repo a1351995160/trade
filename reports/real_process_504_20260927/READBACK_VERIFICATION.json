@@ -1,0 +1,8 @@
+{
+  "cli_exit": 0,
+  "stdout": "{\"status\": \"HISTORICAL_PROCESS_RESEARCH_COMPLETED\", \"account_count\": 11, \"strategy_qualified\": false}\n",
+  "budget_hash_before": "009da20afec28eb602eb3141b842daf170fdff5378a4c38e297422bc95a3a993",
+  "budget_hash_after": "009da20afec28eb602eb3141b842daf170fdff5378a4c38e297422bc95a3a993",
+  "budget_unchanged": true,
+  "frozen_statistical_sources_unchanged": true
+}

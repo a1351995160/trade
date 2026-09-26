@@ -81,6 +81,8 @@ jobs:
           tests/research_factory/test_formal_statistics_v2.py
           tests/research_factory/test_formal_evidence_v1.py
           tests/research_factory/test_formal_account_backend_v1.py
+          tests/research_factory/test_historical_process_v1.py
+          tests/research_factory/test_historical_process_runner_v1.py
           tests/research_factory/test_formal_assessment_v1.py
           tests/research_factory/test_forward_snapshot_v1.py
           tests/research_factory/test_forward_paper_v1.py

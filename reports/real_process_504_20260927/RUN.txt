@@ -1,0 +1,12 @@
+{"account": "BENCHMARK_BASE", "status": "REPLAY_IDENTICAL", "days": 504}
+{"account": "CANDIDATE_001_BASE", "status": "REPLAY_IDENTICAL", "days": 504}
+{"account": "CANDIDATE_001_STRESS", "status": "REPLAY_IDENTICAL", "days": 504}
+{"account": "CANDIDATE_002_BASE", "status": "REPLAY_IDENTICAL", "days": 504}
+{"account": "CANDIDATE_002_STRESS", "status": "REPLAY_IDENTICAL", "days": 504}
+{"account": "CANDIDATE_003_BASE", "status": "REPLAY_IDENTICAL", "days": 504}
+{"account": "CANDIDATE_003_STRESS", "status": "REPLAY_IDENTICAL", "days": 504}
+{"account": "CANDIDATE_004_BASE", "status": "REPLAY_IDENTICAL", "days": 504}
+{"account": "CANDIDATE_004_STRESS", "status": "REPLAY_IDENTICAL", "days": 504}
+{"account": "CANDIDATE_005_BASE", "status": "REPLAY_IDENTICAL", "days": 504}
+{"account": "CANDIDATE_005_STRESS", "status": "REPLAY_IDENTICAL", "days": 504}
+{"status": "HISTORICAL_PROCESS_RESEARCH_COMPLETED", "account_count": 11, "strategy_qualified": false}

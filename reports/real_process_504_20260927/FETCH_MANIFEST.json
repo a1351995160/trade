@@ -1,0 +1,77 @@
+{
+  "finished_at_utc": "2026-09-26T11:35:47.341872+00:00",
+  "responses": [
+    {
+      "file": "TRADE_DATES.json",
+      "sha256": "87f146a3e741deadb598eefaadfe8cc0c09ec590be39e0ac9ee5dd94bd691f4c",
+      "api": "query_trade_dates",
+      "row_count": 943,
+      "error_code": "0",
+      "error_type": null
+    },
+    {
+      "file": "DAILY_000001.SZ.json",
+      "sha256": "d87fa6b1ca79c7ad68faedc209ef071dcf4e3fb4d569f422a12d7e27edceb47b",
+      "api": "query_history_k_data_plus",
+      "row_count": 624,
+      "error_code": "0",
+      "error_type": null
+    },
+    {
+      "file": "DIVIDEND_000001.SZ_2022.json",
+      "sha256": "9677b3014752079ff16bf5ab791086bc4ffaf333764bb090eddab5c00f5c737a",
+      "api": "query_dividend_data",
+      "row_count": 1,
+      "error_code": "0",
+      "error_type": null
+    },
+    {
+      "file": "DIVIDEND_000001.SZ_2023.json",
+      "sha256": "b1e4b361e636522781b0a418932f1d110f589d2c940aebdab9bf0bbcfd794553",
+      "api": "query_dividend_data",
+      "row_count": 1,
+      "error_code": "0",
+      "error_type": null
+    },
+    {
+      "file": "DIVIDEND_000001.SZ_2024.json",
+      "sha256": "566ed8afa9773709ee2045a6598267f419d4467aee576309ca11b464976b03bc",
+      "api": "query_dividend_data",
+      "row_count": 2,
+      "error_code": "0",
+      "error_type": null
+    },
+    {
+      "file": "DAILY_600000.SH.json",
+      "sha256": "05d4d725d011533498972b7429bc7ca6e77ec1e1cc7142cff8d0ee939f5b6eb8",
+      "api": "query_history_k_data_plus",
+      "row_count": 624,
+      "error_code": "0",
+      "error_type": null
+    },
+    {
+      "file": "DIVIDEND_600000.SH_2022.json",
+      "sha256": "efd747a0c8e6e6c2c5ba08478e8fef97a411be975ececac9cfffedbdec1e591d",
+      "api": "query_dividend_data",
+      "row_count": 1,
+      "error_code": "0",
+      "error_type": null
+    },
+    {
+      "file": "DIVIDEND_600000.SH_2023.json",
+      "sha256": "548e7126bd21aad121346c8f497e2ef3780385a01f9f8b1580f8256dbd0d7d31",
+      "api": "query_dividend_data",
+      "row_count": 1,
+      "error_code": "0",
+      "error_type": null
+    },
+    {
+      "file": "DIVIDEND_600000.SH_2024.json",
+      "sha256": "46d542a2b56766a16ea1565a10f777e3e5dccebb4007d5be9531a95cc89c8efe",
+      "api": "query_dividend_data",
+      "row_count": 1,
+      "error_code": "0",
+      "error_type": null
+    }
+  ]
+}

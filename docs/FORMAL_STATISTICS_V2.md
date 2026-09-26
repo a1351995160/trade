@@ -67,3 +67,5 @@ V2来源哈希明确归一化换行，避免跨平台签出改变身份；完整
 统一`formal-review`配置中的`calibration_path`指向最终绑定的`E:/llmwiki/autonomous-strategy-research-v1/formal-method-calibration-v2-20260926-format-replay/CALIBRATION.json`，其余候选档案配置不变。V1报告仍走V1验证器。真实数据准备评审的初次实际输出见`REAL_STRATEGY_REVIEW.json`，最终来源复核输出见`REAL_STRATEGY_REVIEW_FORMAT_REPLAY.json`：5个候选继续研究，正式合格0，确认预算消耗0。
 
 当前阶段是：**方法在固定场景通过 → 真实账户收益过程适用性审查与独立证据 → 策略评定 → 合格后Paper**。不要将此处第一步的通过直接写成策略有效。
+
+2026-09-27已完成[504日真实行情账户过程研究](HISTORICAL_PROCESS_RESEARCH_504.md)：5候选BASE/STRESS和持有基准共11账户核账、重放一致；探索性统计均无支持，4候选亏损，盈利候选在压力与分段表现上仍不足。该结果不扩展V2适用范围，不属于独立确认。

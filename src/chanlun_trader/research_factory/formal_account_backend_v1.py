@@ -275,9 +275,11 @@ class FormalAccountBackendV1:
                     raise ValueError(f"FORMAL_SELECTED_INDICATORS_NOT_READY:{symbol}:{day}")
                 if not isinstance(decision.intent, TargetWeight) or decision.intent.weight not in (0, 0.5):
                     raise ValueError("FORMAL_TARGET_WEIGHT_UNSUPPORTED")
-                decisions[symbol].append({"date": day, "decision_at_close": decision.reason,
-                                         "rising_votes": decision.metadata["rising_votes"],
-                                         "decision_at": observed_sessions[day]["close_at"]})
+                item = {"date": day, "decision_at_close": decision.reason,
+                        "rising_votes": decision.metadata["rising_votes"]}
+                if observed_sessions is not None:
+                    item["decision_at"] = observed_sessions[day]["close_at"]
+                decisions[symbol].append(item)
         guard()
         chain = run_chain(daily, decisions, strategy.definition,
             _frame_hash(daily), _frame_hash(bundle["turn"]), _frame_hash(bundle["states"]), stable_hash(events),

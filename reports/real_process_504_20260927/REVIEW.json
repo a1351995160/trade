@@ -1,0 +1,21 @@
+{
+  "mode": "autofix",
+  "base": "fe4816ebecb62737765d12f8e7443933a61734fc",
+  "plan": "docs/plans/2026-09-26-005-feat-real-process-research.md",
+  "review_kind": "LOCAL_SOURCE_AND_EVIDENCE_REVIEW",
+  "coverage": [
+    "historical_process_v1 mode/identity/reports",
+    "formal_account_backend observed compatibility",
+    "runner fixed window/source/action/calendar/whole-family and authority receipts",
+    "negative source tests and original formal entry tests",
+    "real eleven-account replay and readback budget check"
+  ],
+  "independent_agent_review": "UNAVAILABLE_USAGE_LIMIT_NO_RESULT",
+  "findings": [],
+  "residual_actionable_work": [],
+  "limits": [
+    "trusted local directory, not administrator forgery protection",
+    "runner refuses unsettled/failed consumed attempts; not a general recovery service",
+    "historical data and availability assumptions do not qualify formal confirmation"
+  ]
+}
