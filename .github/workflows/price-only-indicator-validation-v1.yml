@@ -78,6 +78,7 @@ jobs:
           tests/research_factory/test_research_diagnostics_v1.py
           tests/research_factory/test_strategy_qualification_v1.py
           tests/research_factory/test_formal_statistics_v1.py
+          tests/research_factory/test_formal_statistics_v2.py
           tests/research_factory/test_formal_evidence_v1.py
           tests/research_factory/test_formal_account_backend_v1.py
           tests/research_factory/test_formal_assessment_v1.py

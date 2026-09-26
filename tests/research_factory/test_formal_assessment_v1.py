@@ -200,7 +200,8 @@ def test_adjudication_does_not_confuse_rejection_missing_evidence_or_synthetic(h
     assert actual['decision']=='CONTINUE_RESEARCH' and 'COMPLETE_ACCOUNT_EVIDENCE_REQUIRED' in actual['reason_codes']
 
 
-def test_504_day_synthetic_capture_to_public_account_and_report(harness,monkeypatch):
+@pytest.mark.parametrize('method_version', [1, 2])
+def test_504_day_synthetic_capture_to_public_account_and_report(harness,monkeypatch,tmp_path,method_version):
     """真实证据组装与公共账户执行；档案和校准仍是明确的合成测试边界。"""
     from chanlun_trader.research_factory import formal_account_backend_v1 as account
     from chanlun_trader.research_factory.formal_evidence_v1 import CalendarEvidenceStoreV1, build_confirmation_bundle
@@ -217,7 +218,10 @@ def test_504_day_synthetic_capture_to_public_account_and_report(harness,monkeypa
         if hasattr(account,name):
             monkeypatch.setattr(formal,name,getattr(account,name))
     monkeypatch.setattr(formal,'build_confirmation_bundle',build_confirmation_bundle)
-    batch = register(ids)['batch_id']
+    updates = {}
+    if method_version == 2:
+        updates['calibration_path'] = synthetic_v2_calibration(monkeypatch, tmp_path)
+    batch = register(ids, **updates)['batch_id']
     store = SnapshotStoreV1(service.path(batch,'snapshots'))
     days = prepared['window']['calendar']
     close_ids, open_ids = [], []
@@ -251,6 +255,9 @@ def test_504_day_synthetic_capture_to_public_account_and_report(harness,monkeypa
         assert len(saved['daily_returns'])==504 and saved['chain']['issues']==[]
         assert saved['fills']
     assert service.report(batch)==result
+    if method_version == 2:
+        assert result['statistics']['method_hash'] == formal.statistics_v2.METHOD_HASH
+        assert 'REAL_RETURN_PROCESS_APPLICABILITY_NOT_ESTABLISHED' in result['decisions']['CANDIDATE_001']['reason_codes']
 
 
 @pytest.mark.parametrize('gate,verdict,reason', [
@@ -300,3 +307,93 @@ def test_readiness_reports_failed_method_without_consuming_budget(harness,monkey
     assert report['failed_support_checks']==1 and not report['strategy_qualified']
     assert report['next_action']=='REDESIGN_AND_PREREGISTER_STATISTICAL_METHOD'
     assert 'FORMAL_STATISTICAL_CALIBRATION_FAILED' in report['decisions'][ids[0]]['reason_codes']
+
+
+def synthetic_v2_calibration(monkeypatch, tmp_path):
+    calibration = {'method_hash': formal.statistics_v2.METHOD_HASH, 'method_approved': True,
+                   'summary': {'conditions': []}, 'profile': 'SYNTHETIC_TEST_ONLY'}
+    path = tmp_path / 'synthetic-v2-calibration.json'
+    formal._put(path, calibration)
+    monkeypatch.setattr(formal.statistics_v2, 'load_calibration', lambda path, **kwargs: deepcopy(calibration))
+    monkeypatch.setattr(formal, 'V2_CALIBRATION_HASH', stable_hash(calibration))
+    return path
+
+
+def test_v2_dispatch_and_cross_version_lifetime_budget(harness, monkeypatch, tmp_path):
+    service, family, register, run, _, _ = harness
+    first = register(family())
+    path = synthetic_v2_calibration(monkeypatch, tmp_path)
+    second = register(family(2), calibration_path=path)
+    assert (first['slot'], second['slot']) == (1, 2)
+    assert service.plan(first['batch_id'])['method_hash'] == formal.METHOD_HASH
+    assert service.plan(second['batch_id'])['method_hash'] == formal.statistics_v2.METHOD_HASH
+    result = run(second['batch_id'])
+    assert result['statistics']['method_hash'] == formal.statistics_v2.METHOD_HASH
+    assert result['statistics']['alpha'] == .015 / 2
+    assert not result['strategy_qualified']
+    assert service.report(second['batch_id']) == result
+    assert register(family(3))['slot'] == 3
+    with pytest.raises(ValueError, match='BUDGET_EXHAUSTED'):
+        register(family(4), calibration_path=path)
+
+
+def test_unknown_method_and_unpinned_v2_fail_before_registration(harness, monkeypatch, tmp_path):
+    service, family, register, _, _, _ = harness
+    ids = family()
+    path = tmp_path / 'unknown.json'
+    formal._put(path, {'method_hash': 'unknown'})
+    with pytest.raises(ValueError, match='UNKNOWN_METHOD'):
+        register(ids, calibration_path=path)
+    path = synthetic_v2_calibration(monkeypatch, tmp_path)
+    monkeypatch.setattr(formal, 'V2_CALIBRATION_HASH', None)
+    with pytest.raises(ValueError, match='UNREVIEWED_CALIBRATION'):
+        register(ids, calibration_path=path)
+    assert service._plans() == []
+
+
+def test_v2_loader_cannot_return_other_method_or_forged_approval(harness, monkeypatch, tmp_path):
+    _, family, register, _, _, _ = harness
+    ids = family()
+    path = synthetic_v2_calibration(monkeypatch, tmp_path)
+    monkeypatch.setattr(formal.statistics_v2, 'load_calibration', lambda path, **kwargs: {
+        'method_hash': formal.METHOD_HASH, 'method_approved': True})
+    with pytest.raises(ValueError, match='UNREVIEWED_CALIBRATION'):
+        register(ids, calibration_path=path)
+
+
+def test_calibration_success_does_not_mean_real_strategy_qualification(harness, monkeypatch, tmp_path):
+    service, family, _, _, _, _ = harness
+    ids = family()
+    path = synthetic_v2_calibration(monkeypatch, tmp_path)
+    monkeypatch.setattr(service.archive, 'review', lambda key: {
+        'historical_account_state': 'COMPLETE', 'metrics': {}})
+    report = service.readiness(strategy_ids=ids, calibration_path=path)
+    assert report['method_approved'] and not report['strategy_qualified']
+    assert report['method_hash'] == formal.statistics_v2.METHOD_HASH
+    assert report['real_process_applicability'] == 'NOT_ESTABLISHED'
+    assert report['confirmation_budget_consumed'] == 0 and service._plans() == []
+
+
+def test_v2_synthetic_calibration_cannot_open_paper_even_with_positive_statistics():
+    member = 'CANDIDATE_001'
+    plan = {'method_hash': formal.statistics_v2.METHOD_HASH, 'profile': 'REAL_OBSERVED',
+            'family': {member: {'strategy_id': 'unit-only', 'source_profile': 'REAL_OBSERVED'}}}
+    profitable = {'metrics': {'net_return': .2, 'max_drawdown': -.1},
+                  'daily_returns': [{'net_return': .001}] * 504}
+    decision = formal.adjudicate(plan=plan, evidence={'qualification_evidence_eligible': True},
+        results={member + '_BASE': profitable, member + '_STRESS': profitable,
+                 'BENCHMARK_BASE': {'daily_returns': [{'net_return': 0.}] * 504}},
+        statistics={'supported': {member: True}, 'adjusted_p': {member: .0001}},
+        method_approved=True)[member]
+    assert not decision['strategy_qualified']
+    assert decision['reason_codes'] == ['REAL_RETURN_PROCESS_APPLICABILITY_NOT_ESTABLISHED']
+
+
+def test_version_cannot_silently_reinterpret_frozen_plan(harness, monkeypatch, tmp_path):
+    service, family, register, _, _, _ = harness
+    path = synthetic_v2_calibration(monkeypatch, tmp_path)
+    batch = register(family(), calibration_path=path)['batch_id']
+    # 审核身份变化不能让已冻结计划悄悄使用另一份批准报告。
+    monkeypatch.setattr(formal, 'V2_CALIBRATION_HASH', formal.CALIBRATION_HASH)
+    with pytest.raises(ValueError, match='CALIBRATION_CHANGED'):
+        service.plan(batch)

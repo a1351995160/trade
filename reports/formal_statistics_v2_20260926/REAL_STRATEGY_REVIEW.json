@@ -1,0 +1,123 @@
+{
+  "version": "FORMAL_ASSESSMENT_V1",
+  "status": "FORMAL_READINESS_REVIEWED",
+  "strategy_qualified": false,
+  "decisions": {
+    "BS_7f1a9044e7630124f4ef29f0f3a2f5bebc35c24cc9841005288123a4274e9ccc": {
+      "decision": "CONTINUE_RESEARCH",
+      "strategy_qualified": false,
+      "archive_hash": "1693ffb46c91a4687775e0a8b8094b84d159a978d16da9bef4beb80205589271",
+      "reason_codes": [
+        "INDEPENDENT_CONFIRMATION_REQUIRED",
+        "INDEPENDENT_COST_STRESS_REQUIRED",
+        "REAL_RETURN_PROCESS_APPLICABILITY_NOT_ESTABLISHED"
+      ],
+      "historical_metrics": {
+        "initial_cash": 1000000.0,
+        "ending_equity": 1154540.1242,
+        "net_return": 0.15454012419999996,
+        "max_drawdown": 0.11224451630914765,
+        "total_fees": 12104.8558,
+        "dividend_tax_withheld": 8461.560000000001,
+        "trade_count": 49,
+        "account_days": 118,
+        "account_gain_before_recorded_costs": 175106.53999999995
+      }
+    },
+    "BS_90f4cac69ec8b8e645817a73ec1a5b7ee26da318d56ad59486a3e292a8babab1": {
+      "decision": "CONTINUE_RESEARCH",
+      "strategy_qualified": false,
+      "archive_hash": "5ef045f1d4e8e3adcf277038020de4895ef2c1e2c9b5e198d060f4635deb55fd",
+      "reason_codes": [
+        "INDEPENDENT_CONFIRMATION_REQUIRED",
+        "INDEPENDENT_COST_STRESS_REQUIRED",
+        "REAL_RETURN_PROCESS_APPLICABILITY_NOT_ESTABLISHED"
+      ],
+      "historical_metrics": {
+        "initial_cash": 1000000.0,
+        "ending_equity": 1086215.8025,
+        "net_return": 0.08621580249999994,
+        "max_drawdown": 0.03019872223081031,
+        "total_fees": 23389.4775,
+        "dividend_tax_withheld": 0.0,
+        "trade_count": 93,
+        "account_days": 118,
+        "account_gain_before_recorded_costs": 109605.28
+      }
+    },
+    "BS_d0585bac3f7da6975b744bba4b9822825776c4b02f534457139b89e24b518314": {
+      "decision": "CONTINUE_RESEARCH",
+      "strategy_qualified": false,
+      "archive_hash": "7bc2d2e9b68292ed8bc4be5ab4b27a8de0b717f69223dfed5598d9d645447360",
+      "reason_codes": [
+        "INDEPENDENT_CONFIRMATION_REQUIRED",
+        "INDEPENDENT_COST_STRESS_REQUIRED",
+        "REAL_RETURN_PROCESS_APPLICABILITY_NOT_ESTABLISHED"
+      ],
+      "historical_metrics": {
+        "initial_cash": 1000000.0,
+        "ending_equity": 1053097.6957,
+        "net_return": 0.0530976957,
+        "max_drawdown": 0.055416871945280784,
+        "total_fees": 25696.5443,
+        "dividend_tax_withheld": 0.0,
+        "trade_count": 98,
+        "account_days": 118,
+        "account_gain_before_recorded_costs": 78794.24000000005
+      }
+    },
+    "BS_d0d990fc441c78beaf9730d1063f6a461647ffbe2a78a0087e97fd2c01232ea8": {
+      "decision": "CONTINUE_RESEARCH",
+      "strategy_qualified": false,
+      "archive_hash": "04f6bb19bf01192f6916f67f51eb4fdd5d98e48ac388f3339f723643aee9af88",
+      "reason_codes": [
+        "INDEPENDENT_CONFIRMATION_REQUIRED",
+        "INDEPENDENT_COST_STRESS_REQUIRED",
+        "REAL_RETURN_PROCESS_APPLICABILITY_NOT_ESTABLISHED"
+      ],
+      "historical_metrics": {
+        "initial_cash": 1000000.0,
+        "ending_equity": 976739.5993,
+        "net_return": -0.023260400700000017,
+        "max_drawdown": 0.05707257189999998,
+        "total_fees": 11106.0607,
+        "dividend_tax_withheld": 7004.219999999999,
+        "trade_count": 46,
+        "account_days": 118,
+        "account_gain_before_recorded_costs": -5150.119999999999
+      }
+    },
+    "BS_f2696e294d1c5ae7899c5f7a8f04fcc14d7ddb509d03a358a428172aad089e17": {
+      "decision": "CONTINUE_RESEARCH",
+      "strategy_qualified": false,
+      "archive_hash": "84fe15858e8f192c2b1e7a589158e08a7f3c1c84ffc3f941111aa9d7afce3595",
+      "reason_codes": [
+        "INDEPENDENT_CONFIRMATION_REQUIRED",
+        "INDEPENDENT_COST_STRESS_REQUIRED",
+        "REAL_RETURN_PROCESS_APPLICABILITY_NOT_ESTABLISHED"
+      ],
+      "historical_metrics": {
+        "initial_cash": 1000000.0,
+        "ending_equity": 1142759.5578,
+        "net_return": 0.14275955780000005,
+        "max_drawdown": 0.06709955307104136,
+        "total_fees": 24544.7422,
+        "dividend_tax_withheld": 0.0,
+        "trade_count": 85,
+        "account_days": 118,
+        "account_gain_before_recorded_costs": 167304.30000000008
+      }
+    }
+  },
+  "method_hash": "a4f8108d6c1e9f0c6bc211675d94a92a863ffb1b8daab773aff8ff50b18390c4",
+  "calibration_hash": "9509c920d5adcd26431e7717d8cf615c74894b9ea067c5e9071b3d2893abebc4",
+  "method_approved": true,
+  "failed_support_checks": 0,
+  "failed_checks": [],
+  "historical_data_reused_as_independent": false,
+  "confirmation_budget_consumed": 0,
+  "next_action": "ESTABLISH_REAL_PROCESS_APPLICABILITY_AND_INDEPENDENT_WINDOW",
+  "method_scope": "CONDITIONAL_FINITE_DGP_VALIDATION_NOT_GENERAL_MARKET_GUARANTEE",
+  "real_process_applicability": "NOT_ESTABLISHED",
+  "interpretation": "准入准备评审；没有独立收益证据时不对策略本身作有效或无效的判决。"
+}

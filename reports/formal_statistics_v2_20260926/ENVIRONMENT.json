@@ -1,0 +1,6 @@
+{
+  "python": "3.13.5 (tags/v3.13.5:6cb20a2, Jun 11 2025, 16:15:46) [MSC v.1943 64 bit (AMD64)]",
+  "numpy": "2.2.6",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "full_replay_scope": "same recorded runtime and frozen sources; no claim of bitwise equality across arbitrary library versions"
+}

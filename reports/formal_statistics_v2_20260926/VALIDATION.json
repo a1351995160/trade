@@ -1,0 +1,12 @@
+{
+  "source_identity_before_binding_pin": "b1a2b56e884cc5aaa4fe1300949eb75302b59d907d70b0f73cc1b4c12920bc0f",
+  "tests": 834,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 23,
+  "independent_review": "P2_FULL_REPLAY_PER_QUERY_FIXED_AND_CLOSED",
+  "full_calibration_replay_exit_code": 0,
+  "method_approved_within_frozen_dgp_scope": true,
+  "real_strategy_qualified": false,
+  "_integrity": "7929c64da0dd47e1ab60fba2f6e47c8db71523470c742aecb716de474e29e520"
+}
