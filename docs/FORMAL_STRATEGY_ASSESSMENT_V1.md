@@ -48,9 +48,13 @@ flowchart TD
 
 CI 静态检查随后要求拆分置信区间入参的复合校验。修复没有改变方法或种子，新源码在 `formal-method-calibration-20260926-ci-replay` 完整重放，26,624 条记录与原记录逐条相同、汇总相同，仍然失败。当前入口绑定该重放报告；原报告未覆盖。仓库新增 `CI_REPLAY_CALIBRATION_SUMMARY.json`、`REPLAY_EQUIVALENCE.json` 记录两次来源和等价对照。配置中的 `calibration_path` 应指向新目录的 `CALIBRATION.json`。
 
+静态告警进一步定位到概率范围的链式比较后，又用明确的上下界布尔值和类型注解作等价改写。最终绑定目录为 `formal-method-calibration-20260926-ci-range-replay`，实际配置请使用此目录的 `CALIBRATION.json`。第三次完整重放与前两次所有记录及汇总均相同；新增 `CI_RANGE_REPLAY_CALIBRATION_SUMMARY.json`、`RANGE_REPLAY_EQUIVALENCE.json`。这些是同种子的确定性重算，不增加独立样本数量，前两次证据完整保留。
+
 现有 5 个真实候选已完成准备评审，报告为 `reports/formal_assessment_20260926/REAL_STRATEGY_REVIEW.json`，全部为 `CONTINUE_RESEARCH`。真实 CLI 输出与归档报告逐字段一致；确认预算消耗为 0。程序固定绑定本次完整校准身份，不能另提交一份自编 p 值文件把失败改为批准。
 
 绑定 CI 等价重放后，同样的 5 个候选结论保存在 `REAL_STRATEGY_REVIEW_CI_REPLAY.json`，与原判决一致。
+
+最终概率校验版本的相同结论保存在 `REAL_STRATEGY_REVIEW_CI_RANGE_REPLAY.json`。
 
 方法参考：[stationary bootstrap 原始论文](https://www.tandfonline.com/doi/abs/10.1080/01621459.1994.10476870)、[相关理论条件](https://www3.stat.sinica.edu.tw/statistica/j4n2/j4n25/j4n25.htm)、[Holm 原始论文](https://www.ime.usp.br/~abe/lista/pdf4R8xPVzCnX.pdf)。这些文献不是本实现通过校准的替代证据。
 

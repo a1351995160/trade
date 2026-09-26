@@ -135,7 +135,7 @@ def binomial_cdf(k, n, p):
     return min(1., math.exp(peak) * math.fsum(math.exp(value - peak) for value in terms))
 
 
-def cp_upper(rejections, replicates, tail_probability):
+def cp_upper(rejections: int, replicates: int, tail_probability: float) -> float:
     """精确二项分布反演的单侧Clopper–Pearson上界，无scipy依赖。"""
     if type(rejections) is not int:
         raise ValueError('CP_INPUT_INVALID')
@@ -145,7 +145,8 @@ def cp_upper(rejections, replicates, tail_probability):
         raise ValueError('CP_INPUT_INVALID')
     if not 0 <= rejections <= replicates:
         raise ValueError('CP_INPUT_INVALID')
-    if not 0 < tail_probability < 1:
+    bounds = (0 < tail_probability, tail_probability < 1)
+    if not all(bounds):
         raise ValueError('CP_INPUT_INVALID')
     if rejections == replicates:
         return 1.

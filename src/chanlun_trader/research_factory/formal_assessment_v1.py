@@ -24,7 +24,7 @@ POLICY = {'version': 'FORMAL_ASSESSMENT_V1', 'warmup_sessions': 60, 'account_ses
 
 # 绑定本轮实际执行的完整校准；调用方不能提交自编 p 值文件批准方法。
 # 新方法必须另作预登记和审核，不能替换本次失败记录。
-CALIBRATION_HASH = '17e5543ed52a5fc88332bf752634b3d5d8f90762582b31330218f88054970879'
+CALIBRATION_HASH = '9aa67aa7f480424cdf46f21725ab420fdc72f777f623478fe66ac6039543d6ec'
 
 
 def _load_method(path):
