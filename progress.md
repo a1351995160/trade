@@ -2437,3 +2437,14 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 ### Notes
 - 工程功能完成不等于真实观察完成或策略有效：真实观察0天、正式合格策略0个；本机TdxW.exe未运行，未绕过技能前置条件调用HTTP。当前主板范围、预热来源待人工核对、观察期公司行动停机及独立统计确认缺口见业务说明。
 - 原用户工作区不动；实现分支codex/qualification-paper-portfolio。回滚可对本轮功能提交执行git revert，保留E:/llmwiki/autonomous-strategy-research-v1/下研究与新档案，以及快照、账户证据。CI及合并结果另以实际远端状态为准。
+
+## 2026-09-26 - Task: 修复生命周期CLI配置读取的CI路径告警
+
+### What was done
+- PR #22首轮SonarCloud指出run_strategy_lifecycle_v1.py配置读取缺少路径边界。增加load_config，将配置限定为观察目录父目录下的JSON，拒绝越界、路径重定向、非文件及超过20 MiB输入；同步操作文档，不修改或关闭CI规则。
+
+### Testing
+- CLI6 passed，新增3项越界/父路径/非JSON拒绝验证；证据reports/strategy_forward_paper_20260926/cli-path-fix.xml。与此前集合去重为724 passed、21 skipped；账户与研究实现未再变化，远端将重跑规定检查。
+
+### Notes
+- 初始实现提交07c35c2及PR #22已推送，修复另作提交。回滚本轮入口修复可git revert对应提交；整体功能回滚保留档案与观察证据，不删除历史。该修复不增加真实Paper观察天数。

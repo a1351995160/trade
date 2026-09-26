@@ -52,6 +52,8 @@ python scripts/run_strategy_lifecycle_v1.py revoke-strategy --archive-root E:/re
 
 `paper-config.json` 是完整输入，包含以下字段；不接受额外资格开关。先冻结档案，使用返回的 `strategy_id` 和 `rule_identity` 配置成员。
 
+配置文件须放在观察目录的父目录或其子目录内，例如观察目录 `E:/research/paper` 对应配置 `E:/research/paper-config.json`。入口拒绝越界路径、符号链接重定向、非 JSON 文件及超过20 MiB的配置。
+
 ```json
 {
   "archive_root": "E:/research/archives",

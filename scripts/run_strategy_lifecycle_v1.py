@@ -57,7 +57,7 @@ def execute(args):
         value = SnapshotStoreV1(args.snapshot_root).capture_tdx(phase=args.phase, symbols=args.symbols)
         return {key:value[key] for key in ('snapshot_id', 'profile', 'phase', 'market_date', 'received_at')}
     if args.operation == 'create-paper':
-        config = json.loads(Path(args.config).read_text(encoding='utf-8-sig'))
+        config = load_config(args.config, args.root)
         allowed = {'archive_root', 'strategy_ids', 'policy', 'calendar', 'warmup', 'purpose', 'profile'}
         if not isinstance(config, dict) or set(config) - allowed:
             raise ValueError('PAPER_CONFIG_UNKNOWN_FIELDS')
@@ -69,6 +69,18 @@ def execute(args):
     if args.operation == 'revoke-paper':
         return session.revoke(args.reason)
     return session.status()
+
+
+def load_config(filename, paper_root):
+    # 配置只从所选观察目录的父目录读取，拒绝越界、链接重定向及非JSON文件。
+    base = Path(paper_root).absolute().parent
+    path = Path(filename).absolute()
+    if (base.resolve() != base or path.resolve() != path or '..' in path.parts
+            or not path.is_relative_to(base) or path.suffix.lower() != '.json'):
+        raise ValueError('PAPER_CONFIG_PATH_OUTSIDE_OBSERVATION_WORKSPACE')
+    if not path.is_file() or path.stat().st_size > 20 * 1024 * 1024:
+        raise ValueError('PAPER_CONFIG_FILE_INVALID')
+    return json.loads(path.read_text(encoding='utf-8-sig'))
 
 
 def render_report(value):
@@ -94,7 +106,7 @@ def main(argv=None):
     args = parser().parse_args(argv)
     try:
         result = execute(args)
-    except (ValueError, PermissionError, RuntimeError, OSError, KeyError, TypeError) as error:
+    except (ValueError, RuntimeError, OSError, KeyError, TypeError) as error:
         print(json.dumps({'status':'BLOCKED', 'reason':str(error)}, ensure_ascii=False))
         return 1
     print(render_report(result) if args.operation == 'report' else json.dumps(result, ensure_ascii=False, indent=2))

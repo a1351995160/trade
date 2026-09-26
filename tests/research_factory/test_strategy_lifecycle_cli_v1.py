@@ -1,5 +1,6 @@
 """统一命令入口的错误边界和业务日报。"""
 import json
+import pytest
 
 from scripts import run_strategy_lifecycle_v1 as cli
 
@@ -27,3 +28,14 @@ def test_report_keeps_engineering_and_formal_days_distinct():
     assert '累计模拟成交：1 笔' in text and '20260929' in text
     assert '| S1 | 600000.SH | BUY | RULE |' in text
     assert '尚未取得正式资格' in text
+
+
+@pytest.mark.parametrize('kind', ['outside','parent','extension'])
+def test_config_path_is_confined_before_read(tmp_path, kind):
+    workspace = tmp_path/'observation'
+    workspace.mkdir()
+    outside = tmp_path/'outside.json'
+    outside.write_text('{"must_not_read":true}', encoding='utf-8')
+    paths = {'outside':outside,'parent':workspace/'..'/'outside.json','extension':workspace/'data.txt'}
+    with pytest.raises(ValueError, match='PATH_OUTSIDE'):
+        cli.load_config(paths[kind], workspace/'paper')
