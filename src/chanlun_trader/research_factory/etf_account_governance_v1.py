@@ -140,6 +140,22 @@ class StrategyBatchGovernanceV1(ETFAccountGovernanceV1):
         expected={name:plan['plan_id'] for name,plan in self.plans.items()}
         if source.get('origin')!='USER_EXPLICIT_CURRENT_TASK' or not source.get('statement') or source.get('approved_plan_ids')!=expected:
             raise PermissionError('EXACT_STRATEGY_PLANS_APPROVAL_REQUIRED')
+        return self._confirm_validated(source,inputs)
+
+    def confirm_research_scope(self,session,name):
+        """父研究任务覆盖本候选；不伪造用户逐候选确认，也不扩充父任务范围。"""
+        if self.root != session.path(name,'governance') or self.budget_path != session.path('search_budget_registry.json'):
+            raise PermissionError('STRATEGY_SCOPE_ROOT_CONFLICT')
+        scope=session.authorize_plan(name,self.plans)
+        if self.objective_id!=scope['objective_id']:
+            raise PermissionError('STRATEGY_SCOPE_OBJECTIVE_CONFLICT')
+        source={'origin':'BOUNDED_RESEARCH_SCOPE','scope_root':str(session.root),
+                'scope_id':scope['scope_id'],'candidate_id':name,'expires_at':scope['expires_at']}
+        return self._confirm_validated(source,{'input_identity':scope['input_manifest']['input_identity'],
+            'novelty':{name:{'allowed':True,'plan_id':self.plans[name]['plan_id'],
+                       'reason':'FROZEN_REFERENCE' if name=='REFERENCE' else 'BOUNDED_RULE_IDENTITY_CHECKED'}}})
+
+    def _confirm_validated(self,source,inputs):
         if not inputs.get('input_identity') or any(inputs.get('novelty',{}).get(name,{}).get('allowed') is not True or inputs['novelty'][name].get('plan_id')!=self.plans[name]['plan_id'] for name in self.kinds):
             raise PermissionError('STRATEGY_INPUT_OR_NOVELTY_REQUIRED')
         expires=datetime.fromisoformat(source['expires_at'])
@@ -155,6 +171,24 @@ class StrategyBatchGovernanceV1(ETFAccountGovernanceV1):
             budget=SearchBudgetRegistryV1(self.objective_id,self.budget_path)
             for kind in self.kinds:budget.register(self.budget_kind,receipt['receipt_id']+':'+kind,1)
         return receipt
+
+    def reconcile_research_scope(self,session,name):
+        """仅补齐确认已提交、账户尚未启动时的同一确定性用途桶。"""
+        if self.root != session.path(name,'governance') or self.budget_path != session.path('search_budget_registry.json'):
+            raise PermissionError('STRATEGY_SCOPE_ROOT_CONFLICT')
+        with self.lock():
+            receipt=self.active()
+            scope=session.authorize_plan(name,self.plans)
+            source=receipt['source']
+            if (source.get('origin')!='BOUNDED_RESEARCH_SCOPE' or source.get('scope_id')!=scope['scope_id']
+                    or source.get('candidate_id')!=name or set(self.kinds)!={name}
+                    or receipt['input_identity']!=scope['input_manifest']['input_identity']):
+                raise PermissionError('STRATEGY_SCOPE_IDENTITY_CONFLICT')
+            if (self.root/(name+'_START.json')).exists():
+                raise PermissionError('ETF_ALREADY_ATTEMPTED_NO_REPLAY')
+            budget=SearchBudgetRegistryV1(self.objective_id,self.budget_path)
+            budget.register(self.budget_kind,receipt['receipt_id']+':'+name,1)
+            return receipt
 
     def active_execution(self,name):
         if name not in self.kinds:raise PermissionError('UNAPPROVED_STRATEGY')
@@ -173,4 +207,12 @@ class StrategyBatchGovernanceV1(ETFAccountGovernanceV1):
             raise PermissionError('STRATEGY_PLAN_CONFLICT')
         if (self.root/'REVOKED.json').exists():raise PermissionError('STRATEGY_REVOKED')
         if datetime.now(timezone.utc)>=datetime.fromisoformat(receipt['expires_at']):raise PermissionError('STRATEGY_EXPIRED')
+        if receipt['source'].get('origin')=='BOUNDED_RESEARCH_SCOPE':
+            from .bounded_research_v1 import BoundedResearchSessionV1
+            source=receipt['source'];session=BoundedResearchSessionV1(source['scope_root'])
+            if self.root!=session.path(source['candidate_id'],'governance'):
+                raise PermissionError('STRATEGY_SCOPE_ROOT_CONFLICT')
+            scope=session.authorize_plan(source['candidate_id'],self.plans)
+            if scope['scope_id']!=source['scope_id']:
+                raise PermissionError('STRATEGY_SCOPE_IDENTITY_CONFLICT')
         return receipt

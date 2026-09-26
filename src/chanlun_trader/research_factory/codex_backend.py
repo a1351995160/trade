@@ -255,6 +255,7 @@ def build_codex_command(
     output_schema_path: Path,
     response_path: Path,
     model_id: str = DEFAULT_CODEX_MODEL,
+    design_only: bool = False,
 ) -> list[str]:
     """Build the version-pinned, non-interactive staging command.
 
@@ -266,13 +267,19 @@ def build_codex_command(
     non-interactive workspace-write route; combining it with ``--sandbox`` is
     rejected by the current CLI.
     """
-    del output_schema_path
     command = _launcher(executable) + [
         "exec", "-", "--json", "--ephemeral", "--skip-git-repo-check",
-        "--ignore-user-config", "--model", model_id, "--approve-for-me",
+        "--ignore-user-config", "--model", model_id,
+        *([] if design_only else ["--approve-for-me"]),
         "--color", "never", "--cd", str(staging_dir),
         "--output-last-message", str(response_path),
     ]
+    if design_only:
+        command.extend(("--sandbox", "read-only", "--output-schema", str(output_schema_path),
+                        "-c", "mcp_servers={}", "-c", 'web_search="disabled"',
+                        "-c", "tools.view_image=false"))
+        for feature in ("shell_tool", "unified_exec", "multi_agent", "code_mode", "workspace_dependencies"):
+            command.extend(("--disable", feature))
     for feature in ("apps", "plugins", "browser_use", "computer_use", "shell_snapshot"):
         command.extend(("--disable", feature))
     return command
@@ -313,8 +320,9 @@ def _write_runtime_diagnostics(path: Path, payload: Mapping[str, Any]) -> None:
 class SubprocessCodexExecutorV1:
     """Invoke Codex with an isolated staging cwd and continuously drained pipes."""
 
-    def __init__(self, executable: str | Path):
+    def __init__(self, executable: str | Path, *, design_only: bool = False):
         self.executable = str(executable)
+        self.design_only = design_only
 
     def execute(
         self,
@@ -334,6 +342,7 @@ class SubprocessCodexExecutorV1:
             staging_dir=staging_dir,
             output_schema_path=output_schema_path,
             response_path=response_path,
+            design_only=self.design_only,
         )
         started = time.monotonic()
         started_at = now_timestamp()

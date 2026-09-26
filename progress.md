@@ -2377,3 +2377,35 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 
 ### Notes
 - 这次只收紧恢复/验收文件边界，不更改固定策略投票或账户规则。修改文件为恢复模块、验收脚本、对应测试和重新生成的报告。可对本轮路径修复提交执行 `git revert` 回滚；若撤销整个三项验收功能，还需撤销前一提交，保留先前冻结报告。
+
+## 2026-09-26 - Task: 规划固定策略验收之后的小规模自主研究闭环
+
+### What was done
+- 基于 `origin/main@ad82cbde01514bd6a07f01ac34742de8fd4b7b9d` 核对 AI 编排、候选物化、正式 caller、公共策略账户、失败反馈、统计原型、Paper 与组合预览的源码边界及对应测试。
+- 新增 `docs/plans/2026-09-26-001-feat-bounded-autonomous-research-plan.md`：用业务架构图、能力表、四个近期实施单元和分阶段路线明确下一功能为有预算的真实研究闭环。按用户最新决定，历史发布时间取证不再阻塞近期功能；旧严格资格报告不变。
+- 规划明确区分工程观察与策略资格，不把历史回放算成真实 Paper，不把 51 指标固定验收样本当作所有后续策略必须遵循的格式。
+
+### Testing
+- 本轮为规划交付，未执行测试、回测、AI 研究或实时采集。只读核对源码、测试定义和既有 S1 验收报告，并检查新增文档的流程、路径及差异；不将历史测试通过记录视为本轮新测试结果。
+
+### Notes
+- 只新增上述规划并追加本记录；源码、运行政策、数据和冻结报告均未修改。原用户工作区保留不动，文档位于隔离工作区的 `codex/autonomous-research-next-plan` 分支。
+- 回滚只需移除新增规划并撤销本任务追加的记录；若以后单独提交，可对该文档提交执行 `git revert`。本轮未推送或合并，不沿用已完成代码任务的发布流程。
+
+## 2026-09-26 - Task: 实现并验收有预算的真实自主研究闭环 U1—U4
+
+### What was done
+- 新增 bounded_research_v1、bounded_candidate_v1、bounded_model_v1、research_diagnostics_v1：连接既有编排入口、公共策略账户、Trial、预算及定性失败视图；固定数据/成本/时间范围，允许 AI 选择已有指标与门槛，保留父版本和修订理由，不授予正式资格。
+- 修改公共后端路由、现有治理的研究范围授权和确认恢复、Codex 可选无工具设计模式；固定策略脚本仅增加候选规则/信号身份，旧默认行为保留。新增 CLI create/run/tick/status/revoke，补齐运行中撤销、账户失败停机、持久失败状态和中断恢复。
+- 完成真实研究：5 次真实模型调用，5 个不同规则，4 次有反馈身份的修订；固定参照加5个候选均完成118天真实账户核对，差异为0。预算6次全部记账后自动停止，资格仍为NOT_ASSESSED，真实观察天数0。
+- 新增测试与双平台CI清单、业务说明 docs/BOUNDED_AUTONOMOUS_RESEARCH_V1.md、真实摘要及87份原始JSON的证据索引 reports/bounded_research_20260926/；近期计划状态改为completed，后续正式筛选/Paper/组合不在该U1—U4实施包内。
+
+### Testing
+- 发布相关组合632 passed、23 skipped（真实采样未启用、符号链接能力及既有gbbq限制），JUnit位于隔离工作区外 bounded-ci-20260926-1.xml；闭环专项24 passed，跨进程强制退出/恢复专项1 passed。总计该发布验证657 passed、23 skipped。
+- 额外编排/控制面回归最初66 passed、2 failed（含12项与发布组合重叠）：硬链接测试换到C盘支持目录后1 passed；剩余一项在未改动测试的fixture读取阶段StopIteration，仓库没有跟踪所需历史durable_frozen_candidate_contracts.json，未削弱断言或伪造样本。若干pytest退出临时目录清理出现既有WinError5，测试退出码仍0。
+- 真实执行依次create、tick参照、tick第一候选、run余下候选；结束后新进程run核对87份持久JSON哈希与预算不变。证据导出首轮因比较预算视图生成时间戳失败，改为忽略非持久updated_at展示字段后复核通过，未重跑模型或账户。git diff --check通过。
+
+### Notes
+- 原用户工作区未修改；实现位于codex/autonomous-research-next-plan分支。真实任务保存在E:/llmwiki/autonomous-strategy-research-v1/bounded-research-20260926，不清除旧预算。模型未提供具体服务端型号/版本，证据保留NONE/UNKNOWN。
+- 仅证明两股票、已曝光历史样本上的探索工程闭环；历史发布时间仍为建模假设，盈利不能作为独立确认或策略合格证据。没有创建自动采集任务、启动真实Paper或券商订单。
+- 回滚可对本次实现提交执行git revert；保留运行目录、预算和报告供追溯，禁止删除后以新身份免费重跑。远端CI与发布结果在后续记录中单独注明。

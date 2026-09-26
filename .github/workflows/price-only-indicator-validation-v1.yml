@@ -71,6 +71,14 @@ jobs:
           tests/entrypoints_v2
           tests/research_factory/test_s1_public_entry_v1.py
           tests/research_factory/test_s1_price_recovery_v1.py
+          tests/research_factory/test_bounded_candidate_v1.py
+          tests/research_factory/test_bounded_model_v1.py
+          tests/research_factory/test_bounded_real_research_loop_v1.py
+          tests/research_factory/test_bounded_process_recovery_v1.py
+          tests/research_factory/test_research_diagnostics_v1.py
+          tests/research_factory/test_codex_runtime_protocol_v1.py
+          tests/research_factory/test_etf_account_governance_v1.py
+          tests/research_factory/test_strategy_backend_migration_v1.py
           -q
           --junitxml=junit/price-only-a0-chain-${{ matrix.os }}.xml
 

@@ -1,0 +1,434 @@
+{
+  "version": "BOUNDED_REAL_RESEARCH_ACCEPTANCE_V1",
+  "status": "PASSED_EXPLORATION_ENGINEERING",
+  "runtime_root": "E:\\llmwiki\\autonomous-strategy-research-v1\\bounded-research-20260926",
+  "scope_id": "ab1e039defe517c290ef34a10adfd84001f52d5f9017399802fb5dff588a381a",
+  "scope_source_identity": "31631cef0dd2cc30a9d0dd69e050eff25a320eb6e716dc23d22731e99af7a925",
+  "input_identity": "d5b05a5c7d23b991178dcf7c65074d0dc4fe0fca4abce3e93add308e5dab3691",
+  "source_hashes": {
+    "daily_sha256": "63762647b9bbebf07f7ad768587a17eb351dc04247c760e0343ddae441ed9437",
+    "turn_sha256": "218e50a3c11b19fd8bbc1d07c55f37c92a983a5172bf84c52feceb744f8640f2",
+    "states_sha256": "53a6309a1c5bf6ba3862b0bec91c211b241dbbbf448f93c65c064e8e5e891b1d",
+    "historical_states_sha256": "b5025955c95c8de4b725b9dae5777bd483d028799d17c3252c1037226f88fc67",
+    "actions_sha256": "80f43348cd93f71297e48afba2cb25bdfeb75df5ff9f1de6f5fd2b86bb15c9c1",
+    "corporate_actions_sha256": "3b288d35d0097a6717d7ce0c2758822d3305a0782a6a0da27261464df4fa68cb",
+    "turn_manifest_sha256": "f7cf54e429a66f23f1fb0bcdbbbee2d93f231d322e43f067bf71a31eecb758db"
+  },
+  "input_profile": "S1_MODELED_DAILY",
+  "stop_reason": "ATTEMPT_BUDGET_EXHAUSTED",
+  "candidate_attempts": 5,
+  "reference_accounts": 1,
+  "objective_exposures_used": 6,
+  "all_accounts_reconciled": true,
+  "distinct_rules": 5,
+  "feedback_revisions": 4,
+  "new_process_completed_resume": {
+    "exit_code": 0,
+    "durable_artifact_hashes_unchanged": true,
+    "budget_unchanged": true
+  },
+  "qualification": "NOT_ASSESSED",
+  "real_observation_days": 0,
+  "historical_publication": "MODELED_NOT_VERIFIED",
+  "limitations": [
+    "Previously exposed two-stock sample; not independent confirmation",
+    "Model/runtime IDs may be unknown if CLI did not report them",
+    "No real Paper or portfolio admission"
+  ],
+  "candidates": [
+    {
+      "candidate_id": "REFERENCE",
+      "parent": null,
+      "plan_id": "ce86726bd65f39c2b0a5750b724930de6474d92c7e7350fc08df6ce50b270f78",
+      "proposal": null,
+      "result_hash": "76b700dcff8316b33653ae4f5f87993e8c34e8e43b7914d165da73a2bb939eed",
+      "diagnostic_hash": "45a0e66931ded8e4c2951e3617597ac85a2d8dbac9f1a55efa324531cb72ee6b",
+      "metrics": {
+        "initial_cash": 1000000.0,
+        "ending_equity": 1012455.2188,
+        "net_return": 0.0124552188,
+        "max_drawdown": 0.10958489786909102,
+        "total_fees": 24472.1512,
+        "dividend_tax_withheld": 3723.6,
+        "trade_count": 93,
+        "account_days": 118,
+        "account_gain_before_recorded_costs": 40650.97000000003
+      },
+      "reason_codes": [
+        "EXECUTION_FILTERS_OBSERVED",
+        "LIMITED_SAMPLE",
+        "INDEPENDENT_CONFIRMATION_REQUIRED"
+      ],
+      "benchmark": {
+        "status": "NOT_RUN"
+      },
+      "max_abs_ledger_delta": 0.0,
+      "account_state": "COMPLETE"
+    },
+    {
+      "candidate_id": "CANDIDATE_001",
+      "parent": null,
+      "plan_id": "d08ed6f8b6b97b84ee698696cfa0b37719a77c49e60461d07a100e1a2d859795",
+      "proposal": {
+        "hypothesis": "在仅用于探索的两只股票日频样本中，尝试用“趋势改善 + 资金量能改善 + 波动可控”的多指标投票描述次日开盘执行信号：当价格趋势、成交活跃度与资金流方向多数同步改善时才入场，以减少单一动量指标噪声。",
+        "change_reason": "这是一个新候选规则；未沿用任何父规则。选择 ROLLING_SLOPE 表示中期价格趋势改善，RVOL_PRIOR 表示相对成交量在不使用当日未来信息的口径下增强，CHAIKIN_MONEY_FLOW 表示资金流入倾向改善，NATR 表示标准化波动状态改善。门槛设为 3/4，要求多数条件同时转好，但不要求全部满足，适合作为小样本探索假设；历史样本仅两只股票，不能据此声称有效或推荐交易。",
+        "indicators": [
+          "ROLLING_SLOPE",
+          "RVOL_PRIOR",
+          "CHAIKIN_MONEY_FLOW",
+          "NATR"
+        ],
+        "threshold": 3
+      },
+      "result_hash": "4d32bdfc8a9226255c1324c2ceb195c6f83c03bf3a9e43a00b5ea416804cef85",
+      "diagnostic_hash": "5c785fa0c38bf4e1628e76ddaf98cdddf164c4564b5fdbe01966113bee19a0e6",
+      "metrics": {
+        "initial_cash": 1000000.0,
+        "ending_equity": 1086215.8025,
+        "net_return": 0.08621580249999994,
+        "max_drawdown": 0.03019872223081031,
+        "total_fees": 23389.4775,
+        "dividend_tax_withheld": 0.0,
+        "trade_count": 93,
+        "account_days": 118,
+        "account_gain_before_recorded_costs": 109605.28
+      },
+      "reason_codes": [
+        "EXECUTION_FILTERS_OBSERVED",
+        "LIMITED_SAMPLE",
+        "INDEPENDENT_CONFIRMATION_REQUIRED"
+      ],
+      "benchmark": {
+        "status": "AVAILABLE",
+        "source_result_hash": "76b700dcff8316b33653ae4f5f87993e8c34e8e43b7914d165da73a2bb939eed",
+        "net_return_difference": 0.07376058369999994
+      },
+      "max_abs_ledger_delta": 0.0,
+      "account_state": "COMPLETE",
+      "rule_identity": "3d3e4e8af6c681fb9ccd06ab5b8901b2c410678d951db4f29d08b0b88d04b7af",
+      "model_origin": "REAL_CODEX_SUBPROCESS",
+      "model_context_hash": "82a383bb9327b7de36b187c1f4250758f06852395e96fe0261ccee006911716a",
+      "model_response_hash": "f02dfb346e22797acd93ac01bdaca33f19b952ae248861927b09069d4d3dfcea",
+      "model_duration_seconds": 15.390083,
+      "provider_reported_model_id": "NONE",
+      "provider_reported_runtime_version": "UNKNOWN",
+      "feedback_count": 0,
+      "feedback_hashes": [],
+      "feedback_parent_verified": false
+    },
+    {
+      "candidate_id": "CANDIDATE_002",
+      "parent": "CANDIDATE_001",
+      "plan_id": "04c74e82cffecc63c06c0c0845e87471ef3be596e57b5c8fa85a8404d2b317d0",
+      "proposal": {
+        "hypothesis": "在仅用于探索的两只股票日频样本中，修订为“价格趋势延续 + 量价资金确认”的投票假设：当中期均线、动量收益、MACD差值、OBV与累积分布线多数较前一日改善时，认为次日开盘入场信号更偏向由价格与成交共同确认，而不是依赖波动率上升。",
+        "change_reason": "相对父候选，移除 NATR 与 RVOL_PRIOR，避免把标准化波动或相对成交量单独上升直接解释为有利信号；改用 MA、HISTORICAL_RETURN、MACD_HIST_RAW 描述价格趋势和动量改善，并用 OBV、ACCUMULATION_DISTRIBUTION 从量价资金方向做确认。门槛设为 4/5，比父规则更严格，意在减少两只股票小样本中单一指标噪声触发；该规则仍仅是探索性假设，不能声称有效或推荐交易，且需独立确认。",
+        "indicators": [
+          "MA",
+          "HISTORICAL_RETURN",
+          "MACD_HIST_RAW",
+          "OBV",
+          "ACCUMULATION_DISTRIBUTION"
+        ],
+        "threshold": 4
+      },
+      "result_hash": "6e68a1f1bca5540e8d927a32498154600cf1cbd18c72912b57e19a6da6e13dff",
+      "diagnostic_hash": "a08225e34ba25285e363198e524b0071fbe121df218bce8395757fa24741d2ad",
+      "metrics": {
+        "initial_cash": 1000000.0,
+        "ending_equity": 1142759.5578,
+        "net_return": 0.14275955780000005,
+        "max_drawdown": 0.06709955307104136,
+        "total_fees": 24544.7422,
+        "dividend_tax_withheld": 0.0,
+        "trade_count": 85,
+        "account_days": 118,
+        "account_gain_before_recorded_costs": 167304.30000000008
+      },
+      "reason_codes": [
+        "EXECUTION_FILTERS_OBSERVED",
+        "LIMITED_SAMPLE",
+        "INDEPENDENT_CONFIRMATION_REQUIRED"
+      ],
+      "benchmark": {
+        "status": "AVAILABLE",
+        "source_result_hash": "76b700dcff8316b33653ae4f5f87993e8c34e8e43b7914d165da73a2bb939eed",
+        "net_return_difference": 0.13030433900000005
+      },
+      "max_abs_ledger_delta": 0.0,
+      "account_state": "COMPLETE",
+      "rule_identity": "82e48c81cdbb1ac86c6528a716b1f304fc7f615a9b7859ccef7d5a7054f57c5a",
+      "model_origin": "REAL_CODEX_SUBPROCESS",
+      "model_context_hash": "43bee77f5843b45a4be64ad477c7e026deeaa1bd3b8a7c9b011240d578d2b185",
+      "model_response_hash": "123f2620651b5874cb7b66df2b797789dd23f8fc00f0f5ce93242e197fd019c4",
+      "model_duration_seconds": 12.57784,
+      "provider_reported_model_id": "NONE",
+      "provider_reported_runtime_version": "UNKNOWN",
+      "feedback_count": 1,
+      "feedback_hashes": [
+        "dc45f2ab9588d650243d07584623aece6b8849c9c64c2aa8a8888d36b60300a0"
+      ],
+      "feedback_parent_verified": true
+    },
+    {
+      "candidate_id": "CANDIDATE_003",
+      "parent": "CANDIDATE_002",
+      "plan_id": "1c517282eadc5a22e075b4f1eb3049b4a1b446efcf67549006099e403c3277d1",
+      "proposal": {
+        "hypothesis": "在仅用于探索的两只股票日频样本中，修订为“突破结构 + 趋势强度 + 量价确认”的投票假设：当前高/通道上沿、方向性趋势、RSI动能、量能突破评分与滚动VWAP多数较前一日改善时，才把次日开盘信号视为更偏向结构性上行尝试。该假设只用于小样本探索，不声称有效，也不构成交易建议。",
+        "change_reason": "相对父候选，减少对均线、历史收益、MACD差值及传统量价资金线的依赖，改为观察价格是否形成更高的突破参照、趋势方向是否增强，以及成交活跃是否配合价格中枢上移。选择 PRIOR_BREAKOUT 与 DONCHIAN 描述突破结构，DMI 与 RSI 描述趋势/动能改善，VOLUME_BREAKOUT_SCORE 与 ROLLING_VWAP 描述量价确认。门槛设为 4/6，要求多数维度同时改善，但保留一定容错；样本只有两只股票且仍需独立确认。",
+        "indicators": [
+          "PRIOR_BREAKOUT",
+          "DONCHIAN",
+          "DMI",
+          "RSI",
+          "VOLUME_BREAKOUT_SCORE",
+          "ROLLING_VWAP"
+        ],
+        "threshold": 4
+      },
+      "result_hash": "70f467b0a1b5df3799401daf77fc3025afaee68d1aaf0dc7b315cf803f29d22e",
+      "diagnostic_hash": "0efbdf43e6ddf771e69946832274e3b49a35eb40b2367ce067b6f1a5efb2c214",
+      "metrics": {
+        "initial_cash": 1000000.0,
+        "ending_equity": 976739.5993,
+        "net_return": -0.023260400700000017,
+        "max_drawdown": 0.05707257189999998,
+        "total_fees": 11106.0607,
+        "dividend_tax_withheld": 7004.219999999999,
+        "trade_count": 46,
+        "account_days": 118,
+        "account_gain_before_recorded_costs": -5150.119999999999
+      },
+      "reason_codes": [
+        "EXECUTION_FILTERS_OBSERVED",
+        "EXPLORATORY_LOSS",
+        "LIMITED_SAMPLE",
+        "INDEPENDENT_CONFIRMATION_REQUIRED"
+      ],
+      "benchmark": {
+        "status": "AVAILABLE",
+        "source_result_hash": "76b700dcff8316b33653ae4f5f87993e8c34e8e43b7914d165da73a2bb939eed",
+        "net_return_difference": -0.03571561950000002
+      },
+      "max_abs_ledger_delta": 0.0,
+      "account_state": "COMPLETE",
+      "rule_identity": "79d1a792855cb44464bb6377f413938361e519c804d619f30ec5a73230d945ee",
+      "model_origin": "REAL_CODEX_SUBPROCESS",
+      "model_context_hash": "7dcf9b679aa025736f2ba45a5b7e93a9fe336d474f74a4180e503f8445eb1219",
+      "model_response_hash": "f9b0029b555bb0e55a78fff48c2e89dde4e568f180ad3459c24f8e4fc09bad8f",
+      "model_duration_seconds": 16.724405,
+      "provider_reported_model_id": "NONE",
+      "provider_reported_runtime_version": "UNKNOWN",
+      "feedback_count": 2,
+      "feedback_hashes": [
+        "dc45f2ab9588d650243d07584623aece6b8849c9c64c2aa8a8888d36b60300a0",
+        "0579e9f82500bb7d68bb7d9b31ceea0010e5deeab7365f1e2d9564ac19ba47bd"
+      ],
+      "feedback_parent_verified": true
+    },
+    {
+      "candidate_id": "CANDIDATE_004",
+      "parent": "CANDIDATE_003",
+      "plan_id": "ffd971afc9fb93679ef747ffb34c09692c137a3feeb97aaf40e348d11103952c",
+      "proposal": {
+        "hypothesis": "在仅用于探索的两只股票日频样本中，提出“超跌修复 + 资金动能回暖”的不同投票假设：当偏离均值、摆动动能、典型价格强弱与资金流强弱多数较前一日改善时，才把次日开盘信号视为短期修复尝试，而不是继续追随突破结构。该假设只用于小样本探索，不声称有效，也不构成交易建议。",
+        "change_reason": "相对父候选 CANDIDATE_003，避开 PRIOR_BREAKOUT、DONCHIAN、DMI、VOLUME_BREAKOUT_SCORE 与 ROLLING_VWAP 这类突破和结构上行确认，改为观察价格从弱势区域修复时的多维改善。选择 BIAS、CCI、KDJ、WILLIAMS_R 描述短周期偏离与摆动指标回升，MFI 描述带成交量的资金强弱改善。门槛设为 3/5，要求多数指标转好但不过度收紧；考虑到历史样本只有两只股票、存在执行过滤或未完全成交观察且尚需独立确认，本规则仍只是探索性修订。",
+        "indicators": [
+          "BIAS",
+          "CCI",
+          "KDJ",
+          "WILLIAMS_R",
+          "MFI"
+        ],
+        "threshold": 3
+      },
+      "result_hash": "bc4b4b22d2e5ebe6c72207cb5dc337a0f6c41c57df7ae78ba94b8eec2dc88d02",
+      "diagnostic_hash": "c1b36416ce549489252d6ef87849a93bf30fb0144f0ce5fd8ab0ece5baeaa41a",
+      "metrics": {
+        "initial_cash": 1000000.0,
+        "ending_equity": 1053097.6957,
+        "net_return": 0.0530976957,
+        "max_drawdown": 0.055416871945280784,
+        "total_fees": 25696.5443,
+        "dividend_tax_withheld": 0.0,
+        "trade_count": 98,
+        "account_days": 118,
+        "account_gain_before_recorded_costs": 78794.24000000005
+      },
+      "reason_codes": [
+        "EXECUTION_FILTERS_OBSERVED",
+        "LIMITED_SAMPLE",
+        "INDEPENDENT_CONFIRMATION_REQUIRED"
+      ],
+      "benchmark": {
+        "status": "AVAILABLE",
+        "source_result_hash": "76b700dcff8316b33653ae4f5f87993e8c34e8e43b7914d165da73a2bb939eed",
+        "net_return_difference": 0.0406424769
+      },
+      "max_abs_ledger_delta": 0.0,
+      "account_state": "COMPLETE",
+      "rule_identity": "6acd0b0b568443c534c147ea3921e95284d20a1672222ede607a2b85b3aad3a5",
+      "model_origin": "REAL_CODEX_SUBPROCESS",
+      "model_context_hash": "c6e23db57b41541639b26b78038b4ae80fb542f2cae9c80d6f7c44dcb4f83511",
+      "model_response_hash": "d91540f7ba3fb1cf2ebbb1ea9d8b651492f95fbe03baeec7666428a9506f1876",
+      "model_duration_seconds": 13.166755,
+      "provider_reported_model_id": "NONE",
+      "provider_reported_runtime_version": "UNKNOWN",
+      "feedback_count": 3,
+      "feedback_hashes": [
+        "dc45f2ab9588d650243d07584623aece6b8849c9c64c2aa8a8888d36b60300a0",
+        "0579e9f82500bb7d68bb7d9b31ceea0010e5deeab7365f1e2d9564ac19ba47bd",
+        "53f9794309483a271a1aa3f2d8bf728ce219d03ec4aab24f39b9a989db5fc50c"
+      ],
+      "feedback_parent_verified": true
+    },
+    {
+      "candidate_id": "CANDIDATE_005",
+      "parent": "CANDIDATE_004",
+      "plan_id": "d9e24c650157b7274c04919a6b54c0c113a9c3cc2f64ea43a89712104533dd1c",
+      "proposal": {
+        "hypothesis": "在仅用于探索的两只股票日频样本中，提出“平滑趋势恢复 + 成交成本中枢上移”的不同投票假设：当多条平滑价格均线、滚动VWAP、PVT与TRIX多数较前一日改善时，才把次日开盘信号视为价格中枢和成交确认同步回暖的探索性入场条件。该假设不声称有效，也不构成交易建议。",
+        "change_reason": "相对父候选 CANDIDATE_004，避开 BIAS、CCI、KDJ、WILLIAMS_R 与 MFI 这类短周期超跌修复/摆动资金指标，改用更平滑的趋势与成交中枢指标，减少对单日摆动反弹的依赖。选择 EMA、DEMA、TEMA、TRIX 描述趋势恢复的连续性，ROLLING_VWAP 描述成交加权价格中枢上移，PVT 描述价格变动与成交量结合后的资金动量改善。门槛设为 4/6，要求多数维度同步上升但保留容错；历史样本只有两只股票，且存在执行过滤或订单未完全成交观察，仍需独立确认。",
+        "indicators": [
+          "EMA",
+          "DEMA",
+          "TEMA",
+          "TRIX",
+          "ROLLING_VWAP",
+          "PVT"
+        ],
+        "threshold": 4
+      },
+      "result_hash": "6a5b7d0e61cac95a50abd46de843ce782dcc37f817b7713875478250103fd45c",
+      "diagnostic_hash": "445ae3d28b687f434bc3c4bb60ca0feb7c6cbce4209612555826b2a4fc06d298",
+      "metrics": {
+        "initial_cash": 1000000.0,
+        "ending_equity": 1154540.1242,
+        "net_return": 0.15454012419999996,
+        "max_drawdown": 0.11224451630914765,
+        "total_fees": 12104.8558,
+        "dividend_tax_withheld": 8461.560000000001,
+        "trade_count": 49,
+        "account_days": 118,
+        "account_gain_before_recorded_costs": 175106.53999999995
+      },
+      "reason_codes": [
+        "EXECUTION_FILTERS_OBSERVED",
+        "LIMITED_SAMPLE",
+        "INDEPENDENT_CONFIRMATION_REQUIRED"
+      ],
+      "benchmark": {
+        "status": "AVAILABLE",
+        "source_result_hash": "76b700dcff8316b33653ae4f5f87993e8c34e8e43b7914d165da73a2bb939eed",
+        "net_return_difference": 0.14208490539999996
+      },
+      "max_abs_ledger_delta": 0.0,
+      "account_state": "COMPLETE",
+      "rule_identity": "521da372cb519029d967e4fe75f5a36dae1ff4535f48e15288a41c6a296a5d27",
+      "model_origin": "REAL_CODEX_SUBPROCESS",
+      "model_context_hash": "015cfa4b914b90aab3a7782654b2a32e9d1d8e86b38500ee4a8e9f2a79f05f43",
+      "model_response_hash": "6e9de2b626b8ffad71c3ebbffc7673b9acaab7c46523ff92e2014fdccbc1b91e",
+      "model_duration_seconds": 12.755182,
+      "provider_reported_model_id": "NONE",
+      "provider_reported_runtime_version": "UNKNOWN",
+      "feedback_count": 4,
+      "feedback_hashes": [
+        "dc45f2ab9588d650243d07584623aece6b8849c9c64c2aa8a8888d36b60300a0",
+        "0579e9f82500bb7d68bb7d9b31ceea0010e5deeab7365f1e2d9564ac19ba47bd",
+        "53f9794309483a271a1aa3f2d8bf728ce219d03ec4aab24f39b9a989db5fc50c",
+        "f84ba719caf79377afbbf7d01a6883f0bc43306450d6df4d761f0d5746fe236a"
+      ],
+      "feedback_parent_verified": true
+    }
+  ],
+  "durable_artifact_sha256": {
+    "SESSION.json": "c55283186128f94a992e9802653a0f2e6c6053de7da24d0d3f0a4127b159ed82",
+    "search_budget_registry.json": "b29e38b6eba329fdeff383c941386c9b6a11578c95fd6996e331c05fcc6f01a5",
+    "trial_registry.json": "6d956defefa8d8a962e4cbcdf1fa39105dbc275e61b71302f63a2c5ac3e9fc7a",
+    "STOP.json": "591d7cb49888165f8dc9cf43832947cd3de2dabb48763368c2320a89ed680d06",
+    "REFERENCE/ATTEMPT.json": "122ca91b3a0aaecc0bb9cbedc23e89db40071010a88864934b91843b45d23666",
+    "REFERENCE/CANDIDATE.json": "836241c3015e4f07777e37df8ae98170b8c1f1342ee2f87ab354d02b83513a5c",
+    "REFERENCE/EXECUTION_STARTED.json": "6e42427c006e13c03ffd762a74a3f55688d1439e6486f46a6d938521e90f7fc0",
+    "REFERENCE/RESULT.json": "09bc77dab5f032a392e5a2491795882a57c205d5d9245fead88c587b2bd017cb",
+    "REFERENCE/DIAGNOSTIC.json": "e56afbb5ff7aff4d7f849acfcb73d9018d85d1c44b1038fd6659f4086e09a1b4",
+    "CANDIDATE_001/ATTEMPT.json": "fd0bf5269fb70732ea894aab68bd9a3dee9afb2eafcd3cb36385502f58ccd7d1",
+    "CANDIDATE_001/MODEL_STARTED.json": "f7b6728c4c5bcc90fdeee42a24746a799fb7d5133f4cbea627109e87314be722",
+    "CANDIDATE_001/PROPOSAL.json": "6ba2bad029348aab9cdf3b2c569ab6e8d32e0bbd8cca33ca36fc9b1235e78782",
+    "CANDIDATE_001/CANDIDATE.json": "01c9176299df56228889ff04c5533fbbaaff0c6d371ef7429c0cb3b0e4c6c8ed",
+    "CANDIDATE_001/EXECUTION_STARTED.json": "6e42427c006e13c03ffd762a74a3f55688d1439e6486f46a6d938521e90f7fc0",
+    "CANDIDATE_001/RESULT.json": "073474fda3d64ba1d475ce39818af9d813b9c8d98f6e4669044125962684ee2f",
+    "CANDIDATE_001/DIAGNOSTIC.json": "e0db1f8c1e7eea820c8bf6598d1f82678287d1e4b0a123f34605f5848509a126",
+    "CANDIDATE_001/FEEDBACK.json": "e0b405e0f5cfe540c866ddd995e92c6e2c5812727b839ef731f30e8e92419409",
+    "CANDIDATE_001/DECISION.json": "b7a18fe5bb63f2bd1b77c1cc28bc1f7fd2deab6ddb8cb2ed45bb70dadc5e3145",
+    "CANDIDATE_002/ATTEMPT.json": "95833f03a6e4c6e252a007cb9a3349b20e0bc9d5abcf148c8442661faa8fced3",
+    "CANDIDATE_002/MODEL_STARTED.json": "f1f4b8ba500d9e2822500cd5fd472bd58531a80fcd05a9e1df45e83016931916",
+    "CANDIDATE_002/PROPOSAL.json": "c0fda6e4792a88636382b27f6e839018515ba398b3d89cb9c4c77d57f6ae1e96",
+    "CANDIDATE_002/CANDIDATE.json": "5bacf13904baf37d0b64189c0166b85e3fec3cb14cad070c3ea00f9a193f7493",
+    "CANDIDATE_002/EXECUTION_STARTED.json": "6e42427c006e13c03ffd762a74a3f55688d1439e6486f46a6d938521e90f7fc0",
+    "CANDIDATE_002/RESULT.json": "26379616576125e94ff1579c041b9bd37f646ebce4aa8f93c0ac4ba8b9e6c651",
+    "CANDIDATE_002/DIAGNOSTIC.json": "4b6d43d3319b439c2d611f8702ae201453abf163f6e604747373dd09b12244c0",
+    "CANDIDATE_002/FEEDBACK.json": "f708d346cc49b5d7a3a8897b8a0040a7025c89ab530e72b00539bc86dec2f849",
+    "CANDIDATE_002/DECISION.json": "b7a18fe5bb63f2bd1b77c1cc28bc1f7fd2deab6ddb8cb2ed45bb70dadc5e3145",
+    "CANDIDATE_003/ATTEMPT.json": "cf7db5652cf6b3dd8586c3f0f0e82c4b474aec35d1351c5ae7c7e90ea3a811bb",
+    "CANDIDATE_003/MODEL_STARTED.json": "5421b2c6c5c2067e876e19e6930d51da5271d2c027d68e41681e8210354c4f13",
+    "CANDIDATE_003/PROPOSAL.json": "54f52e669cc3901539f5d3d3d015b397332e08a93f45d205a6d72e78fa347739",
+    "CANDIDATE_003/CANDIDATE.json": "2805de2cfd42f6fc6165ff61bfb74db42449cf02bfed3419a141b3801e5ceb66",
+    "CANDIDATE_003/EXECUTION_STARTED.json": "6e42427c006e13c03ffd762a74a3f55688d1439e6486f46a6d938521e90f7fc0",
+    "CANDIDATE_003/RESULT.json": "6512862a9226f72c7b02bc8b41543f758d560cc81cef20561eeb6ebf8e8e881e",
+    "CANDIDATE_003/DIAGNOSTIC.json": "ca6d4a84fd4aca051aa03ec4d4e2f5d8fcd2af765bc92c696d175bb5516e82b1",
+    "CANDIDATE_003/FEEDBACK.json": "8167d402d94cea8aff73d21f0bdf3642293d932996d6bf5fa76dbe498d6b8fa3",
+    "CANDIDATE_003/DECISION.json": "b7a18fe5bb63f2bd1b77c1cc28bc1f7fd2deab6ddb8cb2ed45bb70dadc5e3145",
+    "CANDIDATE_004/ATTEMPT.json": "8632f775e1ea898c8c3d9bf1654c4aadc393916b736cb83de954499ca66b3640",
+    "CANDIDATE_004/MODEL_STARTED.json": "4da4f7f7be3fb3cefc1f3215f5341b50661c5fafe5243df6632052164a2ada7b",
+    "CANDIDATE_004/PROPOSAL.json": "f3017605fbd041e4b316bd4a2a51f5c985179151b2e5fd6ed57fa6140532c51e",
+    "CANDIDATE_004/CANDIDATE.json": "1d59ce550b149413b7fb15329fe5a42d934cc00ec8e762fdd4d27876fcbe6c89",
+    "CANDIDATE_004/EXECUTION_STARTED.json": "6e42427c006e13c03ffd762a74a3f55688d1439e6486f46a6d938521e90f7fc0",
+    "CANDIDATE_004/RESULT.json": "cade521317908ca71ba788845baa8310c838beda25b9f34e8b493b7d4329c5da",
+    "CANDIDATE_004/DIAGNOSTIC.json": "bccd30c45722af210bee89cd671c21d11042c36d22f53f88877d9302d077bfa2",
+    "CANDIDATE_004/FEEDBACK.json": "28260ec31fe25aca9f96e7698abc5073fb00e5d226b88f1cfabc7f11b3b68c9f",
+    "CANDIDATE_004/DECISION.json": "b7a18fe5bb63f2bd1b77c1cc28bc1f7fd2deab6ddb8cb2ed45bb70dadc5e3145",
+    "CANDIDATE_005/ATTEMPT.json": "4a73ae9e0b01f970da8620b57848414dfb2221b875fb0c739e2749d87f03b326",
+    "CANDIDATE_005/MODEL_STARTED.json": "f05af7f2b58672178766c02c89764d2e49a4f1020e3c43e2f7c5ba1b6f07c52b",
+    "CANDIDATE_005/PROPOSAL.json": "ec32bb4fa2d3650a0c4a228f53bf219da217fdb6a46b846510d7c1ebfc5dae08",
+    "CANDIDATE_005/CANDIDATE.json": "c3b1c275d251494d38db22805bbb144401c1a5fa648f76ded60d323024289e87",
+    "CANDIDATE_005/EXECUTION_STARTED.json": "6e42427c006e13c03ffd762a74a3f55688d1439e6486f46a6d938521e90f7fc0",
+    "CANDIDATE_005/RESULT.json": "fa798533e3a38aa68d357922c0b0a5a85bd12e2006f4d875d2b884dea84823d8",
+    "CANDIDATE_005/DIAGNOSTIC.json": "b8205968a05d64639cf7474b54f62f5a50b96fd3cdfd076320ef910c0ed94fca",
+    "CANDIDATE_005/FEEDBACK.json": "38fe5e5b10c8d9047ff18151481112bc6f1c104a2e534453c3f8ececde5fe5b4",
+    "CANDIDATE_005/DECISION.json": "b7a18fe5bb63f2bd1b77c1cc28bc1f7fd2deab6ddb8cb2ed45bb70dadc5e3145",
+    "CANDIDATE_005/model/REQUEST.json": "91a1225d98976d1788cc9d97960afa05376d728a22b4db4dbd23a8a82d7394e7",
+    "CANDIDATE_005/model/SUCCESS.json": "3a203e42e623c0a4998cf9cfc6834f2b5da07028e40d25029be17ef6d0710bc9",
+    "CANDIDATE_005/model/INVOCATION.json": "02a80e8f175414dcb60bf1631c524b97ab536cc8859be5f96aebd5079f11efe4",
+    "CANDIDATE_005/governance/CONFIRMATION.json": "005fa26c7e79299c4800357d00112312e8e9804ec675cba3d2c3a941f6228d05",
+    "CANDIDATE_005/governance/CANDIDATE_005_START.json": "6b341dc5289b0c15573f4328f6229a7409a89f718bb5e1553d46c6bd2b685647",
+    "CANDIDATE_005/governance/CANDIDATE_005_SETTLEMENT.json": "7c6edfb8af44021c9aa6c1c64164c33967c3d21577629f74b120a404e945b86b",
+    "CANDIDATE_004/model/REQUEST.json": "e0256c90eea55b18242611f636628bee941575f2f409353e61b808a8891c9490",
+    "CANDIDATE_004/model/SUCCESS.json": "94415df957e25284dd0fbe82ed0495e892c6a936d30b87023884a4814e6afac5",
+    "CANDIDATE_004/model/INVOCATION.json": "461c38d489c9017837e704b02a34046a54d34ec579b9108d918023e3b522947e",
+    "CANDIDATE_004/governance/CONFIRMATION.json": "479d29a5caecfb5e7382664fda76aaedd71d35ded2d5dae2f0c583195e528e3e",
+    "CANDIDATE_004/governance/CANDIDATE_004_START.json": "f2b1222d7be663e89f540a9b6b8ba69ac4d33a8eedbcecf068aa0d495a527e66",
+    "CANDIDATE_004/governance/CANDIDATE_004_SETTLEMENT.json": "86d923ee097aacb060fa49f6e84bac0c12a7b8288aa55c1a797d77e5003c4c42",
+    "CANDIDATE_003/model/REQUEST.json": "da1b3ccaaecb394f3f628999316f0d04c95f14d2f5efb3a7a58c234bada59ac9",
+    "CANDIDATE_003/model/SUCCESS.json": "2db791007f78dcbd53016b3d4faeed8e9d902f9489b0a0ebdb280bad60f835be",
+    "CANDIDATE_003/model/INVOCATION.json": "38ac9307475baeb3697ea97d2e3741a3f87f47f36d576d7e343618187beac218",
+    "CANDIDATE_003/governance/CONFIRMATION.json": "81bf3131c27d75cff58f3841d395d6fa86c0c47504541107fbd3947a70f7ec13",
+    "CANDIDATE_003/governance/CANDIDATE_003_START.json": "7b7f307a1bbfadfe39e87b85ea8bf901c3dd30bb00f174054a35fbb0d2e789d6",
+    "CANDIDATE_003/governance/CANDIDATE_003_SETTLEMENT.json": "59edb7ada20c53b0b37ffce680804a1eb61a8c1a2236fccee728dfba33035429",
+    "CANDIDATE_002/model/REQUEST.json": "cda42ef4ec461ce9d63b62f97a5085a515452259ef8010e971d39334e62a78d4",
+    "CANDIDATE_002/model/SUCCESS.json": "49f69760c375c79b253e44b8fcd8bb78d76d9e9d8fa7b9d1726d0cc3641389dd",
+    "CANDIDATE_002/model/INVOCATION.json": "84ba47ef04c41396907ec316ac826fe38a7931821a0959349418472c3c5553f2",
+    "CANDIDATE_002/governance/CONFIRMATION.json": "ee4c6b89bfa33fc04df07b029916de8f30a58263c4d476c162e16f41ff1a8941",
+    "CANDIDATE_002/governance/CANDIDATE_002_START.json": "7fdce9f352e2963baa2c696a6511be0f83cbf43f0a439ae0509aef249961d17e",
+    "CANDIDATE_002/governance/CANDIDATE_002_SETTLEMENT.json": "1160910605e4314834acf5ad2874c8b327d31ec2049dfbe6e99713f771fb516f",
+    "CANDIDATE_001/model/REQUEST.json": "9918b9226a1a5bfc3bbcf8e9d7dc49e306fc1b24a42fbcd70656b61ccfcdc04d",
+    "CANDIDATE_001/model/SUCCESS.json": "db67de312c001f81ab7ce02ac4c35dd308a8be9157e1366677908f114c8e2667",
+    "CANDIDATE_001/model/INVOCATION.json": "cb7cecec0280b8b3a8ea9f8209405e5652add215ad871165f4dde5c0c1d2f87f",
+    "CANDIDATE_001/governance/CONFIRMATION.json": "ffeeed8849ec50de3b960d1709b3df77d2b63529590873f30abb1f4b07248b7e",
+    "CANDIDATE_001/governance/CANDIDATE_001_START.json": "59cd57b54d99eeedf149cc14091df9d7932190f40ee47f5121a8a3fcd86afaa1",
+    "CANDIDATE_001/governance/CANDIDATE_001_SETTLEMENT.json": "0210e039adb4f369b372f6e485e6ef577da29e6ef33007e7979d724073411814",
+    "REFERENCE/governance/CONFIRMATION.json": "a744685efff0026eb4c03ddabfedf270704256313b2da7fa0fc6b91b6d73ac51",
+    "REFERENCE/governance/REFERENCE_START.json": "5a4a0521e456e6583de138e918a835ead623423d12edb381ec8488d02d9e82aa",
+    "REFERENCE/governance/REFERENCE_SETTLEMENT.json": "2466cf04f21edbed4079c0d5bcb22329e813fbe600202df9d95b16a82ddde020"
+  }
+}
