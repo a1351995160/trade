@@ -2409,3 +2409,31 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 - 原用户工作区未修改；实现位于codex/autonomous-research-next-plan分支。真实任务保存在E:/llmwiki/autonomous-strategy-research-v1/bounded-research-20260926，不清除旧预算。模型未提供具体服务端型号/版本，证据保留NONE/UNKNOWN。
 - 仅证明两股票、已曝光历史样本上的探索工程闭环；历史发布时间仍为建模假设，盈利不能作为独立确认或策略合格证据。没有创建自动采集任务、启动真实Paper或券商订单。
 - 回滚可对本次实现提交执行git revert；保留运行目录、预算和报告供追溯，禁止删除后以新身份免费重跑。远端CI与发布结果在后续记录中单独注明。
+
+## 2026-09-26 - Task: 合并自主研究闭环并推进评审、前瞻Paper与组合
+
+### What was done
+- 用户明确要求直接合并后继续开发。核对PR #21的35项检查均SUCCESS，以精确head 99c4d18合并；main合并提交4039d85。复用干净隔离工作区，从origin/main创建codex/qualification-paper-portfolio。
+- 新增实施计划docs/plans/2026-09-26-002-feat-strategy-review-forward-paper-portfolio.md，明确档案准入、真实到达快照、前瞻账户、共享资金组合与验证边界。
+
+### Testing
+- 本记录时只完成合并前CI复核和现有源码接口调查；新阶段尚未验收，不声称测试或前瞻观察已完成。TQ技能前置检查确认Windows与通达信安装存在，TdxW进程未运行，未绕过前置条件调用HTTP。
+
+### Notes
+- 原用户工作区不动。回滚新阶段改动保留旧PR21成果；若撤销已合并PR21，应单独评估对main执行git revert -m 1 4039d85的影响。真实观察不能用合成日期或历史回放补足；后续完成结果另行追加。
+
+## 2026-09-26 - Task: 接通策略评审、前瞻模拟观察与共享资金组合
+
+### What was done
+- 新增strategy_qualification_v1：冻结并核对完成研究的规则、预算、试验、诊断与结算；正式资格缺失时拒绝晋级，支持不可逆撤销。已有5个真实候选均核验通过工程观察准入，正式观察全部拒绝，结果归档reports/strategy_forward_paper_20260926/REAL_STRATEGY_REVIEWS.json。
+- 新增forward_snapshot_v1及forward_paper_v1/forward_paper_engine_v1：通达信无缓存实际到达快照、CLOSE生成次日计划、OPEN使用收到的报价模拟成交，复用既有账户引擎。真实时钟不可注入，合成输入不累计真实天数，观察期公司行动停机。
+- 新增portfolio_execution_v1：多策略同一账本，保留持仓归属和原策略目标权重，约束成员资金、单证券累计敞口、持仓数、待成交量、现金与费用，不预支卖出款。修复审查发现的目标权重丢失、Broker二次缩量、恢复期间撤销、权威查询异常与撤销提交中断问题。
+- 提供scripts/run_strategy_lifecycle_v1.py统一档案/评审/采集/观察/日报/撤销入口、6个对应测试文件和双平台CI覆盖。docs/STRATEGY_FORWARD_PAPER_V1.md提供业务架构图、配置与操作边界，本轮实施计划状态completed。
+
+### Testing
+- 最终不重叠本地集合721 passed、21 skipped：regression.xml为592/21，lifecycle.xml为95/0，supplemental.xml为34/0，均在reports/strategy_forward_paper_20260926/。Paper18项含真实子进程强制退出前后与连续运行完整状态对比、重复快照、动态撤销、权威读取损坏和恢复超时。
+- 5个真实研究候选档案/评审及真实CLI读取成功；未新增历史搜索试验或消耗模型预算。git diff --check通过。跳过项如实记录真实采样默认未启用与Windows符号链接限制；个别pytest退出仍有既有临时目录清理PermissionError，退出码0。
+
+### Notes
+- 工程功能完成不等于真实观察完成或策略有效：真实观察0天、正式合格策略0个；本机TdxW.exe未运行，未绕过技能前置条件调用HTTP。当前主板范围、预热来源待人工核对、观察期公司行动停机及独立统计确认缺口见业务说明。
+- 原用户工作区不动；实现分支codex/qualification-paper-portfolio。回滚可对本轮功能提交执行git revert，保留E:/llmwiki/autonomous-strategy-research-v1/下研究与新档案，以及快照、账户证据。CI及合并结果另以实际远端状态为准。
