@@ -1,0 +1,24 @@
+{
+  "daily": {
+    "old_path": "E:/llmwiki/autonomous-strategy-research-v1/execution-data-v1/baostock-account-v1/DAILY.parquet",
+    "overlap_rows": 984,
+    "maximum_absolute_differences": {
+      "open": 0.0,
+      "high": 0.0,
+      "low": 0.0,
+      "close": 0.0,
+      "prev_close": 0.0,
+      "volume": 0.0,
+      "amount": 0.0
+    }
+  },
+  "turn": {
+    "old_path": "reports/all_indicator_fixed_strategy_pilot_20260925/BAOSTOCK_TURN.parquet",
+    "overlap_rows": 400,
+    "maximum_absolute_differences": {
+      "volume": 0.0,
+      "turn": 0.0,
+      "tradestatus": 0.0
+    }
+  }
+}

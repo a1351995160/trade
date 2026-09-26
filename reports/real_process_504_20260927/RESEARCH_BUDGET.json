@@ -1,0 +1,121 @@
+{
+  "active_reservations": {},
+  "buckets": [
+    {
+      "exhausted": true,
+      "key": "d98520090efc5028d3c6edcef77102ae87432492329e3c691758464cfc9deaa5:BENCHMARK_BASE",
+      "kind": "strategy_interface_account_v1",
+      "limit": 1,
+      "remaining": 0,
+      "reserved": 0,
+      "used": 1
+    },
+    {
+      "exhausted": true,
+      "key": "d98520090efc5028d3c6edcef77102ae87432492329e3c691758464cfc9deaa5:CANDIDATE_001_BASE",
+      "kind": "strategy_interface_account_v1",
+      "limit": 1,
+      "remaining": 0,
+      "reserved": 0,
+      "used": 1
+    },
+    {
+      "exhausted": true,
+      "key": "d98520090efc5028d3c6edcef77102ae87432492329e3c691758464cfc9deaa5:CANDIDATE_001_STRESS",
+      "kind": "strategy_interface_account_v1",
+      "limit": 1,
+      "remaining": 0,
+      "reserved": 0,
+      "used": 1
+    },
+    {
+      "exhausted": true,
+      "key": "d98520090efc5028d3c6edcef77102ae87432492329e3c691758464cfc9deaa5:CANDIDATE_002_BASE",
+      "kind": "strategy_interface_account_v1",
+      "limit": 1,
+      "remaining": 0,
+      "reserved": 0,
+      "used": 1
+    },
+    {
+      "exhausted": true,
+      "key": "d98520090efc5028d3c6edcef77102ae87432492329e3c691758464cfc9deaa5:CANDIDATE_002_STRESS",
+      "kind": "strategy_interface_account_v1",
+      "limit": 1,
+      "remaining": 0,
+      "reserved": 0,
+      "used": 1
+    },
+    {
+      "exhausted": true,
+      "key": "d98520090efc5028d3c6edcef77102ae87432492329e3c691758464cfc9deaa5:CANDIDATE_003_BASE",
+      "kind": "strategy_interface_account_v1",
+      "limit": 1,
+      "remaining": 0,
+      "reserved": 0,
+      "used": 1
+    },
+    {
+      "exhausted": true,
+      "key": "d98520090efc5028d3c6edcef77102ae87432492329e3c691758464cfc9deaa5:CANDIDATE_003_STRESS",
+      "kind": "strategy_interface_account_v1",
+      "limit": 1,
+      "remaining": 0,
+      "reserved": 0,
+      "used": 1
+    },
+    {
+      "exhausted": true,
+      "key": "d98520090efc5028d3c6edcef77102ae87432492329e3c691758464cfc9deaa5:CANDIDATE_004_BASE",
+      "kind": "strategy_interface_account_v1",
+      "limit": 1,
+      "remaining": 0,
+      "reserved": 0,
+      "used": 1
+    },
+    {
+      "exhausted": true,
+      "key": "d98520090efc5028d3c6edcef77102ae87432492329e3c691758464cfc9deaa5:CANDIDATE_004_STRESS",
+      "kind": "strategy_interface_account_v1",
+      "limit": 1,
+      "remaining": 0,
+      "reserved": 0,
+      "used": 1
+    },
+    {
+      "exhausted": true,
+      "key": "d98520090efc5028d3c6edcef77102ae87432492329e3c691758464cfc9deaa5:CANDIDATE_005_BASE",
+      "kind": "strategy_interface_account_v1",
+      "limit": 1,
+      "remaining": 0,
+      "reserved": 0,
+      "used": 1
+    },
+    {
+      "exhausted": true,
+      "key": "d98520090efc5028d3c6edcef77102ae87432492329e3c691758464cfc9deaa5:CANDIDATE_005_STRESS",
+      "kind": "strategy_interface_account_v1",
+      "limit": 1,
+      "remaining": 0,
+      "reserved": 0,
+      "used": 1
+    }
+  ],
+  "objective_id": "REAL_PROCESS_504_RESEARCH_20260926",
+  "reservation_counter": 11,
+  "schema_version": "search-budget-registry-v1",
+  "settled_reservations": {
+    "RES-000001": "CONSUMED",
+    "RES-000002": "CONSUMED",
+    "RES-000003": "CONSUMED",
+    "RES-000004": "CONSUMED",
+    "RES-000005": "CONSUMED",
+    "RES-000006": "CONSUMED",
+    "RES-000007": "CONSUMED",
+    "RES-000008": "CONSUMED",
+    "RES-000009": "CONSUMED",
+    "RES-000010": "CONSUMED",
+    "RES-000011": "CONSUMED"
+  },
+  "updated_at": "2026-09-26T22:04:19+00:00"
+}

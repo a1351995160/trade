@@ -1,0 +1,227 @@
+{
+  "independent_confirmation": false,
+  "historical_available_at_verified": false,
+  "calendar_trade_day_count": 624,
+  "symbols": {
+    "000001.SZ": {
+      "daily_rows": 624,
+      "first_date": "2022-01-04",
+      "last_date": "2024-07-31",
+      "dates_equal_trade_calendar": true,
+      "duplicate_dates": 0,
+      "statuses": [
+        "1"
+      ],
+      "isST_values": [
+        "0"
+      ],
+      "adjustflag_values": [
+        "3"
+      ],
+      "dividend_in_request_range": [
+        {
+          "code": "sz.000001",
+          "dividPreNoticeDate": "",
+          "dividAgmPumDate": "2022-06-29",
+          "dividPlanAnnounceDate": "2022-03-10",
+          "dividPlanDate": "2022-07-15",
+          "dividRegistDate": "2022-07-21",
+          "dividOperateDate": "2022-07-22",
+          "dividPayDate": "2022-07-22",
+          "dividStockMarketDate": "",
+          "dividCashPsBeforeTax": "0.228",
+          "dividCashPsAfterTax": "0.2052或0.228",
+          "dividStocksPs": "0.000000",
+          "dividCashStock": "10派2.28元（含税，扣税后2.052或2.28元）",
+          "dividReserveToStockPs": ""
+        },
+        {
+          "code": "sz.000001",
+          "dividPreNoticeDate": "",
+          "dividAgmPumDate": "2023-06-01",
+          "dividPlanAnnounceDate": "2023-03-09",
+          "dividPlanDate": "2023-06-07",
+          "dividRegistDate": "2023-06-13",
+          "dividOperateDate": "2023-06-14",
+          "dividPayDate": "2023-06-14",
+          "dividStockMarketDate": "",
+          "dividCashPsBeforeTax": "0.285",
+          "dividCashPsAfterTax": "0.2565或0.285",
+          "dividStocksPs": "0.000000",
+          "dividCashStock": "10派2.85元（含税，扣税后2.565或2.85元）",
+          "dividReserveToStockPs": ""
+        },
+        {
+          "code": "sz.000001",
+          "dividPreNoticeDate": "",
+          "dividAgmPumDate": "2024-05-25",
+          "dividPlanAnnounceDate": "2024-03-15",
+          "dividPlanDate": "2024-06-06",
+          "dividRegistDate": "2024-06-13",
+          "dividOperateDate": "2024-06-14",
+          "dividPayDate": "2024-06-14",
+          "dividStockMarketDate": "",
+          "dividCashPsBeforeTax": "0.719",
+          "dividCashPsAfterTax": "0.6471或0.719",
+          "dividStocksPs": "0.000000",
+          "dividCashStock": "10派7.19元（含税，扣税后6.471或7.19元）",
+          "dividReserveToStockPs": ""
+        }
+      ],
+      "dividend_outside_daily_request_range": [
+        {
+          "code": "sz.000001",
+          "dividPreNoticeDate": "",
+          "dividAgmPumDate": "",
+          "dividPlanAnnounceDate": "2024-08-16",
+          "dividPlanDate": "2024-09-26",
+          "dividRegistDate": "2024-10-09",
+          "dividOperateDate": "2024-10-10",
+          "dividPayDate": "2024-10-10",
+          "dividStockMarketDate": "",
+          "dividCashPsBeforeTax": "0.246",
+          "dividCashPsAfterTax": "0.2214或0.246",
+          "dividStocksPs": "0.000000",
+          "dividCashStock": "10派2.46元（含税，扣税后2.214或2.46元）",
+          "dividReserveToStockPs": ""
+        }
+      ],
+      "adjustment_dates_match_dividend_dates": true,
+      "preclose_discontinuities": [
+        {
+          "date": "2022-07-22",
+          "previous_close_minus_preclose": "0.2300",
+          "declared_cash_before_tax": "0.228",
+          "rounding_difference": "0.0020",
+          "matching_events": 1
+        },
+        {
+          "date": "2023-06-14",
+          "previous_close_minus_preclose": "0.2800",
+          "declared_cash_before_tax": "0.285",
+          "rounding_difference": "-0.0050",
+          "matching_events": 1
+        },
+        {
+          "date": "2024-06-14",
+          "previous_close_minus_preclose": "0.7200",
+          "declared_cash_before_tax": "0.719",
+          "rounding_difference": "0.0010",
+          "matching_events": 1
+        }
+      ]
+    },
+    "600000.SH": {
+      "daily_rows": 624,
+      "first_date": "2022-01-04",
+      "last_date": "2024-07-31",
+      "dates_equal_trade_calendar": true,
+      "duplicate_dates": 0,
+      "statuses": [
+        "1"
+      ],
+      "isST_values": [
+        "0"
+      ],
+      "adjustflag_values": [
+        "3"
+      ],
+      "dividend_in_request_range": [
+        {
+          "code": "sh.600000",
+          "dividPreNoticeDate": "",
+          "dividAgmPumDate": "2022-06-18",
+          "dividPlanAnnounceDate": "2022-04-28",
+          "dividPlanDate": "2022-07-13",
+          "dividRegistDate": "2022-07-20",
+          "dividOperateDate": "2022-07-21",
+          "dividPayDate": "2022-07-21",
+          "dividStockMarketDate": "",
+          "dividCashPsBeforeTax": "0.41",
+          "dividCashPsAfterTax": "0.369或0.41",
+          "dividStocksPs": "0.000000",
+          "dividCashStock": "10派4.1元（含税，扣税后3.69或4.1元）",
+          "dividReserveToStockPs": ""
+        },
+        {
+          "code": "sh.600000",
+          "dividPreNoticeDate": "",
+          "dividAgmPumDate": "2023-06-29",
+          "dividPlanAnnounceDate": "2023-04-19",
+          "dividPlanDate": "2023-07-13",
+          "dividRegistDate": "2023-07-20",
+          "dividOperateDate": "2023-07-21",
+          "dividPayDate": "2023-07-21",
+          "dividStockMarketDate": "",
+          "dividCashPsBeforeTax": "0.32",
+          "dividCashPsAfterTax": "0.288或0.32",
+          "dividStocksPs": "0.000000",
+          "dividCashStock": "10派3.2元（含税，扣税后2.88或3.2元）",
+          "dividReserveToStockPs": ""
+        },
+        {
+          "code": "sh.600000",
+          "dividPreNoticeDate": "",
+          "dividAgmPumDate": "2024-06-29",
+          "dividPlanAnnounceDate": "2024-04-30",
+          "dividPlanDate": "2024-07-11",
+          "dividRegistDate": "2024-07-17",
+          "dividOperateDate": "2024-07-18",
+          "dividPayDate": "2024-07-18",
+          "dividStockMarketDate": "",
+          "dividCashPsBeforeTax": "0.321",
+          "dividCashPsAfterTax": "0.2889或0.321",
+          "dividStocksPs": "0.000000",
+          "dividCashStock": "10派3.21元（含税，扣税后2.889或3.21元）",
+          "dividReserveToStockPs": ""
+        }
+      ],
+      "dividend_outside_daily_request_range": [],
+      "adjustment_dates_match_dividend_dates": true,
+      "preclose_discontinuities": [
+        {
+          "date": "2022-07-21",
+          "previous_close_minus_preclose": "0.4100",
+          "declared_cash_before_tax": "0.41",
+          "rounding_difference": "0.0000",
+          "matching_events": 1
+        },
+        {
+          "date": "2023-07-21",
+          "previous_close_minus_preclose": "0.3200",
+          "declared_cash_before_tax": "0.32",
+          "rounding_difference": "0.0000",
+          "matching_events": 1
+        },
+        {
+          "date": "2024-07-18",
+          "previous_close_minus_preclose": "0.3200",
+          "declared_cash_before_tax": "0.321",
+          "rounding_difference": "-0.0010",
+          "matching_events": 1
+        }
+      ]
+    }
+  },
+  "dividend_source_published_at_semantics": "dividPlanDate is a vendor assertion, not independently verified historical availability",
+  "files_sha256": {
+    "FETCH_PLAN.json": "4bbeec717d5941a507e2e455e3faa7e43204acb4dd2298cdd2511566d657f7e6",
+    "LOGIN.json": "1815859609892daffb4add638e25c5c9111f8cbf33f522862c886941d14114e2",
+    "TRADE_DATES.json": "87f146a3e741deadb598eefaadfe8cc0c09ec590be39e0ac9ee5dd94bd691f4c",
+    "DAILY_000001.SZ.json": "d87fa6b1ca79c7ad68faedc209ef071dcf4e3fb4d569f422a12d7e27edceb47b",
+    "DIVIDEND_000001.SZ_2022.json": "9677b3014752079ff16bf5ab791086bc4ffaf333764bb090eddab5c00f5c737a",
+    "DIVIDEND_000001.SZ_2023.json": "b1e4b361e636522781b0a418932f1d110f589d2c940aebdab9bf0bbcfd794553",
+    "DIVIDEND_000001.SZ_2024.json": "566ed8afa9773709ee2045a6598267f419d4467aee576309ca11b464976b03bc",
+    "DAILY_600000.SH.json": "05d4d725d011533498972b7429bc7ca6e77ec1e1cc7142cff8d0ee939f5b6eb8",
+    "DIVIDEND_600000.SH_2022.json": "efd747a0c8e6e6c2c5ba08478e8fef97a411be975ececac9cfffedbdec1e591d",
+    "DIVIDEND_600000.SH_2023.json": "548e7126bd21aad121346c8f497e2ef3780385a01f9f8b1580f8256dbd0d7d31",
+    "DIVIDEND_600000.SH_2024.json": "46d542a2b56766a16ea1565a10f777e3e5dccebb4007d5be9531a95cc89c8efe",
+    "LOGOUT.json": "72da7bd4d15d54f7fcff432f87e32e60596c18b088db7b98c707b629680c6bd2",
+    "FETCH_MANIFEST.json": "d96816a1b047ffa7b0bc386238d8020f9dab8faa6aa5f283d04574173c631b47",
+    "ADJUST_FETCH_PLAN.json": "ba33fbc9c2c47ffe4ca52435b22a87b7cc45494fc537c9bebd3d7472b1d85dde",
+    "ADJUST_LOGIN.json": "8c8c149470485e2ee355ffa490c8b59b505bf6ff6beee2eefb556e54d92436b3",
+    "ADJUST_000001.SZ.json": "4627d76ea28719d59fc4ec6187d02c320fc20738b387f41c46dd622a9841515c",
+    "ADJUST_600000.SH.json": "e286528aca0f10ef36ff28b33ea52c4909e391535e9b8787389fc5a0c47b13ce",
+    "ADJUST_LOGOUT.json": "deb26deb48e37a644a389b5f6dddbe7060db5a718e459f0812807d287ff71dc6"
+  }
+}

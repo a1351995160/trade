@@ -1,0 +1,78 @@
+{
+  "ADJUST_000001.SZ.json": {
+    "sha256": "4627d76ea28719d59fc4ec6187d02c320fc20738b387f41c46dd622a9841515c",
+    "bytes": 969
+  },
+  "ADJUST_600000.SH.json": {
+    "sha256": "e286528aca0f10ef36ff28b33ea52c4909e391535e9b8787389fc5a0c47b13ce",
+    "bytes": 963
+  },
+  "ADJUST_FETCH_PLAN.json": {
+    "sha256": "ba33fbc9c2c47ffe4ca52435b22a87b7cc45494fc537c9bebd3d7472b1d85dde",
+    "bytes": 345
+  },
+  "ADJUST_LOGIN.json": {
+    "sha256": "8c8c149470485e2ee355ffa490c8b59b505bf6ff6beee2eefb556e54d92436b3",
+    "bytes": 98
+  },
+  "ADJUST_LOGOUT.json": {
+    "sha256": "deb26deb48e37a644a389b5f6dddbe7060db5a718e459f0812807d287ff71dc6",
+    "bytes": 98
+  },
+  "DAILY_000001.SZ.json": {
+    "sha256": "d87fa6b1ca79c7ad68faedc209ef071dcf4e3fb4d569f422a12d7e27edceb47b",
+    "bytes": 144163
+  },
+  "DAILY_600000.SH.json": {
+    "sha256": "05d4d725d011533498972b7429bc7ca6e77ec1e1cc7142cff8d0ee939f5b6eb8",
+    "bytes": 140623
+  },
+  "DIVIDEND_000001.SZ_2022.json": {
+    "sha256": "9677b3014752079ff16bf5ab791086bc4ffaf333764bb090eddab5c00f5c737a",
+    "bytes": 1148
+  },
+  "DIVIDEND_000001.SZ_2023.json": {
+    "sha256": "b1e4b361e636522781b0a418932f1d110f589d2c940aebdab9bf0bbcfd794553",
+    "bytes": 1148
+  },
+  "DIVIDEND_000001.SZ_2024.json": {
+    "sha256": "566ed8afa9773709ee2045a6598267f419d4467aee576309ca11b464976b03bc",
+    "bytes": 1437
+  },
+  "DIVIDEND_600000.SH_2022.json": {
+    "sha256": "efd747a0c8e6e6c2c5ba08478e8fef97a411be975ececac9cfffedbdec1e591d",
+    "bytes": 1142
+  },
+  "DIVIDEND_600000.SH_2023.json": {
+    "sha256": "548e7126bd21aad121346c8f497e2ef3780385a01f9f8b1580f8256dbd0d7d31",
+    "bytes": 1142
+  },
+  "DIVIDEND_600000.SH_2024.json": {
+    "sha256": "46d542a2b56766a16ea1565a10f777e3e5dccebb4007d5be9531a95cc89c8efe",
+    "bytes": 1148
+  },
+  "FETCH_MANIFEST.json": {
+    "sha256": "d96816a1b047ffa7b0bc386238d8020f9dab8faa6aa5f283d04574173c631b47",
+    "bytes": 2328
+  },
+  "FETCH_PLAN.json": {
+    "sha256": "4bbeec717d5941a507e2e455e3faa7e43204acb4dd2298cdd2511566d657f7e6",
+    "bytes": 781
+  },
+  "LOGIN.json": {
+    "sha256": "1815859609892daffb4add638e25c5c9111f8cbf33f522862c886941d14114e2",
+    "bytes": 98
+  },
+  "LOGOUT.json": {
+    "sha256": "72da7bd4d15d54f7fcff432f87e32e60596c18b088db7b98c707b629680c6bd2",
+    "bytes": 98
+  },
+  "RAW_QUALITY_SUMMARY.json": {
+    "sha256": "e2ffcd235d539f0ccfb72cfd2cea1ae38c4fa18cd21b726f08b7e5f4b3e03f10",
+    "bytes": 9125
+  },
+  "TRADE_DATES.json": {
+    "sha256": "87f146a3e741deadb598eefaadfe8cc0c09ec590be39e0ac9ee5dd94bd691f4c",
+    "bytes": 41097
+  }
+}

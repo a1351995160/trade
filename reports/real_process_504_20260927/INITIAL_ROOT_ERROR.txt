@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "E:\worktrees\s1-trusted-baseline\trade-system-contract-port-v1\scripts\run_historical_process_research_v1.py", line 270, in <module>
+    execute(args.data_root.absolute(), args.archive_root.absolute(), args.output.absolute())
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\worktrees\s1-trusted-baseline\trade-system-contract-port-v1\scripts\run_historical_process_research_v1.py", line 189, in execute
+    validate_research_root(output, ExecutionPolicy())
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\worktrees\s1-trusted-baseline\trade-system-contract-port-v1\src\chanlun_trader\execution_policy.py", line 34, in validate_research_root
+    raise ValueError("INVALID_RESEARCH_ROOT")
+ValueError: INVALID_RESEARCH_ROOT

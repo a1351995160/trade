@@ -1,0 +1,109 @@
+{
+  "accounts": {
+    "BENCHMARK_BASE": {
+      "file_sha256": "a6eb98bee1be8a3a4e915fe9cdd6da111ca02b096ee9738a16543df3a8f704af",
+      "result_hash": "9fd33c6b3f859b841bfdf692f799b3c9d1ea35f89f2e01591526aeb813fbb6b7",
+      "days": 504,
+      "max_ledger_delta": 0.0,
+      "full_replay": "IDENTICAL_AS_VERIFIED_BEFORE_SETTLEMENT",
+      "seconds_including_replay": 2.9553862000029767,
+      "account_input_identity": "74f2ba32273d54528985b53bd52aa82bd0c5b9cbc7aa510bf59d2f74958f5fca"
+    },
+    "CANDIDATE_001_BASE": {
+      "file_sha256": "9f8b02135f4dc3ff0fd061877ea53ccbd418ea8e07dacd5485336df51a20b72c",
+      "result_hash": "3d188b10be4e642736d24fd35821bc389f620ed96416d0035c69b6fe06461805",
+      "days": 504,
+      "max_ledger_delta": 0.0,
+      "full_replay": "IDENTICAL_AS_VERIFIED_BEFORE_SETTLEMENT",
+      "seconds_including_replay": 13.174778500004322,
+      "account_input_identity": "74f2ba32273d54528985b53bd52aa82bd0c5b9cbc7aa510bf59d2f74958f5fca"
+    },
+    "CANDIDATE_001_STRESS": {
+      "file_sha256": "8dd4ddeaa253c2b9161e007989043f11a2b996a79bea15fc6f504c0ad7971788",
+      "result_hash": "3d7ab6fae0a80455bc71040a2ac4dadf3e7d35f58ce7b5dcde86768469545096",
+      "days": 504,
+      "max_ledger_delta": 0.0,
+      "full_replay": "IDENTICAL_AS_VERIFIED_BEFORE_SETTLEMENT",
+      "seconds_including_replay": 13.299904700004845,
+      "account_input_identity": "74f2ba32273d54528985b53bd52aa82bd0c5b9cbc7aa510bf59d2f74958f5fca"
+    },
+    "CANDIDATE_002_BASE": {
+      "file_sha256": "34939e7ecbce402d6ed674f507deb90d627e4bd4aad7deee1ab6a5c364fb09ac",
+      "result_hash": "2fb8d03f6decae8a85e51ad85e834fc503189722bd4b7240cd8c002d71632b49",
+      "days": 504,
+      "max_ledger_delta": 0.0,
+      "full_replay": "IDENTICAL_AS_VERIFIED_BEFORE_SETTLEMENT",
+      "seconds_including_replay": 13.226725299988175,
+      "account_input_identity": "74f2ba32273d54528985b53bd52aa82bd0c5b9cbc7aa510bf59d2f74958f5fca"
+    },
+    "CANDIDATE_002_STRESS": {
+      "file_sha256": "37933b3a9c2615c31f93b729667b575b114e26489eeecec4bf1034936bd86706",
+      "result_hash": "671d9b8217824b6a76f0ceb1574b0a5ba02e85c041900f4913c14d11bd313e8f",
+      "days": 504,
+      "max_ledger_delta": 0.0,
+      "full_replay": "IDENTICAL_AS_VERIFIED_BEFORE_SETTLEMENT",
+      "seconds_including_replay": 12.641969200005406,
+      "account_input_identity": "74f2ba32273d54528985b53bd52aa82bd0c5b9cbc7aa510bf59d2f74958f5fca"
+    },
+    "CANDIDATE_003_BASE": {
+      "file_sha256": "3130dfa8f1aeedee1d2f6becb938d794a475b4a4a5a923addb946abcc043cfc6",
+      "result_hash": "e0004f48a0e2185ab8cf004bc107efd53fa2c9e663a9a92d965a333b1c16c9c2",
+      "days": 504,
+      "max_ledger_delta": 0.0,
+      "full_replay": "IDENTICAL_AS_VERIFIED_BEFORE_SETTLEMENT",
+      "seconds_including_replay": 6.179198999991058,
+      "account_input_identity": "74f2ba32273d54528985b53bd52aa82bd0c5b9cbc7aa510bf59d2f74958f5fca"
+    },
+    "CANDIDATE_003_STRESS": {
+      "file_sha256": "762b824543a6b0e97b56085197971f33f4f30129902a514824620fbd5f0b6132",
+      "result_hash": "6a034235f6f35786ac5a41cc668ae0546a4751aceed8b7724127df1c3101e07e",
+      "days": 504,
+      "max_ledger_delta": 0.0,
+      "full_replay": "IDENTICAL_AS_VERIFIED_BEFORE_SETTLEMENT",
+      "seconds_including_replay": 5.735083899999154,
+      "account_input_identity": "74f2ba32273d54528985b53bd52aa82bd0c5b9cbc7aa510bf59d2f74958f5fca"
+    },
+    "CANDIDATE_004_BASE": {
+      "file_sha256": "231c92ba95d595d1d0b3162358db3625c010aeccfc20d0e90927e204bed3fb35",
+      "result_hash": "d23b356620836f2c5391cdaa5ba9cff1b3431ebc257bc2878e6ad421770198eb",
+      "days": 504,
+      "max_ledger_delta": 0.0,
+      "full_replay": "IDENTICAL_AS_VERIFIED_BEFORE_SETTLEMENT",
+      "seconds_including_replay": 18.657800299988594,
+      "account_input_identity": "74f2ba32273d54528985b53bd52aa82bd0c5b9cbc7aa510bf59d2f74958f5fca"
+    },
+    "CANDIDATE_004_STRESS": {
+      "file_sha256": "021767dc3d41bf337f2f6d5e11a7961a24b6c3adbc9cc192471e76d9edc10f09",
+      "result_hash": "ea110d382f9a6e40c9b026417d02f316988781e28480a08a2c6549bc020e652c",
+      "days": 504,
+      "max_ledger_delta": 0.0,
+      "full_replay": "IDENTICAL_AS_VERIFIED_BEFORE_SETTLEMENT",
+      "seconds_including_replay": 17.927508099994157,
+      "account_input_identity": "74f2ba32273d54528985b53bd52aa82bd0c5b9cbc7aa510bf59d2f74958f5fca"
+    },
+    "CANDIDATE_005_BASE": {
+      "file_sha256": "12f5fd1e14a15d826af11546ff3dbe582ae3d6a6879add1391b6a75937961120",
+      "result_hash": "82fa8aab9789a4e7f6041be91a7688da37b362f0a7478abf679ca0fa6aa4ecdd",
+      "days": 504,
+      "max_ledger_delta": 0.0,
+      "full_replay": "IDENTICAL_AS_VERIFIED_BEFORE_SETTLEMENT",
+      "seconds_including_replay": 9.248909400004777,
+      "account_input_identity": "74f2ba32273d54528985b53bd52aa82bd0c5b9cbc7aa510bf59d2f74958f5fca"
+    },
+    "CANDIDATE_005_STRESS": {
+      "file_sha256": "d489b9ecf7db8bf027503cabed9144f9ab603bee30bd3512eb8930c10199eded",
+      "result_hash": "1c5aa7917738e94f55e7f9a254b5a1c5f8c9c383fa4837c0d458709879b12790",
+      "days": 504,
+      "max_ledger_delta": 0.0,
+      "full_replay": "IDENTICAL_AS_VERIFIED_BEFORE_SETTLEMENT",
+      "seconds_including_replay": 10.166659199996502,
+      "account_input_identity": "74f2ba32273d54528985b53bd52aa82bd0c5b9cbc7aa510bf59d2f74958f5fca"
+    }
+  },
+  "account_count": 11,
+  "account_days": 5544,
+  "formal_budget_consumed": 0,
+  "cost_pair_decisions_equal": true,
+  "source_scope_hash": "d36fa2daf532144c15ec245378b00a6d542287038883a0a970d5c2c0f5a2bd83",
+  "basis": "ACTUAL_RUN_LOG_AND_SAVED_START_SETTLEMENT_RESULT_AND_LEDGER_RECHECK"
+}
