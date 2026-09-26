@@ -10,6 +10,7 @@ from .bounded_research_v1 import _put, _read, source_identity
 from .common import stable_hash
 from .mutation_boundary import ObjectiveMutationLock
 from .formal_statistics_v1 import METHOD_HASH, METHOD_SPEC, family_test, load_calibration
+from . import formal_statistics_v2 as statistics_v2
 from .formal_account_backend_v1 import (
     prepare_formal_account, run_formal_account, validate_formal_result, window_input_identity,
 )
@@ -25,11 +26,38 @@ POLICY = {'version': 'FORMAL_ASSESSMENT_V1', 'warmup_sessions': 60, 'account_ses
 # 绑定本轮实际执行的完整校准；调用方不能提交自编 p 值文件批准方法。
 # 新方法必须另作预登记和审核，不能替换本次失败记录。
 CALIBRATION_HASH = '9aa67aa7f480424cdf46f21725ab420fdc72f777f623478fe66ac6039543d6ec'
+# 只有完成本版预登记校准并核验完整报告后才填入，None 不允许准入。
+V2_CALIBRATION_HASH = '427c509ffa60f2ad7ca122a5fc519b7aa602eb15826d9421e159fb5ee1074e22'
+
+
+def _method(method_hash):
+    if method_hash == METHOD_HASH:
+        return METHOD_SPEC, CALIBRATION_HASH, family_test
+    if method_hash == statistics_v2.METHOD_HASH:
+        return statistics_v2.METHOD_SPEC, V2_CALIBRATION_HASH, statistics_v2.family_test
+    raise ValueError('FORMAL_ASSESSMENT_UNKNOWN_METHOD')
+
+
+def _statistics(plan, excess):
+    spec, _, test = _method(plan['method_hash'])
+    return test(excess, alpha=plan['alpha_budget'] * spec['test_alpha_fraction'])
 
 
 def _load_method(path):
-    calibration = load_calibration(_safe_root(path))
-    _require(stable_hash(calibration) == CALIBRATION_HASH, 'UNREVIEWED_CALIBRATION')
+    path = _safe_root(path)
+    # 先读取声明仅用于选择验证器，任何批准都来自完整验证和固定报告身份。
+    preregistration = path.parent / 'PREREGISTRATION.json'
+    if preregistration.exists():
+        declared = _read(preregistration)['method_hash']
+    else:
+        declared = _read(path)['method_hash'] if path.exists() else METHOD_HASH
+    _, expected, _ = _method(declared)
+    _require(expected is not None, 'UNREVIEWED_CALIBRATION')
+    calibration = (statistics_v2.load_calibration(path, expected_hash=expected)
+                   if declared == statistics_v2.METHOD_HASH else load_calibration(path))
+    actual = calibration.get('method_hash', METHOD_HASH)
+    _require(actual == declared and expected is not None and stable_hash(calibration) == expected,
+             'UNREVIEWED_CALIBRATION')
     return calibration
 
 
@@ -72,6 +100,9 @@ def adjudicate(*, plan, evidence, results, statistics, method_approved):
                 reasons.append('STATISTICAL_SUPPORT_INSUFFICIENT')
         if not method_approved:
             reasons.append('FORMAL_STATISTICAL_METHOD_NOT_APPROVED')
+        if plan.get('method_hash') == statistics_v2.METHOD_HASH:
+            # 合成校准不能证明真实账户的共同均值及分段近似独立；本轮不开放该资格门。
+            reasons.append('REAL_RETURN_PROCESS_APPLICABILITY_NOT_ESTABLISHED')
         if evidence.get('qualification_evidence_eligible') is not True:
             reasons.append('INDEPENDENT_REAL_EXECUTION_EVIDENCE_REQUIRED')
         if plan['profile'] != 'REAL_OBSERVED' or (frozen and frozen['source_profile'] == 'SYNTHETIC'):
@@ -114,6 +145,8 @@ class FormalAssessmentServiceV1:
             archived = self.archive.load(key)
             review = self.archive.review(key)
             reasons = ['INDEPENDENT_CONFIRMATION_REQUIRED', 'INDEPENDENT_COST_STRESS_REQUIRED']
+            if calibration.get('method_hash') == statistics_v2.METHOD_HASH:
+                reasons.append('REAL_RETURN_PROCESS_APPLICABILITY_NOT_ESTABLISHED')
             if not calibration['method_approved']:
                 reasons.insert(0, 'FORMAL_STATISTICAL_CALIBRATION_FAILED')
             if archived['source_profile'] == 'SYNTHETIC':
@@ -124,11 +157,16 @@ class FormalAssessmentServiceV1:
                               'archive_hash': archived['archive_hash'], 'reason_codes': reasons,
                               'historical_metrics': review['metrics']}
         return {'version': POLICY['version'], 'status': 'FORMAL_READINESS_REVIEWED',
-                'strategy_qualified': False, 'decisions': decisions, 'method_hash': METHOD_HASH,
+                'strategy_qualified': False, 'decisions': decisions,
+                'method_hash': calibration.get('method_hash', METHOD_HASH),
                 'calibration_hash': stable_hash(calibration), 'method_approved': calibration['method_approved'],
                 'failed_support_checks': len(failed), 'failed_checks': failed,
                 'historical_data_reused_as_independent': False, 'confirmation_budget_consumed': 0,
-                'next_action': 'REDESIGN_AND_PREREGISTER_STATISTICAL_METHOD' if failed else 'FREEZE_FUTURE_CONFIRMATION',
+                'next_action': ('REDESIGN_AND_PREREGISTER_STATISTICAL_METHOD'
+                                if not calibration['method_approved'] else
+                                'ESTABLISH_REAL_PROCESS_APPLICABILITY_AND_INDEPENDENT_WINDOW'),
+                'method_scope': _method(calibration.get('method_hash', METHOD_HASH))[0]['interpretation'],
+                'real_process_applicability': 'NOT_ESTABLISHED',
                 'interpretation': '准入准备评审；没有独立收益证据时不对策略本身作有效或无效的判决。'}
 
     def register(self, *, strategy_ids, symbols, not_before, calibration_path, profile='REAL_OBSERVED'):
@@ -143,6 +181,10 @@ class FormalAssessmentServiceV1:
         _require(type(not_before) is int and not_before > today, 'FUTURE_START_REQUIRED')
         datetime.strptime(str(not_before), '%Y%m%d')
         calibration = _load_method(calibration_path)
+        method_hash = calibration.get('method_hash', METHOD_HASH)
+        method_spec, _, _ = _method(method_hash)
+        _require(method_spec['alpha_budgets'] == METHOD_SPEC['alpha_budgets']
+                 and method_spec['sessions'] == POLICY['account_sessions'], 'METHOD_POLICY_CONFLICT')
         # 失败校准可登记工程演练，但不能消耗真实确认窗口后才发现方法未批准。
         _require(profile == 'SYNTHETIC' or calibration['method_approved'], 'CALIBRATION_NOT_APPROVED')
         archives = [self.archive.load(key) for key in sorted(strategy_ids)]
@@ -175,8 +217,8 @@ class FormalAssessmentServiceV1:
                     'profile': profile, 'scope_id': scope['scope_id'], 'source_root': str(origin),
                     'archive_root': str(self.archive.root), 'authority_root': str(self.root),
                     'family': family, 'symbols': symbols, 'slot': slot,
-                    'alpha_budget': METHOD_SPEC['alpha_budgets'][slot-1], 'policy': POLICY,
-                    'method_hash': METHOD_HASH, 'calibration_hash': stable_hash(calibration),
+                    'alpha_budget': method_spec['alpha_budgets'][slot-1], 'policy': POLICY,
+                    'method_hash': method_hash, 'calibration_hash': stable_hash(calibration),
                     'source_identity': source_identity(), 'account_budget': 1 + 2 * len(archives)}
             plan['batch_id'] = 'FA_' + stable_hash(plan)
             _put(self.path(plan['batch_id'], 'CALIBRATION.json'), calibration)
@@ -186,15 +228,18 @@ class FormalAssessmentServiceV1:
 
     def plan(self, batch):
         plan = _read(self.path(batch, 'PLAN.json'))
+        method_spec, calibration_hash, _ = _method(plan['method_hash'])
         _require(plan['batch_id'] == batch == 'FA_' + stable_hash(
             {k: v for k, v in plan.items() if k != 'batch_id'}), 'PLAN_HASH_CONFLICT')
         _require(plan['authority_root'] == str(self.root) and plan['archive_root'] == str(self.archive.root)
-                 and plan['policy'] == POLICY and plan['method_hash'] == METHOD_HASH
-                 and plan['alpha_budget'] == METHOD_SPEC['alpha_budgets'][plan['slot']-1], 'PLAN_SCOPE_CONFLICT')
+                 and plan['policy'] == POLICY
+                 and plan['alpha_budget'] == method_spec['alpha_budgets'][plan['slot']-1], 'PLAN_SCOPE_CONFLICT')
         _require(_read(Path(plan['source_root']) / 'FORMAL_AUTHORITY.json') ==
                  {'authority_root': str(self.root), 'scope_id': plan['scope_id']}, 'AUTHORITY_BINDING_CONFLICT')
         calibration = _read(self.path(batch, 'CALIBRATION.json'))
-        _require(stable_hash(calibration) == plan['calibration_hash'] == CALIBRATION_HASH, 'CALIBRATION_CHANGED')
+        _require(calibration_hash is not None and
+                 calibration.get('method_hash', METHOD_HASH) == plan['method_hash'] and
+                 stable_hash(calibration) == plan['calibration_hash'] == calibration_hash, 'CALIBRATION_CHANGED')
         for item in plan['family'].values():
             if item:
                 a = self.archive.load(item['strategy_id'])
@@ -266,7 +311,7 @@ class FormalAssessmentServiceV1:
                          {'start_hash': stable_hash(start), 'result_hash': stable_hash(result)})
                     results[key] = result
                 excess = self._excess(plan, results)
-                stats = family_test(excess, alpha=plan['alpha_budget'] / 2)
+                stats = _statistics(plan, excess)
                 _put(self.path(batch, 'STATISTICS.json'), stats)
                 decisions = adjudicate(plan=plan, evidence=evidence, results=results, statistics=stats,
                     method_approved=_read(self.path(batch, 'CALIBRATION.json'))['method_approved'])
@@ -276,7 +321,8 @@ class FormalAssessmentServiceV1:
                           'account_hashes': {key: stable_hash(value) for key, value in results.items()},
                           'plan_hash': stable_hash(plan), 'symbols': plan['symbols'],
                           'account_budget_consumed': len(results), 'alpha_budget_consumed': plan['alpha_budget'],
-                          'limitations': [METHOD_SPEC['interpretation'], 'NO_BROKER_EXECUTION_AUTHORIZED']}
+                          'limitations': [_method(plan['method_hash'])[0]['interpretation'],
+                                          'NO_BROKER_EXECUTION_AUTHORIZED']}
                 _put(self.path(batch, 'REPORT.json'), report)
                 return report
             except (ValueError, KeyError, TypeError, OSError) as exc:
@@ -337,7 +383,7 @@ class FormalAssessmentServiceV1:
                      {'start_hash': stable_hash(start), 'result_hash': digest}, 'SETTLEMENT_CONFLICT')
             results[key] = result
         stats = _read(self.path(batch, 'STATISTICS.json'))
-        recomputed = family_test(self._excess(plan, results), alpha=plan['alpha_budget'] / 2)
+        recomputed = _statistics(plan, self._excess(plan, results))
         _require(stats == report['statistics'] and report['plan_hash'] == stable_hash(plan)
                  and stats == recomputed and report['data_evidence_hash'] == stable_hash(evidence), 'REPORT_BINDING_CONFLICT')
         decisions = adjudicate(plan=plan, evidence=evidence, results=results, statistics=stats,

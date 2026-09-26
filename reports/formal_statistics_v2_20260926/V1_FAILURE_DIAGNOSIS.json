@@ -1,0 +1,73 @@
+{
+  "schema_version": "V1_KNOWN_COVARIANCE_DIAGNOSIS",
+  "sessions": 504,
+  "formula": "Var_boot_mean=(gamma_circular(0)+2*sum((1-k/n)*(1-1/block)^k*gamma_circular(k)))/n; E(gamma_circular) from P Sigma P",
+  "scope": "Analytic expectation under specified covariance, not proof of all causes or empirical strategy inference",
+  "method_v1_changed": false,
+  "rows": [
+    {
+      "condition": "IID",
+      "block": 10,
+      "true_mean_variance": 0.001984126984126984,
+      "expected_centered_bootstrap_variance": 0.0019107345319080019,
+      "ratio": 0.963010204081633
+    },
+    {
+      "condition": "IID",
+      "block": 20,
+      "true_mean_variance": 0.001984126984126984,
+      "expected_centered_bootstrap_variance": 0.0018365297324102726,
+      "ratio": 0.9256109851347775
+    },
+    {
+      "condition": "IID",
+      "block": 40,
+      "true_mean_variance": 0.001984126984126984,
+      "expected_centered_bootstrap_variance": 0.0016974933012314961,
+      "ratio": 0.8555366238206741
+    },
+    {
+      "condition": "AR06",
+      "block": 10,
+      "true_mean_variance": 0.00790698223733938,
+      "expected_centered_bootstrap_variance": 0.006309981679879516,
+      "ratio": 0.7980265404014314
+    },
+    {
+      "condition": "AR06",
+      "block": 20,
+      "true_mean_variance": 0.00790698223733938,
+      "expected_centered_bootstrap_variance": 0.006607809687423319,
+      "ratio": 0.8356929975407128
+    },
+    {
+      "condition": "AR06",
+      "block": 40,
+      "true_mean_variance": 0.00790698223733938,
+      "expected_centered_bootstrap_variance": 0.0063823759049670735,
+      "ratio": 0.8071822742724003
+    },
+    {
+      "condition": "MA10",
+      "block": 10,
+      "true_mean_variance": 0.019711356764928193,
+      "expected_centered_bootstrap_variance": 0.013550962163548902,
+      "ratio": 0.6874697832906007
+    },
+    {
+      "condition": "MA10",
+      "block": 20,
+      "true_mean_variance": 0.019711356764928193,
+      "expected_centered_bootstrap_variance": 0.015205355549316558,
+      "ratio": 0.7714007579818644
+    },
+    {
+      "condition": "MA10",
+      "block": 40,
+      "true_mean_variance": 0.019711356764928193,
+      "expected_centered_bootstrap_variance": 0.015207672974277608,
+      "ratio": 0.7715183259904336
+    }
+  ],
+  "script_sha256": "2560390e32085a3fb88a26f9d43f7164dd83a91f591c1cb79a8f11c906dfdcff"
+}

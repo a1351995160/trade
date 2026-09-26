@@ -1,0 +1,9 @@
+{
+  "old_v1_pin_verified": "9aa67aa7f480424cdf46f21725ab420fdc72f777f623478fe66ac6039543d6ec",
+  "old_v1_method_approved": false,
+  "independent_review": "P2_REPEATED_FULL_REPLAY_COST_FIXED_AND_REVIEWED",
+  "initial_test_result": "72 passed, 2 failed; reference quantile and arithmetic grouping corrected",
+  "fixed_related_test_result": "49 passed, 2 deselected",
+  "full_calibration_started_only_after_fixed_tests": true,
+  "real_strategy_qualification": false
+}
