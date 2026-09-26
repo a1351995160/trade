@@ -2448,3 +2448,24 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 
 ### Notes
 - 初始实现提交07c35c2及PR #22已推送，修复另作提交。回滚本轮入口修复可git revert对应提交；整体功能回滚保留档案与观察证据，不删除历史。该修复不增加真实Paper观察天数。
+
+## 2026-09-26 - Task: 实施正式有效性评审并保留统计校准失败结论
+
+### What was done
+- 从已合并PR #22的main 5033aa2，在隔离分支codex/formal-strategy-assessment实现；原用户工作区及其未提交研究内容不动。
+- formal_statistics_v1与calibrate_formal_statistics_v1提供固定504日、完整家族Holm、独立重复校准。正式运行前冻结方法、2048重复、9支持过程与4域外过程；完整26,624条记录跑完，81个支持门中44个失败，method_approved=False。完整报告位于E:/llmwiki/autonomous-strategy-research-v1/formal-method-calibration-20260926，仓库保存摘要和数值对照；未换种子、删场景或降低阈值。
+- formal_evidence_v1核验冻结后的真实OPEN/CLOSE原响应、实收时间、完整交易日历及价格参考连续性；正式账户backend复用原run_chain、公共策略入口和独立会计，实际分别执行正常费用、压力费用与持有基准。成交使用收到时的OPEN报价，收盘收到以后才决策。旧run_chain默认行为保留。
+- formal_assessment_v1接通源研究权威绑定、终生3批次预算、先登记后暴露、全家族分母、可恢复的确定性内存账户、结算/统计/裁决报告和定性AI反馈。固定绑定实际校准哈希，拒绝调用方自编批准文件；真实校准未通过时不登记真实确认。保存结果独立复核账目并完整重放规则轨迹，防止删交易后重写收益；修复实际集成发现的零数量拒单兼容，仅允许原引擎SIZING_ZERO_AT_FILL证据。
+- 统一CLI、策略档案与正式Paper准入已接入权威评审；正式Paper首版限定原评审的两只主板证券、100万资金与单策略配置，组合工程观察不等于组合有效。新增业务文档docs/FORMAL_STRATEGY_ASSESSMENT_V1.md、实施计划003及既有观察文档交叉说明。
+- 5个真实候选完成准备评审，全部CONTINUE_RESEARCH，报告REAL_STRATEGY_REVIEW.json；没有将旧窗口标成独立、没有消耗新的确认预算。局部.gitattributes仅固定校准绑定5个源文件的原换行身份，避免跨平台签出失配，未全量转码。
+
+### Testing
+- 最终按price-only-indicator-validation-v1.yml完整30个测试路径本地执行：781 passed、25 skipped、0 failures/errors，625.83秒；JUnit与来源身份见reports/formal_assessment_20260926/regression.xml、VALIDATION.json。跳过项是未启用真实行情采样、Windows链接权限与禁止真实gbbq边界；一条既有Starlette弃用警告。
+- 其中新正式评审23项含564 CLOSE+504 OPEN合成快照、504账户日、三个公共账户、独立核账及完整轨迹重放；账户13项、证据8项、统计15项均包含在上述总数。窄测method-evidence-cli.xml的31项与总集重叠，不重复累加。早期窄测存在既有pytest-current清理权限警告；最终全量使用独立临时目录，退出码0。
+- 实际完整校准295.6秒；分段抽样与直接展开求和的最大数值差约2.8e-16。方法仍失败，工程测试通过不替代方法批准。
+- 真实CLI的5候选评审输出与保存报告逐字段相同；完整26,624记录校准来源及固定哈希复核通过（结论仍False）。独立代码审查的轨迹绑定问题已修复并复核关闭；git diff --check通过。
+
+### Notes
+- 本轮完成评审工程与实际方法验收，但没有完成真实独立窗口验证，也没有策略取得正式有效资格。下一优先项是根据已记录的失败重新设计、预登记并校准统计方法，不能直接进入正式Paper。
+- 当前真实证据范围要求先冻结再采集60预热+504账户交易日；停牌、公司行动或行动覆盖不明阻断。没有启动通达信、每日自动采集或券商交易。
+- 回滚可对本轮功能提交执行git revert，保留校准失败、研究档案、曝光与预算目录；禁止删除记录后免费重跑。本地证据在上述报告目录，远端CI与合并状态以随后实际结果为准。

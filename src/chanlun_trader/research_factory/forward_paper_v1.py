@@ -142,6 +142,12 @@ class ForwardPaperSessionV1:
             admission = archive.admission(strategy_id,purpose=purpose)
             if not admission['allowed']:
                 raise PermissionError('FORWARD_PAPER_STRATEGY_NOT_ADMITTED')
+            if purpose == 'FORMAL_OBSERVATION' and (
+                    profile != 'REAL_OBSERVED' or sorted(symbols) != admission['formal_assessment']['symbols']
+                    or policy['initial_cash'] != 1_000_000 or len(portfolio.members) != 1
+                    or portfolio.members[0].weight_bps != 10000 or portfolio.max_positions != 2
+                    or portfolio.max_symbol_exposure_bps != 5000 or portfolio.max_buy_turnover_bps != 10000):
+                raise PermissionError('FORWARD_PAPER_FORMAL_EVIDENCE_SCOPE_CONFLICT')
             if profile == 'REAL_OBSERVED' and item['source_profile'] == 'SYNTHETIC':
                 raise PermissionError('FORWARD_PAPER_SYNTHETIC_STRATEGY_NOT_REAL')
             member = next(member for member in portfolio.members if member.strategy_id == strategy_id)
@@ -373,7 +379,9 @@ class ForwardPaperSessionV1:
             'real_observation_days':real,
             'engineering_observation_days':real if header['purpose']=='ENGINEERING_OBSERVATION' else 0,
             'qualified_observation_days':real if header['purpose']=='FORMAL_OBSERVATION' else 0,
-            'strategy_qualified':False,'real_execution_authorized':False,
+            'strategy_qualified':bool(not revoked and header['purpose']=='FORMAL_OBSERVATION'
+                                      and all(a['strategy_qualified'] for a in self._admissions(header).values())),
+            'real_execution_authorized':False,
             'last_snapshot':records[-1]['snapshot']['snapshot_id'] if records else None,
             'state':records[-1]['state'] if records else None,
             'next_plan':records[-1]['plan'] if records else None,

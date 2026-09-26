@@ -1,0 +1,30 @@
+{
+  "purpose": "GEOMETRIC_PREFIX_SUMS_VS_DIRECT_EXPANDED_OBSERVATIONS",
+  "sources": {
+    "src/chanlun_trader/research_factory/formal_statistics_v1.py": "f5130d260de712fe0743c0251f811bf3d9945113ff7fbfc7dd702d9fcf1404da",
+    "src/chanlun_trader/research_factory/holm_family_v1.py": "ed87bf4c6d64686ad83545338fc238d82763a548e76bee54761b1d42e13ea513",
+    "src/chanlun_trader/research_factory/common.py": "0f68c492ad05e3b8c76adb16d54c8bc18f0d5243fc954634e43f946b0523f911",
+    "scripts/calibrate_formal_statistics_v1.py": "33514064dad9708be6a26a315aae750d62351667ece27348f149cec904c7c29a",
+    "tests/research_factory/test_formal_statistics_v1.py": "0602ab1c103428e50fdd0d687ac67b628e4ab02cf3e4e1076b354c11b68f67a0"
+  },
+  "comparisons": [
+    {
+      "block": 10,
+      "draws": 257,
+      "max_absolute_difference": 2.7755575615628914e-16
+    },
+    {
+      "block": 20,
+      "draws": 257,
+      "max_absolute_difference": 2.0816681711721685e-16
+    },
+    {
+      "block": 40,
+      "draws": 257,
+      "max_absolute_difference": 2.220446049250313e-16
+    }
+  ],
+  "passed": true,
+  "real_data_accessed": false,
+  "_integrity": "72e63a3dfde2cc4b5428531e49e661181e37a7d9f88befc19e0d1b3eca0ef1e0"
+}

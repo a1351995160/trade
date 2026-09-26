@@ -32,6 +32,15 @@ def parser():
     capture.add_argument('--snapshot-root', required=True)
     capture.add_argument('--phase', choices=('OPEN', 'CLOSE'), required=True)
     capture.add_argument('--symbols', nargs='+', required=True)
+    for operation in ('formal-review', 'formal-register', 'formal-run', 'formal-status', 'formal-calendar', 'formal-feedback'):
+        command = commands.add_parser(operation)
+        command.add_argument('--archive-root', required=True)
+        if operation in ('formal-review', 'formal-register', 'formal-run'):
+            command.add_argument('--config', required=True)
+        if operation not in ('formal-review', 'formal-register'):
+            command.add_argument('--batch-id', required=True)
+        if operation == 'formal-calendar':
+            command.add_argument('--end', required=True, type=int)
     for operation in ('create-paper', 'advance', 'status', 'report', 'revoke-paper'):
         command = commands.add_parser(operation)
         command.add_argument('--root', required=True)
@@ -46,6 +55,23 @@ def parser():
 
 
 def execute(args):
+    if args.operation.startswith('formal-'):
+        from chanlun_trader.research_factory.formal_assessment_v1 import FormalAssessmentServiceV1
+        from chanlun_trader.research_factory.formal_evidence_v1 import CalendarEvidenceStoreV1
+        service = FormalAssessmentServiceV1(args.archive_root)
+        if args.operation == 'formal-review':
+            return service.readiness(**load_config(args.config, service.root))
+        if args.operation == 'formal-register':
+            return service.register(**load_config(args.config, service.root))
+        if args.operation == 'formal-run':
+            return service.run(args.batch_id, **load_config(args.config, service.root))
+        if args.operation == 'formal-feedback':
+            return service.feedback(args.batch_id)
+        if args.operation == 'formal-calendar':
+            plan = service.plan(args.batch_id)
+            return CalendarEvidenceStoreV1(service.path(args.batch_id, 'calendar')).capture_tdx(
+                start=plan['not_before'], end=args.end)
+        return service.status(args.batch_id)
     if args.operation in ('freeze', 'review', 'revoke-strategy'):
         archive = BoundedStrategyArchiveV1(args.archive_root)
         if args.operation == 'freeze':
@@ -90,7 +116,8 @@ def render_report(value):
     lines = ['# 前瞻模拟观察日报', '',
         f"状态：{value['status']}；数据类型：{value['profile']}；用途：{value['purpose']}。",
         f"真实观察：{value['real_observation_days']} 天；其中合格观察：{value['qualified_observation_days']} 天。",
-        '策略尚未取得正式资格；没有真实券商成交。', '',
+        ('策略具备有条件的正式观察资格；没有真实券商成交。' if value.get('strategy_qualified', False)
+         else '策略尚未取得正式资格；没有真实券商成交。'), '',
         f"账户净值：{state.get('equity', '尚无行情')}；现金：{economic.get('cash', '尚无行情')}；累计模拟成交：{len(economic.get('trades', []))} 笔。",
         f"下一计划交易日：{plan.get('next_session', '暂无')}。", '',
         '| 策略 | 证券 | 意图 | 原因 |', '|---|---|---|---|']

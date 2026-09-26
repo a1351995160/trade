@@ -1,0 +1,26 @@
+{
+  "schema_version": "FORMAL_ASSESSMENT_VALIDATION_V1",
+  "source_identity": "bb37d2d4b4c3319afdcb2c99bd185a11a2e4d5de67ea114b1f54540496c9286c",
+  "baseline_main": "5033aa25618a20dd03a5019c4a92f86d71c4feeb",
+  "engineering_implemented": true,
+  "local_tests": {
+    "tests": 806,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 25,
+    "passed": 781
+  },
+  "statistical_calibration_passed": false,
+  "real_independent_confirmation_completed": false,
+  "qualified_strategies": 0,
+  "real_candidates_reviewed": 5,
+  "new_confirmation_budget_consumed": 0,
+  "deterministic_synthetic_account_sessions": 504,
+  "artifacts": {
+    "CALIBRATION_SUMMARY.json": "590655a5972b11ab486ca64b55a258122f45d2161fb58b81e7de3257655de54d",
+    "NUMERICAL_CROSSCHECK.json": "93e6161aa96f5114c5501c9baf35eb82d2eb24361a49576ac15522b06babae52",
+    "REAL_STRATEGY_REVIEW.json": "1a19cf3a2f66bc9f6fe845e09e039526d3a49d270dbe4270504f3d92e1e742d9",
+    "method-evidence-cli.xml": "4403d21714ea644c8498b990e0a7965d62126a605a8a6033c4f910d1931e48ae",
+    "regression.xml": "e65dbdb38a2c7ec2c2b935ed59635bbf5cecb6ea4096b5ede791fb3c0edf8238"
+  }
+}
