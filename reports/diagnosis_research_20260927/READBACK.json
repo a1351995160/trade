@@ -1,0 +1,14 @@
+{
+  "exit_code": 0,
+  "same_screening": true,
+  "same_budgets": true,
+  "budget_hashes": {
+    "screening\\CANDIDATE_001\\search_budget_registry.json": "6063dc7f954508f7084df1809b4fa9a4aa1942b551b2fc66f730951aa158804e",
+    "screening\\CANDIDATE_002\\search_budget_registry.json": "e0434f1e3c498753db3a570965647ef52ff70f347bb2b0761d7297c567f69806",
+    "screening\\CANDIDATE_003\\search_budget_registry.json": "cca2657c778e608a5092220d6c0fc8c7172365cd4eb5e40dcb680b0d6b8b0da5",
+    "screening\\CANDIDATE_004\\search_budget_registry.json": "955816584c5c8e94d9d116d16555754acc34562473cc6f052d1a9eac97b8cfc2",
+    "screening\\CANDIDATE_005\\search_budget_registry.json": "4c0ce2dfe9dec0cbe52fd32a35672e5058355d9f9f175250b1dfc55863e2ee54",
+    "screening\\search_budget_registry.json": "31912af6653e3f61d47a611ad08f4abf160c8c338eb45fb031954e4c29cc714d",
+    "search\\search_budget_registry.json": "324fd757972908879c464a1d2685268e86e873cf6729208b813ea91fb46193f1"
+  }
+}

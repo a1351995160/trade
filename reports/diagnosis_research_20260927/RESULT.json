@@ -1,0 +1,138 @@
+{
+  "status": "NO_CANDIDATE_PASSED",
+  "real_model_calls": 5,
+  "short_candidate_accounts": 5,
+  "long_accounts": 11,
+  "long_account_days_each": 504,
+  "reconciled_account_days": 5544,
+  "qualified_count": 0,
+  "independent_batches_created": 0,
+  "formal_budget_consumed": 0,
+  "root": "E:\\llmwiki\\autonomous-strategy-research-v1\\diagnosis-research-20260927",
+  "config_hash": "ff21c35fb343c5269387f5d579ba6a89b1ada55dccbcf430ff3912aafaa0f889",
+  "source_identity": "7f4844c0b2a582fa871386525c4355589dae1c2845013ea4b249d5677763f8e4",
+  "screening_hash": "870d86c54ebf0ef6f65d7f804c714eef6b848c84ff3798bd1ad855dfe752b9f3",
+  "benchmark_same_daily_returns_as_previous_run": true,
+  "candidates": {
+    "CANDIDATE_003": {
+      "base": {
+        "net_return": -0.04321349100000005,
+        "max_drawdown": -0.18998896233889984,
+        "total_fees": 55636.141,
+        "trade_count": 245
+      },
+      "stress": {
+        "net_return": -0.1880369595,
+        "max_drawdown": -0.25458871129999994,
+        "total_fees": 77925.7695,
+        "trade_count": 244
+      },
+      "failure_codes": [
+        "NONPOSITIVE_NET_RETURN",
+        "COST_STRESS_FAILED",
+        "DRAWDOWN_LIMIT_EXCEEDED",
+        "SUBPERIOD_EXCESS_NOT_POSITIVE"
+      ],
+      "sum_daily_excess_each_half": [
+        0.03662123043005017,
+        -0.09006508756730924
+      ]
+    },
+    "CANDIDATE_002": {
+      "base": {
+        "net_return": -0.1965559159,
+        "max_drawdown": -0.23927041872528843,
+        "total_fees": 87673.7059,
+        "trade_count": 396
+      },
+      "stress": {
+        "net_return": -0.3673308285,
+        "max_drawdown": -0.37468590879999997,
+        "total_fees": 117004.9085,
+        "trade_count": 390
+      },
+      "failure_codes": [
+        "NONPOSITIVE_NET_RETURN",
+        "COST_STRESS_FAILED",
+        "DRAWDOWN_LIMIT_EXCEEDED",
+        "SUBPERIOD_EXCESS_NOT_POSITIVE"
+      ],
+      "sum_daily_excess_each_half": [
+        0.0030673182524971754,
+        -0.2335943362100158
+      ]
+    },
+    "CANDIDATE_001": {
+      "base": {
+        "net_return": -0.14339083530000007,
+        "max_drawdown": -0.16193912980000003,
+        "total_fees": 74800.9853,
+        "trade_count": 324
+      },
+      "stress": {
+        "net_return": -0.29620232840000005,
+        "max_drawdown": -0.29763753810000004,
+        "total_fees": 99046.2184,
+        "trade_count": 315
+      },
+      "failure_codes": [
+        "NONPOSITIVE_NET_RETURN",
+        "COST_STRESS_FAILED",
+        "DRAWDOWN_LIMIT_EXCEEDED",
+        "SUBPERIOD_EXCESS_NOT_POSITIVE"
+      ],
+      "sum_daily_excess_each_half": [
+        -0.017283187010403656,
+        -0.15179199183907577
+      ]
+    },
+    "CANDIDATE_004": {
+      "base": {
+        "net_return": -0.1351206131,
+        "max_drawdown": -0.1880501256,
+        "total_fees": 78341.1331,
+        "trade_count": 337
+      },
+      "stress": {
+        "net_return": -0.3075041233,
+        "max_drawdown": -0.3152871678000001,
+        "total_fees": 104184.1933,
+        "trade_count": 331
+      },
+      "failure_codes": [
+        "NONPOSITIVE_NET_RETURN",
+        "COST_STRESS_FAILED",
+        "DRAWDOWN_LIMIT_EXCEEDED",
+        "SUBPERIOD_EXCESS_NOT_POSITIVE"
+      ],
+      "sum_daily_excess_each_half": [
+        0.002943737899019694,
+        -0.1608633175465376
+      ]
+    },
+    "CANDIDATE_005": {
+      "base": {
+        "net_return": -0.24518646379999998,
+        "max_drawdown": -0.28575848970000006,
+        "total_fees": 67062.5338,
+        "trade_count": 318
+      },
+      "stress": {
+        "net_return": -0.357380892,
+        "max_drawdown": -0.3669987667000001,
+        "total_fees": 92577.602,
+        "trade_count": 320
+      },
+      "failure_codes": [
+        "NONPOSITIVE_NET_RETURN",
+        "COST_STRESS_FAILED",
+        "DRAWDOWN_LIMIT_EXCEEDED",
+        "SUBPERIOD_EXCESS_NOT_POSITIVE"
+      ],
+      "sum_daily_excess_each_half": [
+        -0.10242377079202003,
+        -0.1908189849348363
+      ]
+    }
+  }
+}

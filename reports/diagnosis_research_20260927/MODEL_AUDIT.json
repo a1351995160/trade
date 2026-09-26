@@ -1,0 +1,114 @@
+{
+  "calls": [
+    {
+      "candidate_id": "CANDIDATE_001",
+      "origin": "REAL_CODEX_SUBPROCESS",
+      "model_id": "NONE",
+      "context_hash": "447a324734b0caf409e5fb8e5de4d9efc9a9530ee5fd4c76b87261f99eed528a",
+      "response_hash": "6e0e301dd64f64c091c42d260bcc7ac3d622e9572d2c985dc7134f45d75c26a5",
+      "qualitative_feedback_count": 5,
+      "proposal": {
+        "hypothesis": "在仅用于探索的两只股票日频样本中，提出“回撤修复 + 平滑趋势确认 + 情绪连续性”的新投票假设：当回撤状态、趋势强度、相对均值位置、平滑均线、SAR 与上涨天数心理指标多数较前一日改善时，才把次日开盘信号视为较稳健的趋势恢复尝试。该假设只用于小样本探索，不声称有效，也不构成交易建议。",
+        "change_reason": "历史反馈反复出现成本敏感、普通成本下收益不佳以及跨阶段不稳定，因此本候选不继续沿用突破追涨、短周期摆动修复或量能放大解释，改为更偏慢速确认的组合。选择 DRAWDOWN_FROM_PEAK 观察回撤是否收敛，TREND_STRENGTH_RATIO 与 TIME_SERIES_ZSCORE 描述趋势强度和相对位置改善，RMA、WMA 与 SAR 提供平滑趋势确认，PSY 观察上涨连续性的情绪修复。门槛设为 5/7，以减少单一指标上升造成的频繁触发，但不更改数据、账户、费用、日期或筛选口径；历史样本只有两只股票，仍需独立确认。",
+        "indicators": [
+          "DRAWDOWN_FROM_PEAK",
+          "TREND_STRENGTH_RATIO",
+          "TIME_SERIES_ZSCORE",
+          "RMA",
+          "WMA",
+          "SAR",
+          "PSY"
+        ],
+        "threshold": 5
+      }
+    },
+    {
+      "candidate_id": "CANDIDATE_002",
+      "origin": "REAL_CODEX_SUBPROCESS",
+      "model_id": "NONE",
+      "context_hash": "174e50ada83321b68eac65188ce980776bb8c1a6e191a04e1f220c7139964036",
+      "response_hash": "8d3c90e0883a700ef11adee18c09edb1a739954388ef837e6a9de16b31b2fbef",
+      "qualitative_feedback_count": 7,
+      "proposal": {
+        "hypothesis": "在仅用于探索的两只股票日频样本中，基于父候选 CANDIDATE_001 修订为“低换手压力下的趋势延续 + 资金价格中枢确认”投票假设：当平滑价格趋势、成交加权价格中枢、资金量价累积、趋势强度与短期动量多数较前一日改善时，才把次日开盘信号视为较克制的趋势延续尝试。该假设只用于小样本探索，不声称有效，也不构成交易建议。",
+        "change_reason": "相对父候选，移除 RVOL_PRIOR、CHAIKIN_MONEY_FLOW 与 NATR，避免把相对放量、单一资金流或波动上升作为直接入场依据；保留 ROLLING_SLOPE 作为趋势改善核心，同时加入 EMA 与 ROLLING_VWAP 观察价格和成交成本中枢是否同步上移，加入 PVT 与 ACCUMULATION_DISTRIBUTION 从不同量价累积口径确认资金方向，加入 TREND_STRENGTH_RATIO 与 MTM 检查趋势强度和短期动量。门槛设为 5/7，较父规则更严格，以回应成本敏感与跨阶段不稳定的反馈，但不更改数据、账户、费用、日期或执行约束；历史样本只有两只股票，仍需独立确认。",
+        "indicators": [
+          "ROLLING_SLOPE",
+          "EMA",
+          "ROLLING_VWAP",
+          "PVT",
+          "ACCUMULATION_DISTRIBUTION",
+          "TREND_STRENGTH_RATIO",
+          "MTM"
+        ],
+        "threshold": 5
+      }
+    },
+    {
+      "candidate_id": "CANDIDATE_003",
+      "origin": "REAL_CODEX_SUBPROCESS",
+      "model_id": "NONE",
+      "context_hash": "ab4059307e9529de6c266cdd27c9ddbdd19361540ebf59810eadfb968ca95a3f",
+      "response_hash": "2bdcd576f6f776b44033b567487bf4ab305191e25a8425e579a2476b38381138",
+      "qualitative_feedback_count": 9,
+      "proposal": {
+        "hypothesis": "在仅用于探索的两只股票日频样本中，基于父候选 CANDIDATE_002 改为“慢速趋势修复 + 回撤收敛 + 趋势强度确认”的投票假设：当平滑价格中枢、滚动斜率、趋势强度、SAR 与回撤状态多数较前一日改善时，才把次日开盘信号视为更克制的趋势恢复尝试。该假设只用于小样本探索，不声称有效，也不构成交易建议。",
+        "change_reason": "相对父候选，移除 HISTORICAL_RETURN、MACD_HIST_RAW、OBV 与 ACCUMULATION_DISTRIBUTION，减少对短期动量跳变和量价资金线的依赖；同时不用 MA，避免照搬父规则的核心结构。新组合改用 RMA、WMA、DEMA 描述更平滑的价格中枢改善，ROLLING_SLOPE 与 TREND_STRENGTH_RATIO 描述趋势延续质量，SAR 提供趋势状态确认，DRAWDOWN_FROM_PEAK 用于观察回撤是否修复。门槛设为 5/7，意在回应成本敏感和跨阶段不稳定反馈，减少少数指标短暂上升触发；不更改数据、账户、费用、日期、执行或筛选约束，且历史样本只有两只股票，仍需独立确认。",
+        "indicators": [
+          "RMA",
+          "WMA",
+          "DEMA",
+          "ROLLING_SLOPE",
+          "TREND_STRENGTH_RATIO",
+          "SAR",
+          "DRAWDOWN_FROM_PEAK"
+        ],
+        "threshold": 5
+      }
+    },
+    {
+      "candidate_id": "CANDIDATE_004",
+      "origin": "REAL_CODEX_SUBPROCESS",
+      "model_id": "NONE",
+      "context_hash": "8338a09506af22088c026054845b111c6b89539fcf95c9f7bad15e80704cc6f8",
+      "response_hash": "8b5db77b1a117c576a436f76e86a083af12b3e4b55170a0d8a02a3bce43cb841",
+      "qualitative_feedback_count": 11,
+      "proposal": {
+        "hypothesis": "在仅用于探索的两只股票日频样本中，基于父候选 CANDIDATE_003 修订为“慢速价格中枢上移 + 流动性确认 + 回撤收敛”的投票假设：当平滑价格中枢、趋势强度、成交金额均值、量价累计与回撤状态多数较前一日改善时，才把次日开盘信号视为更克制的趋势恢复尝试。该假设只用于小样本探索，不声称有效，也不构成交易建议。",
+        "change_reason": "相对父候选，移除 PRIOR_BREAKOUT、DONCHIAN、DMI、RSI、VOLUME_BREAKOUT_SCORE 与 ROLLING_VWAP，不再用突破结构和相对放量作为主要触发，改为更慢速的趋势恢复与流动性确认，以回应成本敏感和跨阶段不稳定反馈。选择 BOLLINGER、RMA、TEMA 与 TREND_STRENGTH_RATIO 描述价格中枢和趋势质量改善，AMOUNT_MA 观察成交金额环境是否改善，PVT 提供量价累计确认，DRAWDOWN_FROM_PEAK 用于观察回撤是否收敛。门槛设为 5/7，要求多数维度同步改善但保留一定容错；不更改数据、账户、费用、日期、执行或筛选约束，历史样本只有两只股票，仍需独立确认。",
+        "indicators": [
+          "BOLLINGER",
+          "RMA",
+          "TEMA",
+          "TREND_STRENGTH_RATIO",
+          "AMOUNT_MA",
+          "PVT",
+          "DRAWDOWN_FROM_PEAK"
+        ],
+        "threshold": 5
+      }
+    },
+    {
+      "candidate_id": "CANDIDATE_005",
+      "origin": "REAL_CODEX_SUBPROCESS",
+      "model_id": "NONE",
+      "context_hash": "ea01004266e67610c457d6d6ea510419a429458303388e9b4121744e02f02fd9",
+      "response_hash": "9051362bfdd12bf0ea80b48b6cdd5a381d05addbdc72d74ef2c487371803acdb",
+      "qualitative_feedback_count": 13,
+      "proposal": {
+        "hypothesis": "在仅用于探索的两只股票日频样本中，基于父候选 CANDIDATE_004 修订为“慢速趋势恢复 + 回撤收敛 + 流动性中枢确认”的投票假设：当回撤状态、趋势斜率、趋势强度、SAR、价格中枢与成交活跃中枢多数较前一日改善时，才把次日开盘信号视为更克制的趋势恢复尝试。该假设只用于小样本探索，不声称有效，也不构成交易建议。",
+        "change_reason": "相对父候选，移除 BIAS、CCI、KDJ、WILLIAMS_R 与 MFI，不再以短周期超跌摆动和资金振荡指标作为主要触发，改用更慢的趋势与流动性确认来回应成本敏感和跨阶段不稳定反馈。选择 DRAWDOWN_FROM_PEAK 观察回撤是否收敛，ROLLING_SLOPE、TREND_STRENGTH_RATIO 与 SAR 描述趋势恢复质量，BOLLINGER 与 VWAP_SESSION_PROXY 观察价格及成交成本中枢上移，VOLUME_MA 作为较平滑的成交环境确认。门槛设为 5/7，要求多数维度同步改善以减少单一指标噪声触发；不更改数据、账户、费用、日期、执行或筛选约束，且历史样本只有两只股票，仍需独立确认。",
+        "indicators": [
+          "DRAWDOWN_FROM_PEAK",
+          "ROLLING_SLOPE",
+          "TREND_STRENGTH_RATIO",
+          "SAR",
+          "BOLLINGER",
+          "VWAP_SESSION_PROXY",
+          "VOLUME_MA"
+        ],
+        "threshold": 5
+      }
+    }
+  ]
+}
