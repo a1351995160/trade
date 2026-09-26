@@ -1,0 +1,249 @@
+{
+  "policy": {
+    "version": "RESEARCH_SCREENING_V1",
+    "account_sessions": 504,
+    "minimum_net_return": 0.0,
+    "maximum_drawdown": 0.25,
+    "positive_excess_each_half": true,
+    "costs": [
+      "BASE",
+      "STRESS"
+    ],
+    "qualification": "EXPLORATORY_ONLY"
+  },
+  "scope_hash": "eee2ace421634cc0d77fd1690a0814a4c13f9938d46e14fe5df7c5094f8bb338",
+  "reports": {
+    "CANDIDATE_003": {
+      "policy": {
+        "version": "RESEARCH_SCREENING_V1",
+        "account_sessions": 504,
+        "minimum_net_return": 0.0,
+        "maximum_drawdown": 0.25,
+        "positive_excess_each_half": true,
+        "costs": [
+          "BASE",
+          "STRESS"
+        ],
+        "qualification": "EXPLORATORY_ONLY"
+      },
+      "passed": false,
+      "failure_codes": [
+        "NONPOSITIVE_NET_RETURN",
+        "COST_STRESS_FAILED",
+        "DRAWDOWN_LIMIT_EXCEEDED",
+        "SUBPERIOD_EXCESS_NOT_POSITIVE"
+      ],
+      "observation_codes": [
+        "COST_SENSITIVITY"
+      ],
+      "sum_daily_excess_each_half": [
+        0.03662123043005017,
+        -0.09006508756730924
+      ],
+      "base": {
+        "net_return": -0.04321349100000005,
+        "max_drawdown": -0.18998896233889984,
+        "total_fees": 55636.141,
+        "trade_count": 245
+      },
+      "stress": {
+        "net_return": -0.1880369595,
+        "max_drawdown": -0.25458871129999994,
+        "total_fees": 77925.7695,
+        "trade_count": 244
+      },
+      "result_hashes": {
+        "BASE": "094ab0293153959b6c4aa4d06eb311e0bf69b3f985af13ba8aa559d89cd7e34c",
+        "STRESS": "fb34d893ff7348fe88353dc1daf88e67afa3f50832a3e578b25b025f8f29ee80",
+        "BENCHMARK_BASE": "09f36ca0772b12d59b6df9e848044f09f7932c031184726f6c644dd4f773e000"
+      },
+      "strategy_qualified": false
+    },
+    "CANDIDATE_002": {
+      "policy": {
+        "version": "RESEARCH_SCREENING_V1",
+        "account_sessions": 504,
+        "minimum_net_return": 0.0,
+        "maximum_drawdown": 0.25,
+        "positive_excess_each_half": true,
+        "costs": [
+          "BASE",
+          "STRESS"
+        ],
+        "qualification": "EXPLORATORY_ONLY"
+      },
+      "passed": false,
+      "failure_codes": [
+        "NONPOSITIVE_NET_RETURN",
+        "COST_STRESS_FAILED",
+        "DRAWDOWN_LIMIT_EXCEEDED",
+        "SUBPERIOD_EXCESS_NOT_POSITIVE"
+      ],
+      "observation_codes": [
+        "COST_SENSITIVITY"
+      ],
+      "sum_daily_excess_each_half": [
+        0.0030673182524971754,
+        -0.2335943362100158
+      ],
+      "base": {
+        "net_return": -0.1965559159,
+        "max_drawdown": -0.23927041872528843,
+        "total_fees": 87673.7059,
+        "trade_count": 396
+      },
+      "stress": {
+        "net_return": -0.3673308285,
+        "max_drawdown": -0.37468590879999997,
+        "total_fees": 117004.9085,
+        "trade_count": 390
+      },
+      "result_hashes": {
+        "BASE": "35d724b7304f6889d9416848b998bcd35080cd1cc9f54c95dfdbeb35cfece8d8",
+        "STRESS": "55b38e532dfbe812f269ffed305f4d8ff241fda8311c382b0f2b2da8b4c6ab33",
+        "BENCHMARK_BASE": "09f36ca0772b12d59b6df9e848044f09f7932c031184726f6c644dd4f773e000"
+      },
+      "strategy_qualified": false
+    },
+    "CANDIDATE_001": {
+      "policy": {
+        "version": "RESEARCH_SCREENING_V1",
+        "account_sessions": 504,
+        "minimum_net_return": 0.0,
+        "maximum_drawdown": 0.25,
+        "positive_excess_each_half": true,
+        "costs": [
+          "BASE",
+          "STRESS"
+        ],
+        "qualification": "EXPLORATORY_ONLY"
+      },
+      "passed": false,
+      "failure_codes": [
+        "NONPOSITIVE_NET_RETURN",
+        "COST_STRESS_FAILED",
+        "DRAWDOWN_LIMIT_EXCEEDED",
+        "SUBPERIOD_EXCESS_NOT_POSITIVE"
+      ],
+      "observation_codes": [
+        "COST_SENSITIVITY"
+      ],
+      "sum_daily_excess_each_half": [
+        -0.017283187010403656,
+        -0.15179199183907577
+      ],
+      "base": {
+        "net_return": -0.14339083530000007,
+        "max_drawdown": -0.16193912980000003,
+        "total_fees": 74800.9853,
+        "trade_count": 324
+      },
+      "stress": {
+        "net_return": -0.29620232840000005,
+        "max_drawdown": -0.29763753810000004,
+        "total_fees": 99046.2184,
+        "trade_count": 315
+      },
+      "result_hashes": {
+        "BASE": "023f75ce10750b586552b0a4b5eee533bda5b978d599cd9d9ca33043fdbf9e86",
+        "STRESS": "f883140df582903645fd1abbbfb04b9d9a9215fd6f29e5c379c5c7a8f1e6324c",
+        "BENCHMARK_BASE": "09f36ca0772b12d59b6df9e848044f09f7932c031184726f6c644dd4f773e000"
+      },
+      "strategy_qualified": false
+    },
+    "CANDIDATE_004": {
+      "policy": {
+        "version": "RESEARCH_SCREENING_V1",
+        "account_sessions": 504,
+        "minimum_net_return": 0.0,
+        "maximum_drawdown": 0.25,
+        "positive_excess_each_half": true,
+        "costs": [
+          "BASE",
+          "STRESS"
+        ],
+        "qualification": "EXPLORATORY_ONLY"
+      },
+      "passed": false,
+      "failure_codes": [
+        "NONPOSITIVE_NET_RETURN",
+        "COST_STRESS_FAILED",
+        "DRAWDOWN_LIMIT_EXCEEDED",
+        "SUBPERIOD_EXCESS_NOT_POSITIVE"
+      ],
+      "observation_codes": [
+        "COST_SENSITIVITY"
+      ],
+      "sum_daily_excess_each_half": [
+        0.002943737899019694,
+        -0.1608633175465376
+      ],
+      "base": {
+        "net_return": -0.1351206131,
+        "max_drawdown": -0.1880501256,
+        "total_fees": 78341.1331,
+        "trade_count": 337
+      },
+      "stress": {
+        "net_return": -0.3075041233,
+        "max_drawdown": -0.3152871678000001,
+        "total_fees": 104184.1933,
+        "trade_count": 331
+      },
+      "result_hashes": {
+        "BASE": "c16272d201aed8e300dcf4a7e422a804112db83b429c405e5fc867d64f0d0fb3",
+        "STRESS": "084ef7a5acc60b54af8c4cd44426202e8a7c64a039f7a0da336a93b980404593",
+        "BENCHMARK_BASE": "09f36ca0772b12d59b6df9e848044f09f7932c031184726f6c644dd4f773e000"
+      },
+      "strategy_qualified": false
+    },
+    "CANDIDATE_005": {
+      "policy": {
+        "version": "RESEARCH_SCREENING_V1",
+        "account_sessions": 504,
+        "minimum_net_return": 0.0,
+        "maximum_drawdown": 0.25,
+        "positive_excess_each_half": true,
+        "costs": [
+          "BASE",
+          "STRESS"
+        ],
+        "qualification": "EXPLORATORY_ONLY"
+      },
+      "passed": false,
+      "failure_codes": [
+        "NONPOSITIVE_NET_RETURN",
+        "COST_STRESS_FAILED",
+        "DRAWDOWN_LIMIT_EXCEEDED",
+        "SUBPERIOD_EXCESS_NOT_POSITIVE"
+      ],
+      "observation_codes": [
+        "COST_SENSITIVITY"
+      ],
+      "sum_daily_excess_each_half": [
+        -0.10242377079202003,
+        -0.1908189849348363
+      ],
+      "base": {
+        "net_return": -0.24518646379999998,
+        "max_drawdown": -0.28575848970000006,
+        "total_fees": 67062.5338,
+        "trade_count": 318
+      },
+      "stress": {
+        "net_return": -0.357380892,
+        "max_drawdown": -0.3669987667000001,
+        "total_fees": 92577.602,
+        "trade_count": 320
+      },
+      "result_hashes": {
+        "BASE": "3b38410bd4e6e40cc3ac4c1c9873c65114326107ca4f19a9b4102d2f13dca658",
+        "STRESS": "608e55be30d2295bed7655c7df29193f66e8012a29eacc2b8f668f24509b46ec",
+        "BENCHMARK_BASE": "09f36ca0772b12d59b6df9e848044f09f7932c031184726f6c644dd4f773e000"
+      },
+      "strategy_qualified": false
+    }
+  },
+  "selected": [],
+  "strategy_qualified": false
+}

@@ -1,0 +1,47 @@
+{
+  "mode": "autofix",
+  "base": "c6c99ba8e5fce25f52e3c7f0f8b17939072258e8",
+  "reviewer": "LOCAL_REVIEW",
+  "plan": "docs/plans/2026-09-27-001-feat-diagnosis-driven-research.md",
+  "files": [
+    ".github/workflows/price-only-indicator-validation-v1.yml",
+    "docs/DIAGNOSIS_DRIVEN_RESEARCH.md",
+    "docs/plans/2026-09-27-001-feat-diagnosis-driven-research.md",
+    "scripts/run_diagnosis_research_v1.py",
+    "src/chanlun_trader/research_factory/diagnosis_research_v1.py",
+    "src/chanlun_trader/research_factory/formal_assessment_v1.py",
+    "src/chanlun_trader/research_factory/research_screening_v1.py",
+    "tests/research_factory/test_diagnosis_research_v1.py",
+    "tests/research_factory/test_research_screening_v1.py",
+    "tests/research_factory/test_screened_formal_handoff_v1.py"
+  ],
+  "coverage": [
+    "candidate feedback boundary",
+    "immutable source and policy binding",
+    "consumed budgets and interruption",
+    "daily ledger versus metrics",
+    "BASE/STRESS decision parity",
+    "full family preservation",
+    "screened-only formal execution",
+    "unchanged real-evidence and statistical-applicability gates",
+    "CLI and backward compatibility"
+  ],
+  "implementation_corrections": [
+    "Persist rejection of duplicate seed rules",
+    "Differentiate running screening from interrupted accounts",
+    "Require diagnosis archives to present verified screening",
+    "Bind executed costs and rule to declared account plans"
+  ],
+  "findings": [],
+  "residual_actionable_work": [],
+  "verification": [
+    "117 related regression tests passed",
+    "23 final targeted tests passed",
+    "frozen V2 calibration verified",
+    "Real 5-model/11-long-account run completed, no selected candidates, immutable readback verified"
+  ],
+  "limits": [
+    "Local review, not independent agent review",
+    "Future independent evidence does not yet exist; synthetic formal routing tests are not real qualification"
+  ]
+}

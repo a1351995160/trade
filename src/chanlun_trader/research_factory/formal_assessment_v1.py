@@ -82,6 +82,12 @@ def adjudicate(*, plan, evidence, results, statistics, method_approved):
     benchmark = results.get('BENCHMARK_BASE')
     for member, frozen in plan['family'].items():
         reasons, failed = [], []
+        if not _selected(plan, member):
+            reports[member] = {'decision': 'REJECTED', 'strategy_qualified': False,
+                'reason_codes': ['HISTORICAL_SCREEN_FAILED'], 'strategy_id': frozen['strategy_id'] if frozen else None,
+                'adjusted_p': statistics['adjusted_p'][member], 'metrics': {'BASE': None, 'STRESS': None},
+                'interpretation': POLICY['interpretation']}
+            continue
         base, stress = results.get(member + '_BASE'), results.get(member + '_STRESS')
         if frozen is None or base is None or stress is None or benchmark is None:
             reasons.append('COMPLETE_ACCOUNT_EVIDENCE_REQUIRED')
@@ -115,6 +121,10 @@ def adjudicate(*, plan, evidence, results, statistics, method_approved):
                                        for key, result in [('BASE', base), ('STRESS', stress)]},
                            'interpretation': POLICY['interpretation']}
     return reports
+
+
+def _selected(plan, member):
+    return 'screening' not in plan or member in plan['screening']['selected']
 
 
 class FormalAssessmentServiceV1:
@@ -169,7 +179,7 @@ class FormalAssessmentServiceV1:
                 'real_process_applicability': 'NOT_ESTABLISHED',
                 'interpretation': '准入准备评审；没有独立收益证据时不对策略本身作有效或无效的判决。'}
 
-    def register(self, *, strategy_ids, symbols, not_before, calibration_path, profile='REAL_OBSERVED'):
+    def register(self, *, strategy_ids, symbols, not_before, calibration_path, profile='REAL_OBSERVED', screening_root=None):
         _require(profile in ('REAL_OBSERVED', 'SYNTHETIC'), 'PROFILE_INVALID')
         _require(isinstance(strategy_ids, list) and 1 <= len(strategy_ids) <= 5
                  and len(set(strategy_ids)) == len(strategy_ids), 'FAMILY_INVALID')
@@ -193,6 +203,8 @@ class FormalAssessmentServiceV1:
         _require(len(scopes) == len(roots) == 1, 'ONE_COMPLETE_RESEARCH_FAMILY_REQUIRED')
         origin = _safe_root(next(iter(roots)))
         scope = archives[0]['evidence']['session']
+        _require(not scope.get('input_manifest', {}).get('diagnosis_config_hash') or screening_root is not None,
+                 'DIAGNOSIS_SCREENING_REQUIRED')
         family = {f'CANDIDATE_{i:03d}': None for i in range(1, scope['max_attempts'] + 1)}
         _require(all((origin / key / 'DECISION.json').exists() for key in family), 'RESEARCH_FAMILY_NOT_CLOSED')
         # 不允许只归档历史赢家；存在成功结果的候选必须全部进入冻结家族。
@@ -204,6 +216,13 @@ class FormalAssessmentServiceV1:
             _require(profile == 'SYNTHETIC' or a['source_profile'] != 'SYNTHETIC', 'REAL_ARCHIVE_REQUIRED')
             family[a['origin']['candidate_id']] = {key: a[key] for key in
                 ('strategy_id', 'archive_hash', 'rule_identity', 'proposal', 'source_profile')}
+        screening = None
+        if screening_root is not None:
+            from .research_screening_v1 import validated_screening
+            screening_root = _safe_root(screening_root)
+            _require(screening_root == origin.parent / 'screening', 'SCREENING_ROOT_CONFLICT')
+            screening = validated_screening(screening_root, archives)
+            _require(bool(screening['selected']), 'NO_SCREENED_CANDIDATES')
         binding = {'authority_root': str(self.root), 'scope_id': scope['scope_id']}
         with ObjectiveMutationLock.for_resource(origin / 'FORMAL_AUTHORITY.json'), self.lock():
             _put(origin / 'FORMAL_AUTHORITY.json', binding)
@@ -220,6 +239,9 @@ class FormalAssessmentServiceV1:
                     'alpha_budget': method_spec['alpha_budgets'][slot-1], 'policy': POLICY,
                     'method_hash': method_hash, 'calibration_hash': stable_hash(calibration),
                     'source_identity': source_identity(), 'account_budget': 1 + 2 * len(archives)}
+            if screening is not None:
+                plan.update(screening=screening, screening_root=str(screening_root),
+                            account_budget=1 + 2 * len(screening['selected']))
             plan['batch_id'] = 'FA_' + stable_hash(plan)
             _put(self.path(plan['batch_id'], 'CALIBRATION.json'), calibration)
             # PLAN 是预算占用的提交记录；之后失败、取消均不返还。
@@ -244,6 +266,10 @@ class FormalAssessmentServiceV1:
             if item:
                 a = self.archive.load(item['strategy_id'])
                 _require(all(a[key] == value for key, value in item.items()), 'ARCHIVE_CHANGED')
+        if 'screening' in plan:
+            from .research_screening_v1 import validated_screening
+            archives = [self.archive.load(a['strategy_id']) for a in plan['family'].values() if a]
+            _require(validated_screening(plan['screening_root'], archives) == plan['screening'], 'SCREENING_CHANGED')
         return plan
 
     def status(self, batch):
@@ -285,7 +311,7 @@ class FormalAssessmentServiceV1:
                 results = {}
                 jobs = [('BENCHMARK_BASE', None, 'BASE')]
                 for member, frozen in plan['family'].items():
-                    if frozen:
+                    if frozen and _selected(plan, member):
                         jobs.extend((member + '_' + cost, frozen['proposal'], cost) for cost in ('BASE', 'STRESS'))
                 for key, proposal, cost in jobs:
                     account_plan = prepare_formal_account(proposal, strategy_id=key, window=window, costs=cost)
@@ -336,7 +362,7 @@ class FormalAssessmentServiceV1:
         _require(len(benchmark) == 504 and len({x['date'] for x in benchmark}) == 504, 'ACCOUNT_DATES_INVALID')
         output = {}
         for member, frozen in plan['family'].items():
-            if frozen is None:
+            if frozen is None or not _selected(plan, member):
                 output[member] = [float('nan')] * 504
                 continue
             for cost in ('BASE', 'STRESS'):
@@ -365,7 +391,7 @@ class FormalAssessmentServiceV1:
                  'DATA_EVIDENCE_CHANGED')
         results = {}
         expected = {'BENCHMARK_BASE'} | {member + '_' + cost for member, item in plan['family'].items()
-                                       if item for cost in ('BASE', 'STRESS')}
+                                       if item and _selected(plan, member) for cost in ('BASE', 'STRESS')}
         _require(set(report['account_hashes']) == expected, 'ACCOUNT_MEMBERSHIP_CONFLICT')
         for key, digest in report['account_hashes'].items():
             result = _read(self.path(batch, key + '_RESULT.json'))
