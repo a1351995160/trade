@@ -174,3 +174,16 @@ def test_full_frozen_rule_family_future_snapshots_504_accounts_and_readback(tmp_
     assert service.path(batch,'PLAN.json').read_bytes() == plan_bytes
     assert len(service._plans()) == 1
 
+
+@pytest.mark.parametrize('field,value', [
+    ('initial_cash', 999999), ('max_positions', 3),
+    ('max_symbol_exposure_bps', 10000),
+    ('window', {'symbols': ['000001.SZ', '000002.SZ']}),
+])
+def test_execution_scope_rejects_each_changed_account_binding(field, value):
+    symbols = ['000001.SZ', '600000.SH']
+    manifest = {'window': {'symbols': symbols}}
+    assert adapter.execution_scope(manifest, symbols)['symbols'] == symbols
+    manifest[field] = value
+    with pytest.raises(ValueError, match='EXECUTION_SCOPE_UNSUPPORTED'):
+        adapter.execution_scope(manifest, symbols)

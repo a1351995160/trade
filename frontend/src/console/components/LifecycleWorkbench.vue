@@ -101,7 +101,7 @@ onMounted(refresh)
         <label>已有业务对象<select v-model="bindingId" required><option value="">请选择</option><option v-for="([id, item]) in available" :key="id" :value="id">{{ id }} · {{ item.kind }}</option></select></label>
         <label>开始时间<input v-model="startAt" type="datetime-local" required /></label><label>结束时间与任务到期<input v-model="endAt" type="datetime-local" required /></label>
         <label>对应交易日（采集和 Paper 必填）<input v-model="tradeDate" type="date" /></label><label>调用次数上限<input v-model.number="count" type="number" min="1" max="10000" required /></label>
-        <p>此表创建一个阶段；Paper 的已冻结快照映射需使用阶段名称 STAGE_1。不会新建研究授权。</p><button :disabled="busy">预览任务</button>
+        <p>此表创建一个阶段；Paper 的已冻结快照映射需使用阶段名称 STAGE_1。不会新建研究授权。</p><button type="submit" :disabled="busy">预览任务</button>
       </form></details>
       <section v-if="preview" class="confirm-panel" role="dialog" aria-label="确认生命周期操作"><h3>确认{{ actionNames[pendingAction] }}</h3>
         <p>对象：{{ pendingPayload.job_id }}。提交时会重新核对当前状态；变化后需要重新预览。</p>

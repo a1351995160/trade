@@ -16,9 +16,11 @@ def execution_scope(manifest, symbols):
                'max_positions': manifest.get('max_positions', len(window.get('symbols', []))),
                'max_symbol_exposure_bps': manifest.get('max_symbol_exposure_bps', 5000),
                'symbols': sorted(window.get('symbols', []))}
-    expected = {'initial_cash': 1_000_000, 'max_positions': 2,
-                'max_symbol_exposure_bps': 5000, 'symbols': sorted(symbols)}
-    if binding != expected or len(symbols) != 2:
+    if (len(symbols) != 2
+            or binding['initial_cash'] != 1_000_000
+            or binding['max_positions'] != 2
+            or binding['max_symbol_exposure_bps'] != 5000
+            or binding['symbols'] != sorted(symbols)):
         raise ValueError('FORMAL_RULE_EXECUTION_SCOPE_UNSUPPORTED')
     return binding
 
