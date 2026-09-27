@@ -18,6 +18,15 @@ from chanlun_trader.research_factory.forward_paper_v1 import ForwardPaperSession
 def parser():
     cli = argparse.ArgumentParser(description=__doc__)
     commands = cli.add_subparsers(dest='operation', required=True)
+    for operation in ('lifecycle-preview', 'lifecycle-create', 'lifecycle-start', 'lifecycle-status',
+                      'lifecycle-pause', 'lifecycle-resume', 'lifecycle-tick'):
+        command = commands.add_parser(operation)
+        command.add_argument('--workspace-root', required=True)
+        command.add_argument('--bindings', required=True)
+        if operation == 'lifecycle-create':
+            command.add_argument('--config', required=True)
+        elif operation != 'lifecycle-preview':
+            command.add_argument('--job-id', required=True)
     for operation in ('freeze', 'review', 'revoke-strategy'):
         command = commands.add_parser(operation)
         command.add_argument('--archive-root', required=True)
@@ -32,6 +41,13 @@ def parser():
     capture.add_argument('--snapshot-root', required=True)
     capture.add_argument('--phase', choices=('OPEN', 'CLOSE'), required=True)
     capture.add_argument('--symbols', nargs='+', required=True)
+    for operation in ('validation-preview', 'validation-freeze', 'validation-status'):
+        command = commands.add_parser(operation)
+        if operation == 'validation-status':
+            command.add_argument('--protocol-path', required=True)
+        else:
+            command.add_argument('--archive-root', required=True)
+            command.add_argument('--config', required=True)
     for operation in ('formal-review', 'formal-register', 'formal-run', 'formal-status', 'formal-calendar', 'formal-feedback'):
         command = commands.add_parser(operation)
         command.add_argument('--archive-root', required=True)
@@ -55,6 +71,30 @@ def parser():
 
 
 def execute(args):
+    if args.operation.startswith('lifecycle-'):
+        from chanlun_trader.research_factory.lifecycle_service_v2 import LifecycleServiceV2
+        bindings = load_config(args.bindings, Path(args.workspace_root) / 'lifecycle_jobs')
+        from scripts.lifecycle_deployment_v2 import qualified_research_loader
+        service = LifecycleServiceV2(args.workspace_root, bindings,
+                                     research_loader=qualified_research_loader(args.workspace_root))
+        action = args.operation.removeprefix('lifecycle-')
+        if action == 'preview':
+            return service.inspect()
+        if action == 'create':
+            return service.create_job(**load_config(args.config, Path(args.workspace_root) / 'lifecycle_jobs'))
+        return getattr(service.jobs, action)(args.job_id)
+    if args.operation.startswith('validation-'):
+        from chanlun_trader.research_factory.validation_protocol_v2 import (
+            freeze_protocol, load_protocol, preview_protocol,
+        )
+        if args.operation == 'validation-status':
+            return load_protocol(args.protocol_path)
+        config = load_config(args.config, args.archive_root)
+        if not isinstance(config, dict) or set(config) - {
+                'strategy_ids', 'symbols', 'not_before', 'route', 'metadata_report'}:
+            raise ValueError('VALIDATION_CONFIG_UNKNOWN_FIELDS')
+        operation = preview_protocol if args.operation == 'validation-preview' else freeze_protocol
+        return operation(archive_root=args.archive_root, **config)
     if args.operation.startswith('formal-'):
         from chanlun_trader.research_factory.formal_assessment_v1 import FormalAssessmentServiceV1
         from chanlun_trader.research_factory.formal_evidence_v1 import CalendarEvidenceStoreV1
@@ -84,7 +124,8 @@ def execute(args):
         return {key:value[key] for key in ('snapshot_id', 'profile', 'phase', 'market_date', 'received_at')}
     if args.operation == 'create-paper':
         config = load_config(args.config, args.root)
-        allowed = {'archive_root', 'strategy_ids', 'policy', 'calendar', 'warmup', 'purpose', 'profile'}
+        allowed = {'archive_root', 'strategy_ids', 'policy', 'calendar', 'warmup', 'purpose', 'profile',
+                   'observation_policy', 'company_actions', 'portfolio_review_root'}
         if not isinstance(config, dict) or set(config) - allowed:
             raise ValueError('PAPER_CONFIG_UNKNOWN_FIELDS')
         session = ForwardPaperSessionV1.create(args.root, **config)
@@ -116,7 +157,9 @@ def render_report(value):
     lines = ['# 前瞻模拟观察日报', '',
         f"状态：{value['status']}；数据类型：{value['profile']}；用途：{value['purpose']}。",
         f"真实观察：{value['real_observation_days']} 天；其中合格观察：{value['qualified_observation_days']} 天。",
-        ('策略具备有条件的正式观察资格；没有真实券商成交。' if value.get('strategy_qualified', False)
+        ('权威策略资格仍有效，但本次观察已停止新增买入，不视为观察通过；没有真实券商成交。'
+         if value.get('authority_strategy_qualified', False) else
+         '策略具备有条件的正式观察资格；没有真实券商成交。' if value.get('strategy_qualified', False)
          else '策略尚未取得正式资格；没有真实券商成交。'), '',
         f"账户净值：{state.get('equity', '尚无行情')}；现金：{economic.get('cash', '尚无行情')}；累计模拟成交：{len(economic.get('trades', []))} 笔。",
         f"下一计划交易日：{plan.get('next_session', '暂无')}。", '',

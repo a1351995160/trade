@@ -54,3 +54,29 @@ def test_formal_status_requires_existing_authority(tmp_path, capsys):
     assert cli.main(['formal-status', '--archive-root', str(tmp_path/'archives'),
                      '--batch-id', 'FA_' + '0'*64]) == 1
     assert json.loads(capsys.readouterr().out)['status'] == 'BLOCKED'
+
+
+def test_create_cli_passes_observation_policy_to_same_service(tmp_path, monkeypatch, capsys):
+    config = tmp_path / 'config.json'
+    policy = {'version': 'PAPER_OBSERVATION_POLICY_V1', 'min_complete_days': 2,
+              'review_after': 3, 'max_drawdown_bps': 1000}
+    config.write_text(json.dumps({'observation_policy': policy}), encoding='utf-8')
+    calls = []
+    class Session:
+        def status(self):
+            return {'status': 'WAITING_DATA', 'strategy_qualified': False}
+    def create(root, **kwargs):
+        calls.append(kwargs)
+        return Session()
+    monkeypatch.setattr(cli.ForwardPaperSessionV1, 'create', create)
+    assert cli.main(['create-paper', '--root', str(tmp_path / 'paper'), '--config', str(config)]) == 0
+    assert calls == [{'observation_policy': policy}]
+    assert json.loads(capsys.readouterr().out)['strategy_qualified'] is False
+
+
+def test_report_distinguishes_authority_qualification_from_stopped_observation():
+    text = cli.render_report({'status': 'RISK_EXIT_ONLY', 'profile': 'REAL_OBSERVED',
+        'purpose': 'FORMAL_OBSERVATION', 'real_observation_days': 3, 'qualified_observation_days': 3,
+        'authority_strategy_qualified': True, 'strategy_qualified': False})
+    assert '权威策略资格仍有效' in text and '不视为观察通过' in text
+    assert '策略尚未取得正式资格' not in text

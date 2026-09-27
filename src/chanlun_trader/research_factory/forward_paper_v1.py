@@ -26,11 +26,28 @@ def _stamp(value):
     return ts.tz_convert('Asia/Shanghai')
 
 
-def _data_check(payload, symbols, *, day=None, warmup=False):
+def _portfolio_qualification(root, *, policy, strategy_ids, calendar, company_actions, expected_id=None,
+                             observation_policy=None):
+    from .portfolio_qualification_v1 import PortfolioQualificationV1
+    service = PortfolioQualificationV1(root)
+    frozen = service.frozen()
+    report = service.review()
+    expected_policy = deepcopy(frozen['policy'])
+    expected_policy['portfolio']['purpose'] = 'FORMAL_OBSERVATION'
+    if (expected_policy != policy or set(frozen['members']) != set(strategy_ids)
+            or (expected_id is not None and frozen['portfolio_id'] != expected_id)
+            or (report.get('company_actions') is not None and report['company_actions'] != company_actions)
+            or report.get('observation_policy') != observation_policy
+            or not calendar or calendar[0] <= frozen['calendar'][-1]):
+        raise ValueError('FORWARD_PAPER_PORTFOLIO_QUALIFICATION_SCOPE_CONFLICT')
+    return frozen, report
+
+
+def _data_check(payload, symbols, *, day=None, warmup=False, allow_cash_actions=False):
     if not isinstance(payload, dict) or payload.get('corporate_actions_complete') is not True:
         raise ValueError('FORWARD_PAPER_ACTION_COVERAGE_REQUIRED')
     actions = payload.get('corporate_actions')
-    if not isinstance(actions, list) or (actions and not warmup):
+    if not isinstance(actions, list) or (actions and not warmup and not allow_cash_actions):
         raise ValueError('FORWARD_PAPER_CORPORATE_ACTION_UNSUPPORTED')
     bars, turns = payload.get('bars'), payload.get('turn')
     if not isinstance(bars, list) or not bars or not isinstance(turns, list):
@@ -96,13 +113,17 @@ class ForwardPaperSessionV1:
 
     @classmethod
     def create(cls, root, *, archive_root, strategy_ids, policy, calendar, warmup,
-               purpose='ENGINEERING_OBSERVATION', profile='REAL_OBSERVED', clock=None):
+               purpose='ENGINEERING_OBSERVATION', profile='REAL_OBSERVED', clock=None,
+               company_actions='STOP_ON_ANY_OBSERVATION_ACTION', portfolio_review_root=None,
+               observation_policy=None):
         from .portfolio_execution_v1 import PortfolioExecutionPolicyV1
         from .strategy_qualification_v1 import BoundedStrategyArchiveV1
         if profile not in ('REAL_OBSERVED','SYNTHETIC') or (clock is not None and profile != 'SYNTHETIC'):
             raise ValueError('FORWARD_PAPER_PROFILE_INVALID')
         if purpose not in ('ENGINEERING_OBSERVATION','FORMAL_OBSERVATION'):
             raise ValueError('FORWARD_PAPER_PURPOSE_INVALID')
+        if company_actions not in ('STOP_ON_ANY_OBSERVATION_ACTION', 'OBSERVED_CASH_DIVIDEND_V1'):
+            raise ValueError('FORWARD_PAPER_ACTION_MODE_INVALID')
         if (not isinstance(strategy_ids, (list,tuple)) or not strategy_ids
                 or len(set(strategy_ids)) != len(strategy_ids)):
             raise ValueError('FORWARD_PAPER_STRATEGIES_INVALID')
@@ -129,12 +150,35 @@ class ForwardPaperSessionV1:
             raise ValueError('FORWARD_PAPER_CALENDAR_INVALID')
         for day in calendar:
             pd.Timestamp(str(day))
+        if observation_policy is not None:
+            observation_policy = deepcopy(observation_policy)
+            if (not isinstance(observation_policy, dict) or set(observation_policy) !=
+                    {'version', 'min_complete_days', 'review_after', 'max_drawdown_bps'}
+                    or observation_policy['version'] != 'PAPER_OBSERVATION_POLICY_V1'
+                    or any(type(observation_policy[key]) is not int for key in
+                           ('min_complete_days', 'review_after', 'max_drawdown_bps'))
+                    or not 1 <= observation_policy['min_complete_days'] <= observation_policy['review_after'] <= len(calendar) - 2
+                    or not 1 <= observation_policy['max_drawdown_bps'] <= 10000):
+                raise ValueError('FORWARD_PAPER_OBSERVATION_POLICY_INVALID')
         warm_days = _data_check(warmup,symbols,warmup=True)
         if len(warm_days)<60 or warm_days[-1]>=calendar[0]:
             raise ValueError('FORWARD_PAPER_WARMUP_INVALID')
         if profile == 'REAL_OBSERVED' and warmup.get('source_profile') not in ('HISTORICAL_REAL','REAL_OBSERVED'):
             raise PermissionError('FORWARD_PAPER_REAL_WARMUP_REQUIRED')
         archive = BoundedStrategyArchiveV1(archive_root)
+        portfolio_qualification = None
+        if purpose == 'FORMAL_OBSERVATION' and len(portfolio.members) > 1:
+            if portfolio_review_root is None or profile != 'REAL_OBSERVED':
+                raise PermissionError('FORWARD_PAPER_FORMAL_PORTFOLIO_QUALIFICATION_REQUIRED')
+            frozen, report = _portfolio_qualification(portfolio_review_root, policy=policy,
+                strategy_ids=strategy_ids, calendar=calendar, company_actions=company_actions,
+                observation_policy=observation_policy)
+            if frozen['archive_root'] != str(archive.root) or not report['portfolio_qualified']:
+                raise PermissionError('FORWARD_PAPER_FORMAL_PORTFOLIO_NOT_QUALIFIED')
+            portfolio_qualification = {'root': str(Path(portfolio_review_root).absolute()),
+                                       'portfolio_id': frozen['portfolio_id']}
+        elif portfolio_review_root is not None:
+            raise ValueError('FORWARD_PAPER_PORTFOLIO_REVIEW_ONLY_FOR_FORMAL_COMBINATION')
         strategies = {}
         admissions = {}
         for strategy_id in strategy_ids:
@@ -142,7 +186,7 @@ class ForwardPaperSessionV1:
             admission = archive.admission(strategy_id,purpose=purpose)
             if not admission['allowed']:
                 raise PermissionError('FORWARD_PAPER_STRATEGY_NOT_ADMITTED')
-            if purpose == 'FORMAL_OBSERVATION' and (
+            if purpose == 'FORMAL_OBSERVATION' and portfolio_qualification is None and (
                     profile != 'REAL_OBSERVED' or sorted(symbols) != admission['formal_assessment']['symbols']
                     or policy['initial_cash'] != 1_000_000 or len(portfolio.members) != 1
                     or portfolio.members[0].weight_bps != 10000 or portfolio.max_positions != 2
@@ -166,8 +210,12 @@ class ForwardPaperSessionV1:
             'strategies':strategies,'initial_admissions':admissions,'policy':policy,
             'calendar':calendar,'warmup':deepcopy(warmup),'source_identity':source_identity(),
             'execution':'SIMULATED_OBSERVED_OPEN_WITH_COSTS','real_execution_authorized':False,
-            'company_actions':'STOP_ON_ANY_OBSERVATION_ACTION',
+            'company_actions':company_actions,
             'cost_model':{'commission_rate':0.00025,'min_commission':5.0,'stamp_tax_rate':0.0005,'slippage_bps':0.001}}
+        if portfolio_qualification is not None:
+            header['portfolio_qualification'] = portfolio_qualification
+        if observation_policy is not None:
+            header['observation_policy'] = observation_policy
         header['header_id'] = stable_hash(header)
         root = Path(root).absolute()
         root.mkdir(parents=True,exist_ok=True)
@@ -197,6 +245,17 @@ class ForwardPaperSessionV1:
             if any(current[field] != frozen[field] for field in ('archive_hash','rule_identity','proposal','source_profile')):
                 raise ValueError('FORWARD_PAPER_ARCHIVE_CHANGED')
             result[key]=archive.admission(key,purpose=header['purpose'])
+        if header.get('portfolio_qualification') is not None:
+            binding = header['portfolio_qualification']
+            _, report = _portfolio_qualification(binding['root'], policy=header['policy'],
+                strategy_ids=list(header['strategies']), calendar=header['calendar'],
+                company_actions=header['company_actions'],
+                observation_policy=header.get('observation_policy'),
+                expected_id=binding['portfolio_id'])
+            if not report['portfolio_qualified']:
+                result = {key: {**value, 'allowed': False, 'strategy_qualified': False,
+                          'reason_codes': [*value['reason_codes'], 'PORTFOLIO_QUALIFICATION_NOT_CURRENT']}
+                          for key, value in result.items()}
         return result
 
     def _records(self,header,*,recover=False):
@@ -332,21 +391,43 @@ class ForwardPaperSessionV1:
                 if (phase,day)!=expected:
                     raise ValueError('FORWARD_PAPER_PHASE_SEQUENCE_OR_REVISION_CONFLICT')
             payload={**snapshot['payload'],'_phase':phase}
-            if payload.get('corporate_actions_complete') is not True or payload.get('corporate_actions'):
+            dynamic_actions = header['company_actions'] == 'OBSERVED_CASH_DIVIDEND_V1'
+            action_error = None
+            if dynamic_actions:
+                from .corporate_action_lifecycle_v1 import verify_action_payload
+                known_envelopes = [envelope for row in records for envelope in
+                                   row['snapshot']['payload'].get('corporate_action_envelopes', [])]
+                try:
+                    verify_action_payload(payload, symbols=header['policy']['symbols'], day=day,
+                        asof=received, profile=header['profile'], known_envelopes=known_envelopes)
+                except ValueError as exc:
+                    action_error = str(exc)
+            if (action_error or payload.get('corporate_actions_complete') is not True
+                    or (payload.get('corporate_actions') and not dynamic_actions)):
                 revoked={'header_id':header['header_id'],'reason':'UNSUPPORTED_CORPORATE_ACTION_OR_UNKNOWN_COVERAGE',
-                         'recorded_at':now.isoformat(),'snapshot_id':snapshot_id}
+                         'recorded_at':now.isoformat(),'snapshot_id':snapshot_id,
+                         **({'detail':action_error} if action_error else {})}
                 _put(self.path('REVOKED.json'),revoked)
                 _atomic_write(self.path('HEAD.json'),self._head(header,len(records),
                     records[-1]['record_hash'] if records else header['header_id'],stable_hash(revoked)))
                 raise ValueError('FORWARD_PAPER_CORPORATE_ACTION_HALTED')
-            _data_check(payload,header['policy']['symbols'],day=day)
+            _data_check(payload,header['policy']['symbols'],day=day,allow_cash_actions=dynamic_actions)
             last_bars=(records[-1]['snapshot']['payload']['bars'] if records else header['warmup']['bars'])
             if phase=='OPEN' or not records:
                 prior={}
                 for row in last_bars:
                     if row['symbol'] not in prior or row['date']>prior[row['symbol']]['date']:
                         prior[row['symbol']]=row
-                if any(abs(row['prev_close']-prior[row['symbol']]['close'])>0.011 for row in payload['bars']):
+                adjustments = {}
+                if dynamic_actions:
+                    events = {envelope['event']['event_id']: envelope['event'] for envelope in
+                              [*known_envelopes, *payload['corporate_action_envelopes']]}
+                    for event in events.values():
+                        if event['effective_date'] == day:
+                            symbol = event['symbol']
+                            adjustments[symbol] = adjustments.get(symbol, 0) + float(event['terms']['cash_per_share'])
+                if any(abs(row['prev_close']-(prior[row['symbol']]['close']-
+                       adjustments.get(row['symbol'],0)))>0.011 for row in payload['bars']):
                     raise ValueError('FORWARD_PAPER_UNEXPLAINED_PRICE_REFERENCE_CHANGE')
             else:
                 prior={row['symbol']:row for row in last_bars}
@@ -373,7 +454,7 @@ class ForwardPaperSessionV1:
                       and records[i-1]['snapshot']['phase']=='OPEN')
         real=completed if header['profile']=='REAL_OBSERVED' else 0
         revoked=_read(self.path('REVOKED.json')) if self.path('REVOKED.json').exists() else None
-        return {'session_id':header['header_id'],'profile':header['profile'],'purpose':header['purpose'],
+        result = {'session_id':header['header_id'],'profile':header['profile'],'purpose':header['purpose'],
             'status':('HALTED' if revoked['reason'].startswith('UNSUPPORTED_CORPORATE_ACTION') else 'REVOKED') if revoked else 'WAITING_DATA',
             'completed_stages':len(records),'completed_simulated_days':completed,
             'real_observation_days':real,
@@ -386,8 +467,24 @@ class ForwardPaperSessionV1:
             'state':records[-1]['state'] if records else None,
             'next_plan':records[-1]['plan'] if records else None,
             'limitations':['模拟成交不代表真实成交；工程观察不授予策略资格。',
-                          '观察期间公司行动尚不支持，遇事件或覆盖未知停止。',
+                          ('仅支持有完整接收、来源和税规则的现金分红；其他事件或覆盖未知停止。'
+                           if header['company_actions']=='OBSERVED_CASH_DIVIDEND_V1' else
+                           '观察期间公司行动尚不支持，遇事件或覆盖未知停止。'),
                           '首版只支持沪深主板；历史预热来源标签不是历史发布时间证明。']}
+        if header.get('observation_policy') is not None:
+            observation = records[-1]['state']['observation'] if records else {
+                'peak_equity': float(header['policy']['initial_cash']), 'max_drawdown_bps': 0.0,
+                'completed_days': 0, 'pending_open_day': None, 'buy_blocked': False,
+                'reason_codes': [], 'review_due': False}
+            result['observation'] = {**deepcopy(observation),
+                'policy': deepcopy(header['observation_policy']), 'observation_qualified': False,
+                'minimum_sample_reached': completed >= header['observation_policy']['min_complete_days']}
+            if not revoked and observation['buy_blocked']:
+                result['authority_strategy_qualified'] = result['strategy_qualified']
+                result['strategy_qualified'] = False
+                result['status'] = ('RISK_EXIT_ONLY' if 'OBSERVATION_DRAWDOWN_LIMIT' in observation['reason_codes']
+                                    else 'REVIEW_DUE')
+        return result
 
     def status(self):
         with self.lock():

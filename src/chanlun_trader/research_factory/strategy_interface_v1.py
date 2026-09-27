@@ -138,6 +138,14 @@ def backend_for(strategy,options=None):
     """按账户能力选后端；注册新候选不修改此处的策略名称列表。"""
     options=options or {}
     if strategy.requirements.asset=='A_SHARE':
+        if 'RESEARCH_RULE_STRATEGY_V2' in strategy.requirements.capabilities:
+            from .rule_account_backend_v2 import RuleAccountBackendV2
+            if 'window' not in options or set(options) - {'window', 'costs', 'initial_cash',
+                    'max_positions', 'max_symbol_exposure_bps', 'execution_profile'}:
+                raise ValueError('RULE_BACKEND_WINDOW_AND_LIMITS_REQUIRED')
+            backend=RuleAccountBackendV2(**options)
+            backend.check(strategy.requirements)
+            return backend
         if 'BOUNDED_INDICATOR_VOTE_V1' in strategy.requirements.capabilities:
             from .bounded_candidate_v1 import BoundedCandidateAccountBackend
             if set(options) != {'events'}:raise ValueError('BOUNDED_BACKEND_EVENTS_REQUIRED')

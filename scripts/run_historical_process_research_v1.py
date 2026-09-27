@@ -5,6 +5,7 @@ import argparse
 from datetime import datetime, timedelta, timezone
 import hashlib
 import json
+import re
 from pathlib import Path
 import sys
 import time
@@ -46,8 +47,13 @@ def day(value):
     return int(value.replace('-', ''))
 
 
-def build_bundle(data_root):
+def build_bundle(data_root, *, symbols=None):
     """先固定真实日历，再验原始响应与公司行动，不访问策略表现。"""
+    symbols = SYMBOLS if symbols is None else symbols
+    if (not isinstance(symbols, (list, tuple)) or not symbols or len(symbols) != len(set(symbols))
+            or any(not isinstance(s, str) or not re.fullmatch(r'(00\d{4}\.SZ|60\d{4}\.SH)', s) for s in symbols)):
+        raise ValueError('HISTORICAL_MAIN_BOARD_SYMBOLS_INVALID')
+    symbols = sorted(symbols)
     raw_calendar, calendar = response(data_root / 'TRADE_DATES.json', 'query_trade_dates')
     expected_dates = {'start_date': '2022-01-01', 'end_date': '2024-07-31'}
     if raw_calendar['request'] != expected_dates:
@@ -60,12 +66,12 @@ def build_bundle(data_root):
     if dates != sorted(set(dates)) or len(dates) < 564 or dates[-1] != 20240731:
         raise ValueError('HISTORICAL_CALENDAR_INCOMPLETE')
     dates = dates[-564:]
-    window = dict(symbols=SYMBOLS, feature_start=dates[0], account_start=dates[60],
+    window = dict(symbols=symbols, feature_start=dates[0], account_start=dates[60],
                   account_end=dates[-1], calendar=dates)
     frames, turns, states, events, action_checks = [], [], [], [], []
     sources = {'execution_profile': 'HISTORICAL_MODELED',
                'TRADE_DATES.json': file_hash(data_root / 'TRADE_DATES.json')}
-    for symbol in SYMBOLS:
+    for symbol in symbols:
         code = ('sz.' if symbol.endswith('SZ') else 'sh.') + symbol[:6]
         name = f'DAILY_{symbol}.json'
         raw, frame = response(data_root / name, 'query_history_k_data_plus')
