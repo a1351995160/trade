@@ -1,0 +1,13 @@
+{
+  "status": "REAL_MODEL_RUNTIME_BLOCKED",
+  "root": "E:\\llmwiki\\autonomous-strategy-research-v1\\autonomous-completion-20260927\\diagnosis-v2",
+  "max_model_attempts": 2,
+  "model_attempts_started": 1,
+  "successful_proposals": 0,
+  "independent_submissions": 0,
+  "reason": "配置模型 gpt-5.5 被服务返回404，不存在或不可访问；未重试、未退还尝试额度。",
+  "error_file": "E:\\llmwiki\\autonomous-strategy-research-v1\\autonomous-completion-20260927\\diagnosis-v2\\search\\CANDIDATE_001\\model\\ERROR.json",
+  "error_sha256": "1fe5bbf32bc1c0d84a1c80178286a39886482009a68a464c394a2281ebb0476b",
+  "strategy_qualified": false,
+  "source_archive": "E:\\llmwiki\\autonomous-strategy-research-v1\\autonomous-completion-20260927\\FROZEN_SOURCE\\source.zip"
+}

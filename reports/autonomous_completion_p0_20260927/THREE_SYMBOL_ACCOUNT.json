@@ -1,0 +1,30 @@
+{
+  "status": "REAL_HISTORICAL_ENGINEERING_REPLAY_PASSED",
+  "symbols": [
+    "000001.SZ",
+    "000002.SZ",
+    "600000.SH"
+  ],
+  "account_days": 504,
+  "cash_events": 8,
+  "reconciliation": {
+    "passed": true,
+    "days": 504
+  },
+  "metrics": {
+    "net_return": -0.2248336851999999,
+    "max_drawdown": 0.3265440105684492,
+    "total_fees": 1059.4398,
+    "trade_count": 9
+  },
+  "result_hash": "baa78780b6a5781b1c1a810b7ad2d65347dd9f77f267011db61aff6942061b2a",
+  "repeat_identical": true,
+  "runtime_seconds": 399.1594852999988,
+  "strategy_qualified": false,
+  "independent_evidence": false,
+  "historical_available_at_verified": false,
+  "limitations": [
+    "只证明冻结证券与资金范围；不代表全A股、独立验证或正式统计范围。"
+  ],
+  "_integrity": "7478f778e9921103a2892d4745d6309a16f2fe3685dd36418342b679ed4953c0"
+}

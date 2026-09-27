@@ -75,6 +75,10 @@ chanlun-trading-system/
 - 前端：Vue 3 + TypeScript + ECharts，Vite 构建（`frontend/`），由 FastAPI 托管 `frontend/dist`。
 - 功能：回测参数配置、后台回测与进度显示、绩效卡片、交易明细表、选股信号表、个股 K 线与笔/线段/买卖点标注。
 
+## Paper 观察
+
+Paper 创建命令 `python scripts/run_strategy_lifecycle_v1.py create-paper --root <观察目录> --config <配置文件>` 支持顶层可选 `observation_policy`：`{"version":"PAPER_OBSERVATION_POLICY_V1","min_complete_days":20,"review_after":60,"max_drawdown_bps":1500}`。政策在创建时冻结；达到回撤阈值或评审日数后停止新买入，持仓保留合法退出流程。天数及风险检查不授予策略有效性资格。完整配置和状态说明见 [Paper 预登记观察](docs/PAPER_OBSERVATION_POLICY_V1.md)。
+
 ## 测试
 
 ```bash
