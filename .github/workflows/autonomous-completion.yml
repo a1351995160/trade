@@ -1,0 +1,60 @@
+name: Autonomous research completion
+
+on:
+  pull_request:
+  push:
+    branches: ["codex/**"]
+
+permissions:
+  contents: read
+
+jobs:
+  completion:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 150
+    env:
+      PYTHONUTF8: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install frozen test dependencies
+        run: python -m pip install --disable-pip-version-check --only-binary ":all:" --no-binary "pytdx" --require-hashes -r .github/workflows/requirements-p3b.txt
+      - name: Verify new workflow and original entry contracts
+        run: >-
+          python -m pytest -q
+          tests/research_factory/test_research_data_qualification_v1.py
+          tests/research_factory/test_validation_protocol_v2.py
+          tests/research_factory/test_formal_evidence_v2.py
+          tests/research_factory/test_formal_rule_adapter_v2.py
+          tests/research_factory/test_method_applicability_v1.py
+          tests/research_factory/test_research_rule_strategy_v2.py
+          tests/research_factory/test_rule_account_backend_v2.py
+          tests/research_factory/test_rule_paper_parity_v2.py
+          tests/research_factory/test_multi_symbol_validation_runner_v2.py
+          tests/research_factory/test_formal_cash_benchmark_v2.py
+          tests/research_factory/test_bounded_rule_loop_v2.py
+          tests/research_factory/test_diagnosis_research_v2.py
+          tests/research_factory/test_corporate_action_lifecycle_v1.py
+          tests/research_factory/test_portfolio_qualification_v1.py
+          tests/research_factory/test_research_lifecycle_jobs_v1.py
+          tests/research_factory/test_lifecycle_service_v2.py
+          tests/research_factory/test_lifecycle_ui_launch_v2.py
+          tests/research_factory/test_forward_paper_v1.py
+          tests/research_factory/test_forward_observation_lifecycle_v2.py
+          tests/research_factory/test_strategy_qualification_v1.py
+          tests/research_factory/test_bounded_model_v1.py
+          tests/research_factory/test_strategy_lifecycle_cli_v1.py
+          --basetemp=${{ runner.temp }}/autonomous-completion-tests
+          --junitxml=completion-tests.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: completion-${{ matrix.os }}
+          path: completion-tests.xml

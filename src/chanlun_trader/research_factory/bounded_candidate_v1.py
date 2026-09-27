@@ -18,7 +18,12 @@ CAPABILITY = "BOUNDED_INDICATOR_VOTE_V1"
 _FIELDS = {"hypothesis", "indicators", "threshold", "change_reason"}
 
 
-def candidate_capabilities() -> dict:
+def candidate_capabilities(*, capability=CAPABILITY) -> dict:
+    if capability == 'RESEARCH_RULE_STRATEGY_V2':
+        from .research_rule_strategy_v2 import rule_capabilities
+        return {**rule_capabilities(), 'capability': capability}
+    if capability != CAPABILITY:
+        raise ValueError('BOUNDED_CANDIDATE_CAPABILITY_UNSUPPORTED')
     definition = Causal51VoteStrategy().definition
     return {
         "capability": CAPABILITY,
@@ -55,8 +60,13 @@ def _validated_payload(payload: dict) -> dict:
     return {**payload, "indicators": sorted(ids)}
 
 
-def validate_candidate(payload: dict, *, strategy_id: str):
+def validate_candidate(payload: dict, *, strategy_id: str, capability=CAPABILITY):
     """调用方绑定候选身份；模型不能指定身份、父版本、输入或账户选项。"""
+    if capability == 'RESEARCH_RULE_STRATEGY_V2':
+        from .research_rule_strategy_v2 import ResearchRuleStrategyV2
+        return ResearchRuleStrategyV2(payload, strategy_id=strategy_id)
+    if capability != CAPABILITY:
+        raise ValueError('BOUNDED_CANDIDATE_CAPABILITY_UNSUPPORTED')
     return BoundedVoteStrategy(payload, strategy_id=strategy_id)
 
 

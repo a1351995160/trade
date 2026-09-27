@@ -76,10 +76,58 @@ def _safe_root(value):
     return path
 
 
+def _rule_family(plan):
+    return plan.get('strategy_capability') == 'RESEARCH_RULE_STRATEGY_V2'
+
+
+def _build_evidence(plan, **inputs):
+    if _rule_family(plan):
+        from .formal_evidence_v2 import build_rule_confirmation_bundle
+        return build_rule_confirmation_bundle(**inputs)
+    return build_confirmation_bundle(**inputs)
+
+
+def _prepare_account(proposal, **kwargs):
+    from .formal_rule_adapter_v2 import is_rule, prepare_rule
+    return prepare_rule(proposal, **kwargs) if is_rule(proposal) else prepare_formal_account(proposal, **kwargs)
+
+
+def _run_account(proposal, **kwargs):
+    from .formal_rule_adapter_v2 import is_rule, run_rule
+    return run_rule(proposal, **kwargs) if is_rule(proposal) else run_formal_account(proposal, **kwargs)
+
+
+def _validate_account(result, **kwargs):
+    if result.get('strategy_plan', {}).get('backend', {}).get('backend') == 'RULE_ACCOUNT_BACKEND_V2':
+        from .formal_rule_adapter_v2 import validate_result
+        return validate_result(result, **kwargs)
+    if kwargs['bundle'].get('events'):
+        from .formal_cash_benchmark_v2 import validate_cash_benchmark
+        return validate_cash_benchmark(result, **kwargs)
+    kwargs.pop('active_check', None)
+    return validate_formal_result(result, **kwargs)
+
+
+def _screening(root, archives):
+    from .formal_rule_adapter_v2 import is_rule
+    if is_rule(archives[0]['proposal']):
+        from .research_screening_v2 import validated_screening
+    else:
+        from .research_screening_v1 import validated_screening
+    return validated_screening(root, archives)
+
+
+def _account_view(result):
+    if result and result.get('strategy_plan', {}).get('backend', {}).get('backend') == 'RULE_ACCOUNT_BACKEND_V2':
+        from .formal_rule_adapter_v2 import account_view
+        return account_view(result)
+    return result
+
+
 def adjudicate(*, plan, evidence, results, statistics, method_approved):
     """只供权威服务从已核验账户派生；公共准入不接受此函数的输出。"""
     reports = {}
-    benchmark = results.get('BENCHMARK_BASE')
+    benchmark = _account_view(results.get('BENCHMARK_BASE'))
     for member, frozen in plan['family'].items():
         reasons, failed = [], []
         if not _selected(plan, member):
@@ -88,7 +136,7 @@ def adjudicate(*, plan, evidence, results, statistics, method_approved):
                 'adjusted_p': statistics['adjusted_p'][member], 'metrics': {'BASE': None, 'STRESS': None},
                 'interpretation': POLICY['interpretation']}
             continue
-        base, stress = results.get(member + '_BASE'), results.get(member + '_STRESS')
+        base, stress = (_account_view(results.get(member + '_' + cost)) for cost in ('BASE', 'STRESS'))
         if frozen is None or base is None or stress is None or benchmark is None:
             reasons.append('COMPLETE_ACCOUNT_EVIDENCE_REQUIRED')
         else:
@@ -109,6 +157,8 @@ def adjudicate(*, plan, evidence, results, statistics, method_approved):
         if plan.get('method_hash') == statistics_v2.METHOD_HASH:
             # 合成校准不能证明真实账户的共同均值及分段近似独立；本轮不开放该资格门。
             reasons.append('REAL_RETURN_PROCESS_APPLICABILITY_NOT_ESTABLISHED')
+        if _rule_family(plan):
+            reasons.append('RULE_V2_METHOD_SCOPE_NOT_ESTABLISHED')
         if evidence.get('qualification_evidence_eligible') is not True:
             reasons.append('INDEPENDENT_REAL_EXECUTION_EVIDENCE_REQUIRED')
         if plan['profile'] != 'REAL_OBSERVED' or (frozen and frozen['source_profile'] == 'SYNTHETIC'):
@@ -179,7 +229,8 @@ class FormalAssessmentServiceV1:
                 'real_process_applicability': 'NOT_ESTABLISHED',
                 'interpretation': '准入准备评审；没有独立收益证据时不对策略本身作有效或无效的判决。'}
 
-    def register(self, *, strategy_ids, symbols, not_before, calibration_path, profile='REAL_OBSERVED', screening_root=None):
+    def register(self, *, strategy_ids, symbols, not_before, calibration_path, profile='REAL_OBSERVED', screening_root=None,
+                 protocol_path=None):
         _require(profile in ('REAL_OBSERVED', 'SYNTHETIC'), 'PROFILE_INVALID')
         _require(isinstance(strategy_ids, list) and 1 <= len(strategy_ids) <= 5
                  and len(set(strategy_ids)) == len(strategy_ids), 'FAMILY_INVALID')
@@ -198,12 +249,23 @@ class FormalAssessmentServiceV1:
         # 失败校准可登记工程演练，但不能消耗真实确认窗口后才发现方法未批准。
         _require(profile == 'SYNTHETIC' or calibration['method_approved'], 'CALIBRATION_NOT_APPROVED')
         archives = [self.archive.load(key) for key in sorted(strategy_ids)]
+        from .formal_rule_adapter_v2 import is_rule, execution_scope
+        kinds = {is_rule(archive['proposal']) for archive in archives}
+        _require(len(kinds) == 1, 'MIXED_STRATEGY_CAPABILITIES_UNSUPPORTED')
+        rule_execution_scope = None
+        if True in kinds:
+            rule_execution_scope = execution_scope(archives[0]['evidence']['session']['input_manifest'], symbols)
+        protocol_binding = None
+        if protocol_path is not None:
+            from .validation_protocol_v2 import bind_formal_protocol
+            protocol_binding = bind_formal_protocol(protocol_path, archive_root=self.archive.root,
+                strategy_ids=strategy_ids, symbols=symbols, not_before=not_before)
         scopes = {a['origin']['scope_id'] for a in archives}
         roots = {a['origin']['source_root'] for a in archives}
         _require(len(scopes) == len(roots) == 1, 'ONE_COMPLETE_RESEARCH_FAMILY_REQUIRED')
         origin = _safe_root(next(iter(roots)))
         scope = archives[0]['evidence']['session']
-        _require(not scope.get('input_manifest', {}).get('diagnosis_config_hash') or screening_root is not None,
+        _require(not (True in kinds or scope.get('input_manifest', {}).get('diagnosis_config_hash')) or screening_root is not None,
                  'DIAGNOSIS_SCREENING_REQUIRED')
         family = {f'CANDIDATE_{i:03d}': None for i in range(1, scope['max_attempts'] + 1)}
         _require(all((origin / key / 'DECISION.json').exists() for key in family), 'RESEARCH_FAMILY_NOT_CLOSED')
@@ -218,10 +280,9 @@ class FormalAssessmentServiceV1:
                 ('strategy_id', 'archive_hash', 'rule_identity', 'proposal', 'source_profile')}
         screening = None
         if screening_root is not None:
-            from .research_screening_v1 import validated_screening
             screening_root = _safe_root(screening_root)
             _require(screening_root == origin.parent / 'screening', 'SCREENING_ROOT_CONFLICT')
-            screening = validated_screening(screening_root, archives)
+            screening = _screening(screening_root, archives)
             _require(bool(screening['selected']), 'NO_SCREENED_CANDIDATES')
         binding = {'authority_root': str(self.root), 'scope_id': scope['scope_id']}
         with ObjectiveMutationLock.for_resource(origin / 'FORMAL_AUTHORITY.json'), self.lock():
@@ -239,9 +300,13 @@ class FormalAssessmentServiceV1:
                     'alpha_budget': method_spec['alpha_budgets'][slot-1], 'policy': POLICY,
                     'method_hash': method_hash, 'calibration_hash': stable_hash(calibration),
                     'source_identity': source_identity(), 'account_budget': 1 + 2 * len(archives)}
+            if rule_execution_scope is not None:
+                plan.update(strategy_capability='RESEARCH_RULE_STRATEGY_V2', execution_scope=rule_execution_scope)
             if screening is not None:
                 plan.update(screening=screening, screening_root=str(screening_root),
                             account_budget=1 + 2 * len(screening['selected']))
+            if protocol_binding is not None:
+                plan['validation_protocol'] = protocol_binding
             plan['batch_id'] = 'FA_' + stable_hash(plan)
             _put(self.path(plan['batch_id'], 'CALIBRATION.json'), calibration)
             # PLAN 是预算占用的提交记录；之后失败、取消均不返还。
@@ -266,10 +331,19 @@ class FormalAssessmentServiceV1:
             if item:
                 a = self.archive.load(item['strategy_id'])
                 _require(all(a[key] == value for key, value in item.items()), 'ARCHIVE_CHANGED')
+                if _rule_family(plan):
+                    from .formal_rule_adapter_v2 import is_rule, execution_scope
+                    _require(is_rule(a['proposal']) and execution_scope(a['evidence']['session']['input_manifest'],
+                             plan['symbols']) == plan['execution_scope'], 'RULE_EXECUTION_SCOPE_CHANGED')
         if 'screening' in plan:
-            from .research_screening_v1 import validated_screening
             archives = [self.archive.load(a['strategy_id']) for a in plan['family'].values() if a]
-            _require(validated_screening(plan['screening_root'], archives) == plan['screening'], 'SCREENING_CHANGED')
+            _require(_screening(plan['screening_root'], archives) == plan['screening'], 'SCREENING_CHANGED')
+        if 'validation_protocol' in plan:
+            from .validation_protocol_v2 import bind_formal_protocol
+            binding = bind_formal_protocol(plan['validation_protocol']['path'], archive_root=self.archive.root,
+                strategy_ids=[a['strategy_id'] for a in plan['family'].values() if a],
+                symbols=plan['symbols'], not_before=plan['not_before'])
+            _require(binding == plan['validation_protocol'], 'VALIDATION_PROTOCOL_CHANGED')
         return plan
 
     def status(self, batch):
@@ -303,7 +377,7 @@ class FormalAssessmentServiceV1:
             if not started.exists():
                 _put(started, {'batch_id': batch, 'inputs_hash': stable_hash(inputs), 'started_at': _now()})
             try:
-                prepared = build_confirmation_bundle(**inputs, symbols=plan['symbols'], not_before=plan['not_before'],
+                prepared = _build_evidence(plan, **inputs, symbols=plan['symbols'], not_before=plan['not_before'],
                     frozen_at=plan['frozen_at'], profile=plan['profile'], warmup_sessions=60, account_sessions=504)
                 bundle, window, evidence = (prepared[key] for key in ('bundle', 'window', 'evidence'))
                 identity = window_input_identity(bundle, window)
@@ -314,7 +388,7 @@ class FormalAssessmentServiceV1:
                     if frozen and _selected(plan, member):
                         jobs.extend((member + '_' + cost, frozen['proposal'], cost) for cost in ('BASE', 'STRESS'))
                 for key, proposal, cost in jobs:
-                    account_plan = prepare_formal_account(proposal, strategy_id=key, window=window, costs=cost)
+                    account_plan = _prepare_account(proposal, strategy_id=key, window=window, costs=cost)
                     receipt = {'strategy_plans': {key: account_plan}, 'input_identity': identity,
                                'novelty': {key: {'allowed': True}}, 'execution_purpose': key, 'execution_consumed': True}
                     start = {'batch_id': batch, 'account_key': key, 'receipt': receipt,
@@ -327,12 +401,12 @@ class FormalAssessmentServiceV1:
                     if result_path.exists():
                         result = _read(result_path)
                     else:
-                        result = run_formal_account(proposal, strategy_id=key, bundle=bundle, window=window,
+                        result = _run_account(proposal, strategy_id=key, bundle=bundle, window=window,
                             costs=cost, input_identity=identity, active_check=guard)
                         _put(result_path, result)
                     _require(result['strategy_plan'] == account_plan and result['input_identity'] == identity,
                              'ACCOUNT_BINDING_CONFLICT')
-                    validate_formal_result(result, bundle=bundle, window=window, costs=cost)
+                    _validate_account(result, bundle=bundle, window=window, costs=cost, active_check=guard)
                     _put(self.path(batch, key + '_SETTLEMENT.json'),
                          {'start_hash': stable_hash(start), 'result_hash': stable_hash(result)})
                     results[key] = result
@@ -358,7 +432,7 @@ class FormalAssessmentServiceV1:
 
     @staticmethod
     def _excess(plan, results):
-        benchmark = results['BENCHMARK_BASE']['daily_returns']
+        benchmark = _account_view(results['BENCHMARK_BASE'])['daily_returns']
         _require(len(benchmark) == 504 and len({x['date'] for x in benchmark}) == 504, 'ACCOUNT_DATES_INVALID')
         output = {}
         for member, frozen in plan['family'].items():
@@ -367,11 +441,12 @@ class FormalAssessmentServiceV1:
                 continue
             for cost in ('BASE', 'STRESS'):
                 result = results[member + '_' + cost]
-                _require(result['status'] == 'RECONCILED_DIAGNOSTIC' and
-                         [x['date'] for x in result['daily_returns']] == [x['date'] for x in benchmark],
+                view = _account_view(result)
+                _require(result['status'] in ('RECONCILED_DIAGNOSTIC', 'OBSERVED_ACCOUNT_COMPLETED') and
+                         [x['date'] for x in view['daily_returns']] == [x['date'] for x in benchmark],
                          'ACCOUNT_RECONCILIATION_REQUIRED')
             output[member] = [a['net_return'] - b['net_return'] for a, b in
-                             zip(results[member + '_BASE']['daily_returns'], benchmark)]
+                             zip(_account_view(results[member + '_BASE'])['daily_returns'], benchmark)]
         return output
 
     def report(self, batch):
@@ -384,7 +459,7 @@ class FormalAssessmentServiceV1:
         _require(exposure['batch_id'] == batch and exposure['inputs_hash'] == stable_hash(inputs)
                  and inputs['snapshot_root'] == str(self.path(batch, 'snapshots'))
                  and inputs['calendar_root'] == str(self.path(batch, 'calendar')), 'EXPOSURE_BINDING_CONFLICT')
-        prepared = build_confirmation_bundle(**inputs, symbols=plan['symbols'], not_before=plan['not_before'],
+        prepared = _build_evidence(plan, **inputs, symbols=plan['symbols'], not_before=plan['not_before'],
             frozen_at=plan['frozen_at'], profile=plan['profile'], warmup_sessions=60, account_sessions=504)
         _require(prepared['evidence'] == evidence and prepared['window'] == recorded_data['window']
                  and window_input_identity(prepared['bundle'], prepared['window']) == recorded_data['input_identity'],
@@ -398,13 +473,17 @@ class FormalAssessmentServiceV1:
             start = _read(self.path(batch, key + '_START.json'))
             member, cost = key.rsplit('_', 1)
             proposal = None if member == 'BENCHMARK' else plan['family'][member]['proposal']
-            account_plan = prepare_formal_account(proposal, strategy_id=key, window=recorded_data['window'], costs=cost)
+            account_plan = _prepare_account(proposal, strategy_id=key, window=recorded_data['window'], costs=cost)
             expected_start = {'batch_id': batch, 'account_key': key, 'cost': cost, 'charged_before_execution': True,
                 'receipt': {'strategy_plans': {key: account_plan}, 'input_identity': recorded_data['input_identity'],
                             'novelty': {key: {'allowed': True}}, 'execution_purpose': key, 'execution_consumed': True}}
             _require(start == expected_start and result['strategy_plan'] == account_plan
                      and result['input_identity'] == recorded_data['input_identity'], 'ACCOUNT_BINDING_CONFLICT')
-            validate_formal_result(result, bundle=prepared['bundle'], window=recorded_data['window'], costs=cost)
+            def validation_guard(receipt=expected_start['receipt']):
+                _require(source_identity() == plan['source_identity'], 'SOURCE_CHANGED_DURING_RUN')
+                return receipt
+            _validate_account(result, bundle=prepared['bundle'], window=recorded_data['window'], costs=cost,
+                              active_check=validation_guard)
             _require(stable_hash(result) == digest and _read(self.path(batch, key + '_SETTLEMENT.json')) ==
                      {'start_hash': stable_hash(start), 'result_hash': digest}, 'SETTLEMENT_CONFLICT')
             results[key] = result

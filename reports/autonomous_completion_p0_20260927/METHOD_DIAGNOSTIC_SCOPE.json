@@ -1,0 +1,21 @@
+{
+  "policy": {
+    "version": "METHOD_APPLICABILITY_DIAGNOSTIC_V1",
+    "method_hash": "a4f8108d6c1e9f0c6bc211675d94a92a863ffb1b8daab773aff8ff50b18390c4",
+    "method_variants": 1,
+    "account_sessions": 504,
+    "family_size": 5,
+    "settled_accounts": 11,
+    "new_account_runs": 0,
+    "new_model_calls": 0,
+    "new_confirmation_attempts": 0,
+    "result_use": "EXPOSED_HISTORY_METHOD_DIAGNOSIS_ONLY",
+    "failure_action": "RETAIN_METHOD_APPLICABILITY_BLOCK_AND_CONTINUE_ENGINEERING",
+    "assumption_test_acceptance": "NEVER_INFER_INDEPENDENCE_FROM_NONREJECTION"
+  },
+  "accounts_root": "E:\\llmwiki\\autonomous-strategy-research-v1\\real-process-504-v1\\accounts",
+  "scope_hash": "d36fa2daf532144c15ec245378b00a6d542287038883a0a970d5c2c0f5a2bd83",
+  "source_hash": "c3a9ed4161dab1599d6205a3a05f0b3fdc816a4717a36d906c998bb3208d8ce1",
+  "frozen_at": "2026-09-27T00:30:17.469053+00:00",
+  "_integrity": "ef84d2a31d751a9faf867dbbc08c509da0ee5c50ee4f2c70d20bc8efff18ddcb"
+}

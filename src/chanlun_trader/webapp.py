@@ -627,6 +627,48 @@ def _engineering_workbench(request: Request) -> EngineeringWorkbenchV1:
     return service
 
 
+def _lifecycle_service(request: Request):
+    service = request.app.state.lifecycle_service
+    if service is None:
+        raise HTTPException(status_code=503, detail={'code': 'LIFECYCLE_WORKSPACE_NOT_CONFIGURED'})
+    return service
+
+
+@app.get('/api/research-lifecycle')
+def research_lifecycle_read(request: Request) -> dict:
+    try:
+        return {**_lifecycle_service(request).inspect(),
+                'actions_allowed': request.app.state.execution_policy.governance_allowed}
+    except (ValueError, OSError, KeyError) as exc:
+        raise HTTPException(status_code=409, detail={'code': 'LIFECYCLE_NOT_READY', 'reason': str(exc)}) from exc
+
+
+@app.post('/api/research-lifecycle/preview')
+def research_lifecycle_preview(request: Request, payload: dict = Body(...)) -> dict:
+    _require_local_console_request(request)
+    if not request.app.state.execution_policy.governance_allowed:
+        raise HTTPException(status_code=403, detail={'code': 'LIFECYCLE_READ_ONLY'})
+    if set(payload) != {'action', 'payload'}:
+        raise HTTPException(status_code=400, detail={'code': 'LIFECYCLE_PREVIEW_FIELDS'})
+    try:
+        return _lifecycle_service(request).action_preview(**payload)
+    except (ValueError, OSError, KeyError) as exc:
+        raise HTTPException(status_code=409, detail={'code': 'LIFECYCLE_NOT_READY', 'reason': str(exc)}) from exc
+
+
+@app.post('/api/research-lifecycle/action')
+def research_lifecycle_action(request: Request, payload: dict = Body(...)) -> dict:
+    _require_local_console_request(request)
+    if set(payload) != {'action', 'payload', 'preview_hash', 'confirmed'}:
+        raise HTTPException(status_code=400, detail={'code': 'LIFECYCLE_ACTION_FIELDS'})
+    try:
+        return _lifecycle_service(request).perform(request.app.state.execution_policy, **payload)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail={'code': str(exc)}) from exc
+    except (ValueError, OSError, KeyError, TypeError) as exc:
+        raise HTTPException(status_code=409, detail={'code': 'LIFECYCLE_NOT_READY', 'reason': str(exc)}) from exc
+
+
 @app.get("/api/research-engineering/workbench")
 def engineering_workbench_read(request: Request, plan_at: str | None = None) -> dict:
     service = _engineering_workbench(request)
@@ -1284,18 +1326,21 @@ def frontend_history_fallback(frontend_path: str) -> FileResponse:
 _route_template = app
 
 
-def create_app(research_root: str | Path | None = None, execution_policy: ExecutionPolicy | None = None, *, engineering_workbench: EngineeringWorkbenchV1 | None = None) -> FastAPI:
+def create_app(research_root: str | Path | None = None, execution_policy: ExecutionPolicy | None = None, *, engineering_workbench: EngineeringWorkbenchV1 | None = None, lifecycle_service=None) -> FastAPI:
     """显式组合研究工作区；默认应用不绑定业务目录，也不执行恢复。"""
     policy = execution_policy or ExecutionPolicy()
     root = validate_research_root(research_root, policy)
     if engineering_workbench is not None and (root is None or engineering_workbench.root.resolve() != root):
         raise ValueError("WORKBENCH_APPLICATION_ROOT_CONFLICT")
+    if lifecycle_service is not None and (root is None or lifecycle_service.root.resolve() != root):
+        raise ValueError('LIFECYCLE_APPLICATION_ROOT_CONFLICT')
     application = FastAPI(title="缠论选股交易系统")
     application.router.routes = list(_route_template.router.routes)
     application.exception_handlers.update(_route_template.exception_handlers)
     application.state.research_root = root
     application.state.execution_policy = policy
     application.state.engineering_workbench = engineering_workbench
+    application.state.lifecycle_service = lifecycle_service
     application.state.tasks = {}
     application.state.services = SimpleNamespace()
     application.state.recovery_status = "RECOVERY_DISABLED"

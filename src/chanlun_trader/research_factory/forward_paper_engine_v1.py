@@ -14,7 +14,7 @@ from .bounded_candidate_v1 import validate_candidate
 from .causal_dividend_features_v1 import causal_hfq_bars
 from .common import canonical_json, stable_hash
 from .engine_replay_recovery_v1 import economic_state
-from .strategy_interface_v1 import Context
+from .strategy_interface_v1 import Context, validate_decision
 from scripts.probe_all_indicator_strategy_v1 import pilot_registry
 
 
@@ -26,13 +26,15 @@ class ForwardPaperEngineV1:
         self.bars = deepcopy(header['warmup']['bars'])
         self.turn = deepcopy(header['warmup']['turn'])
         self.actions = tuple(header['warmup'].get('corporate_actions', []))
-        self.strategies = {key: validate_candidate(value['proposal'], strategy_id=key)
+        self.strategies = {key: paper_strategy(value['proposal'], strategy_id=key)
                            for key, value in header['strategies'].items()}
+        self.rule_states = {}
         self.store, self.master = MarketDataStore(), SecurityMaster()
         self._load_bars(self.bars)
         from .portfolio_execution_v1 import PortfolioExecutionPolicyV1
         self.portfolio = PortfolioExecutionPolicyV1.model_validate_json(json.dumps(self.policy['portfolio']))
-        config = EngineConfig(initial_cash=self.policy['initial_cash'],
+        costs = header.get('costs', {})
+        config = EngineConfig(**costs, initial_cash=self.policy['initial_cash'],
             max_positions=self.portfolio.max_positions,
             max_position_weight=self.portfolio.max_symbol_exposure_bps / 10000,
             max_holding_days=100000, feature_price_mode='raw',
@@ -45,8 +47,40 @@ class ForwardPaperEngineV1:
                                       security_master=self.master, seed=0,
                                       source_identity=(header['source_identity'], False))
         self.engine._build()
+        if header.get('company_actions') in ('OBSERVED_CASH_DIVIDEND_V1', 'HISTORICAL_CASH_DIVIDEND_V2', 'OBSERVED_FROZEN_CASH_DIVIDEND_V2'):
+            from ..engine.individual_dividend_accounting_v1 import IndividualDividendAccountingV1
+            ledger = IndividualDividendAccountingV1(self.policy['initial_cash'],
+                header.get('account_events', []), header['header_id'])
+            self.engine.ledger = self.engine.broker.ledger = self.engine.risk.ledger = ledger
         self.base_risk_config = deepcopy(self.engine.risk.config)
         self.skips = []
+        if header.get('observation_policy') is not None:
+            self.observation = {'peak_equity': float(self.policy['initial_cash']),
+                'max_drawdown_bps': 0.0, 'completed_days': 0, 'pending_open_day': None,
+                'buy_blocked': False, 'reason_codes': [], 'review_due': False}
+
+    def _observe_equity(self):
+        if not hasattr(self, 'observation'):
+            return
+        state = self.observation
+        equity = self.engine.ledger.current_equity()
+        state['peak_equity'] = max(state['peak_equity'], equity)
+        state['max_drawdown_bps'] = max(state['max_drawdown_bps'],
+            (1 - equity / state['peak_equity']) * 10000)
+        if state['max_drawdown_bps'] >= self.header['observation_policy']['max_drawdown_bps']:
+            state['buy_blocked'] = True
+            if 'OBSERVATION_DRAWDOWN_LIMIT' not in state['reason_codes']:
+                state['reason_codes'].append('OBSERVATION_DRAWDOWN_LIMIT')
+
+    def _observation_decisions(self, decisions):
+        if not hasattr(self, 'observation') or not self.observation['buy_blocked']:
+            return decisions
+        result = []
+        for decision in decisions:
+            held = self.engine.ledger.position_qty(decision['strategy_id'], decision['symbol'])
+            result.append({**decision, 'side': 'SELL' if held else 'HOLD', 'target_weight': 0.0,
+                           'reason': self.observation['reason_codes'][0]})
+        return result
 
     def _load_bars(self, rows):
         frame = pd.DataFrame(rows)
@@ -65,21 +99,49 @@ class ForwardPaperEngineV1:
                 researcher_available_at=ts.isoformat(), valid_to=row['date'], strict_daily=True))
             self.master.strict_daily_symbols.add(row['symbol'])
 
+    def _accept_actions(self, snapshot):
+        if self.header.get('company_actions') == 'OBSERVED_CASH_DIVIDEND_V1':
+            from .corporate_action_lifecycle_v1 import accept_action
+            stamp = snapshot.get('processed_at', snapshot['received_at'])
+            for envelope in snapshot['payload'].get('corporate_action_envelopes', []):
+                accept_action(self.engine.ledger, envelope, asof=stamp)
+            # 已接受的事件也必须等到除权生效后才进入指标价格。
+            day = int(snapshot['market_date'])
+            self.actions = tuple(self.header['warmup'].get('corporate_actions', [])) + tuple(
+                event for event in self.engine.ledger.events if event['effective_date'] <= day)
+        elif self.header.get('company_actions') in ('HISTORICAL_CASH_DIVIDEND_V2', 'OBSERVED_FROZEN_CASH_DIVIDEND_V2'):
+            self.actions = tuple(event for event in self.header.get('feature_events', [])
+                                 if event['effective_date'] <= snapshot['market_date'])
+
     def open(self, snapshot, plan, admissions, *, admission_check=None):
         from .portfolio_execution_v1 import PortfolioExecutionRiskV1, validate_portfolio_plan
         ts = pd.Timestamp(snapshot.get('processed_at', snapshot['received_at']))
         validate_portfolio_plan(plan, policy=self.portfolio, ledger=self.engine.ledger,
             input_identity=plan['input_identity'], event_at=ts, admissions=admissions)
+        self._accept_actions(snapshot)
+        if self.header.get('company_actions') in ('OBSERVED_CASH_DIVIDEND_V1', 'HISTORICAL_CASH_DIVIDEND_V2', 'OBSERVED_FROZEN_CASH_DIVIDEND_V2'):
+            self.engine.ledger.on_open(ts)
         # OPEN仅装入实际收到的开盘快照；完整日线直到CLOSE阶段才进入账户。
         self._load_bars(self.bars + snapshot['payload']['bars'])
         self._load_states(snapshot)
         self.engine._mark_to_market(ts, EventKind.SESSION_OPEN)
+        self._observe_equity()
+        if hasattr(self, 'observation'):
+            self.observation['pending_open_day'] = int(snapshot['market_date'])
         bars = {row['symbol']: row for row in snapshot['payload']['bars']}
         states = {row['symbol']: row for row in snapshot['payload']['states']}
         prices = {key: self.engine.slippage.apply('BUY', float(row['open'])) for key, row in bars.items()}
+        authority_check = admission_check or (lambda key: admissions[key])
+        def observed_admission(key):
+            answer = authority_check(key)
+            self._observe_equity()
+            if hasattr(self, 'observation') and self.observation['buy_blocked']:
+                return {**answer, 'allowed': False, 'reason_codes': [*answer.get('reason_codes', []),
+                        *self.observation['reason_codes']]}
+            return answer
         risk = PortfolioExecutionRiskV1(self.engine.ledger, self.base_risk_config,
             policy=self.portfolio, fee_model=self.engine.broker.fee_model,
-            admission_check=admission_check or (lambda key: admissions[key]),
+            admission_check=observed_admission,
             orders_provider=self.engine.order_manager.open_orders, prices=prices, session_at=ts)
         self.engine.risk = self.engine.broker.risk = risk
         for item in plan['intents']:
@@ -108,22 +170,36 @@ class ForwardPaperEngineV1:
             self.engine.order_manager.create_order(order, ts)
             self.engine.order_manager.submit(order, ts)
         self.engine.broker.process_orders(EventKind.SESSION_OPEN, ts)
+        self._observe_equity()
         self.engine._sync_lot_contract_fields()
         self.engine.ledger.snapshot(ts)
         self._invariants()
 
     def close(self, snapshot):
         ts = pd.Timestamp(snapshot.get('processed_at', snapshot['received_at']))
+        self._accept_actions(snapshot)
         self.bars.extend(deepcopy(snapshot['payload']['bars']))
         self.turn.extend(deepcopy(snapshot['payload']['turn']))
         self._load_bars(self.bars)
         self._load_states(snapshot)
         # 未在开盘成交的余单到期；不在收到收盘日线时再次用开盘价成交。
         self.engine.broker.process_orders(EventKind.SESSION_CLOSE, ts)
+        if self.header.get('company_actions') in ('OBSERVED_CASH_DIVIDEND_V1', 'HISTORICAL_CASH_DIVIDEND_V2', 'OBSERVED_FROZEN_CASH_DIVIDEND_V2'):
+            self.engine.ledger.on_close(ts)
         self.engine._mark_to_market(ts, EventKind.AFTER_CLOSE)
+        self._observe_equity()
+        if hasattr(self, 'observation'):
+            state = self.observation
+            if state['pending_open_day'] == int(snapshot['market_date']):
+                state['completed_days'] += 1
+                state['pending_open_day'] = None
+            if state['completed_days'] >= self.header['observation_policy']['review_after']:
+                state['review_due'] = state['buy_blocked'] = True
+                if 'OBSERVATION_REVIEW_DUE' not in state['reason_codes']:
+                    state['reason_codes'].append('OBSERVATION_REVIEW_DUE')
         self.engine.ledger.snapshot(ts)
         self._invariants()
-        return self.decisions(snapshot['payload']['states'])
+        return self._observation_decisions(self.decisions(snapshot['payload']['states']))
 
     def decisions(self, states):
         registry = pilot_registry()
@@ -140,7 +216,9 @@ class ForwardPaperEngineV1:
             vendor = all_turn.loc[all_turn.symbol == symbol].set_index('date').reindex(index)
             turnover = pd.Series(vendor.turn.to_numpy(dtype=float), index=index)
             columns = {}
-            definition = next(iter(self.strategies.values())).definition
+            # 旧策略仍复用固定指标矩阵；新规则按实际引用计算多输出。
+            legacy = [s for s in self.strategies.values() if not hasattr(s, 'build_feature_matrix')]
+            definition = legacy[0].definition if legacy else {'indicators': []}
             for item in definition['indicators']:
                 computed = registry.compute(item['id'], series['close'], version=item['version'],
                     high=series['high'], low=series['low'], open_=series['open'], volume=series['volume'],
@@ -151,8 +229,19 @@ class ForwardPaperEngineV1:
             matrix = pd.DataFrame(columns, index=index)
             context = Context(matrix, tuple(map(int,index)), len(index)-1, {}, {})
             for strategy_id, strategy in self.strategies.items():
-                decision = strategy.on_close(context)
-                side = decision.reason if decision.intent is not None else 'HOLD'
+                rule_context = context
+                state_key = (strategy_id, symbol)
+                if hasattr(strategy, 'build_feature_matrix'):
+                    features = strategy.build_feature_matrix(bars.set_index('date'), turnover)
+                    account = ledger_rule_account(self.engine.ledger, strategy_id, symbol,
+                                                  tuple(map(int, index)), int(index[-1]))
+                    rule_context = Context(features, tuple(map(int, index)), len(index)-1,
+                                           account, deepcopy(self.rule_states.get(state_key, {})))
+                decision = strategy.on_close(rule_context)
+                validate_decision(decision, strategy.requirements)
+                if hasattr(strategy, 'build_feature_matrix') and decision.state is not None:
+                    self.rule_states[state_key] = deepcopy(decision.state)
+                side = ('BUY' if decision.intent.weight > 0 else 'SELL') if decision.intent is not None else 'HOLD'
                 state = by_symbol[symbol]
                 if side == 'BUY' and (state['is_st'] or state['suspended'] or not state['listed'] or state['delisted']):
                     side = 'HOLD'
@@ -166,6 +255,39 @@ class ForwardPaperEngineV1:
             raise ValueError('FORWARD_PAPER_LEDGER_INVARIANT_FAILED')
 
     def state(self):
-        return json.loads(canonical_json({'economic': economic_state(self.engine),
+        value = {'economic': economic_state(self.engine),
             'equity': self.engine.ledger.current_equity(), 'skipped_intents': self.skips,
-            'invariant_errors': self.engine.ledger.check_invariants()}))
+            'invariant_errors': self.engine.ledger.check_invariants()}
+        if self.rule_states:
+            value['rule_states'] = {f'{key[0]}:{key[1]}': state for key, state in sorted(self.rule_states.items())}
+        if hasattr(self, 'observation'):
+            value['observation'] = deepcopy(self.observation)
+        return json.loads(canonical_json(value))
+
+
+def paper_strategy(payload, *, strategy_id):
+    if isinstance(payload, dict) and payload.get('version') == 'RESEARCH_RULE_STRATEGY_V2':
+        from .research_rule_strategy_v2 import ResearchRuleStrategyV2
+        return ResearchRuleStrategyV2(payload, strategy_id=strategy_id)
+    return validate_candidate(payload, strategy_id=strategy_id)
+
+
+def ledger_rule_account(ledger, strategy_id, symbol, calendar, day):
+    """只根据真实成交和存量lot投影持有/冷却；退出意图不能改变这份账户。"""
+    days = tuple(calendar)
+    if day not in days:
+        raise ValueError('RULE_ACCOUNT_SESSION_MISSING')
+    quantity = ledger.position_qty(strategy_id, symbol)
+    lots = [lot for lot in ledger.lots.values()
+            if lot.strategy_id == strategy_id and lot.symbol == symbol and lot.remaining_quantity]
+    entry = min((days.index(int(lot.buy_time.strftime('%Y%m%d'))) for lot in lots), default=None)
+    held, last_exit = 0, None
+    for trade in ledger.trades:
+        if trade.strategy_id == strategy_id and trade.symbol == symbol:
+            held += trade.quantity if trade.side == Side.BUY else -trade.quantity
+            if held == 0 and trade.side == Side.SELL:
+                last_exit = days.index(int(trade.fill_time.strftime('%Y%m%d')))
+    stamp = pd.Timestamp(str(day), tz='Asia/Shanghai') + pd.Timedelta(hours=15, minutes=30)
+    return {'quantity': int(quantity),
+            'sellable_quantity': int(ledger.sellable_quantity(strategy_id, symbol, stamp)),
+            'entry_session_index': entry, 'last_exit_session_index': last_exit}

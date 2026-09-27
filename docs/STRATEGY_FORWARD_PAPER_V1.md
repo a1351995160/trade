@@ -54,6 +54,8 @@ python scripts/run_strategy_lifecycle_v1.py revoke-strategy --archive-root E:/re
 
 `paper-config.json` 是完整输入，包含以下字段；不接受额外资格开关。先冻结档案，使用返回的 `strategy_id` 和 `rule_identity` 配置成员。
 
+新观察会话可在配置顶层加入 `observation_policy`：`{"version":"PAPER_OBSERVATION_POLICY_V1","min_complete_days":20,"review_after":60,"max_drawdown_bps":1500}`。仍使用上面的 `create-paper --root ... --config ...` 命令；无需额外隐藏 API。日历必须覆盖初始准备日、评审所需完整交易日及至少一个后续退出交易日。达到回撤阈值或固定评审日时停止新买入，已有持仓通过后续合法交易阶段退出，重启不解除风险锁。详情见[预登记观察政策](PAPER_OBSERVATION_POLICY_V1.md)。可选 `company_actions` 与 `portfolio_review_root` 也从同一配置传入，分别受公司行动原件校验和权威组合评审约束，不能充当资格开关。
+
 配置文件须放在观察目录的父目录或其子目录内，例如观察目录 `E:/research/paper` 对应配置 `E:/research/paper-config.json`。入口拒绝越界路径、符号链接重定向、非 JSON 文件及超过20 MiB的配置。
 
 ```json

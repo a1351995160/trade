@@ -28,6 +28,13 @@ def _stamp(value):
     return stamp
 
 
+def _diagnosis_functions(scope):
+    if scope.get('version') == 'BOUNDED_RESEARCH_V2':
+        from .bounded_research_v2 import diagnose_rule_result, rule_feedback_view
+        return diagnose_rule_result, rule_feedback_view
+    return diagnose, feedback_view
+
+
 class BoundedStrategyArchiveV1:
     """本地权威目录持有证据；公开准入不接受调用方的资格布尔值。"""
 
@@ -51,9 +58,14 @@ class BoundedStrategyArchiveV1:
         _require(re.fullmatch(r'CANDIDATE_00[1-5]', name), 'CANDIDATE_REQUIRED')
         _require(scope['scope_id'] == stable_hash(_without(scope, 'scope_id'))
                  and origin['scope_id'] == scope['scope_id'] == candidate['scope_id'], 'SCOPE_CONFLICT')
-        _require(scope['version'] == 'BOUNDED_RESEARCH_V1' and scope['purpose'] == 'EXPLORATION_ONLY'
+        supported_scope = (scope['version'] == 'BOUNDED_RESEARCH_V1'
+                           and scope['input_manifest']['profile'] in ('SYNTHETIC', 'S1_MODELED_DAILY')) or (
+                           scope['version'] == 'BOUNDED_RESEARCH_V2'
+                           and scope['input_manifest'].get('candidate_capability') == 'RESEARCH_RULE_STRATEGY_V2'
+                           and scope['input_manifest']['profile'] in ('SYNTHETIC', 'HISTORICAL_MODELED'))
+        _require(supported_scope and scope['purpose'] == 'EXPLORATION_ONLY'
                  and scope['qualification'] == 'NOT_ASSESSED'
-                 and scope['input_manifest']['profile'] in ('SYNTHETIC', 'S1_MODELED_DAILY'), 'SCOPE_INVALID')
+                 , 'SCOPE_INVALID')
         _require(int(name[-3:]) <= scope['max_attempts']
                  and {'MATERIALIZE', 'BACKTEST'} <= set(scope['actions']), 'SCOPE_ACTION_INVALID')
         plan, result = candidate['plan'], evidence['result']
@@ -123,10 +135,13 @@ class BoundedStrategyArchiveV1:
         _require(diagnostic['diagnostic_hash'] == stable_hash(_without(diagnostic, 'diagnostic_hash'))
                  and diagnostic['trial_id'] == name and diagnostic['result_hash'] == stable_hash(result),
                  'DIAGNOSTIC_CONFLICT')
-        recomputed = diagnose(result, trial_id=name)
+        diagnose_evidence, feedback_evidence = _diagnosis_functions(scope)
+        recomputed = diagnose_evidence(result, trial_id=name)
         _require(all(diagnostic[k] == recomputed[k] for k in ('account_state', 'metrics', 'reason_codes')),
                  'DIAGNOSTIC_CONFLICT')
-        _require(evidence['feedback'] == feedback_view(diagnostic)
+        if scope['version'] == 'BOUNDED_RESEARCH_V2':
+            _require(diagnostic.get('process_observations') == recomputed['process_observations'], 'DIAGNOSTIC_CONFLICT')
+        _require(evidence['feedback'] == feedback_evidence(diagnostic)
                  and evidence['decision'] == {'reason': 'EXPLORATION_RECORDED', 'qualification': 'NOT_ASSESSED'},
                  'COMPLETION_CONFLICT')
 
@@ -183,10 +198,13 @@ class BoundedStrategyArchiveV1:
 
     def review(self, strategy_id):
         archive = self.load(strategy_id)
-        diagnostic = diagnose(archive['evidence']['result'], trial_id=archive['origin']['candidate_id'])
+        diagnose_evidence, _ = _diagnosis_functions(archive['evidence']['session'])
+        diagnostic = diagnose_evidence(archive['evidence']['result'], trial_id=archive['origin']['candidate_id'])
         try:
-            from .bounded_candidate_v1 import BoundedVoteStrategy
-            strategy = BoundedVoteStrategy(archive['proposal'], strategy_id=archive['origin']['candidate_id'])
+            from .bounded_candidate_v1 import CAPABILITY, validate_candidate
+            capability = archive['evidence']['session']['input_manifest'].get('candidate_capability', CAPABILITY)
+            strategy = validate_candidate(archive['proposal'], strategy_id=archive['origin']['candidate_id'],
+                                          capability=capability)
             strategy.validate()
             executable = (strategy.rule_identity == archive['rule_identity']
                           and strategy.parameters == archive['plan']['strategy']['parameters'])

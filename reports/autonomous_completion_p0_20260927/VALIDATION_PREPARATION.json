@@ -1,0 +1,64 @@
+{
+  "version": "VALIDATION_PROTOCOL_V2",
+  "archive_root": "E:\\llmwiki\\autonomous-strategy-research-v1\\diagnosis-research-20260927\\archives",
+  "source_root": "E:\\llmwiki\\autonomous-strategy-research-v1\\diagnosis-research-20260927\\search",
+  "scope_id": "7e33d24be9155f3beceeb9119f3ebf1cc6c1d6ac2e54b56d55272acd76d835fe",
+  "route": "FUTURE_OBSERVED",
+  "symbols": [
+    "000001.SZ",
+    "600000.SH"
+  ],
+  "not_before": 20260928,
+  "family": {
+    "BS_16224330bfd1516b9141e826f0adc6840569b0c2498254faeb8722c7b462c0fd": {
+      "archive_hash": "adcf46a3845cfea97c21f79bcb09d35fc1eb6b41999a12599a9a8fe0978d4376",
+      "rule_identity": "096c356f7e49297d49ee0d4709273d9777aad8a5d6bcd15817b389673f64a360"
+    },
+    "BS_4e53a6f7816bd16711cba756473c302dc9d7fa4795223ce9145c0b7bf2c6194d": {
+      "archive_hash": "553c0bc335c625d1fe9ff305c6f94213f900bfff5027634ffbd3f711806bfa48",
+      "rule_identity": "8560c68c1eb7e3783befc8e88b935d10f4cbb44bd1a336d54fdf75aa99dc8a0b"
+    },
+    "BS_97de7cecff469c43219243e03b1926d7386c6312653073e7f86b82133ed43385": {
+      "archive_hash": "9c9499f3f934176e4e6393a361717d1ae072ab044fee899b5e146e1e2f2c726a",
+      "rule_identity": "aab9f7d8b5130a9280c40093285bd28c8b310c808c76bceb62b229faf4059eca"
+    },
+    "BS_98a6ea29402fcb6b9753d766ad7eed762f3c30a8f595e1efc195c0f76def42d5": {
+      "archive_hash": "fe3fc245ed37591144fe563a70111f7a0538b0635a44ed72a3060f2cd28b6c58",
+      "rule_identity": "6b7234846c34ac2527e6adf91e20d627d07ee3575d17d17f01d2de3bbfde355a"
+    },
+    "BS_fda4e6131426be724acf400fe10dbd80b0066d697435902fc9a10f2c562d08fe": {
+      "archive_hash": "3450c7e042665a8d89505dc79004e88467739f01a7b8f964145efc4f5d428bf1",
+      "rule_identity": "ce9b489508213e5906daef26bde57c507a0b226e3f2a62b2e55ea35330510705"
+    }
+  },
+  "requirements": {
+    "warmup_sessions": 60,
+    "account_sessions": 504,
+    "close_snapshots_required": 564,
+    "open_snapshots_required": 504,
+    "required_fields": [
+      "RAW_OHLCV_AMOUNT",
+      "VENDOR_TURNOVER",
+      "SECURITY_STATE",
+      "EXCHANGE_CALENDAR",
+      "CORPORATE_ACTION_COVERAGE"
+    ],
+    "historical_warmup_permitted": false,
+    "execution": "SIMULATED_OBSERVED_OPEN_WITH_COSTS",
+    "method_support_required": true,
+    "missing_stage_rule": "STOP_NO_RETROSPECTIVE_FILL",
+    "corporate_action_rule": "REQUIRE_SUPPORTED_COMPLETE_EVENT_TERMS",
+    "route_executable": true,
+    "independence": "CAPTURE_AFTER_CANDIDATE_AND_PROTOCOL_FREEZE"
+  },
+  "metadata_report_hash": "89c43cb0bce88d0e74c8092160a4fb15011dddb7b2e667a9673a7832ad71653a",
+  "reason_codes": [
+    "INDEPENDENT_CAPTURE_REQUIRED",
+    "METHOD_APPLICABILITY_REQUIRED",
+    "REFERENCED_HISTORY_ALREADY_EXPOSED"
+  ],
+  "strategy_qualified": false,
+  "confirmation_budget_consumed": 0,
+  "status": "PREPARATION_ONLY",
+  "preview_hash": "4132170b2c00599efa7f9825061e46b5b900b0f41685fa327d544b9d90945ff6"
+}
