@@ -634,11 +634,70 @@ def _lifecycle_service(request: Request):
     return service
 
 
+def _submission_service(request: Request):
+    service = getattr(request.app.state, 'submission_service', None)
+    if service is None:
+        raise HTTPException(status_code=503, detail={'code': 'SUBMISSION_NOT_CONFIGURED', 'message_zh': '尚未登记研究数据和可操作范围。'})
+    return service
+
+
+@app.get('/api/research-submission')
+def research_submission_catalog(request: Request) -> dict:
+    from chanlun_trader.research_factory.research_capabilities_v1 import capabilities, published_acceptance
+    service = getattr(request.app.state, 'submission_service', None)
+    core = capabilities(data_catalog=service.provider.catalog() if service else None)
+    return {'capabilities': core, 'publication': published_acceptance(core),
+            'configured': service is not None,
+            'actions_allowed': service is not None and request.app.state.execution_policy.trusted_research_allowed}
+
+
+@app.get('/api/research-submission/tasks/{task_id}')
+def research_submission_status(task_id: str, request: Request) -> dict:
+    try:
+        return _submission_service(request).status(task_id)
+    except (ValueError, OSError, KeyError, TypeError) as exc:
+        raise HTTPException(status_code=409, detail={'code': 'SUBMISSION_NOT_READY', 'reason': str(exc)}) from exc
+
+
+@app.get('/api/research-submission/tasks/{task_id}/approval')
+def research_submission_approval(task_id: str, request: Request) -> dict:
+    try:
+        return _submission_service(request).approval_preview(task_id)
+    except (ValueError, OSError, KeyError, TypeError) as exc:
+        raise HTTPException(status_code=409, detail={'code': 'SUBMISSION_NOT_READY', 'reason': str(exc)}) from exc
+
+
+@app.post('/api/research-submission/{action}')
+def research_submission_action(action: str, request: Request, payload: dict = Body(...)) -> dict:
+    _require_local_console_request(request)
+    service = _submission_service(request)
+    if action not in {'preview', 'freeze', 'approve', 'start'}:
+        raise HTTPException(status_code=404, detail='SUBMISSION_ACTION_UNKNOWN')
+    if action != 'preview' and not request.app.state.execution_policy.trusted_research_allowed:
+        raise HTTPException(status_code=403, detail='SUBMISSION_READ_ONLY')
+    expected = {'request'} if action == 'preview' else {'request', 'preview_identity'} if action == 'freeze' else {'task_id', 'preview_identity'} if action == 'approve' else {'task_id'}
+    if set(payload) != expected:
+        raise HTTPException(status_code=400, detail='SUBMISSION_ACTION_FIELDS')
+    try:
+        if action == 'preview':
+            return service.preview(payload['request'])
+        if action == 'freeze':
+            return service.freeze(payload['request'], payload['preview_identity'])
+        if action == 'approve':
+            return service.approve(payload['task_id'], payload['preview_identity'])
+        return service.start(payload['task_id'])
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail={'code': 'SUBMISSION_NOT_AUTHORIZED', 'reason': str(exc)}) from exc
+    except (ValueError, OSError, KeyError, TypeError) as exc:
+        raise HTTPException(status_code=409, detail={'code': 'SUBMISSION_NOT_READY', 'reason': str(exc)}) from exc
+
+
 @app.get('/api/research-lifecycle')
 def research_lifecycle_read(request: Request) -> dict:
     try:
         return {**_lifecycle_service(request).inspect(),
-                'actions_allowed': request.app.state.execution_policy.governance_allowed}
+                'operation_permissions': _lifecycle_service(request).operation_permissions(request.app.state.execution_policy),
+                'actions_allowed': (request.app.state.execution_policy.governance_allowed or request.app.state.execution_policy.trusted_research_allowed)}
     except (ValueError, OSError, KeyError) as exc:
         raise HTTPException(status_code=409, detail={'code': 'LIFECYCLE_NOT_READY', 'reason': str(exc)}) from exc
 
@@ -646,7 +705,7 @@ def research_lifecycle_read(request: Request) -> dict:
 @app.post('/api/research-lifecycle/preview')
 def research_lifecycle_preview(request: Request, payload: dict = Body(...)) -> dict:
     _require_local_console_request(request)
-    if not request.app.state.execution_policy.governance_allowed:
+    if not (request.app.state.execution_policy.governance_allowed or request.app.state.execution_policy.trusted_research_allowed):
         raise HTTPException(status_code=403, detail={'code': 'LIFECYCLE_READ_ONLY'})
     if set(payload) != {'action', 'payload'}:
         raise HTTPException(status_code=400, detail={'code': 'LIFECYCLE_PREVIEW_FIELDS'})
@@ -1326,7 +1385,7 @@ def frontend_history_fallback(frontend_path: str) -> FileResponse:
 _route_template = app
 
 
-def create_app(research_root: str | Path | None = None, execution_policy: ExecutionPolicy | None = None, *, engineering_workbench: EngineeringWorkbenchV1 | None = None, lifecycle_service=None) -> FastAPI:
+def create_app(research_root: str | Path | None = None, execution_policy: ExecutionPolicy | None = None, *, engineering_workbench: EngineeringWorkbenchV1 | None = None, lifecycle_service=None, submission_service=None) -> FastAPI:
     """显式组合研究工作区；默认应用不绑定业务目录，也不执行恢复。"""
     policy = execution_policy or ExecutionPolicy()
     root = validate_research_root(research_root, policy)
@@ -1340,6 +1399,9 @@ def create_app(research_root: str | Path | None = None, execution_policy: Execut
     application.state.research_root = root
     application.state.execution_policy = policy
     application.state.engineering_workbench = engineering_workbench
+    if submission_service is not None and (root is None or not submission_service.root.resolve().is_relative_to(root)):
+        raise ValueError('SUBMISSION_APPLICATION_ROOT_CONFLICT')
+    application.state.submission_service = submission_service
     application.state.lifecycle_service = lifecycle_service
     application.state.tasks = {}
     application.state.services = SimpleNamespace()
@@ -1399,7 +1461,9 @@ def create_app(research_root: str | Path | None = None, execution_policy: Execut
                     dry_tick = isinstance(body, dict) and body.get("dry_run") is True
                 except ValueError:
                     pass
-            if not policy.governance_allowed and not dry_tick:
+            trusted_path = (path in {'/api/research-submission/preview', '/api/research-submission/freeze', '/api/research-submission/approve', '/api/research-submission/start'} and submission_service is not None
+                            or path in {'/api/research-lifecycle/preview', '/api/research-lifecycle/action'} and lifecycle_service is not None)
+            if not policy.governance_allowed and not dry_tick and not (policy.trusted_research_allowed and trusted_path):
                 return deny("EXECUTION_POLICY_READ_ONLY")
             if "/predictive/trial/" in path and path.endswith(("/start", "/resume")):
                 return deny("PHASE2_PREDICTIVE_EXECUTION_DISABLED")

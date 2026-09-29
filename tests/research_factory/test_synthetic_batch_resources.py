@@ -32,6 +32,8 @@ def test_actual_worker_resource_boundaries(tmp_path, action):
     (output / (action + "-stdout.bin")).write_bytes(result["stdout"])
     (output / (action + "-stderr.bin")).write_bytes(result["stderr"])
     assert len(started) == 1
+    assert result["process_limit"] == 2
+    assert result["process_limit_enforced"] is (os.name == "nt")
     if action == "normal":
         assert result["returncode"] == 0, result["stderr"].decode()
         assert b"BOUNDED_WORKER_COMPLETED" in result["stdout"]
@@ -41,3 +43,14 @@ def test_actual_worker_resource_boundaries(tmp_path, action):
             assert b"MemoryError" in result["stderr"] or result["returncode"] in {3221225495, -1073741801}
         else:
             assert time.monotonic() - begin < 5
+
+
+@pytest.mark.parametrize('limit', [None, True, False, 0, -1, 4, 1.5, '3'])
+def test_invalid_process_limits_rejected_before_launch(tmp_path, monkeypatch, limit):
+    from chanlun_trader import synthetic_batch_resources as resources
+    monkeypatch.setattr(resources.subprocess, 'Popen', lambda *_args, **_kwargs: pytest.fail('must reject before launch'))
+    with pytest.raises(ValueError, match='BATCH_PROCESS_LIMIT_INVALID'):
+        resources.run_bounded_worker([sys.executable], root=tmp_path, memory_mib=96,
+            wall_seconds=1, on_started=lambda pid: None, process_limit=limit)
+    with pytest.raises(ValueError, match='BATCH_PROCESS_LIMIT_INVALID'):
+        resources.WindowsMemoryJob(96, process_limit=limit)

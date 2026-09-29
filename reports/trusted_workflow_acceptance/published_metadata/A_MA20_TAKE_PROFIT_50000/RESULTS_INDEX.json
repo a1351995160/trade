@@ -1,0 +1,25 @@
+{
+  "items": {
+    "ACCEPT_A_MA20_TAKE_PROFIT_BASE": {
+      "result": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\a57e9408c0ae8e329292f8459c4eaa47ab2aebab24872d35d760d032ee9c8c7a\\account\\ACCEPT_A_MA20_TAKE_PROFIT_BASE_RESULT.json",
+      "sha256": "505150247147f3e08e0d1b8f9dc98e4ffffe6989155918394a7070957c1fff4a",
+      "settlement": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\a57e9408c0ae8e329292f8459c4eaa47ab2aebab24872d35d760d032ee9c8c7a\\account\\ACCEPT_A_MA20_TAKE_PROFIT_BASE_SETTLEMENT.json",
+      "report": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\a57e9408c0ae8e329292f8459c4eaa47ab2aebab24872d35d760d032ee9c8c7a\\account\\ACCEPT_A_MA20_TAKE_PROFIT_BASE_REPORT.md"
+    },
+    "ACCEPT_A_MA20_TAKE_PROFIT_STRESS": {
+      "result": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\a57e9408c0ae8e329292f8459c4eaa47ab2aebab24872d35d760d032ee9c8c7a\\account\\ACCEPT_A_MA20_TAKE_PROFIT_STRESS_RESULT.json",
+      "sha256": "ebaf7eec3b5943e49f7de0b37e93082ecb4fb1077e3ef1fb2d5cc9477ecdc3ee",
+      "settlement": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\a57e9408c0ae8e329292f8459c4eaa47ab2aebab24872d35d760d032ee9c8c7a\\account\\ACCEPT_A_MA20_TAKE_PROFIT_STRESS_SETTLEMENT.json",
+      "report": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\a57e9408c0ae8e329292f8459c4eaa47ab2aebab24872d35d760d032ee9c8c7a\\account\\ACCEPT_A_MA20_TAKE_PROFIT_STRESS_REPORT.md"
+    },
+    "ACCEPT_A_MA20_TAKE_PROFIT_BENCHMARK": {
+      "result": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\a57e9408c0ae8e329292f8459c4eaa47ab2aebab24872d35d760d032ee9c8c7a\\account\\ACCEPT_A_MA20_TAKE_PROFIT_BENCHMARK_RESULT.json",
+      "sha256": "6d2f129678edfbb7edee5813c15567dcc43ffbba891c2f786d745e732abc0e92",
+      "settlement": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\a57e9408c0ae8e329292f8459c4eaa47ab2aebab24872d35d760d032ee9c8c7a\\account\\ACCEPT_A_MA20_TAKE_PROFIT_BENCHMARK_SETTLEMENT.json",
+      "report": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\a57e9408c0ae8e329292f8459c4eaa47ab2aebab24872d35d760d032ee9c8c7a\\account\\ACCEPT_A_MA20_TAKE_PROFIT_BENCHMARK_REPORT.md"
+    }
+  },
+  "worker_seconds": 28.67200000000048,
+  "exposures": 3,
+  "repair_exposures": 0
+}

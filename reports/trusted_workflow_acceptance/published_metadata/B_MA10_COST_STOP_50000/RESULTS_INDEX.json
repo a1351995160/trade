@@ -1,0 +1,25 @@
+{
+  "items": {
+    "ACCEPT_B_MA10_COST_STOP_BASE": {
+      "result": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\12108db6cd474c79354b4bf56ec2b763834f521d0bf9ece2ca455f0e7f2808a2\\account\\ACCEPT_B_MA10_COST_STOP_BASE_RESULT.json",
+      "sha256": "62ed5694f6d910d984984b7bf65b347449ddd22d1bb738b35e8f523290e792a2",
+      "settlement": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\12108db6cd474c79354b4bf56ec2b763834f521d0bf9ece2ca455f0e7f2808a2\\account\\ACCEPT_B_MA10_COST_STOP_BASE_SETTLEMENT.json",
+      "report": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\12108db6cd474c79354b4bf56ec2b763834f521d0bf9ece2ca455f0e7f2808a2\\account\\ACCEPT_B_MA10_COST_STOP_BASE_REPORT.md"
+    },
+    "ACCEPT_B_MA10_COST_STOP_STRESS": {
+      "result": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\12108db6cd474c79354b4bf56ec2b763834f521d0bf9ece2ca455f0e7f2808a2\\account\\ACCEPT_B_MA10_COST_STOP_STRESS_RESULT.json",
+      "sha256": "6e715b9aeafb4b83f8bd39d2e23d909b3adb41e73071ac059da6dbe7d2552af6",
+      "settlement": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\12108db6cd474c79354b4bf56ec2b763834f521d0bf9ece2ca455f0e7f2808a2\\account\\ACCEPT_B_MA10_COST_STOP_STRESS_SETTLEMENT.json",
+      "report": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\12108db6cd474c79354b4bf56ec2b763834f521d0bf9ece2ca455f0e7f2808a2\\account\\ACCEPT_B_MA10_COST_STOP_STRESS_REPORT.md"
+    },
+    "ACCEPT_B_MA10_COST_STOP_BENCHMARK": {
+      "result": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\12108db6cd474c79354b4bf56ec2b763834f521d0bf9ece2ca455f0e7f2808a2\\account\\ACCEPT_B_MA10_COST_STOP_BENCHMARK_RESULT.json",
+      "sha256": "8ffa428d042ec62ed27f0199d84c4bd5d9ae1c81f355e7cd2d91ca3f50bd22a5",
+      "settlement": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\12108db6cd474c79354b4bf56ec2b763834f521d0bf9ece2ca455f0e7f2808a2\\account\\ACCEPT_B_MA10_COST_STOP_BENCHMARK_SETTLEMENT.json",
+      "report": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\12108db6cd474c79354b4bf56ec2b763834f521d0bf9ece2ca455f0e7f2808a2\\account\\ACCEPT_B_MA10_COST_STOP_BENCHMARK_REPORT.md"
+    }
+  },
+  "worker_seconds": 28.92199999999957,
+  "exposures": 3,
+  "repair_exposures": 0
+}

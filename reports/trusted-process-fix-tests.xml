@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="4" skipped="0" tests="50" time="64.518" timestamp="2026-09-29T22:45:33.131848+08:00" hostname="FengShan"><testcase classname="tests.research_factory.test_diagnosis_research_v3" name="test_two_batches_real_public_accounts_all_fail_normally_and_resume" time="25.128" /><testcase classname="tests.research_factory.test_diagnosis_research_v3" name="test_unknown_model_is_never_called_again" time="0.461" /><testcase classname="tests.research_factory.test_diagnosis_research_v3" name="test_invalid_candidates_consume_attempts_without_accounts" time="0.653" /><testcase classname="tests.research_factory.test_diagnosis_research_v3" name="test_transfer_to_new_model_preserves_prior_memory_and_frozen_limits" time="0.669" /><testcase classname="tests.research_factory.test_diagnosis_research_v3" name="test_changed_capability_rejected_before_data_or_account" time="12.902" /><testcase classname="tests.research_factory.test_diagnosis_research_v3" name="test_record_artifact_change_blocks_resume" time="0.695" /><testcase classname="tests.research_factory.test_diagnosis_research_v3" name="test_real_default_adapter_cannot_claim_unverified_fee_cap" time="0.110" /><testcase classname="tests.research_factory.test_diagnosis_research_v3" name="test_bounded_data_worker_timeout_preserves_start_and_forbids_retry[DATA]" time="0.215" /><testcase classname="tests.research_factory.test_diagnosis_research_v3" name="test_bounded_data_worker_timeout_preserves_start_and_forbids_retry[VERIFY]" time="0.231" /><testcase classname="tests.research_factory.test_diagnosis_research_v3" name="test_tick_yields_after_one_candidate_and_resumes_without_redispatch" time="0.811" /><testcase classname="tests.research_factory.test_diagnosis_research_v3" name="test_tick_wait_status_matches_unknown_model_and_pause" time="0.526" /><testcase classname="tests.research_factory.test_diagnosis_research_v3" name="test_restored_default_model_status_explicitly_reports_hard_budget_block" time="0.142" /><testcase classname="tests.research_factory.test_diagnosis_research_v3" name="test_actual_windows_venv_data_freeze_uses_bounded_third_process" time="1.275"><failure message="RuntimeError: DIAGNOSIS_WORKER_FAILED_NO_RETRY">tmp_path = WindowsPath('E:/worktrees/trusted-strategy-research/trade-system-contract-port-v1/.venv/test-tmp-final-process-bound/test_actual_windows_venv_data_0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x0000023C419EE210&gt;
+
+    @pytest.mark.skipif(__import__('os').name != 'nt', reason='Windows venv launcher process quota')
+    def test_actual_windows_venv_data_freeze_uses_bounded_third_process(tmp_path, monkeypatch):
+        import venv
+        from chanlun_trader.research_factory import diagnosis_research_v3 as module
+        service, _ = setup(tmp_path)
+        environment = tmp_path / 'worker_venv'
+        venv.EnvBuilder(with_pip=False, system_site_packages=True).create(environment)
+        monkeypatch.setattr(module.sys, 'executable', str(environment / 'Scripts' / 'python.exe'))
+        submitted = {**service.config()['template'], 'strategy_id': 'VENV_DATA', 'rule': request()['rule']}
+        preview = service.submission.preview(submitted)
+        directory = service.root / 'venv_data'
+&gt;       task = service._task(directory, submitted, preview, 60)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\research_factory\test_diagnosis_research_v3.py:238: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src\chanlun_trader\research_factory\diagnosis_research_v3.py:230: in _task
+    task, elapsed = self._bounded(directory, 'DATA', {
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;chanlun_trader.research_factory.diagnosis_research_v3.DiagnosisResearchV3 object at 0x0000023C419A0710&gt;
+directory = WindowsPath('E:/worktrees/trusted-strategy-research/trade-system-contract-port-v1/.venv/test-tmp-final-process-bound/t..._0/reports/research_campaigns/cf1e8e1ebdfdd5f9d958a1e73f194a76d6a7d7231d6004c5e176a891ea7e2a4c/diagnosis_v3/venv_data')
+kind = 'DATA'
+payload = {'request': {'dataset_id': 'sample', 'feature_start': '2023-01-02', 'account_start': '2023-03-27', 'account_end': '202...arch\\trade-system-contract-port-v1\\.venv\\test-tmp-final-process-bound\\test_actual_windows_venv_data_0\\tasks', ...}
+seconds = 60
+
+    def _bounded(self, directory, kind, payload, seconds):
+        from ..synthetic_batch_resources import run_bounded_worker
+        request = {'kind': kind, **payload}
+        path = directory / (kind + '_WORKER.json')
+        result_path = path.with_name(path.stem + '_RESULT.json')
+        resource_path = path.with_name(path.stem + '_RESOURCE.json')
+        identity = stable_hash(request)
+        if path.exists():
+            if read_json(path) != request:
+                raise ValueError('DIAGNOSIS_WORKER_REQUEST_CHANGED')
+            if not resource_path.exists():
+                raise RuntimeError('DIAGNOSIS_WORKER_UNKNOWN_NO_REDISPATCH')
+        else:
+            immutable(path, request)
+            repo = Path(__file__).resolve().parents[3]
+            env = {**os.environ, 'PYTHONPATH': str(repo / 'src') + os.pathsep + str(repo),
+                   'PYTHONDONTWRITEBYTECODE': '1',
+                   **{key: '1' for key in ('OMP_NUM_THREADS', 'OPENBLAS_NUM_THREADS', 'MKL_NUM_THREADS', 'NUMEXPR_NUM_THREADS')}}
+            # Git for Windows 的 cmd 包装器会再生成一层进程；使用同安装的实际二进制，
+            # 避免Git包装器多一层；DATA只额外预留一个进程，VERIFY仍保持双进程限制。
+            git = shutil.which('git')
+            if os.name == 'nt' and git:
+                direct_git = Path(git).parent.parent / 'mingw64' / 'bin' / 'git.exe'
+                if direct_git.is_file():
+                    env['PATH'] = str(direct_git.parent) + os.pathsep + env.get('PATH', '')
+            started = time.monotonic()
+            resource = run_bounded_worker([sys.executable, str(Path(__file__).with_name('diagnosis_worker_v3.py')), str(path), identity],
+                root=repo, memory_mib=2048, wall_seconds=seconds, environment=env,
+                process_limit=3 if kind == 'DATA' else 2,
+                execution={'request_hash': identity},
+                on_started=lambda pid: immutable(path.with_name(path.stem + '_START.json'), {'pid': pid, 'request_hash': identity}))
+            resource['elapsed_wall_seconds'] = time.monotonic() - started
+            resource['wall_limit_seconds'] = seconds
+            immutable(resource_path, {key: value.decode('utf-8', errors='replace') if isinstance(value, bytes) else value
+                                      for key, value in resource.items()})
+        resource = read_json(resource_path)
+        if resource['returncode'] != 0 or resource['timed_out'] or not result_path.exists():
+&gt;           raise RuntimeError('DIAGNOSIS_WORKER_FAILED_NO_RETRY')
+E           RuntimeError: DIAGNOSIS_WORKER_FAILED_NO_RETRY
+
+src\chanlun_trader\research_factory\diagnosis_research_v3.py:212: RuntimeError</failure></testcase><testcase classname="tests.research_factory.test_synthetic_batch_resources" name="test_worker_rejects_missing_or_non_data_execution_context[None]" time="0.008" /><testcase classname="tests.research_factory.test_synthetic_batch_resources" name="test_worker_rejects_missing_or_non_data_execution_context[context1]" time="0.001" /><testcase classname="tests.research_factory.test_synthetic_batch_resources" name="test_worker_rejects_missing_or_non_data_execution_context[context2]" time="0.001" /><testcase classname="tests.research_factory.test_synthetic_batch_resources" name="test_worker_rejects_missing_or_non_data_execution_context[context3]" time="0.001" /><testcase classname="tests.research_factory.test_synthetic_batch_resources" name="test_worker_rejects_missing_or_non_data_execution_context[context4]" time="0.001" /><testcase classname="tests.research_factory.test_synthetic_batch_resources" name="test_worker_rejects_missing_or_non_data_execution_context[context5]" time="0.001" /><testcase classname="tests.research_factory.test_synthetic_batch_resources" name="test_actual_worker_resource_boundaries[normal]" time="0.200"><failure message="KeyError: 'CHANLUN_PROCESS_EVIDENCE_DIR'">tmp_path = WindowsPath('E:/worktrees/trusted-strategy-research/trade-system-contract-port-v1/.venv/test-tmp-final-process-bound/test_actual_worker_resource_bo0')
+action = 'normal'
+
+    @pytest.mark.parametrize("action", ["normal", "memory", "timeout"])
+    def test_actual_worker_resource_boundaries(tmp_path, action):
+        source = Path(__file__).resolve().parents[2]
+        environment = dict(os.environ, PYTHONPATH=os.pathsep.join([str(source / "tests/isolation"), str(source / "src")]))
+        started = []
+        begin = time.monotonic()
+        result = run_bounded_worker([sys.executable, str(Path(__file__).with_name("batch_resource_worker.py")), action],
+            root=tmp_path, memory_mib=96, wall_seconds=1 if action == "timeout" else 10,
+            on_started=started.append, environment=environment)
+&gt;       output = Path(os.environ["CHANLUN_PROCESS_EVIDENCE_DIR"]) / "batch-resources"
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\research_factory\test_synthetic_batch_resources.py:30: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = environ({'ALLUSERSPROFILE': 'C:\\ProgramData', 'ANDROID_AVD_HOME': 'D:\\Android\\avd', 'ANDROID_HOME': 'D:\\Android\\S...T': 'tests/research_factory/test_synthetic_batch_resources.py::test_actual_worker_resource_boundaries[normal] (call)'})
+key = 'CHANLUN_PROCESS_EVIDENCE_DIR'
+
+&gt;   ???
+E   KeyError: 'CHANLUN_PROCESS_EVIDENCE_DIR'
+
+&lt;frozen os&gt;:714: KeyError</failure></testcase><testcase classname="tests.research_factory.test_synthetic_batch_resources" name="test_actual_worker_resource_boundaries[memory]" time="0.219"><failure message="KeyError: 'CHANLUN_PROCESS_EVIDENCE_DIR'">tmp_path = WindowsPath('E:/worktrees/trusted-strategy-research/trade-system-contract-port-v1/.venv/test-tmp-final-process-bound/test_actual_worker_resource_bo1')
+action = 'memory'
+
+    @pytest.mark.parametrize("action", ["normal", "memory", "timeout"])
+    def test_actual_worker_resource_boundaries(tmp_path, action):
+        source = Path(__file__).resolve().parents[2]
+        environment = dict(os.environ, PYTHONPATH=os.pathsep.join([str(source / "tests/isolation"), str(source / "src")]))
+        started = []
+        begin = time.monotonic()
+        result = run_bounded_worker([sys.executable, str(Path(__file__).with_name("batch_resource_worker.py")), action],
+            root=tmp_path, memory_mib=96, wall_seconds=1 if action == "timeout" else 10,
+            on_started=started.append, environment=environment)
+&gt;       output = Path(os.environ["CHANLUN_PROCESS_EVIDENCE_DIR"]) / "batch-resources"
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\research_factory\test_synthetic_batch_resources.py:30: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = environ({'ALLUSERSPROFILE': 'C:\\ProgramData', 'ANDROID_AVD_HOME': 'D:\\Android\\avd', 'ANDROID_HOME': 'D:\\Android\\S...T': 'tests/research_factory/test_synthetic_batch_resources.py::test_actual_worker_resource_boundaries[memory] (call)'})
+key = 'CHANLUN_PROCESS_EVIDENCE_DIR'
+
+&gt;   ???
+E   KeyError: 'CHANLUN_PROCESS_EVIDENCE_DIR'
+
+&lt;frozen os&gt;:714: KeyError</failure></testcase><testcase classname="tests.research_factory.test_synthetic_batch_resources" name="test_actual_worker_resource_boundaries[timeout]" time="1.083"><failure message="KeyError: 'CHANLUN_PROCESS_EVIDENCE_DIR'">tmp_path = WindowsPath('E:/worktrees/trusted-strategy-research/trade-system-contract-port-v1/.venv/test-tmp-final-process-bound/test_actual_worker_resource_bo2')
+action = 'timeout'
+
+    @pytest.mark.parametrize("action", ["normal", "memory", "timeout"])
+    def test_actual_worker_resource_boundaries(tmp_path, action):
+        source = Path(__file__).resolve().parents[2]
+        environment = dict(os.environ, PYTHONPATH=os.pathsep.join([str(source / "tests/isolation"), str(source / "src")]))
+        started = []
+        begin = time.monotonic()
+        result = run_bounded_worker([sys.executable, str(Path(__file__).with_name("batch_resource_worker.py")), action],
+            root=tmp_path, memory_mib=96, wall_seconds=1 if action == "timeout" else 10,
+            on_started=started.append, environment=environment)
+&gt;       output = Path(os.environ["CHANLUN_PROCESS_EVIDENCE_DIR"]) / "batch-resources"
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\research_factory\test_synthetic_batch_resources.py:30: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = environ({'ALLUSERSPROFILE': 'C:\\ProgramData', 'ANDROID_AVD_HOME': 'D:\\Android\\avd', 'ANDROID_HOME': 'D:\\Android\\S...': 'tests/research_factory/test_synthetic_batch_resources.py::test_actual_worker_resource_boundaries[timeout] (call)'})
+key = 'CHANLUN_PROCESS_EVIDENCE_DIR'
+
+&gt;   ???
+E   KeyError: 'CHANLUN_PROCESS_EVIDENCE_DIR'
+
+&lt;frozen os&gt;:714: KeyError</failure></testcase><testcase classname="tests.research_factory.test_synthetic_batch_resources" name="test_invalid_process_limits_rejected_before_launch[None]" time="0.020" /><testcase classname="tests.research_factory.test_synthetic_batch_resources" name="test_invalid_process_limits_rejected_before_launch[True]" time="0.017" /><testcase classname="tests.research_factory.test_synthetic_batch_resources" name="test_invalid_process_limits_rejected_before_launch[False]" time="0.017" /><testcase classname="tests.research_factory.test_synthetic_batch_resources" name="test_invalid_process_limits_rejected_before_launch[0]" time="0.018" /><testcase classname="tests.research_factory.test_synthetic_batch_resources" name="test_invalid_process_limits_rejected_before_launch[-1]" time="0.019" /><testcase classname="tests.research_factory.test_synthetic_batch_resources" name="test_invalid_process_limits_rejected_before_launch[4]" time="0.016" /><testcase classname="tests.research_factory.test_synthetic_batch_resources" name="test_invalid_process_limits_rejected_before_launch[1.5]" time="0.017" /><testcase classname="tests.research_factory.test_synthetic_batch_resources" name="test_invalid_process_limits_rejected_before_launch[3]" time="0.016" /><testcase classname="tests.research_factory.test_published_acceptance_v1" name="test_publication_does_not_change_submission_preview_identity" time="0.912" /><testcase classname="tests.research_factory.test_published_acceptance_v1" name="test_publication_fails_closed_on_tamper_or_incomplete_evidence[source]" time="0.334" /><testcase classname="tests.research_factory.test_published_acceptance_v1" name="test_publication_fails_closed_on_tamper_or_incomplete_evidence[bytes]" time="0.339" /><testcase classname="tests.research_factory.test_published_acceptance_v1" name="test_publication_fails_closed_on_tamper_or_incomplete_evidence[missing]" time="0.337" /><testcase classname="tests.research_factory.test_published_acceptance_v1" name="test_publication_fails_closed_on_tamper_or_incomplete_evidence[receipt_hash]" time="0.337" /><testcase classname="tests.research_factory.test_published_acceptance_v1" name="test_publication_fails_closed_on_tamper_or_incomplete_evidence[bool_only]" time="0.333" /><testcase classname="tests.research_factory.test_published_acceptance_v1" name="test_publication_fails_closed_on_tamper_or_incomplete_evidence[escape]" time="0.339" /><testcase classname="tests.research_factory.test_published_acceptance_v1" name="test_checked_in_publication_matches_current_sources" time="0.256" /><testcase classname="tests.research_factory.test_trusted_research_host_v1" name="test_offline_does_not_create_lock_and_bad_lock_is_blocked" time="0.034" /><testcase classname="tests.research_factory.test_trusted_research_host_v1" name="test_real_process_pid_and_two_hosts_cannot_dispatch" time="1.138" /><testcase classname="tests.research_factory.test_trusted_research_host_v1" name="test_environment_failure_does_not_claim_running" time="0.020" /><testcase classname="tests.research_factory.test_trusted_research_host_v1" name="test_long_tick_has_heartbeat_and_releases_lock" time="0.108" /><testcase classname="tests.research_factory.test_trusted_research_host_v1" name="test_completed_account_recovers_index_without_worker_or_budget_repeat" time="1.991" /><testcase classname="tests.research_factory.test_trusted_research_host_v1" name="test_result_and_resource_before_settlement_can_reconcile_without_retrade" time="1.884" /><testcase classname="tests.research_factory.test_trusted_research_host_v1" name="test_unknown_worker_is_not_restarted" time="1.890" /><testcase classname="tests.research_factory.test_trusted_research_host_v1" name="test_public_binding_freezes_job_and_refuses_arbitrary_stages" time="1.965" /><testcase classname="tests.research_factory.test_trusted_research_host_v1" name="test_public_start_restores_reports_only_after_evidence_gate" time="2.006" /><testcase classname="tests.research_factory.test_trusted_research_host_v1" name="test_public_start_does_not_report_failed_evidence" time="1.878" /><testcase classname="tests.research_factory.test_trusted_research_host_v1" name="test_actual_bounded_worker_reports_controlled_launcher_and_child_pid" time="0.189" /><testcase classname="tests.research_factory.test_trusted_research_host_v1" name="test_host_stop_after_active_job_prevents_next_dispatch" time="0.067" /></testsuite></testsuites>

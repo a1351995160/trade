@@ -1,0 +1,26 @@
+{
+  "os": "Windows",
+  "registry_installation": "通达信金融终端(量化模拟)",
+  "TdxW_running": false,
+  "http_requests_sent": 0,
+  "status": "BLOCKED_CLIENT_NOT_RUNNING",
+  "semantic_gap": "get_divid_factors documents ex-date and cash/share terms, but no actual cash payment date",
+  "baostock_version": "0.9.4",
+  "anonymous_server": "public-api.baostock.com:10030",
+  "other_configured_server": "vip-api.baostock.com:10030",
+  "alternate_attempted": false,
+  "alternate_reason": "VIP endpoint requires validated bs- API key; not an anonymous fallback",
+  "disk_filename_search": {
+    "scope": "E:/",
+    "content_read": false,
+    "patterns": [
+      "*DIVIDEND*.json",
+      "*ADJUST*.json",
+      "*DAILY_000006*",
+      "*DAILY_000733*",
+      "*DAILY_002036*"
+    ],
+    "result": "Only A original pool, old two-symbol data, test fixtures and adjustment method metadata found; no B dividend/adjustment originals",
+    "exact_B_dividend_adjustment_matches": 0
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "task_id": "814ca737dc2b44e3d9acf9c61f53c7f3dfdbdb97218d47cd9c5de5a848656c5e",
+  "status": "APPROVED",
+  "receipt_id": "6c4a4d991766a33a061137f63b180cd49729ce8b569bde304ee5b9638680fa58",
+  "plan_ids": {
+    "ACCEPT_A_DUAL_MA_TRAILING_BASE": "2aaf8007dfba5284d45d4aa31f1b20d0f7a2fee1490b1898955d4ecfc5176c2a",
+    "ACCEPT_A_DUAL_MA_TRAILING_STRESS": "11266543801204981fa355f2f627adb3a654e9396bc0721ba0c852a0fe39bba0",
+    "ACCEPT_A_DUAL_MA_TRAILING_BENCHMARK": "90ddc792501e249ba0eb979fa411b87952772205ab05f825cc0ac73ab2728af4"
+  },
+  "strategy_qualified": false
+}

@@ -1,0 +1,11 @@
+{
+  "task_id": "12108db6cd474c79354b4bf56ec2b763834f521d0bf9ece2ca455f0e7f2808a2",
+  "status": "APPROVED",
+  "receipt_id": "3984fd0e7d1730500686a7098dab4f38b0f11ccc44594bd6a09bf212b1f0ee8e",
+  "plan_ids": {
+    "ACCEPT_B_MA10_COST_STOP_BASE": "405444dcfdecb49bb05fcc3e1be4651b4f7b3b1215062e2e22f4f0f34e6aa817",
+    "ACCEPT_B_MA10_COST_STOP_STRESS": "b46e3d209687acfa2620adfbbd4dc7a8408413d508fd6605a5e2eb74b904b0f8",
+    "ACCEPT_B_MA10_COST_STOP_BENCHMARK": "0dda140767e9b49f2fd0c5d5dfacf6da9b099fbf437362271becac1424a6a2a0"
+  },
+  "strategy_qualified": false
+}

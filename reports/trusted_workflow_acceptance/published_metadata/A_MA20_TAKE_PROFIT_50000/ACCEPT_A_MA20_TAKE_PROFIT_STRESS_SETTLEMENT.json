@@ -1,0 +1,13 @@
+{
+  "kind": "ACCEPT_A_MA20_TAKE_PROFIT_STRESS",
+  "reservation": "RES-000002",
+  "receipt_id": "674e030ef929fe115af0ba9b033ca1891e61f96162f04edb0ea91e311384083b",
+  "started_at": "2026-09-29T14:36:21.228578+00:00",
+  "counted_before_account_calculation": true,
+  "completed": true,
+  "wall_seconds": 10.219000000000051,
+  "result_sha256": "ebaf7eec3b5943e49f7de0b37e93082ecb4fb1077e3ef1fb2d5cc9477ecdc3ee",
+  "error": null,
+  "settled_at": "2026-09-29T14:36:31.470473+00:00",
+  "repair_exposures": 0
+}

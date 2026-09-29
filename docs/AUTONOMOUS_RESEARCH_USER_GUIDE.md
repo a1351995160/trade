@@ -2,6 +2,28 @@
 
 系统的工作是提出策略、核对交易账户、解释失败，并把符合条件的策略送入下一阶段。它可以正确地得出“这一轮没有可用策略”，不会为了完成任务而降低通过标准。
 
+## 当前公共入口与交付边界
+
+固定规则可以通过公共CLI查询能力、预览、冻结、核对批准并启动账户，不依赖AI在线。S1目前仍缺B真实公共账户验收，下面的入口说明不代表该验收已经完成；当前能力与未验收状态见[自动生成的能力说明](RESEARCH_CAPABILITIES.md)。
+
+真实连续AI研究默认仍被费用硬上限证据阻断：`BoundedCodexInvokerV1` 尚不能证明供应商token/费用限制，创建自动研究会返回 `DIAGNOSIS_MODEL_HARD_BUDGET_UNVERIFIED`。已有一次真实模型JSON接线证据只证明模型能够提出合法规则，不能据此说默认已经可以无人值守研究。
+
+部署人员先准备数据目录登记和不可变授权引用JSON。以下占位值须替换为实际工作区、配置和请求文件；按前一步返回值填写 `preview_identity` 与 `task_id`：
+
+```powershell
+python scripts/run_trusted_research_v1.py capabilities --workspace-root <工作区> --deployment <部署配置.json>
+python scripts/run_trusted_research_v1.py preview --workspace-root <工作区> --deployment <部署配置.json> --request <策略请求.json>
+python scripts/run_trusted_research_v1.py freeze --workspace-root <工作区> --deployment <部署配置.json> --request <策略请求.json> --preview-identity <预览身份>
+python scripts/run_trusted_research_v1.py approval --workspace-root <工作区> --deployment <部署配置.json> --task-id <任务身份>
+python scripts/run_trusted_research_v1.py approve --workspace-root <工作区> --deployment <部署配置.json> --task-id <任务身份> --preview-identity <预览身份>
+python scripts/run_trusted_research_v1.py start --workspace-root <工作区> --deployment <部署配置.json> --task-id <任务身份>
+python scripts/run_trusted_research_v1.py status --workspace-root <工作区> --deployment <部署配置.json> --task-id <任务身份>
+```
+
+预览只检查规则与登记元信息，不读取行情、不签发权限。冻结会读取授权内数据并保存原件身份，但不会自行批准账户。批准再次核对已有账户授权中的资金、股票池、日期、成本、计划及有效期。调整这些条件后必须重新预览，不能沿用旧身份。
+
+如使用工作台，现有启动器可增加 `--submission-config <部署配置.json>`；需要页面执行动作时由维护者明确启用 `--allow-trusted-research`，默认仍只读。该开关不代替数据或账户授权。长期宿主与接手方式见[运行说明](RESEARCH_LIFECYCLE_OPERATIONS.md)。
+
 ## 整个系统如何工作
 
 ```mermaid
@@ -84,3 +106,9 @@ python scripts/run_ui.py 8765 --research-root <研究数据根目录> --lifecycl
 - [新规则的研究循环](BOUNDED_RULE_RESEARCH_V2.md)
 - [数据资格](RESEARCH_DATA_QUALIFICATION.md)、[独立验证协议](VALIDATION_EVIDENCE_PROTOCOL_V2.md)
 - [公司行动](CORPORATE_ACTION_LIFECYCLE.md)、[组合准入](PORTFOLIO_QUALIFICATION.md)
+
+## 动态字段与预热下限
+
+V3按规则实际引用申报因子字段：未引用换手率 `turn` 时，原件缺少该列保持 `UNKNOWN`，不会补零；账户仍核对每只股票、每个交易日的成交量、交易状态及矩形覆盖。全池买入持有基准也不强制换手率。引用换手率指标时，缺列会在数据冻结阶段拒绝，不能进入账户执行。旧V2及未声明字段依赖的旧数据调用仍要求换手率。
+
+这次只放开了因子字段依赖。历史账户和Paper的执行准备仍要求至少60个预热交易日；即使某个V3规则只需20日均线，也不能据此提交少于60日的账户预热窗口。

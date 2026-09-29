@@ -1,0 +1,62 @@
+{
+  "adapter": "BAOSTOCK_RESPONSE_JSON_V1",
+  "symbols": [
+    "000001.SZ",
+    "000002.SZ",
+    "600000.SH"
+  ],
+  "start": "2022-01-01",
+  "end": "2024-07-31",
+  "files": {
+    "TRADE_DATES.json": {
+      "sha256": "87f146a3e741deadb598eefaadfe8cc0c09ec590be39e0ac9ee5dd94bd691f4c",
+      "start": "2022-01-01",
+      "end": "2024-07-31"
+    },
+    "DAILY_000001.SZ.json": {
+      "sha256": "d87fa6b1ca79c7ad68faedc209ef071dcf4e3fb4d569f422a12d7e27edceb47b",
+      "start": "2022-01-01",
+      "end": "2024-07-31"
+    },
+    "ADJUST_000001.SZ.json": {
+      "sha256": "4627d76ea28719d59fc4ec6187d02c320fc20738b387f41c46dd622a9841515c",
+      "start": "2022-01-01",
+      "end": "2024-07-31"
+    },
+    "DIVIDEND_000001.SZ_2022.json": {
+      "sha256": "9677b3014752079ff16bf5ab791086bc4ffaf333764bb090eddab5c00f5c737a",
+      "start": "2022-03-10",
+      "end": "2022-07-22"
+    },
+    "DAILY_000002.SZ.json": {
+      "sha256": "f1900e703a2faf34be88fa02ecc3b189b87a07ddf3f35d6f59ee5c795962076b",
+      "start": "2022-01-01",
+      "end": "2024-07-31"
+    },
+    "ADJUST_000002.SZ.json": {
+      "sha256": "ac3ebafbb24beccd0d070bef1887df8419e284b90f30475ef3ada4ab821ba145",
+      "start": "2022-01-01",
+      "end": "2024-07-31"
+    },
+    "DIVIDEND_000002.SZ_2022.json": {
+      "sha256": "1de1e91d679579d8e970c12c4b6fa52db48c3995d557f836b2b7e6d2549fe210",
+      "start": "2022-03-31",
+      "end": "2022-08-25"
+    },
+    "DAILY_600000.SH.json": {
+      "sha256": "05d4d725d011533498972b7429bc7ca6e77ec1e1cc7142cff8d0ee939f5b6eb8",
+      "start": "2022-01-01",
+      "end": "2024-07-31"
+    },
+    "ADJUST_600000.SH.json": {
+      "sha256": "e286528aca0f10ef36ff28b33ea52c4909e391535e9b8787389fc5a0c47b13ce",
+      "start": "2022-01-01",
+      "end": "2024-07-31"
+    },
+    "DIVIDEND_600000.SH_2022.json": {
+      "sha256": "efd747a0c8e6e6c2c5ba08478e8fef97a411be975ececac9cfffedbdec1e591d",
+      "start": "2022-04-28",
+      "end": "2022-07-21"
+    }
+  }
+}

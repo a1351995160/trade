@@ -1,0 +1,3482 @@
+{
+  "task_id": "814ca737dc2b44e3d9acf9c61f53c7f3dfdbdb97218d47cd9c5de5a848656c5e",
+  "status": "ACCOUNT_VERIFIED",
+  "verification": {
+    "job_sha256": "4259d60413eeac377a568c913c43ba8db7ec602e48b951de5a50323bda481f70",
+    "items": {
+      "ACCEPT_A_DUAL_MA_TRAILING_BASE": {
+        "version": "RESEARCH_EVIDENCE_V1",
+        "status": "PASS",
+        "advance_allowed": true,
+        "reasons": [],
+        "plan_id": "2aaf8007dfba5284d45d4aa31f1b20d0f7a2fee1490b1898955d4ecfc5176c2a",
+        "result_sha256": "7e1453a796f75226d06f93e076051560dfc527846fb1374bf32d7e9cc281d1d3",
+        "input_identity": "355cd3be7e4b519222eed14180e7ea82c7005773b2e465534fd90e1b02ffd754",
+        "account_audit": {
+          "daily_accounts": [
+            {
+              "date": 20220706,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220707,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220708,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220711,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220712,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220713,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220714,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220715,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220718,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220719,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220720,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220721,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220722,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220725,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220726,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220727,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220728,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220729,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220801,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220802,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220803,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220804,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220805,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220808,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220809,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220810,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220811,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220812,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220815,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220816,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220817,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220818,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220819,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220822,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220823,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220824,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220825,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220826,
+              "cash": 30883.92,
+              "equity": 49879.92,
+              "positions": {
+                "000002.SZ": 1200
+              }
+            },
+            {
+              "date": 20220829,
+              "cash": 11527.479999999996,
+              "equity": 49516.479999999996,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2700
+              }
+            },
+            {
+              "date": 20220830,
+              "cash": 11527.479999999996,
+              "equity": 50008.479999999996,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2700
+              }
+            },
+            {
+              "date": 20220831,
+              "cash": 11527.479999999996,
+              "equity": 51112.479999999996,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2700
+              }
+            },
+            {
+              "date": 20220901,
+              "cash": 11527.479999999996,
+              "equity": 51256.479999999996,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2700
+              }
+            },
+            {
+              "date": 20220902,
+              "cash": 11527.479999999996,
+              "equity": 51154.479999999996,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2700
+              }
+            },
+            {
+              "date": 20220905,
+              "cash": 11527.479999999996,
+              "equity": 51733.479999999996,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2700
+              }
+            },
+            {
+              "date": 20220906,
+              "cash": 11527.479999999996,
+              "equity": 52549.479999999996,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2700
+              }
+            },
+            {
+              "date": 20220907,
+              "cash": 11527.479999999996,
+              "equity": 52045.479999999996,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2700
+              }
+            },
+            {
+              "date": 20220908,
+              "cash": 11527.479999999996,
+              "equity": 52171.479999999996,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2700
+              }
+            },
+            {
+              "date": 20220909,
+              "cash": 11527.479999999996,
+              "equity": 53044.479999999996,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2700
+              }
+            },
+            {
+              "date": 20220913,
+              "cash": 11527.479999999996,
+              "equity": 53188.479999999996,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2700
+              }
+            },
+            {
+              "date": 20220914,
+              "cash": 11527.479999999996,
+              "equity": 52675.479999999996,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2700
+              }
+            },
+            {
+              "date": 20220915,
+              "cash": 11527.479999999996,
+              "equity": 53491.479999999996,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2700
+              }
+            },
+            {
+              "date": 20220916,
+              "cash": 11527.479999999996,
+              "equity": 52405.479999999996,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2700
+              }
+            },
+            {
+              "date": 20220919,
+              "cash": 30825.3837,
+              "equity": 52641.3837,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20220920,
+              "cash": 30825.3837,
+              "equity": 51897.3837,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20220921,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20220922,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20220923,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20220926,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20220927,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20220928,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20220929,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20220930,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221010,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221011,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221012,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221013,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221014,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221017,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221018,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221019,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221020,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221021,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221024,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221025,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221026,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221027,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221028,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221031,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221101,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221102,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221103,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221104,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221107,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221108,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221109,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221110,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221111,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221114,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221115,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221116,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221117,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221118,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221121,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221122,
+              "cash": 52088.18459999999,
+              "equity": 52088.18459999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221123,
+              "cash": 31733.797299999995,
+              "equity": 52178.79729999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 2900
+              }
+            },
+            {
+              "date": 20221124,
+              "cash": 31733.797299999995,
+              "equity": 52120.79729999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 2900
+              }
+            },
+            {
+              "date": 20221125,
+              "cash": 12269.357299999992,
+              "equity": 53846.35729999999,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2900
+              }
+            },
+            {
+              "date": 20221128,
+              "cash": 12269.357299999992,
+              "equity": 53316.35729999999,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2900
+              }
+            },
+            {
+              "date": 20221129,
+              "cash": 12269.357299999992,
+              "equity": 55948.35729999999,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2900
+              }
+            },
+            {
+              "date": 20221130,
+              "cash": 12269.357299999992,
+              "equity": 55587.35729999999,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2900
+              }
+            },
+            {
+              "date": 20221201,
+              "cash": 12269.357299999992,
+              "equity": 56007.35729999999,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2900
+              }
+            },
+            {
+              "date": 20221202,
+              "cash": 12269.357299999992,
+              "equity": 55304.35729999999,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2900
+              }
+            },
+            {
+              "date": 20221205,
+              "cash": 12269.357299999992,
+              "equity": 56317.35729999999,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2900
+              }
+            },
+            {
+              "date": 20221206,
+              "cash": 12269.357299999992,
+              "equity": 56629.35729999999,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2900
+              }
+            },
+            {
+              "date": 20221207,
+              "cash": 12269.357299999992,
+              "equity": 55755.35729999999,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2900
+              }
+            },
+            {
+              "date": 20221208,
+              "cash": 12269.357299999992,
+              "equity": 56927.35729999999,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2900
+              }
+            },
+            {
+              "date": 20221209,
+              "cash": 12269.357299999992,
+              "equity": 58049.35729999999,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2900
+              }
+            },
+            {
+              "date": 20221212,
+              "cash": 12269.357299999992,
+              "equity": 56663.35729999999,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2900
+              }
+            },
+            {
+              "date": 20221213,
+              "cash": 35568.58979999999,
+              "equity": 56796.58979999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 2900
+              }
+            },
+            {
+              "date": 20221214,
+              "cash": 35568.58979999999,
+              "equity": 56796.58979999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 2900
+              }
+            },
+            {
+              "date": 20221215,
+              "cash": 35568.58979999999,
+              "equity": 56564.58979999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 2900
+              }
+            },
+            {
+              "date": 20221216,
+              "cash": 35568.58979999999,
+              "equity": 56883.58979999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 2900
+              }
+            },
+            {
+              "date": 20221219,
+              "cash": 12879.308899999985,
+              "equity": 56043.30889999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 2900,
+                "000001.SZ": 1700
+              }
+            },
+            {
+              "date": 20221220,
+              "cash": 12879.308899999985,
+              "equity": 55277.30889999999,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 2900,
+                "000001.SZ": 1700
+              }
+            },
+            {
+              "date": 20221221,
+              "cash": 33780.741099999985,
+              "equity": 55693.741099999985,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0,
+                "000001.SZ": 1700
+              }
+            },
+            {
+              "date": 20221222,
+              "cash": 33780.741099999985,
+              "equity": 55795.741099999985,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0,
+                "000001.SZ": 1700
+              }
+            },
+            {
+              "date": 20221223,
+              "cash": 33780.741099999985,
+              "equity": 55846.741099999985,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0,
+                "000001.SZ": 1700
+              }
+            },
+            {
+              "date": 20221226,
+              "cash": 33780.741099999985,
+              "equity": 55489.741099999985,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0,
+                "000001.SZ": 1700
+              }
+            },
+            {
+              "date": 20221227,
+              "cash": 33780.741099999985,
+              "equity": 56067.741099999985,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0,
+                "000001.SZ": 1700
+              }
+            },
+            {
+              "date": 20221228,
+              "cash": 33780.741099999985,
+              "equity": 56118.741099999985,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0,
+                "000001.SZ": 1700
+              }
+            },
+            {
+              "date": 20221229,
+              "cash": 33780.741099999985,
+              "equity": 55931.741099999985,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0,
+                "000001.SZ": 1700
+              }
+            },
+            {
+              "date": 20221230,
+              "cash": 33780.741099999985,
+              "equity": 56152.741099999985,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0,
+                "000001.SZ": 1700
+              }
+            }
+          ],
+          "metrics": {
+            "net_return": 0.12305482199999962,
+            "max_drawdown": 0.04775330044868564,
+            "total_fees": 89.5489,
+            "trade_count": 9
+          },
+          "dividend_tax": 0.0,
+          "exit_behavior": "VERIFIED",
+          "exit_rows": 73
+        },
+        "data_qualification": {
+          "purpose": "EXPLORATORY",
+          "account_data_ready": true,
+          "historical_availability": "MODELED",
+          "historical_independence": "UNKNOWN",
+          "independent_confirmation_eligible": false,
+          "strategy_qualified": false,
+          "field_status": {
+            "prices": "VENDOR_ASSERTED",
+            "turn": "VENDOR_ASSERTED",
+            "security_status": "VENDOR_ASSERTED_WITH_MODELED_ELIGIBILITY",
+            "action_dates": "VENDOR_ASSERTED",
+            "availability_time": "MODELED"
+          },
+          "price_basis": {
+            "execution": "RAW",
+            "indicators": "CAUSAL_CASH_ACTION_TRANSFORM"
+          },
+          "checks": {
+            "cash_action_reference_checks": [
+              {
+                "event_id": "000001.SZ:20220722:CASH",
+                "reference_delta": -0.002000000000000668
+              },
+              {
+                "event_id": "000002.SZ:20220825:CASH",
+                "reference_delta": 0.006126000000000076
+              },
+              {
+                "event_id": "600000.SH:20220721:CASH",
+                "reference_delta": 0.0
+              }
+            ],
+            "coverage_basis": "VENDOR_CASH_ACTION_RECORDS_AND_EVERY_RAW_PRECLOSE_TRANSITION",
+            "publication_dates": "VENDOR_ASSERTED_NOT_INDEPENDENTLY_VERIFIED",
+            "historical_available_at_verified": false
+          },
+          "source_hashes": {
+            "TRADE_DATES.json": "87f146a3e741deadb598eefaadfe8cc0c09ec590be39e0ac9ee5dd94bd691f4c",
+            "DAILY_000001.SZ.json": "d87fa6b1ca79c7ad68faedc209ef071dcf4e3fb4d569f422a12d7e27edceb47b",
+            "DIVIDEND_000001.SZ_2022.json": "9677b3014752079ff16bf5ab791086bc4ffaf333764bb090eddab5c00f5c737a",
+            "ADJUST_000001.SZ.json": "4627d76ea28719d59fc4ec6187d02c320fc20738b387f41c46dd622a9841515c",
+            "DAILY_000002.SZ.json": "f1900e703a2faf34be88fa02ecc3b189b87a07ddf3f35d6f59ee5c795962076b",
+            "DIVIDEND_000002.SZ_2022.json": "1de1e91d679579d8e970c12c4b6fa52db48c3995d557f836b2b7e6d2549fe210",
+            "ADJUST_000002.SZ.json": "ac3ebafbb24beccd0d070bef1887df8419e284b90f30475ef3ada4ab821ba145",
+            "DAILY_600000.SH.json": "05d4d725d011533498972b7429bc7ca6e77ec1e1cc7142cff8d0ee939f5b6eb8",
+            "DIVIDEND_600000.SH_2022.json": "efd747a0c8e6e6c2c5ba08478e8fef97a411be975ececac9cfffedbdec1e591d",
+            "ADJUST_600000.SH.json": "e286528aca0f10ef36ff28b33ea52c4909e391535e9b8787389fc5a0c47b13ce"
+          },
+          "manifest_hash": "14c446bd56fe0f39619c1962ec84dfc3e0fe2cf62374618b51aab3207b60723a"
+        },
+        "evidence_layers": {
+          "account_reconciled": true,
+          "input_profile": "HISTORICAL_MODELED",
+          "real_data_validity": "NOT_ESTABLISHED_BY_ACCOUNT_RECONCILIATION",
+          "historical_screen": "NOT_ASSESSED",
+          "independent_validation": "NOT_ASSESSED",
+          "formal_qualification": false
+        }
+      },
+      "ACCEPT_A_DUAL_MA_TRAILING_STRESS": {
+        "version": "RESEARCH_EVIDENCE_V1",
+        "status": "PASS",
+        "advance_allowed": true,
+        "reasons": [],
+        "plan_id": "11266543801204981fa355f2f627adb3a654e9396bc0721ba0c852a0fe39bba0",
+        "result_sha256": "c43d41cb602febc97585081af3d57dca09296243ec98d3d6d95c3ec48151536d",
+        "input_identity": "355cd3be7e4b519222eed14180e7ea82c7005773b2e465534fd90e1b02ffd754",
+        "account_audit": {
+          "daily_accounts": [
+            {
+              "date": 20220706,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220707,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220708,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220711,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220712,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220713,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220714,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220715,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220718,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220719,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220720,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220721,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220722,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220725,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220726,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220727,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220728,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220729,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220801,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220802,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220803,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220804,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220805,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220808,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220809,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220810,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220811,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220812,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220815,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220816,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220817,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220818,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220819,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220822,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220823,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220824,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220825,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220826,
+              "cash": 30859.84,
+              "equity": 49855.84,
+              "positions": {
+                "000002.SZ": 1200
+              }
+            },
+            {
+              "date": 20220829,
+              "cash": 11479.23,
+              "equity": 49468.229999999996,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2700
+              }
+            },
+            {
+              "date": 20220830,
+              "cash": 11479.23,
+              "equity": 49960.229999999996,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2700
+              }
+            },
+            {
+              "date": 20220831,
+              "cash": 11479.23,
+              "equity": 51064.229999999996,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2700
+              }
+            },
+            {
+              "date": 20220901,
+              "cash": 11479.23,
+              "equity": 51208.229999999996,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2700
+              }
+            },
+            {
+              "date": 20220902,
+              "cash": 11479.23,
+              "equity": 51106.229999999996,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2700
+              }
+            },
+            {
+              "date": 20220905,
+              "cash": 11479.23,
+              "equity": 51685.229999999996,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2700
+              }
+            },
+            {
+              "date": 20220906,
+              "cash": 11479.23,
+              "equity": 52501.229999999996,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2700
+              }
+            },
+            {
+              "date": 20220907,
+              "cash": 11479.23,
+              "equity": 51997.229999999996,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2700
+              }
+            },
+            {
+              "date": 20220908,
+              "cash": 11479.23,
+              "equity": 52123.229999999996,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2700
+              }
+            },
+            {
+              "date": 20220909,
+              "cash": 11479.23,
+              "equity": 52996.229999999996,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2700
+              }
+            },
+            {
+              "date": 20220913,
+              "cash": 11479.23,
+              "equity": 53140.229999999996,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2700
+              }
+            },
+            {
+              "date": 20220914,
+              "cash": 11479.23,
+              "equity": 52627.229999999996,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2700
+              }
+            },
+            {
+              "date": 20220915,
+              "cash": 11479.23,
+              "equity": 53443.229999999996,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2700
+              }
+            },
+            {
+              "date": 20220916,
+              "cash": 11479.23,
+              "equity": 52357.229999999996,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2700
+              }
+            },
+            {
+              "date": 20220919,
+              "cash": 30752.973299999998,
+              "equity": 52568.9733,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20220920,
+              "cash": 30752.973299999998,
+              "equity": 51824.9733,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20220921,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20220922,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20220923,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20220926,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20220927,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20220928,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20220929,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20220930,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221010,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221011,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221012,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221013,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221014,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221017,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221018,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221019,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221020,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221021,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221024,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221025,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221026,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221027,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221028,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221031,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221101,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221102,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221103,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221104,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221107,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221108,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221109,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221110,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221111,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221114,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221115,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221116,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221117,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221118,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221121,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221122,
+              "cash": 51989.115900000004,
+              "equity": 51989.115900000004,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0
+              }
+            },
+            {
+              "date": 20221123,
+              "cash": 31609.331100000007,
+              "equity": 52054.33110000001,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 2900
+              }
+            },
+            {
+              "date": 20221124,
+              "cash": 31609.331100000007,
+              "equity": 51996.33110000001,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 2900
+              }
+            },
+            {
+              "date": 20221125,
+              "cash": 12120.45110000001,
+              "equity": 53697.451100000006,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2900
+              }
+            },
+            {
+              "date": 20221128,
+              "cash": 12120.45110000001,
+              "equity": 53167.451100000006,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2900
+              }
+            },
+            {
+              "date": 20221129,
+              "cash": 12120.45110000001,
+              "equity": 55799.451100000006,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2900
+              }
+            },
+            {
+              "date": 20221130,
+              "cash": 12120.45110000001,
+              "equity": 55438.451100000006,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2900
+              }
+            },
+            {
+              "date": 20221201,
+              "cash": 12120.45110000001,
+              "equity": 55858.451100000006,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2900
+              }
+            },
+            {
+              "date": 20221202,
+              "cash": 12120.45110000001,
+              "equity": 55155.451100000006,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2900
+              }
+            },
+            {
+              "date": 20221205,
+              "cash": 12120.45110000001,
+              "equity": 56168.451100000006,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2900
+              }
+            },
+            {
+              "date": 20221206,
+              "cash": 12120.45110000001,
+              "equity": 56480.451100000006,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2900
+              }
+            },
+            {
+              "date": 20221207,
+              "cash": 12120.45110000001,
+              "equity": 55606.451100000006,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2900
+              }
+            },
+            {
+              "date": 20221208,
+              "cash": 12120.45110000001,
+              "equity": 56778.451100000006,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2900
+              }
+            },
+            {
+              "date": 20221209,
+              "cash": 12120.45110000001,
+              "equity": 57900.451100000006,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2900
+              }
+            },
+            {
+              "date": 20221212,
+              "cash": 12120.45110000001,
+              "equity": 56514.451100000006,
+              "positions": {
+                "000002.SZ": 1200,
+                "600000.SH": 2900
+              }
+            },
+            {
+              "date": 20221213,
+              "cash": 35390.47780000001,
+              "equity": 56618.47780000001,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 2900
+              }
+            },
+            {
+              "date": 20221214,
+              "cash": 35390.47780000001,
+              "equity": 56618.47780000001,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 2900
+              }
+            },
+            {
+              "date": 20221215,
+              "cash": 35390.47780000001,
+              "equity": 56386.47780000001,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 2900
+              }
+            },
+            {
+              "date": 20221216,
+              "cash": 35390.47780000001,
+              "equity": 56705.47780000001,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 2900
+              }
+            },
+            {
+              "date": 20221219,
+              "cash": 14009.072400000008,
+              "equity": 55869.072400000005,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 2900,
+                "000001.SZ": 1600
+              }
+            },
+            {
+              "date": 20221220,
+              "cash": 14009.072400000008,
+              "equity": 55131.072400000005,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 2900,
+                "000001.SZ": 1600
+              }
+            },
+            {
+              "date": 20221221,
+              "cash": 34884.41620000001,
+              "equity": 55508.41620000001,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0,
+                "000001.SZ": 1600
+              }
+            },
+            {
+              "date": 20221222,
+              "cash": 34884.41620000001,
+              "equity": 55604.41620000001,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0,
+                "000001.SZ": 1600
+              }
+            },
+            {
+              "date": 20221223,
+              "cash": 34884.41620000001,
+              "equity": 55652.41620000001,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0,
+                "000001.SZ": 1600
+              }
+            },
+            {
+              "date": 20221226,
+              "cash": 34884.41620000001,
+              "equity": 55316.41620000001,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0,
+                "000001.SZ": 1600
+              }
+            },
+            {
+              "date": 20221227,
+              "cash": 34884.41620000001,
+              "equity": 55860.41620000001,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0,
+                "000001.SZ": 1600
+              }
+            },
+            {
+              "date": 20221228,
+              "cash": 34884.41620000001,
+              "equity": 55908.41620000001,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0,
+                "000001.SZ": 1600
+              }
+            },
+            {
+              "date": 20221229,
+              "cash": 34884.41620000001,
+              "equity": 55732.41620000001,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0,
+                "000001.SZ": 1600
+              }
+            },
+            {
+              "date": 20221230,
+              "cash": 34884.41620000001,
+              "equity": 55940.41620000001,
+              "positions": {
+                "000002.SZ": 0,
+                "600000.SH": 0,
+                "000001.SZ": 1600
+              }
+            }
+          ],
+          "metrics": {
+            "net_return": 0.11880832400000019,
+            "max_drawdown": 0.04783000213965516,
+            "total_fees": 135.9638,
+            "trade_count": 9
+          },
+          "dividend_tax": 0.0,
+          "exit_behavior": "VERIFIED",
+          "exit_rows": 73
+        },
+        "data_qualification": {
+          "purpose": "EXPLORATORY",
+          "account_data_ready": true,
+          "historical_availability": "MODELED",
+          "historical_independence": "UNKNOWN",
+          "independent_confirmation_eligible": false,
+          "strategy_qualified": false,
+          "field_status": {
+            "prices": "VENDOR_ASSERTED",
+            "turn": "VENDOR_ASSERTED",
+            "security_status": "VENDOR_ASSERTED_WITH_MODELED_ELIGIBILITY",
+            "action_dates": "VENDOR_ASSERTED",
+            "availability_time": "MODELED"
+          },
+          "price_basis": {
+            "execution": "RAW",
+            "indicators": "CAUSAL_CASH_ACTION_TRANSFORM"
+          },
+          "checks": {
+            "cash_action_reference_checks": [
+              {
+                "event_id": "000001.SZ:20220722:CASH",
+                "reference_delta": -0.002000000000000668
+              },
+              {
+                "event_id": "000002.SZ:20220825:CASH",
+                "reference_delta": 0.006126000000000076
+              },
+              {
+                "event_id": "600000.SH:20220721:CASH",
+                "reference_delta": 0.0
+              }
+            ],
+            "coverage_basis": "VENDOR_CASH_ACTION_RECORDS_AND_EVERY_RAW_PRECLOSE_TRANSITION",
+            "publication_dates": "VENDOR_ASSERTED_NOT_INDEPENDENTLY_VERIFIED",
+            "historical_available_at_verified": false
+          },
+          "source_hashes": {
+            "TRADE_DATES.json": "87f146a3e741deadb598eefaadfe8cc0c09ec590be39e0ac9ee5dd94bd691f4c",
+            "DAILY_000001.SZ.json": "d87fa6b1ca79c7ad68faedc209ef071dcf4e3fb4d569f422a12d7e27edceb47b",
+            "DIVIDEND_000001.SZ_2022.json": "9677b3014752079ff16bf5ab791086bc4ffaf333764bb090eddab5c00f5c737a",
+            "ADJUST_000001.SZ.json": "4627d76ea28719d59fc4ec6187d02c320fc20738b387f41c46dd622a9841515c",
+            "DAILY_000002.SZ.json": "f1900e703a2faf34be88fa02ecc3b189b87a07ddf3f35d6f59ee5c795962076b",
+            "DIVIDEND_000002.SZ_2022.json": "1de1e91d679579d8e970c12c4b6fa52db48c3995d557f836b2b7e6d2549fe210",
+            "ADJUST_000002.SZ.json": "ac3ebafbb24beccd0d070bef1887df8419e284b90f30475ef3ada4ab821ba145",
+            "DAILY_600000.SH.json": "05d4d725d011533498972b7429bc7ca6e77ec1e1cc7142cff8d0ee939f5b6eb8",
+            "DIVIDEND_600000.SH_2022.json": "efd747a0c8e6e6c2c5ba08478e8fef97a411be975ececac9cfffedbdec1e591d",
+            "ADJUST_600000.SH.json": "e286528aca0f10ef36ff28b33ea52c4909e391535e9b8787389fc5a0c47b13ce"
+          },
+          "manifest_hash": "14c446bd56fe0f39619c1962ec84dfc3e0fe2cf62374618b51aab3207b60723a"
+        },
+        "evidence_layers": {
+          "account_reconciled": true,
+          "input_profile": "HISTORICAL_MODELED",
+          "real_data_validity": "NOT_ESTABLISHED_BY_ACCOUNT_RECONCILIATION",
+          "historical_screen": "NOT_ASSESSED",
+          "independent_validation": "NOT_ASSESSED",
+          "formal_qualification": false
+        }
+      },
+      "ACCEPT_A_DUAL_MA_TRAILING_BENCHMARK": {
+        "version": "RESEARCH_EVIDENCE_V1",
+        "status": "PASS",
+        "advance_allowed": true,
+        "reasons": [],
+        "plan_id": "90ddc792501e249ba0eb979fa411b87952772205ab05f825cc0ac73ab2728af4",
+        "result_sha256": "9fd19b9d707b9d087dcf4f475fe3382ff95e14e61f0a05858bfb70887e6336cb",
+        "input_identity": "355cd3be7e4b519222eed14180e7ea82c7005773b2e465534fd90e1b02ffd754",
+        "account_audit": {
+          "daily_accounts": [
+            {
+              "date": 20220706,
+              "cash": 50000.0,
+              "equity": 50000.0,
+              "positions": {}
+            },
+            {
+              "date": 20220707,
+              "cash": 1834.9400000000023,
+              "equity": 49575.94,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220708,
+              "cash": 1834.9400000000023,
+              "equity": 49800.94,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220711,
+              "cash": 1834.9400000000023,
+              "equity": 49451.94,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220712,
+              "cash": 1834.9400000000023,
+              "equity": 49531.94,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220713,
+              "cash": 1834.9400000000023,
+              "equity": 48854.94,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220714,
+              "cash": 1834.9400000000023,
+              "equity": 47612.94,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220715,
+              "cash": 1834.9400000000023,
+              "equity": 46601.94,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220718,
+              "cash": 1834.9400000000023,
+              "equity": 47242.94,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220719,
+              "cash": 1834.9400000000023,
+              "equity": 47237.94,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220720,
+              "cash": 1834.9400000000023,
+              "equity": 47130.94,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220721,
+              "cash": 2695.9400000000023,
+              "equity": 46231.94,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220722,
+              "cash": 2946.7400000000025,
+              "equity": 46376.740000000005,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220725,
+              "cash": 2946.7400000000025,
+              "equity": 46483.740000000005,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220726,
+              "cash": 2946.7400000000025,
+              "equity": 47085.740000000005,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220727,
+              "cash": 2946.7400000000025,
+              "equity": 46637.740000000005,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220728,
+              "cash": 2946.7400000000025,
+              "equity": 46627.740000000005,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220729,
+              "cash": 2946.7400000000025,
+              "equity": 45908.740000000005,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220801,
+              "cash": 2946.7400000000025,
+              "equity": 45287.740000000005,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220802,
+              "cash": 2946.7400000000025,
+              "equity": 44642.740000000005,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220803,
+              "cash": 2946.7400000000025,
+              "equity": 43874.740000000005,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220804,
+              "cash": 2946.7400000000025,
+              "equity": 44195.740000000005,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220805,
+              "cash": 2946.7400000000025,
+              "equity": 44670.740000000005,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220808,
+              "cash": 2946.7400000000025,
+              "equity": 44334.740000000005,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220809,
+              "cash": 2946.7400000000025,
+              "equity": 44214.740000000005,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220810,
+              "cash": 2946.7400000000025,
+              "equity": 43981.740000000005,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220811,
+              "cash": 2946.7400000000025,
+              "equity": 44633.740000000005,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220812,
+              "cash": 2946.7400000000025,
+              "equity": 44872.740000000005,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220815,
+              "cash": 2946.7400000000025,
+              "equity": 44440.740000000005,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220816,
+              "cash": 2946.7400000000025,
+              "equity": 44612.740000000005,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220817,
+              "cash": 2946.7400000000025,
+              "equity": 45378.740000000005,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220818,
+              "cash": 2946.7400000000025,
+              "equity": 44994.740000000005,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220819,
+              "cash": 2946.7400000000025,
+              "equity": 45501.740000000005,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220822,
+              "cash": 2946.7400000000025,
+              "equity": 45519.740000000005,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220823,
+              "cash": 2946.7400000000025,
+              "equity": 45065.740000000005,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220824,
+              "cash": 2946.7400000000025,
+              "equity": 44897.740000000005,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220825,
+              "cash": 3727.6408000000024,
+              "equity": 45393.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220826,
+              "cash": 3727.6408000000024,
+              "equity": 45424.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220829,
+              "cash": 3727.6408000000024,
+              "equity": 44860.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220830,
+              "cash": 3727.6408000000024,
+              "equity": 45266.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220831,
+              "cash": 3727.6408000000024,
+              "equity": 46323.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220901,
+              "cash": 3727.6408000000024,
+              "equity": 46253.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220902,
+              "cash": 3727.6408000000024,
+              "equity": 46069.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220905,
+              "cash": 3727.6408000000024,
+              "equity": 46536.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220906,
+              "cash": 3727.6408000000024,
+              "equity": 47003.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220907,
+              "cash": 3727.6408000000024,
+              "equity": 46468.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220908,
+              "cash": 3727.6408000000024,
+              "equity": 46591.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220909,
+              "cash": 3727.6408000000024,
+              "equity": 47590.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220913,
+              "cash": 3727.6408000000024,
+              "equity": 47951.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220914,
+              "cash": 3727.6408000000024,
+              "equity": 47346.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220915,
+              "cash": 3727.6408000000024,
+              "equity": 48199.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220916,
+              "cash": 3727.6408000000024,
+              "equity": 46937.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220919,
+              "cash": 3727.6408000000024,
+              "equity": 47134.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220920,
+              "cash": 3727.6408000000024,
+              "equity": 46280.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220921,
+              "cash": 3727.6408000000024,
+              "equity": 46421.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220922,
+              "cash": 3727.6408000000024,
+              "equity": 46190.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220923,
+              "cash": 3727.6408000000024,
+              "equity": 46290.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220926,
+              "cash": 3727.6408000000024,
+              "equity": 45705.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220927,
+              "cash": 3727.6408000000024,
+              "equity": 46019.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220928,
+              "cash": 3727.6408000000024,
+              "equity": 45884.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220929,
+              "cash": 3727.6408000000024,
+              "equity": 45172.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20220930,
+              "cash": 3727.6408000000024,
+              "equity": 45799.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221010,
+              "cash": 3727.6408000000024,
+              "equity": 45315.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221011,
+              "cash": 3727.6408000000024,
+              "equity": 44660.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221012,
+              "cash": 3727.6408000000024,
+              "equity": 45036.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221013,
+              "cash": 3727.6408000000024,
+              "equity": 44341.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221014,
+              "cash": 3727.6408000000024,
+              "equity": 44789.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221017,
+              "cash": 3727.6408000000024,
+              "equity": 44377.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221018,
+              "cash": 3727.6408000000024,
+              "equity": 44201.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221019,
+              "cash": 3727.6408000000024,
+              "equity": 43719.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221020,
+              "cash": 3727.6408000000024,
+              "equity": 43580.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221021,
+              "cash": 3727.6408000000024,
+              "equity": 43410.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221024,
+              "cash": 3727.6408000000024,
+              "equity": 42158.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221025,
+              "cash": 3727.6408000000024,
+              "equity": 42246.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221026,
+              "cash": 3727.6408000000024,
+              "equity": 41831.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221027,
+              "cash": 3727.6408000000024,
+              "equity": 41709.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221028,
+              "cash": 3727.6408000000024,
+              "equity": 40941.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221031,
+              "cash": 3727.6408000000024,
+              "equity": 39861.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221101,
+              "cash": 3727.6408000000024,
+              "equity": 40706.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221102,
+              "cash": 3727.6408000000024,
+              "equity": 40639.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221103,
+              "cash": 3727.6408000000024,
+              "equity": 40109.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221104,
+              "cash": 3727.6408000000024,
+              "equity": 41120.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221107,
+              "cash": 3727.6408000000024,
+              "equity": 41380.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221108,
+              "cash": 3727.6408000000024,
+              "equity": 41329.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221109,
+              "cash": 3727.6408000000024,
+              "equity": 41605.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221110,
+              "cash": 3727.6408000000024,
+              "equity": 41386.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221111,
+              "cash": 3727.6408000000024,
+              "equity": 43482.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221114,
+              "cash": 3727.6408000000024,
+              "equity": 44747.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221115,
+              "cash": 3727.6408000000024,
+              "equity": 44844.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221116,
+              "cash": 3727.6408000000024,
+              "equity": 44180.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221117,
+              "cash": 3727.6408000000024,
+              "equity": 43892.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221118,
+              "cash": 3727.6408000000024,
+              "equity": 43507.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221121,
+              "cash": 3727.6408000000024,
+              "equity": 43237.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221122,
+              "cash": 3727.6408000000024,
+              "equity": 43951.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221123,
+              "cash": 3727.6408000000024,
+              "equity": 43926.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221124,
+              "cash": 3727.6408000000024,
+              "equity": 44253.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221125,
+              "cash": 3727.6408000000024,
+              "equity": 46027.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221128,
+              "cash": 3727.6408000000024,
+              "equity": 45261.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221129,
+              "cash": 3727.6408000000024,
+              "equity": 48347.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221130,
+              "cash": 3727.6408000000024,
+              "equity": 48142.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221201,
+              "cash": 3727.6408000000024,
+              "equity": 48499.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221202,
+              "cash": 3727.6408000000024,
+              "equity": 47812.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221205,
+              "cash": 3727.6408000000024,
+              "equity": 49202.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221206,
+              "cash": 3727.6408000000024,
+              "equity": 49300.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221207,
+              "cash": 3727.6408000000024,
+              "equity": 48406.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221208,
+              "cash": 3727.6408000000024,
+              "equity": 49425.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221209,
+              "cash": 3727.6408000000024,
+              "equity": 50537.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221212,
+              "cash": 3727.6408000000024,
+              "equity": 48954.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221213,
+              "cash": 3727.6408000000024,
+              "equity": 49247.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221214,
+              "cash": 3727.6408000000024,
+              "equity": 49052.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221215,
+              "cash": 3727.6408000000024,
+              "equity": 48637.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221216,
+              "cash": 3727.6408000000024,
+              "equity": 49340.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221219,
+              "cash": 3727.6408000000024,
+              "equity": 48755.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221220,
+              "cash": 3727.6408000000024,
+              "equity": 47725.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221221,
+              "cash": 3727.6408000000024,
+              "equity": 47965.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221222,
+              "cash": 3727.6408000000024,
+              "equity": 48160.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221223,
+              "cash": 3727.6408000000024,
+              "equity": 48128.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221226,
+              "cash": 3727.6408000000024,
+              "equity": 47380.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221227,
+              "cash": 3727.6408000000024,
+              "equity": 48118.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221228,
+              "cash": 3727.6408000000024,
+              "equity": 48375.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221229,
+              "cash": 3727.6408000000024,
+              "equity": 47792.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            },
+            {
+              "date": 20221230,
+              "cash": 3727.6408000000024,
+              "equity": 48051.6408,
+              "positions": {
+                "000001.SZ": 1100,
+                "000002.SZ": 800,
+                "600000.SH": 2100
+              }
+            }
+          ],
+          "metrics": {
+            "net_return": -0.03896718399999999,
+            "max_drawdown": 0.20276718399999993,
+            "total_fees": 15.0,
+            "trade_count": 3
+          },
+          "dividend_tax": 0.0,
+          "exit_behavior": "NOT_CONFIGURED",
+          "exit_rows": 0
+        },
+        "data_qualification": {
+          "purpose": "EXPLORATORY",
+          "account_data_ready": true,
+          "historical_availability": "MODELED",
+          "historical_independence": "UNKNOWN",
+          "independent_confirmation_eligible": false,
+          "strategy_qualified": false,
+          "field_status": {
+            "prices": "VENDOR_ASSERTED",
+            "turn": "VENDOR_ASSERTED",
+            "security_status": "VENDOR_ASSERTED_WITH_MODELED_ELIGIBILITY",
+            "action_dates": "VENDOR_ASSERTED",
+            "availability_time": "MODELED"
+          },
+          "price_basis": {
+            "execution": "RAW",
+            "indicators": "CAUSAL_CASH_ACTION_TRANSFORM"
+          },
+          "checks": {
+            "cash_action_reference_checks": [
+              {
+                "event_id": "000001.SZ:20220722:CASH",
+                "reference_delta": -0.002000000000000668
+              },
+              {
+                "event_id": "000002.SZ:20220825:CASH",
+                "reference_delta": 0.006126000000000076
+              },
+              {
+                "event_id": "600000.SH:20220721:CASH",
+                "reference_delta": 0.0
+              }
+            ],
+            "coverage_basis": "VENDOR_CASH_ACTION_RECORDS_AND_EVERY_RAW_PRECLOSE_TRANSITION",
+            "publication_dates": "VENDOR_ASSERTED_NOT_INDEPENDENTLY_VERIFIED",
+            "historical_available_at_verified": false
+          },
+          "source_hashes": {
+            "TRADE_DATES.json": "87f146a3e741deadb598eefaadfe8cc0c09ec590be39e0ac9ee5dd94bd691f4c",
+            "DAILY_000001.SZ.json": "d87fa6b1ca79c7ad68faedc209ef071dcf4e3fb4d569f422a12d7e27edceb47b",
+            "DIVIDEND_000001.SZ_2022.json": "9677b3014752079ff16bf5ab791086bc4ffaf333764bb090eddab5c00f5c737a",
+            "ADJUST_000001.SZ.json": "4627d76ea28719d59fc4ec6187d02c320fc20738b387f41c46dd622a9841515c",
+            "DAILY_000002.SZ.json": "f1900e703a2faf34be88fa02ecc3b189b87a07ddf3f35d6f59ee5c795962076b",
+            "DIVIDEND_000002.SZ_2022.json": "1de1e91d679579d8e970c12c4b6fa52db48c3995d557f836b2b7e6d2549fe210",
+            "ADJUST_000002.SZ.json": "ac3ebafbb24beccd0d070bef1887df8419e284b90f30475ef3ada4ab821ba145",
+            "DAILY_600000.SH.json": "05d4d725d011533498972b7429bc7ca6e77ec1e1cc7142cff8d0ee939f5b6eb8",
+            "DIVIDEND_600000.SH_2022.json": "efd747a0c8e6e6c2c5ba08478e8fef97a411be975ececac9cfffedbdec1e591d",
+            "ADJUST_600000.SH.json": "e286528aca0f10ef36ff28b33ea52c4909e391535e9b8787389fc5a0c47b13ce"
+          },
+          "manifest_hash": "14c446bd56fe0f39619c1962ec84dfc3e0fe2cf62374618b51aab3207b60723a"
+        },
+        "evidence_layers": {
+          "account_reconciled": true,
+          "input_profile": "HISTORICAL_MODELED",
+          "real_data_validity": "NOT_ESTABLISHED_BY_ACCOUNT_RECONCILIATION",
+          "historical_screen": "NOT_ASSESSED",
+          "independent_validation": "NOT_ASSESSED",
+          "formal_qualification": false
+        }
+      }
+    },
+    "advance_allowed": true
+  },
+  "strategy_qualified": false,
+  "reports": {
+    "ACCEPT_A_DUAL_MA_TRAILING_BASE": {
+      "result": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\814ca737dc2b44e3d9acf9c61f53c7f3dfdbdb97218d47cd9c5de5a848656c5e\\account\\ACCEPT_A_DUAL_MA_TRAILING_BASE_RESULT.json",
+      "sha256": "7e1453a796f75226d06f93e076051560dfc527846fb1374bf32d7e9cc281d1d3",
+      "settlement": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\814ca737dc2b44e3d9acf9c61f53c7f3dfdbdb97218d47cd9c5de5a848656c5e\\account\\ACCEPT_A_DUAL_MA_TRAILING_BASE_SETTLEMENT.json",
+      "report": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\814ca737dc2b44e3d9acf9c61f53c7f3dfdbdb97218d47cd9c5de5a848656c5e\\account\\ACCEPT_A_DUAL_MA_TRAILING_BASE_REPORT.md"
+    },
+    "ACCEPT_A_DUAL_MA_TRAILING_STRESS": {
+      "result": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\814ca737dc2b44e3d9acf9c61f53c7f3dfdbdb97218d47cd9c5de5a848656c5e\\account\\ACCEPT_A_DUAL_MA_TRAILING_STRESS_RESULT.json",
+      "sha256": "c43d41cb602febc97585081af3d57dca09296243ec98d3d6d95c3ec48151536d",
+      "settlement": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\814ca737dc2b44e3d9acf9c61f53c7f3dfdbdb97218d47cd9c5de5a848656c5e\\account\\ACCEPT_A_DUAL_MA_TRAILING_STRESS_SETTLEMENT.json",
+      "report": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\814ca737dc2b44e3d9acf9c61f53c7f3dfdbdb97218d47cd9c5de5a848656c5e\\account\\ACCEPT_A_DUAL_MA_TRAILING_STRESS_REPORT.md"
+    },
+    "ACCEPT_A_DUAL_MA_TRAILING_BENCHMARK": {
+      "result": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\814ca737dc2b44e3d9acf9c61f53c7f3dfdbdb97218d47cd9c5de5a848656c5e\\account\\ACCEPT_A_DUAL_MA_TRAILING_BENCHMARK_RESULT.json",
+      "sha256": "9fd19b9d707b9d087dcf4f475fe3382ff95e14e61f0a05858bfb70887e6336cb",
+      "settlement": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\814ca737dc2b44e3d9acf9c61f53c7f3dfdbdb97218d47cd9c5de5a848656c5e\\account\\ACCEPT_A_DUAL_MA_TRAILING_BENCHMARK_SETTLEMENT.json",
+      "report": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\814ca737dc2b44e3d9acf9c61f53c7f3dfdbdb97218d47cd9c5de5a848656c5e\\account\\ACCEPT_A_DUAL_MA_TRAILING_BENCHMARK_REPORT.md"
+    }
+  }
+}

@@ -7,3 +7,31 @@
 /src/chanlun_trader/research_factory/formal_statistics_v2.py text eol=lf
 /scripts/calibrate_formal_statistics_v2.py text eol=lf
 /tests/research_factory/test_formal_statistics_v2.py text eol=lf
+
+# Preserve byte identities of the published trusted-workflow evidence.
+/src/chanlun_trader/research_factory/research_capabilities_v1.py text eol=crlf
+/src/chanlun_trader/research_factory/research_rule_strategy_v3.py -text
+/src/chanlun_trader/research_factory/strategy_submission_v1.py text eol=crlf
+/src/chanlun_trader/research_factory/research_data_provider_v1.py text eol=crlf
+/src/chanlun_trader/research_factory/rule_account_backend_v2.py text eol=crlf
+/src/chanlun_trader/research_factory/rule_exit_adapter_v3.py text eol=crlf
+/src/chanlun_trader/research_factory/forward_paper_engine_v1.py text eol=crlf
+/src/chanlun_trader/research_factory/strategy_interface_v1.py text eol=crlf
+/src/chanlun_trader/research_factory/research_benchmark_v1.py -text
+/reports/trusted_workflow_acceptance/** -text
+/reports/formal_account_method_v3_20260929/** -text
+/reports/formal_account_method_v3_20260929_run2/** -text
+
+# These immutable evidence files contain original Windows line endings.
+/reports/trusted_workflow_acceptance/** whitespace=cr-at-eol
+/reports/formal_account_method_v3_20260929/** whitespace=cr-at-eol
+/reports/formal_account_method_v3_20260929_run2/** whitespace=cr-at-eol
+/src/chanlun_trader/research_factory/research_rule_strategy_v3.py whitespace=cr-at-eol
+/src/chanlun_trader/research_factory/research_benchmark_v1.py whitespace=cr-at-eol
+# Preserve two source-byte identities in the published acceptance receipt.
+# Their exact content is checked by test_published_acceptance_v1.py.
+/src/chanlun_trader/research_factory/research_data_provider_v1.py whitespace=-blank-at-eof
+/src/chanlun_trader/research_factory/strategy_submission_v1.py whitespace=-blank-at-eol
+# Failure transcripts retain pytest's original diagnostic indentation.
+/reports/trusted-new-critical-tests.xml -whitespace
+/reports/trusted-process-fix-tests.xml -whitespace

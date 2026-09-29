@@ -1,0 +1,7 @@
+{
+  "returncode": 1,
+  "boundary": "ACCOUNT_EXECUTION_FINISHED_BEFORE_VERIFICATION_AND_REPORT",
+  "verification_existed": false,
+  "stdout": "",
+  "stderr": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n  File \"E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\scripts\\run_strategy_account_v1.py\", line 19, in <module>\n    from chanlun_trader.research_factory.strategy_interface_v1 import prepare,backend_for,run\nModuleNotFoundError: No module named 'chanlun_trader'\n"
+}

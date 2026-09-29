@@ -11,6 +11,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / 'src'))
 
 from chanlun_trader.research_factory.strategy_qualification_v1 import BoundedStrategyArchiveV1
+from chanlun_trader.research_factory.public_strategy_archive_v3 import PublicStrategyArchiveV3, archive_for_ids
 from chanlun_trader.research_factory.forward_snapshot_v1 import SnapshotStoreV1
 from chanlun_trader.research_factory.forward_paper_v1 import ForwardPaperSessionV1
 
@@ -37,6 +38,12 @@ def parser():
             command.add_argument('--strategy-id', required=True)
         if operation == 'revoke-strategy':
             command.add_argument('--reason', required=True)
+    public = commands.add_parser('public-freeze')
+    public.add_argument('--archive-root', required=True)
+    public.add_argument('--job-path', required=True)
+    public.add_argument('--name', required=True)
+    daily = commands.add_parser('daily-plan')
+    daily.add_argument('--root', required=True)
     capture = commands.add_parser('capture')
     capture.add_argument('--snapshot-root', required=True)
     capture.add_argument('--phase', choices=('OPEN', 'CLOSE'), required=True)
@@ -112,8 +119,14 @@ def execute(args):
             return CalendarEvidenceStoreV1(service.path(args.batch_id, 'calendar')).capture_tdx(
                 start=plan['not_before'], end=args.end)
         return service.status(args.batch_id)
+    if args.operation == 'public-freeze':
+        return PublicStrategyArchiveV3(args.archive_root).freeze(args.job_path, args.name)
+    if args.operation == 'daily-plan':
+        from chanlun_trader.research_factory.trusted_daily_plan_v1 import trusted_daily_plan
+        return trusted_daily_plan(ForwardPaperSessionV1(args.root))
     if args.operation in ('freeze', 'review', 'revoke-strategy'):
-        archive = BoundedStrategyArchiveV1(args.archive_root)
+        archive = (BoundedStrategyArchiveV1(args.archive_root) if args.operation == 'freeze'
+                   else archive_for_ids(args.archive_root, [args.strategy_id]))
         if args.operation == 'freeze':
             return archive.freeze(args.research_root, args.candidate_id)
         if args.operation == 'review':

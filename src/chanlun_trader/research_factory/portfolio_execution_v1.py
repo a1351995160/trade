@@ -106,6 +106,17 @@ def build_portfolio_plan(*, policy, decisions, ledger, admissions,
                            "priority": members[key[0]].priority,
                            "target_weight": float(target_weight),
                            "reason": str(decision.get("reason", "STRATEGY_DECISION"))})
+        if "exit_lot_ids" in decision:
+            lot_ids = decision["exit_lot_ids"]
+            if (decision["side"] != "SELL" or not isinstance(lot_ids, list) or not lot_ids
+                    or any(not isinstance(value, str) for value in lot_ids)
+                    or len(set(lot_ids)) != len(lot_ids)):
+                raise ValueError("PORTFOLIO_EXIT_LOTS_INVALID")
+            for lot_id in lot_ids:
+                lot = ledger.lots.get(lot_id)
+                if (lot is None or (lot.strategy_id, lot.symbol) != key or lot.remaining_quantity <= 0):
+                    raise ValueError("PORTFOLIO_EXIT_LOT_OWNERSHIP_INVALID")
+            normalized[-1]["exit_lot_ids"] = sorted(lot_ids)
     holdings = [jsonable(asdict(lot)) for lot in ledger.lots.values() if lot.remaining_quantity]
     unknown_holdings = any(lot["strategy_id"] not in members for lot in holdings)
     exits = {item["symbol"] for item in normalized if item["side"] == "SELL"

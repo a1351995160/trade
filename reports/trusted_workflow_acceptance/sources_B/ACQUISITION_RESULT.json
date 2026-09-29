@@ -1,0 +1,10 @@
+{
+  "completed": false,
+  "responses": [],
+  "request_count": 0,
+  "stage": "LOGIN",
+  "error_code": "10002007",
+  "error_msg": "网络接收错误。",
+  "automatic_retry": false,
+  "independent_confirmation_eligible": false
+}

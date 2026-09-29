@@ -1,0 +1,13 @@
+{
+  "kind": "ACCEPT_A_MA20_TAKE_PROFIT_BENCHMARK",
+  "reservation": "RES-000003",
+  "receipt_id": "674e030ef929fe115af0ba9b033ca1891e61f96162f04edb0ea91e311384083b",
+  "started_at": "2026-09-29T14:36:31.494247+00:00",
+  "counted_before_account_calculation": true,
+  "completed": true,
+  "wall_seconds": 7.969000000000051,
+  "result_sha256": "6d2f129678edfbb7edee5813c15567dcc43ffbba891c2f786d745e732abc0e92",
+  "error": null,
+  "settled_at": "2026-09-29T14:36:39.484699+00:00",
+  "repair_exposures": 0
+}

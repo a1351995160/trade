@@ -1,0 +1,540 @@
+{
+  "version": "PUBLISHED_RESEARCH_ACCEPTANCE_V1",
+  "source_hashes": {
+    "research_capabilities_v1.py": "271f67634c1dacd1696e309dadb2f8184927a3f972e1681a9f8b9211a87c0e89",
+    "research_rule_strategy_v3.py": "5d998eb18ecba96e223f5c48ff74cb5b0f1180c202481413e68d76b2b512fc11",
+    "strategy_submission_v1.py": "5a2acd496ae1a3f0df2d3087a9e7020fd3a4fa2e0147771ebf13b23b170ac2aa",
+    "research_data_provider_v1.py": "846024a55b1eac7908e0c89e5bf3650bf0400c225d4671ec7f641337336ca7e3",
+    "rule_account_backend_v2.py": "8a632c9eeee782bf6429898529a92c6e56463ebf29b5943a090da480ebe89d61",
+    "rule_exit_adapter_v3.py": "47fb80135d1a257072bbe13aaa7dbd098efcf06ba3cb189d6b505ecae04d488c",
+    "forward_paper_engine_v1.py": "8aa4c43709bcb2467ee03dcd2f6324ada36f0b7c20f40d9639d4fd00b973cd79",
+    "strategy_interface_v1.py": "7df9e774f9974d0af16c76d727c52b02361ebcc44de1d1d14b4c62af3369cdde",
+    "research_benchmark_v1.py": "c3786b9d41fc3a3bc9a01d97119cd83210f8c6099fcc778a63fd367a77eb6946"
+  },
+  "feature_ids": [
+    "indicator_rules",
+    "cost_stop",
+    "take_profit",
+    "trailing_stop",
+    "full_pool_benchmark"
+  ],
+  "cases": [
+    {
+      "rule_identity": "bb3b33667bcc61fbe85a20e0a4d4c0a9ac9bdbf77bc73c1754e13867ec97ff41",
+      "symbols": [
+        "000001.SZ",
+        "000002.SZ",
+        "600000.SH"
+      ],
+      "pool_identity": "9cfc7640367a9ad858faee44ba6b940b6c23d933eb24fc999df92a5daff7dc7f",
+      "initial_cash": 50000,
+      "job": {
+        "path": "reports/trusted_workflow_acceptance/published_metadata/A_DUAL_MA_TRAILING_50000/JOB.json",
+        "sha256": "4259d60413eeac377a568c913c43ba8db7ec602e48b951de5a50323bda481f70"
+      },
+      "preview": {
+        "path": "reports/trusted_workflow_acceptance/published_metadata/A_DUAL_MA_TRAILING_50000/PREVIEW.json",
+        "sha256": "e2827ff91e505e5d5ee293369c0aad24fd40a164b6973d11da14c1c39dc26224"
+      },
+      "verification": {
+        "path": "reports/trusted_workflow_acceptance/published_metadata/A_DUAL_MA_TRAILING_50000/VERIFICATION.json",
+        "sha256": "763d2a0ef91719ebf118ba686855b76abd14d7b5e3e202d375faf496335f29ac"
+      },
+      "confirmation": {
+        "path": "reports/trusted_workflow_acceptance/published_metadata/A_DUAL_MA_TRAILING_50000/CONFIRMATION.json",
+        "sha256": "aa040b8ac6bef7555be8bd52335f93e97b3b0d1efd538056817951233dfc8c83"
+      },
+      "index": {
+        "path": "reports/trusted_workflow_acceptance/published_metadata/A_DUAL_MA_TRAILING_50000/RESULTS_INDEX.json",
+        "sha256": "e1d5e451d3d936e506d3dfb4786b23cea2243ff84edad25fe599f34ac18bb6b4"
+      },
+      "accounts": {
+        "ACCEPT_A_DUAL_MA_TRAILING_BASE": {
+          "result": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/A_DUAL_MA_TRAILING_50000/ACCEPT_A_DUAL_MA_TRAILING_BASE_RESULT.json",
+            "sha256": "7e1453a796f75226d06f93e076051560dfc527846fb1374bf32d7e9cc281d1d3"
+          },
+          "settlement": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/A_DUAL_MA_TRAILING_50000/ACCEPT_A_DUAL_MA_TRAILING_BASE_SETTLEMENT.json",
+            "sha256": "e825c3c9c0c206ea424e0a6decf7d4eb80edb34bd3947899a2246a57f5516877"
+          },
+          "start": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/A_DUAL_MA_TRAILING_50000/ACCEPT_A_DUAL_MA_TRAILING_BASE_START.json",
+            "sha256": "79331251600af5af7b3a47763eb37c50da8736844a65be921c74525338a01ab6"
+          },
+          "resource": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/A_DUAL_MA_TRAILING_50000/ACCEPT_A_DUAL_MA_TRAILING_BASE_RESOURCE.json",
+            "sha256": "72607265413749d5e8991475627171dfd921cfb7609bffb25455e5ab15a71139"
+          }
+        },
+        "ACCEPT_A_DUAL_MA_TRAILING_STRESS": {
+          "result": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/A_DUAL_MA_TRAILING_50000/ACCEPT_A_DUAL_MA_TRAILING_STRESS_RESULT.json",
+            "sha256": "c43d41cb602febc97585081af3d57dca09296243ec98d3d6d95c3ec48151536d"
+          },
+          "settlement": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/A_DUAL_MA_TRAILING_50000/ACCEPT_A_DUAL_MA_TRAILING_STRESS_SETTLEMENT.json",
+            "sha256": "f4c82bb7df1354304c1efafe4562f4535529e9e211874861fbf98f4bd001a610"
+          },
+          "start": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/A_DUAL_MA_TRAILING_50000/ACCEPT_A_DUAL_MA_TRAILING_STRESS_START.json",
+            "sha256": "189a1f1ae1d4fbbd41dd5e54f4e1da31e0bbb0e26f66f5109578d7c64b88e906"
+          },
+          "resource": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/A_DUAL_MA_TRAILING_50000/ACCEPT_A_DUAL_MA_TRAILING_STRESS_RESOURCE.json",
+            "sha256": "e68bbee8c3f9ea45530b7f3b1ebf4079d5b9c371d3e00129c3ca42d7ae3bd7c9"
+          }
+        },
+        "ACCEPT_A_DUAL_MA_TRAILING_BENCHMARK": {
+          "result": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/A_DUAL_MA_TRAILING_50000/ACCEPT_A_DUAL_MA_TRAILING_BENCHMARK_RESULT.json",
+            "sha256": "9fd19b9d707b9d087dcf4f475fe3382ff95e14e61f0a05858bfb70887e6336cb"
+          },
+          "settlement": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/A_DUAL_MA_TRAILING_50000/ACCEPT_A_DUAL_MA_TRAILING_BENCHMARK_SETTLEMENT.json",
+            "sha256": "230191baff2bf3eb486ab001a4755ee145ea39a599075ca1eaeb97b9214d4c69"
+          },
+          "start": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/A_DUAL_MA_TRAILING_50000/ACCEPT_A_DUAL_MA_TRAILING_BENCHMARK_START.json",
+            "sha256": "450a185d8e3679ba37bbed058865661dd5955652c4c13edadd5c03c3252a114c"
+          },
+          "resource": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/A_DUAL_MA_TRAILING_50000/ACCEPT_A_DUAL_MA_TRAILING_BENCHMARK_RESOURCE.json",
+            "sha256": "f8af42ea820063c2ef16c8a001c6c68ccc89a66795f1e2a135bea3c5db6098ce"
+          }
+        }
+      }
+    },
+    {
+      "rule_identity": "fa7b5c57e0273b2532ca8413856f74f91d5d7cc0584a9755dafe3f4704d126fc",
+      "symbols": [
+        "000001.SZ",
+        "000002.SZ",
+        "600000.SH"
+      ],
+      "pool_identity": "9cfc7640367a9ad858faee44ba6b940b6c23d933eb24fc999df92a5daff7dc7f",
+      "initial_cash": 50000,
+      "job": {
+        "path": "reports/trusted_workflow_acceptance/published_metadata/A_MA10_COST_STOP_50000/JOB.json",
+        "sha256": "394b732d140d107ed47c13f1552e265e0c04f062f32cb40b637c365a88d66978"
+      },
+      "preview": {
+        "path": "reports/trusted_workflow_acceptance/published_metadata/A_MA10_COST_STOP_50000/PREVIEW.json",
+        "sha256": "6bd94b31c4edad8fc13a0a384dbf96a201ca4bde5ae553732177ba992c8fc813"
+      },
+      "verification": {
+        "path": "reports/trusted_workflow_acceptance/published_metadata/A_MA10_COST_STOP_50000/VERIFICATION.json",
+        "sha256": "0dbc8b9d26cd89c3c1c3ff5dfbf5745aaa23e2d5d0fb54407c2825700ab517af"
+      },
+      "confirmation": {
+        "path": "reports/trusted_workflow_acceptance/published_metadata/A_MA10_COST_STOP_50000/CONFIRMATION.json",
+        "sha256": "54122f6421612ef0ea92f125a7efd94ca0a4b2160a4fff1f898257636ce749e7"
+      },
+      "index": {
+        "path": "reports/trusted_workflow_acceptance/published_metadata/A_MA10_COST_STOP_50000/RESULTS_INDEX.json",
+        "sha256": "c04d6460f51c9e704364c4c1a462884c30fb1d8e6eaf01e503a31aeb3aec5b6a"
+      },
+      "accounts": {
+        "ACCEPT_A_MA10_COST_STOP_BASE": {
+          "result": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/A_MA10_COST_STOP_50000/ACCEPT_A_MA10_COST_STOP_BASE_RESULT.json",
+            "sha256": "aeada6ba2de50553cd2e4e50b6e7c60c65ac109eda73366c35823ad9a003ccb8"
+          },
+          "settlement": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/A_MA10_COST_STOP_50000/ACCEPT_A_MA10_COST_STOP_BASE_SETTLEMENT.json",
+            "sha256": "be087ada865d3ae7f9b0d4bd0460772bb52288353f4bef92f7e68ce95326cfda"
+          },
+          "start": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/A_MA10_COST_STOP_50000/ACCEPT_A_MA10_COST_STOP_BASE_START.json",
+            "sha256": "32fca02b9d75263822f7ef2ae3811d8c26e41832b41d71cb583271abed3f29c3"
+          },
+          "resource": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/A_MA10_COST_STOP_50000/ACCEPT_A_MA10_COST_STOP_BASE_RESOURCE.json",
+            "sha256": "53dd24a1b894421e4dbb1848e5eb407ebdef2a56a03061e03c4ac66a9a66d3ef"
+          }
+        },
+        "ACCEPT_A_MA10_COST_STOP_STRESS": {
+          "result": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/A_MA10_COST_STOP_50000/ACCEPT_A_MA10_COST_STOP_STRESS_RESULT.json",
+            "sha256": "b58155c02d940463c04484f2f0dbacc9f95d20a494c3f1eeb48bd17525365e52"
+          },
+          "settlement": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/A_MA10_COST_STOP_50000/ACCEPT_A_MA10_COST_STOP_STRESS_SETTLEMENT.json",
+            "sha256": "fb94fadafdf45643da518ffd3a5ef0fa116d6d8c496056e3153d8636953fb47a"
+          },
+          "start": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/A_MA10_COST_STOP_50000/ACCEPT_A_MA10_COST_STOP_STRESS_START.json",
+            "sha256": "25916ff248933c54b6a8e6839094b07a8c984d5ee8cc70068d58a42644e2333d"
+          },
+          "resource": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/A_MA10_COST_STOP_50000/ACCEPT_A_MA10_COST_STOP_STRESS_RESOURCE.json",
+            "sha256": "b7ae485e14a0a6f3f77ea5cb2b4722a9acd39330f0eddce736bc66d758a9cfde"
+          }
+        },
+        "ACCEPT_A_MA10_COST_STOP_BENCHMARK": {
+          "result": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/A_MA10_COST_STOP_50000/ACCEPT_A_MA10_COST_STOP_BENCHMARK_RESULT.json",
+            "sha256": "645c8a2d00a0fdeba8e6361f14d2f7b7257826ec91ced8c6a53c9a1606e495bb"
+          },
+          "settlement": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/A_MA10_COST_STOP_50000/ACCEPT_A_MA10_COST_STOP_BENCHMARK_SETTLEMENT.json",
+            "sha256": "5fcde3e01df87ba82b4015877973ca5331af47f907aa57edac6a34e34fe970a2"
+          },
+          "start": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/A_MA10_COST_STOP_50000/ACCEPT_A_MA10_COST_STOP_BENCHMARK_START.json",
+            "sha256": "c1390f080330c415b2cd604d489a4082e49c5838608a2b25552efde015671795"
+          },
+          "resource": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/A_MA10_COST_STOP_50000/ACCEPT_A_MA10_COST_STOP_BENCHMARK_RESOURCE.json",
+            "sha256": "c1d82b1627603e9466b911c3f4c6d56a4e201ea490d2e9819d6eb5e7478f9fb2"
+          }
+        }
+      }
+    },
+    {
+      "rule_identity": "9a1a7a2b8f863e9a393c2e359983f799b96023dbfaacf2ece53e8f87bf67ceae",
+      "symbols": [
+        "000001.SZ",
+        "000002.SZ",
+        "600000.SH"
+      ],
+      "pool_identity": "9cfc7640367a9ad858faee44ba6b940b6c23d933eb24fc999df92a5daff7dc7f",
+      "initial_cash": 50000,
+      "job": {
+        "path": "reports/trusted_workflow_acceptance/published_metadata/A_MA20_TAKE_PROFIT_50000/JOB.json",
+        "sha256": "186481d1c7bcc022428945b0870c256a3675ac6aa8f8c2058b8e2d324b439556"
+      },
+      "preview": {
+        "path": "reports/trusted_workflow_acceptance/published_metadata/A_MA20_TAKE_PROFIT_50000/PREVIEW.json",
+        "sha256": "f498d936b09544582892f35ee0ddd3176b29d657ad159e153d961b3abfef3610"
+      },
+      "verification": {
+        "path": "reports/trusted_workflow_acceptance/published_metadata/A_MA20_TAKE_PROFIT_50000/VERIFICATION.json",
+        "sha256": "4ce3da6ec616049a6382a0636f9135904fa0bf50d70423be3d790e789fa8dc62"
+      },
+      "confirmation": {
+        "path": "reports/trusted_workflow_acceptance/published_metadata/A_MA20_TAKE_PROFIT_50000/CONFIRMATION.json",
+        "sha256": "f64b58db319f7397ce52a06aa0b8c1a74311893a88dbf9929a0ed6b332010ca0"
+      },
+      "index": {
+        "path": "reports/trusted_workflow_acceptance/published_metadata/A_MA20_TAKE_PROFIT_50000/RESULTS_INDEX.json",
+        "sha256": "70ed0036943597140e47bd62aa3ccc47dacf0593d31449f2fe577071ecc5e02a"
+      },
+      "accounts": {
+        "ACCEPT_A_MA20_TAKE_PROFIT_BASE": {
+          "result": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/A_MA20_TAKE_PROFIT_50000/ACCEPT_A_MA20_TAKE_PROFIT_BASE_RESULT.json",
+            "sha256": "505150247147f3e08e0d1b8f9dc98e4ffffe6989155918394a7070957c1fff4a"
+          },
+          "settlement": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/A_MA20_TAKE_PROFIT_50000/ACCEPT_A_MA20_TAKE_PROFIT_BASE_SETTLEMENT.json",
+            "sha256": "cc54d7209f28d4f4defc217a29a952e95b36f6b82a2216e8d0910bafeab2502b"
+          },
+          "start": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/A_MA20_TAKE_PROFIT_50000/ACCEPT_A_MA20_TAKE_PROFIT_BASE_START.json",
+            "sha256": "2d253d4068559243b46081bc59263cb52fe22ebf923e75cf6a4eff521b3e3197"
+          },
+          "resource": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/A_MA20_TAKE_PROFIT_50000/ACCEPT_A_MA20_TAKE_PROFIT_BASE_RESOURCE.json",
+            "sha256": "dd208f41361a341e593baf620eae52d8f213cc8f84e3b0f170eb2f10cf25fd39"
+          }
+        },
+        "ACCEPT_A_MA20_TAKE_PROFIT_STRESS": {
+          "result": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/A_MA20_TAKE_PROFIT_50000/ACCEPT_A_MA20_TAKE_PROFIT_STRESS_RESULT.json",
+            "sha256": "ebaf7eec3b5943e49f7de0b37e93082ecb4fb1077e3ef1fb2d5cc9477ecdc3ee"
+          },
+          "settlement": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/A_MA20_TAKE_PROFIT_50000/ACCEPT_A_MA20_TAKE_PROFIT_STRESS_SETTLEMENT.json",
+            "sha256": "569909227cb202e3811dda26b4f036a83c94616209e846650216f43b29b3080d"
+          },
+          "start": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/A_MA20_TAKE_PROFIT_50000/ACCEPT_A_MA20_TAKE_PROFIT_STRESS_START.json",
+            "sha256": "69f18fc8e72ef6fffc1627f13878dfb997217930f72925938632313ea1de84fa"
+          },
+          "resource": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/A_MA20_TAKE_PROFIT_50000/ACCEPT_A_MA20_TAKE_PROFIT_STRESS_RESOURCE.json",
+            "sha256": "20b057e87e88a279927c2334ff5f1be58881d7fa93bbd6df958c27c0e050de5b"
+          }
+        },
+        "ACCEPT_A_MA20_TAKE_PROFIT_BENCHMARK": {
+          "result": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/A_MA20_TAKE_PROFIT_50000/ACCEPT_A_MA20_TAKE_PROFIT_BENCHMARK_RESULT.json",
+            "sha256": "6d2f129678edfbb7edee5813c15567dcc43ffbba891c2f786d745e732abc0e92"
+          },
+          "settlement": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/A_MA20_TAKE_PROFIT_50000/ACCEPT_A_MA20_TAKE_PROFIT_BENCHMARK_SETTLEMENT.json",
+            "sha256": "55711231bd72f039465994a4860e97b621de139c9921dfeee8cd83de836e6c79"
+          },
+          "start": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/A_MA20_TAKE_PROFIT_50000/ACCEPT_A_MA20_TAKE_PROFIT_BENCHMARK_START.json",
+            "sha256": "e544838824c33760f87b6c6ec68a502d1055df8c2f1f6f822481d75c0a8c236f"
+          },
+          "resource": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/A_MA20_TAKE_PROFIT_50000/ACCEPT_A_MA20_TAKE_PROFIT_BENCHMARK_RESOURCE.json",
+            "sha256": "7bd7287e1e1ae90ff97c3af0a663f74778dab5bfad6ab816e8e6b69e7d88f7f4"
+          }
+        }
+      }
+    },
+    {
+      "rule_identity": "bb3b33667bcc61fbe85a20e0a4d4c0a9ac9bdbf77bc73c1754e13867ec97ff41",
+      "symbols": [
+        "000006.SZ",
+        "000733.SZ",
+        "002036.SZ"
+      ],
+      "pool_identity": "1d54de60967112bb1a706c94bffc3e85c026ce605e50f41eab04577b585db163",
+      "initial_cash": 50000,
+      "job": {
+        "path": "reports/trusted_workflow_acceptance/published_metadata/B_DUAL_MA_TRAILING_50000/JOB.json",
+        "sha256": "7f765cacd737176b106d854ee38bd3be41fa893ef30f4cdb9a73656837b1950d"
+      },
+      "preview": {
+        "path": "reports/trusted_workflow_acceptance/published_metadata/B_DUAL_MA_TRAILING_50000/PREVIEW.json",
+        "sha256": "6ae02569dc60f990e8f58fcd0560c8493fa205744a5516aa7352cba6b63f2b48"
+      },
+      "verification": {
+        "path": "reports/trusted_workflow_acceptance/published_metadata/B_DUAL_MA_TRAILING_50000/VERIFICATION.json",
+        "sha256": "8c075c3b9e28d9867be54de360253ea8b149fc45282aed5fe66da5e786b98405"
+      },
+      "confirmation": {
+        "path": "reports/trusted_workflow_acceptance/published_metadata/B_DUAL_MA_TRAILING_50000/CONFIRMATION.json",
+        "sha256": "d21d296d9aecd515fa1acdbeb966d90bb9e0851bf8c860706df541f0af384a42"
+      },
+      "index": {
+        "path": "reports/trusted_workflow_acceptance/published_metadata/B_DUAL_MA_TRAILING_50000/RESULTS_INDEX.json",
+        "sha256": "ab18873f9040fa2b735f0f043f49608113170bae8d2c264c60a01e25edfca203"
+      },
+      "accounts": {
+        "ACCEPT_B_DUAL_MA_TRAILING_BASE": {
+          "result": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/B_DUAL_MA_TRAILING_50000/ACCEPT_B_DUAL_MA_TRAILING_BASE_RESULT.json",
+            "sha256": "abb4383a3f3319830fe44c1ab79aca969d34ef1fc6e9066b24b6d67c16a813fb"
+          },
+          "settlement": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/B_DUAL_MA_TRAILING_50000/ACCEPT_B_DUAL_MA_TRAILING_BASE_SETTLEMENT.json",
+            "sha256": "4755b170d58ef50bc1103a90de5a14093ad456b896b28fdca2931e560afe7957"
+          },
+          "start": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/B_DUAL_MA_TRAILING_50000/ACCEPT_B_DUAL_MA_TRAILING_BASE_START.json",
+            "sha256": "cceb1aa1c5ddc6cc66e27e580f5dbb16e7fe16c71a9b822d781bf5c56228a228"
+          },
+          "resource": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/B_DUAL_MA_TRAILING_50000/ACCEPT_B_DUAL_MA_TRAILING_BASE_RESOURCE.json",
+            "sha256": "a9794d7eb6a40d2b74905c8b4895ab65e2884ead6e41c53c80c013afc2e15b60"
+          }
+        },
+        "ACCEPT_B_DUAL_MA_TRAILING_STRESS": {
+          "result": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/B_DUAL_MA_TRAILING_50000/ACCEPT_B_DUAL_MA_TRAILING_STRESS_RESULT.json",
+            "sha256": "ecfecef3029cb451f163e010ca845d2e7feadeab52720ba9a5f9b2c0ac2a041c"
+          },
+          "settlement": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/B_DUAL_MA_TRAILING_50000/ACCEPT_B_DUAL_MA_TRAILING_STRESS_SETTLEMENT.json",
+            "sha256": "b7a97ed2c3e0142aebd4dfa6622432ee1f455dab8b9113b6dab28059355968f8"
+          },
+          "start": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/B_DUAL_MA_TRAILING_50000/ACCEPT_B_DUAL_MA_TRAILING_STRESS_START.json",
+            "sha256": "2b811c95e338323e4dd16c966595836d1b85f39fc482ca3e1d6e95e9653e6dc1"
+          },
+          "resource": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/B_DUAL_MA_TRAILING_50000/ACCEPT_B_DUAL_MA_TRAILING_STRESS_RESOURCE.json",
+            "sha256": "8f9b332812ecb3885d92ca049bbce26ad7dba385998b20f817bfbd0cf9f48c01"
+          }
+        },
+        "ACCEPT_B_DUAL_MA_TRAILING_BENCHMARK": {
+          "result": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/B_DUAL_MA_TRAILING_50000/ACCEPT_B_DUAL_MA_TRAILING_BENCHMARK_RESULT.json",
+            "sha256": "aac96da853f87fc6e23385951cbaa9cde8e1138aef51850fc5b75a78ccab15e5"
+          },
+          "settlement": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/B_DUAL_MA_TRAILING_50000/ACCEPT_B_DUAL_MA_TRAILING_BENCHMARK_SETTLEMENT.json",
+            "sha256": "58f4b0094b7058cf4ffd64ccf0ed3fb18211334c7627f30f07fed7b8a5743b21"
+          },
+          "start": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/B_DUAL_MA_TRAILING_50000/ACCEPT_B_DUAL_MA_TRAILING_BENCHMARK_START.json",
+            "sha256": "1f64c5c48cbb8747036c77cd40988ac07dfd2ea1e03902c1bc52b9b4052eca20"
+          },
+          "resource": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/B_DUAL_MA_TRAILING_50000/ACCEPT_B_DUAL_MA_TRAILING_BENCHMARK_RESOURCE.json",
+            "sha256": "7072599f2a0f2b69b25761a6f937b010000be0c45bba7c927859b8d7f87a63d4"
+          }
+        }
+      }
+    },
+    {
+      "rule_identity": "fa7b5c57e0273b2532ca8413856f74f91d5d7cc0584a9755dafe3f4704d126fc",
+      "symbols": [
+        "000006.SZ",
+        "000733.SZ",
+        "002036.SZ"
+      ],
+      "pool_identity": "1d54de60967112bb1a706c94bffc3e85c026ce605e50f41eab04577b585db163",
+      "initial_cash": 50000,
+      "job": {
+        "path": "reports/trusted_workflow_acceptance/published_metadata/B_MA10_COST_STOP_50000/JOB.json",
+        "sha256": "7b2ece67a7fa3d65e137db7fb64efed6a555f6bd39a73288c297f04520e78d35"
+      },
+      "preview": {
+        "path": "reports/trusted_workflow_acceptance/published_metadata/B_MA10_COST_STOP_50000/PREVIEW.json",
+        "sha256": "27d24fcd055f78a26f726df6c986927e8cf7b990b0e870171eeeb184d130b0ed"
+      },
+      "verification": {
+        "path": "reports/trusted_workflow_acceptance/published_metadata/B_MA10_COST_STOP_50000/VERIFICATION.json",
+        "sha256": "245bc36c43704d819eb3e2f0d795f0e585fd4f10277151b035603fd96874f0f7"
+      },
+      "confirmation": {
+        "path": "reports/trusted_workflow_acceptance/published_metadata/B_MA10_COST_STOP_50000/CONFIRMATION.json",
+        "sha256": "da2698609b4c69a8f5c1a6155fa208bc9093fca4ee416075f71e0ebcbe858b26"
+      },
+      "index": {
+        "path": "reports/trusted_workflow_acceptance/published_metadata/B_MA10_COST_STOP_50000/RESULTS_INDEX.json",
+        "sha256": "ddda07c994709aca81dc0879d12f41476bdab3ffa99331ee2d9d3a0f2652c259"
+      },
+      "accounts": {
+        "ACCEPT_B_MA10_COST_STOP_BASE": {
+          "result": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/B_MA10_COST_STOP_50000/ACCEPT_B_MA10_COST_STOP_BASE_RESULT.json",
+            "sha256": "62ed5694f6d910d984984b7bf65b347449ddd22d1bb738b35e8f523290e792a2"
+          },
+          "settlement": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/B_MA10_COST_STOP_50000/ACCEPT_B_MA10_COST_STOP_BASE_SETTLEMENT.json",
+            "sha256": "b3930e859cbe73ae38753f49bf51adf445d26d704080b96b191037b7da9bb9b8"
+          },
+          "start": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/B_MA10_COST_STOP_50000/ACCEPT_B_MA10_COST_STOP_BASE_START.json",
+            "sha256": "dbd61b6ce73fe7407fde6d412330bd336e4b40284c5527b68ef50fdbe6479c84"
+          },
+          "resource": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/B_MA10_COST_STOP_50000/ACCEPT_B_MA10_COST_STOP_BASE_RESOURCE.json",
+            "sha256": "198c858373358316ac5d86997ad7ab05fd3036f91f0c9a29d0656ad18b670db2"
+          }
+        },
+        "ACCEPT_B_MA10_COST_STOP_STRESS": {
+          "result": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/B_MA10_COST_STOP_50000/ACCEPT_B_MA10_COST_STOP_STRESS_RESULT.json",
+            "sha256": "6e715b9aeafb4b83f8bd39d2e23d909b3adb41e73071ac059da6dbe7d2552af6"
+          },
+          "settlement": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/B_MA10_COST_STOP_50000/ACCEPT_B_MA10_COST_STOP_STRESS_SETTLEMENT.json",
+            "sha256": "d6fad598a18b72f61d54781ead120e89767d535a21fb6895bc63cdd453ec9b0b"
+          },
+          "start": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/B_MA10_COST_STOP_50000/ACCEPT_B_MA10_COST_STOP_STRESS_START.json",
+            "sha256": "45da1d61d689f2d22fa1f97eac9efacfa07982924a346ddfdb6cedacaedec509"
+          },
+          "resource": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/B_MA10_COST_STOP_50000/ACCEPT_B_MA10_COST_STOP_STRESS_RESOURCE.json",
+            "sha256": "cb57f6322c0439317c3fa33755f7a07dfc70c4e141d49e5f83cde72e15c96ffa"
+          }
+        },
+        "ACCEPT_B_MA10_COST_STOP_BENCHMARK": {
+          "result": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/B_MA10_COST_STOP_50000/ACCEPT_B_MA10_COST_STOP_BENCHMARK_RESULT.json",
+            "sha256": "8ffa428d042ec62ed27f0199d84c4bd5d9ae1c81f355e7cd2d91ca3f50bd22a5"
+          },
+          "settlement": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/B_MA10_COST_STOP_50000/ACCEPT_B_MA10_COST_STOP_BENCHMARK_SETTLEMENT.json",
+            "sha256": "d7ed9bc5580cd9d34226ef4c89db16d8115116a68d254daa7e46acd459c7fe38"
+          },
+          "start": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/B_MA10_COST_STOP_50000/ACCEPT_B_MA10_COST_STOP_BENCHMARK_START.json",
+            "sha256": "186dd66a8e982cd16910a7895a64fba14e39aef105be8dd4d960832f8b0a4b76"
+          },
+          "resource": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/B_MA10_COST_STOP_50000/ACCEPT_B_MA10_COST_STOP_BENCHMARK_RESOURCE.json",
+            "sha256": "5424f4495785472cf737b8cd6e0ed111ebb86132fc02e3cc0004707436926287"
+          }
+        }
+      }
+    },
+    {
+      "rule_identity": "9a1a7a2b8f863e9a393c2e359983f799b96023dbfaacf2ece53e8f87bf67ceae",
+      "symbols": [
+        "000006.SZ",
+        "000733.SZ",
+        "002036.SZ"
+      ],
+      "pool_identity": "1d54de60967112bb1a706c94bffc3e85c026ce605e50f41eab04577b585db163",
+      "initial_cash": 50000,
+      "job": {
+        "path": "reports/trusted_workflow_acceptance/published_metadata/B_MA20_TAKE_PROFIT_50000/JOB.json",
+        "sha256": "f7cf0cb7fe6d2c187f7be2e66155bf3016ea1881a4fdbd9424a4686f3168b8d5"
+      },
+      "preview": {
+        "path": "reports/trusted_workflow_acceptance/published_metadata/B_MA20_TAKE_PROFIT_50000/PREVIEW.json",
+        "sha256": "4d29d2523406c92bca4446a09ac5f16ef40bd36f707317be2fb06937b7164a74"
+      },
+      "verification": {
+        "path": "reports/trusted_workflow_acceptance/published_metadata/B_MA20_TAKE_PROFIT_50000/VERIFICATION.json",
+        "sha256": "931a5a68aeff1c69b7d7223461ec21cc2e190d759319e978c3819c17be5a4708"
+      },
+      "confirmation": {
+        "path": "reports/trusted_workflow_acceptance/published_metadata/B_MA20_TAKE_PROFIT_50000/CONFIRMATION.json",
+        "sha256": "f1eca5094f7f2f524dfe291cf1375dff336cb06e3541ba018bea3e0838dee91b"
+      },
+      "index": {
+        "path": "reports/trusted_workflow_acceptance/published_metadata/B_MA20_TAKE_PROFIT_50000/RESULTS_INDEX.json",
+        "sha256": "075f6a886a9d7f0a3fc0e5b4b772e85638cb2a3459e7aea355e3f08d8775ee43"
+      },
+      "accounts": {
+        "ACCEPT_B_MA20_TAKE_PROFIT_BASE": {
+          "result": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/B_MA20_TAKE_PROFIT_50000/ACCEPT_B_MA20_TAKE_PROFIT_BASE_RESULT.json",
+            "sha256": "feb0aec220597755f87316261a21282b611b438057525c3066802664b290969d"
+          },
+          "settlement": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/B_MA20_TAKE_PROFIT_50000/ACCEPT_B_MA20_TAKE_PROFIT_BASE_SETTLEMENT.json",
+            "sha256": "30aa3651186bf469783f75e4992ff1ca6230765cd52294f548730f9d43e49635"
+          },
+          "start": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/B_MA20_TAKE_PROFIT_50000/ACCEPT_B_MA20_TAKE_PROFIT_BASE_START.json",
+            "sha256": "7330f4ce3ae01685f2796d5d415c047d1b523942aaf43cb92807f7c1c1dd6d2d"
+          },
+          "resource": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/B_MA20_TAKE_PROFIT_50000/ACCEPT_B_MA20_TAKE_PROFIT_BASE_RESOURCE.json",
+            "sha256": "a3f2fd3867901f7b9e5d27f81542a34a67a4cec77693be1db5a34e1f445f9ad4"
+          }
+        },
+        "ACCEPT_B_MA20_TAKE_PROFIT_STRESS": {
+          "result": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/B_MA20_TAKE_PROFIT_50000/ACCEPT_B_MA20_TAKE_PROFIT_STRESS_RESULT.json",
+            "sha256": "e728b528fd409a7083a790b63d60bf16c8e4f13bec2a89ff823be8b8946fa555"
+          },
+          "settlement": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/B_MA20_TAKE_PROFIT_50000/ACCEPT_B_MA20_TAKE_PROFIT_STRESS_SETTLEMENT.json",
+            "sha256": "9e770f139df82e8c8e0201812609a93065d5d3321c1bb15e3523c3d226926978"
+          },
+          "start": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/B_MA20_TAKE_PROFIT_50000/ACCEPT_B_MA20_TAKE_PROFIT_STRESS_START.json",
+            "sha256": "c6055f6305a7e2ed7e17ade87dbd47d3ca90b87b1baa6602d67f62f27283d474"
+          },
+          "resource": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/B_MA20_TAKE_PROFIT_50000/ACCEPT_B_MA20_TAKE_PROFIT_STRESS_RESOURCE.json",
+            "sha256": "4f1cabd1ea7a14d3e12f84f6c4b3d1c3dc21e43e1154f77420086929ecbafb08"
+          }
+        },
+        "ACCEPT_B_MA20_TAKE_PROFIT_BENCHMARK": {
+          "result": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/B_MA20_TAKE_PROFIT_50000/ACCEPT_B_MA20_TAKE_PROFIT_BENCHMARK_RESULT.json",
+            "sha256": "c9bcbebd2d00ae2cf95568202b306eec9b404caea9dec8710a0aa6678fe321f3"
+          },
+          "settlement": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/B_MA20_TAKE_PROFIT_50000/ACCEPT_B_MA20_TAKE_PROFIT_BENCHMARK_SETTLEMENT.json",
+            "sha256": "a4d7bba9927918d56e65b93c830e67199a8dd4f781a32c9b7abfab585fc87d91"
+          },
+          "start": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/B_MA20_TAKE_PROFIT_50000/ACCEPT_B_MA20_TAKE_PROFIT_BENCHMARK_START.json",
+            "sha256": "058cb94bc8ed0022a7751d222f68c5cde9f2189a737c6cf8fca3add303c78742"
+          },
+          "resource": {
+            "path": "reports/trusted_workflow_acceptance/published_metadata/B_MA20_TAKE_PROFIT_50000/ACCEPT_B_MA20_TAKE_PROFIT_BENCHMARK_RESOURCE.json",
+            "sha256": "9b5cefdf974c8342d1b5e16dd0e39450132fefaedb7d713b4cdd1b31d2198d7c"
+          }
+        }
+      }
+    }
+  ],
+  "self_hash": "551a7d2333563f366ff6087cdcf6082304dc5241f80c17b91aee7c531adcb049"
+}

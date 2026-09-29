@@ -60,9 +60,11 @@ def test_cli_and_ui_share_qualified_loader(tmp_path, monkeypatch):
     marker = object()
     monkeypatch.setattr(deployment, 'qualified_research_loader', lambda root: marker)
     seen = []
+    binding_ids = []
     class Service:
-        def __init__(self, root, bindings, *, research_loader):
+        def __init__(self, root, bindings, *, research_loader, real_binding_ids=()):
             seen.append(research_loader)
+            binding_ids.append(tuple(real_binding_ids))
         def inspect(self):
             return {'bindings': {}}
     monkeypatch.setattr(services, 'LifecycleServiceV2', Service)
@@ -73,3 +75,8 @@ def test_cli_and_ui_share_qualified_loader(tmp_path, monkeypatch):
     config.write_text(json.dumps({'bindings': {}}), encoding='utf-8')
     lifecycle_service(tmp_path, config)
     assert seen == [marker, marker]
+    assert binding_ids == [(), ()]
+    config.write_text(json.dumps({"bindings": {}, "real_binding_ids": ["REGISTERED_REAL"]}), encoding="utf-8")
+    lifecycle_service(tmp_path, config)
+    assert binding_ids[-1] == ("REGISTERED_REAL",)
+    assert seen[-1] is marker

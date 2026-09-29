@@ -133,7 +133,9 @@ def worker(path,name):
     backend=backend_for(strategy,item.get('backend_options'))
     if prepare(strategy,backend,item)!=job['plans'][name]:raise PermissionError('WORKER_PLAN_CONFLICT')
     root=Path(job['root'])
-    save(root/(name+'_INPUT_ACCESS.json'),{'reader_pid':os.getpid(),'input_identity':job['input_identity'],
+    save(root/(name+'_INPUT_ACCESS.json'),{'reader_pid':os.getpid(),'reader_parent_pid':os.getppid(),
+        'launcher_pid':HANDSHAKE.get('launcher_pid'),'resource_platform':os.name,
+        'windows_job_verified':HANDSHAKE.get('windows_job_verified',False),'input_identity':job['input_identity'],
         'loader':item['loader'],'loader_kwargs':item.get('loader_kwargs',{}),'purpose':name,
         'accessed_at':datetime.now(timezone.utc).isoformat()})
     try:
@@ -148,17 +150,30 @@ def worker(path,name):
         raise
 
 
-def execute(path):
+def execute_accounts(path, *, recover=False):
     from chanlun_trader.synthetic_batch_resources import run_bounded_worker
-    job=read_json(path);validate_sources(job);gov=service(job);root=Path(job['root']);gov.active()
+    job=read_json(path);validate_sources(job);gov=service(job);root=Path(job['root'])
     if root.resolve()!=Path(path).resolve().parent:raise PermissionError('JOB_ROOT_IDENTITY_CONFLICT')
     # 历史失败/未结算不能被本入口自动重跑。
-    if any((root/(name+'_START.json')).exists() for name in job['plans']):raise PermissionError('JOB_ALREADY_ATTEMPTED_RECONCILE_NO_REPLAY')
+    if not recover and any((root/(name+'_START.json')).exists() for name in job['plans']):raise PermissionError('JOB_ALREADY_ATTEMPTED_RECONCILE_NO_REPLAY')
     consumed=0.
     for name in job['plans']:
+        if (root/(name+'_SETTLEMENT.json')).exists():
+            settled=validated_settlement(job,name)
+            consumed+=settled['wall_seconds']
+            continue
+        if (root/(name+'_START.json')).exists():
+            settled=reconcile_account(path,name)
+            consumed+=settled['wall_seconds']
+            continue
         receipt=gov.active()
         remaining=min(min(4500,900*len(job['plans']))-consumed,
             (datetime.fromisoformat(receipt['expires_at'])-datetime.now(timezone.utc)).total_seconds())
+        if receipt['source'].get('origin') == 'CAMPAIGN_V1':
+            from chanlun_trader.research_factory.etf_account_governance_v1 import validate_campaign_source
+            campaign = validate_campaign_source(receipt['source'], job['plans'], job['objective_id'])
+            operation = campaign.status()['operations'][receipt['source']['operation_ids'][name]]
+            remaining = min(remaining, operation['upper_bounds']['wall_seconds'])
         if remaining<=0:raise PermissionError('JOB_RESOURCE_OR_APPROVAL_EXHAUSTED')
         validate_sources(job);gov.start(name);begin=time.monotonic()
         env={**os.environ,'PYTHONDONTWRITEBYTECODE':'1',
@@ -172,16 +187,88 @@ def execute(path):
         except Exception as exc:
             resource={'returncode':None,'timed_out':False,'error_type':type(exc).__name__,'error':str(exc)}
         seconds=time.monotonic()-begin;consumed+=seconds
+        resource['elapsed_wall_seconds']=seconds
         save(root/(name+'_RESOURCE.json'),{k:v.decode('utf-8',errors='replace') if isinstance(v,bytes) else v for k,v in resource.items()})
-        output=root/(name+'_RESULT.json');complete=resource['returncode']==0 and output.exists()
+        output=root/(name+'_RESULT.json');complete=resource['returncode']==0 and not resource.get('timed_out') and output.exists()
         gov.settle(name,completed=complete,seconds=seconds,result_hash=sha(output) if output.exists() else None,
                    error=None if complete else 'WORKER_FAILED_SEE_RESOURCE')
         if not complete:raise RuntimeError('JOB_WORKER_FAILED_NO_RETRY')
     index={name:{'result':str(root/(name+'_RESULT.json')),'sha256':sha(root/(name+'_RESULT.json')),
-                 'settlement':str(root/(name+'_SETTLEMENT.json'))} for name in job['plans']}
-    write_reports(job,index)
+                 'settlement':str(root/(name+'_SETTLEMENT.json')),'report':str(root/(name+'_REPORT.md'))} for name in job['plans']}
+    if (root/'RESULTS_INDEX.json').exists():
+        previous=read_json(root/'RESULTS_INDEX.json')['items']
+        if set(previous)!=set(index) or any(previous[name].get(key)!=row[key] for name,row in index.items() for key in ('result','sha256','settlement')):
+            raise PermissionError('JOB_EXISTING_INDEX_CONFLICT')
+        return previous
     save(root/'RESULTS_INDEX.json',{'items':index,'worker_seconds':consumed,'exposures':len(index),'repair_exposures':0})
     return index
+
+
+def validated_settlement(job, name):
+    """恢复消费累计前核对原 START、结算和资源，不接受自报已完成。"""
+    import math
+    from chanlun_trader.research_factory.common import stable_hash
+    root=Path(job['root'])
+    settled=read_json(root/(name+'_SETTLEMENT.json'));start=read_json(root/(name+'_START.json'))
+    receipt=read_json(root/'CONFIRMATION.json');resource=read_json(root/(name+'_RESOURCE.json'))
+    seconds=settled.get('wall_seconds')
+    if (receipt['receipt_id']!=stable_hash({k:v for k,v in receipt.items() if k!='receipt_id'})
+            or receipt['strategy_plans']!=job['plans'] or start['receipt_id']!=receipt['receipt_id']
+            or start['kind']!=name or any(settled.get(k)!=v for k,v in start.items())
+            or settled.get('completed') is not True or settled.get('error') is not None
+            or type(resource.get('returncode')) is not int or resource['returncode']!=0 or resource.get('timed_out')
+            or type(seconds) not in (int,float) or not math.isfinite(seconds) or seconds<0
+            or not (root/(name+'_RESULT.json')).exists() or sha(root/(name+'_RESULT.json'))!=settled['result_sha256']):
+        raise PermissionError('JOB_FAILED_OR_SETTLEMENT_CONFLICT_NO_REPLAY')
+    return settled
+
+
+def reconcile_account(path, name):
+    """只结算已退出且有成功资源回执的原 worker，不重新调用 worker。"""
+    import math
+    from chanlun_trader.research_daemon_state import DaemonInstanceLockV1
+    job=read_json(path);validate_sources(job);root=Path(job['root'])
+    if name not in job['plans'] or root.resolve()!=Path(path).resolve().parent:
+        raise PermissionError('JOB_RECONCILE_SCOPE_CONFLICT')
+    required=[root/(name+suffix) for suffix in ('_START.json','_WORKER.json','_RESOURCE.json','_RESULT.json','_INPUT_ACCESS.json')]
+    if not all(p.is_file() and p.resolve()==p for p in required):
+        raise PermissionError('JOB_UNKNOWN_WORKER_NO_AUTOMATIC_RETRY')
+    start,worker_record,resource=map(read_json,required[:3])
+    access=read_json(required[4]);item=job['items'][name]
+    direct = worker_record.get('pid')==access.get('reader_pid')
+    windows_child = (resource.get('resource_platform')=='nt' and access.get('resource_platform')=='nt'
+        and resource.get('windows_job_bound') is True and access.get('windows_job_verified') is True
+        and worker_record.get('pid')==access.get('reader_parent_pid')==access.get('launcher_pid')==resource.get('launcher_pid'))
+    if (not (direct or windows_child) or access.get('purpose')!=name
+            or access.get('input_identity')!=job['input_identity'] or access.get('loader')!=item['loader']
+            or access.get('loader_kwargs')!=item['loader_kwargs']):
+        raise PermissionError('JOB_RECONCILE_INPUT_ACCESS_CONFLICT')
+    receipt=read_json(root/'CONFIRMATION.json')
+    from chanlun_trader.research_factory.common import stable_hash
+    if (receipt['receipt_id']!=stable_hash({k:v for k,v in receipt.items() if k!='receipt_id'})
+            or receipt['strategy_plans']!=job['plans'] or start['receipt_id']!=receipt['receipt_id']
+            or start['kind']!=name or worker_record['purpose']!=name):
+        raise PermissionError('JOB_RECONCILE_BINDING_CONFLICT')
+    if DaemonInstanceLockV1._pid_alive(int(worker_record['pid'])):
+        raise PermissionError('JOB_WORKER_STILL_ACTIVE')
+    seconds=resource.get('elapsed_wall_seconds')
+    if (type(resource.get('returncode')) is not int or resource.get('returncode')!=0 or resource.get('timed_out') or type(seconds) not in (int,float)
+            or not math.isfinite(seconds) or seconds<0):
+        raise PermissionError('JOB_WORKER_COMPLETION_NOT_PROVEN_NO_RETRY')
+    return service(job).settle(name,completed=True,seconds=seconds,result_hash=sha(required[3]),error=None)
+
+
+def report_account_job(path):
+    job=read_json(path);validate_sources(job)
+    index=read_json(Path(job['root'])/'RESULTS_INDEX.json')['items']
+    write_reports(job,index)
+    return index
+
+
+def execute(path):
+    """兼容原 CLI：初次执行账户后立即出报告；恢复由分阶段宿主管理。"""
+    execute_accounts(path)
+    return report_account_job(path)
 
 
 def write_reports(job,index):
@@ -190,10 +277,11 @@ def write_reports(job,index):
     root=Path(job['root']);results={name:read_json(item['result']) for name,item in index.items()}
     def dates(result):
         if 'daily' in result:return [str(row['date']) for row in result['daily']]
+        if 'daily_accounts' in result:return [str(row['date']).replace('-', '') for row in result['daily_accounts']]
         return [str(row['timestamp'])[:10].replace('-','') for row in result['daily_account']]
     control=results.get(job.get('benchmark_id'))
     for name,result in results.items():
-        if read_json(index[name]['settlement'])['result_sha256']!=index[name]['sha256']:
+        if sha(index[name]['result'])!=index[name]['sha256'] or read_json(index[name]['settlement'])['result_sha256']!=index[name]['sha256']:
             raise PermissionError('REPORT_SETTLEMENT_CONFLICT')
         report=deepcopy(result['report'])
         report['artifacts']['source_result']={'path':index[name]['result'],'sha256':index[name]['sha256']}
@@ -206,8 +294,17 @@ def write_reports(job,index):
                 'strategy_id':job['benchmark_id'],'metrics':control['report']['metrics'] if comparable else None}
             report['limitations'].append('日期一致不代表实际风险暴露一致；不据此直接宣称alpha。')
         save(root/(name+'_REPORT.json'),report)
-        with (root/(name+'_REPORT.md')).open('x',encoding='utf-8') as stream:stream.write(render_markdown(report))
+        markdown=render_markdown(report);target=root/(name+'_REPORT.md')
+        if target.exists():
+            if target.read_text(encoding='utf-8')!=markdown:raise PermissionError('REPORT_EXISTING_CONTENT_CONFLICT')
+        else:
+            with target.open('x',encoding='utf-8') as stream:stream.write(markdown)
         index[name]['report']=str(root/(name+'_REPORT.md'))
+    if (root/'REPORT_ACCESS.json').exists():
+        previous=read_json(root/'REPORT_ACCESS.json')
+        if previous.get('result_hashes')!={name:item['sha256'] for name,item in index.items()}:
+            raise PermissionError('REPORT_ACCESS_IDENTITY_CONFLICT')
+        return
     save(root/'REPORT_ACCESS.json',{'reader_pid':os.getpid(),'purpose':'FIXED_JOB_RESULTS_REPORT',
         'result_hashes':{name:item['sha256'] for name,item in index.items()},'accessed_at':datetime.now(timezone.utc).isoformat()})
 
@@ -231,8 +328,12 @@ def status(path):
 if __name__=='__main__':
     parser=argparse.ArgumentParser();group=parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--prepare');group.add_argument('--execute',action='store_true');group.add_argument('--worker');group.add_argument('--status',action='store_true')
+    group.add_argument('--capabilities', action='store_true')
     parser.add_argument('--root');parser.add_argument('--job');args=parser.parse_args()
-    if args.prepare:
+    if args.capabilities:
+        from chanlun_trader.research_factory.research_capabilities_v1 import capabilities
+        print(json.dumps(capabilities(), ensure_ascii=False))
+    elif args.prepare:
         if not args.root:parser.error('--root required')
         freeze_config(read_json(args.prepare),args.root)
     elif args.worker:worker(args.job,args.worker)

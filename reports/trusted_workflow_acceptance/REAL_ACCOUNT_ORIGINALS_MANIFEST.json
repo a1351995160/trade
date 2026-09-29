@@ -1,0 +1,9 @@
+{
+  "file": "REAL_ACCOUNT_ORIGINALS.zip",
+  "sha256": "8a7ea4b8677510afb64489fcf5f7a3e366213d83ea66dc992e6bf56519eb13c2",
+  "entries": 565,
+  "size_bytes": 3076321,
+  "scope": "Original public CLI tasks, frozen inputs, sources, accounts, authority and budget receipts; excluded transient .lock files",
+  "byte_verified": true,
+  "path_note": "Original absolute path bindings preserved; archive inspection is portable, replay must preserve original binding paths."
+}

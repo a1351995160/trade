@@ -1,0 +1,13 @@
+{
+  "status": "PASS",
+  "same_result_settlement_and_budget_bytes": true,
+  "file_hashes": {
+    "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\52925275c2c99149639b2c30b5e3ca4f441d9fb0bbb910db3aa37c586c2ba009\\account\\ACCEPT_A_MA10_COST_STOP_BASE_RESULT.json": "aeada6ba2de50553cd2e4e50b6e7c60c65ac109eda73366c35823ad9a003ccb8",
+    "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\52925275c2c99149639b2c30b5e3ca4f441d9fb0bbb910db3aa37c586c2ba009\\account\\ACCEPT_A_MA10_COST_STOP_STRESS_RESULT.json": "b58155c02d940463c04484f2f0dbacc9f95d20a494c3f1eeb48bd17525365e52",
+    "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\52925275c2c99149639b2c30b5e3ca4f441d9fb0bbb910db3aa37c586c2ba009\\account\\ACCEPT_A_MA10_COST_STOP_BENCHMARK_RESULT.json": "645c8a2d00a0fdeba8e6361f14d2f7b7257826ec91ced8c6a53c9a1606e495bb",
+    "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\52925275c2c99149639b2c30b5e3ca4f441d9fb0bbb910db3aa37c586c2ba009\\account\\ACCEPT_A_MA10_COST_STOP_BASE_SETTLEMENT.json": "be087ada865d3ae7f9b0d4bd0460772bb52288353f4bef92f7e68ce95326cfda",
+    "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\52925275c2c99149639b2c30b5e3ca4f441d9fb0bbb910db3aa37c586c2ba009\\account\\ACCEPT_A_MA10_COST_STOP_STRESS_SETTLEMENT.json": "fb94fadafdf45643da518ffd3a5ef0fa116d6d8c496056e3153d8636953fb47a",
+    "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\52925275c2c99149639b2c30b5e3ca4f441d9fb0bbb910db3aa37c586c2ba009\\account\\ACCEPT_A_MA10_COST_STOP_BENCHMARK_SETTLEMENT.json": "5fcde3e01df87ba82b4015877973ca5331af47f907aa57edac6a34e34fe970a2",
+    "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\A_MA10_COST_STOP_50000\\budget.json": "4bcc006a0cc98cf0bf33920ce337ec7df35f15d8edb57b1391aef26365702d8b"
+  }
+}

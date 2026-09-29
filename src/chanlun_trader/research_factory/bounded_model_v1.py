@@ -20,7 +20,7 @@ def candidate_output_schema(capabilities):
                 'additionalProperties': False, 'properties': {
                     'hypothesis': {'type':'string'}, 'change_reason': {'type':'string'},
                     'indicators': {'type':'array','items':{'type':'string'}}, 'threshold':{'type':'integer'}}}
-    if capability != 'RESEARCH_RULE_STRATEGY_V2':
+    if capability not in {'RESEARCH_RULE_STRATEGY_V2', 'RESEARCH_RULE_STRATEGY_V3'}:
         raise ValueError('BOUNDED_MODEL_CAPABILITY_UNSUPPORTED')
     def obj(properties):
         return {'type': 'object', 'properties': properties, 'required': list(properties), 'additionalProperties': False}
@@ -32,7 +32,7 @@ def candidate_output_schema(capabilities):
     indicators = capabilities['indicators']
     nodes = [node(['const'], {'type':'number'}, {'value': {'type':'number'}}, 0, 0),
              node(['field'], {'type':'string','enum':capabilities['fields']}, {}, 1, 1),
-             node(['indicator'], {'type':'string','enum':[i['id'] for i in indicators]},
+             node(['indicator'], ({'type':'string'} if capability == 'RESEARCH_RULE_STRATEGY_V3' else {'type':'string','enum':[i['id'] for i in indicators]}),
                   {'output': {'type':'string','enum':sorted({o for i in indicators for o in i['outputs']})},
                    'version': {'type':'string','enum':sorted({i['version'] for i in indicators})}}, 1, 1),
              node(['ref'], child, {'periods': {'type':'integer','minimum':0,'maximum':60}}, 1, 1),
@@ -46,6 +46,23 @@ def candidate_output_schema(capabilities):
                   'max_hold_sessions': {'type':'integer','minimum':1,'maximum':252},
                   'cooldown_sessions': {'type':'integer','minimum':0,'maximum':60},
                   'target_weight': {'type':'number','minimum':.01,'maximum':1}})
+    if capability == 'RESEARCH_RULE_STRATEGY_V3':
+        variants = []
+        overrides = capabilities.get('window_overrides', {})
+        for item in indicators:
+            params = {}
+            for name, value in item['params'].items():
+                if name == 'window' and item['id'] in overrides:
+                    lo, hi = overrides[item['id']]
+                    params[name] = {'type': 'integer', 'minimum': lo, 'maximum': hi}
+                else:
+                    params[name] = {'enum': [value]}
+            variants.append(obj({'instance_id': {'type': 'string'}, 'id': {'enum': [item['id']]},
+                                 'version': {'enum': [item['version']]}, 'params': obj(params)}))
+        schema['properties']['indicator_instances'] = {'type': 'array', 'maxItems': 64, 'items': {'anyOf': variants}}
+        schema['properties']['exits'] = obj({'execution_mode': {'enum': ['CLOSE_CONFIRM_NEXT_SESSION_OPEN']},
+            **{key: {'type': ['number', 'null']} for key in ('stop_loss_pct', 'take_profit_pct', 'trailing_activate_pct', 'trailing_pct')}})
+        schema['required'] += ['indicator_instances', 'exits']
     schema['$defs'] = {'node': {'anyOf': nodes}}
     return schema
 
@@ -143,6 +160,13 @@ class BoundedCodexInvokerV1:
             if rule_v2 else
             '字段严格为 hypothesis, indicators, threshold, change_reason。'
             'indicators 填目录 id 字符串，不要整个定义。只能选择现有指标及投票门槛。')
+        if capabilities.get('capability') == 'RESEARCH_RULE_STRATEGY_V3':
+            format_instruction = (
+                '输出RESEARCH_RULE_STRATEGY_V3，使用indicator_instances显式声明指标版本和真实参数；'
+                '表达式引用instance_id。字段必须符合所给JSON Schema。'
+                'exits声明成本止损、固定止盈或移动退出，关闭项为null；不得用均线卖出冒充成本止损。'
+                '止损以实际持仓批次成本和已登记现金红利政策计算，收盘确认后次日尝试成交。'
+                '只使用公共入口已接通且任务数据满足的能力；不提交代码、自报验证状态或改动评审门槛。')
         prompt = ('你是受限策略研究员。只根据下方能力清单和合法定性反馈，输出一个 JSON 对象，'
                   + format_instruction + '不要 Markdown。'
                   '如有父候选，基于反馈提出不同规则并解释修改理由；不要照抄先前规则。'

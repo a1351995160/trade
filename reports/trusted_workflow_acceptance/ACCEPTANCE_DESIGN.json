@@ -1,0 +1,35 @@
+{
+  "status": "PREPARED_NOT_EXECUTED",
+  "scope": "EXPLORATORY_ENGINEERING_ACCEPTANCE",
+  "account_start": 20220706,
+  "account_end": 20221230,
+  "feature_start": 20220407,
+  "selection_basis": "A保留旧3股；B沿已有事前冻结12股名单取前三只，未查看收益。半年窗口为最小工程验收，非策略有效性验证。",
+  "pool_A": [
+    "000001.SZ",
+    "000002.SZ",
+    "600000.SH"
+  ],
+  "pool_B": [
+    "000006.SZ",
+    "000733.SZ",
+    "002036.SZ"
+  ],
+  "primary_requests": [
+    "reports\\trusted_workflow_acceptance\\requests\\A_MA10_COST_STOP_50000.json",
+    "reports\\trusted_workflow_acceptance\\requests\\A_MA20_TAKE_PROFIT_50000.json",
+    "reports\\trusted_workflow_acceptance\\requests\\A_DUAL_MA_TRAILING_50000.json",
+    "reports\\trusted_workflow_acceptance\\requests\\B_MA10_COST_STOP_50000.json",
+    "reports\\trusted_workflow_acceptance\\requests\\B_MA20_TAKE_PROFIT_50000.json",
+    "reports\\trusted_workflow_acceptance\\requests\\B_DUAL_MA_TRAILING_50000.json"
+  ],
+  "capital_comparison_request": "reports\\trusted_workflow_acceptance\\requests\\A_MA10_COST_STOP_100000.json",
+  "expected_jobs": 21,
+  "pool_A_data": "CONTENT_QUALIFIED_EXPLORATORY_ONLY",
+  "pool_B_data": "BLOCKED_BAOSTOCK_LOGIN_TIMEOUT",
+  "account_execution": "NOT_STARTED",
+  "authorization_receipt": "NOT_CREATED",
+  "statistical_qualification": false,
+  "formal_paper_days": 0,
+  "independent_confirmation_eligible": false
+}

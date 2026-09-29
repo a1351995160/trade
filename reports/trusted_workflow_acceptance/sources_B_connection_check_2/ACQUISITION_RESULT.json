@@ -1,0 +1,60 @@
+{
+  "responses": [
+    {
+      "file": "DAILY_000006.SZ.json",
+      "sha256": "d607e9d1e78a02b55a754d6e7262f6c1b5c5884a0fc8901eb300348a13523dde",
+      "row_count": 624,
+      "error_code": "0"
+    },
+    {
+      "file": "DIVIDEND_000006.SZ_2022.json",
+      "sha256": "ecd40c8fa69174c708594144c26971d83e2f13d0caecdd6ead247ec9c39be3cd",
+      "row_count": 1,
+      "error_code": "0"
+    },
+    {
+      "file": "ADJUST_000006.SZ.json",
+      "sha256": "1241802e0bc91989ca1adb14229932a284a0693113661457319ed7e7bcf12082",
+      "row_count": 2,
+      "error_code": "0"
+    },
+    {
+      "file": "DAILY_000733.SZ.json",
+      "sha256": "d78480745979954f3dd8fd55452926e34de7be918bb4ac90833822367aabf259",
+      "row_count": 624,
+      "error_code": "0"
+    },
+    {
+      "file": "DIVIDEND_000733.SZ_2022.json",
+      "sha256": "0062777b348566409d54ade49b89cd7506678306c97b96750f9126247397e5e2",
+      "row_count": 1,
+      "error_code": "0"
+    },
+    {
+      "file": "ADJUST_000733.SZ.json",
+      "sha256": "a53dfdf19e7c637f83fdb5d6aad9b84c964e2ab58420054698ae5a18cfd8bbec",
+      "row_count": 3,
+      "error_code": "0"
+    },
+    {
+      "file": "DAILY_002036.SZ.json",
+      "sha256": "0c532cd298044e8f9625c91d8f68379efb53e54557f07bcacbb5336851996dea",
+      "row_count": 624,
+      "error_code": "0"
+    },
+    {
+      "file": "DIVIDEND_002036.SZ_2022.json",
+      "sha256": "e2faff2407348633fbf2b000bb35b0d58bb6ae93d6825e17836feafa6f0a1913",
+      "row_count": 1,
+      "error_code": "0"
+    },
+    {
+      "file": "ADJUST_002036.SZ.json",
+      "sha256": "611a4c492461d6b2f5f21a4a69399d91b4e4b670b5f8e3cc87eb559cf209af97",
+      "row_count": 2,
+      "error_code": "0"
+    }
+  ],
+  "completed": true,
+  "independent_confirmation_eligible": false
+}

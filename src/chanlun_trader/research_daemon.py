@@ -1093,6 +1093,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("command", choices=("start", "status", "pause", "resume", "stop", "run-once", "recover", "accept-ai-batch", "structural-readiness", "start-structural-preflight", "predictive-trial-preview", "start-predictive-trial"))
     parser.add_argument("artifact", nargs="?", help="accept-ai-batch 使用的 AI 批次制品路径")
     parser.add_argument("--root", default=".")
+    parser.add_argument("--lifecycle-bindings", help="使用固定生命周期宿主模式的本地绑定JSON")
     parser.add_argument("--objective-id", default=DEFAULT_OBJECTIVE_ID)
     parser.add_argument("--sleep-seconds", type=float, default=DEFAULT_SLEEP_SECONDS)
     parser.add_argument("--json", action="store_true", help="输出 canonical English machine JSON")
@@ -1108,6 +1109,24 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     _configure_utf8_output()
     args = build_parser().parse_args(argv)
+    if args.lifecycle_bindings:
+        from scripts.run_strategy_lifecycle_v1 import load_config
+        from scripts.lifecycle_deployment_v2 import qualified_research_loader
+        from .research_factory.lifecycle_service_v2 import LifecycleServiceV2
+        from .research_factory.trusted_research_host_v1 import TrustedResearchHostV1
+        bindings = load_config(args.lifecycle_bindings, Path(args.root) / 'lifecycle_jobs')
+        service = LifecycleServiceV2(args.root, bindings, research_loader=qualified_research_loader(args.root))
+        host = TrustedResearchHostV1(service, interval=args.sleep_seconds)
+        if args.command == 'status':
+            status = host.status()
+        elif args.command == 'stop':
+            status = host.stop()
+        elif args.command in {'start', 'run-once', 'recover'}:
+            status = host.run(once=args.command != 'start')
+        else:
+            raise SystemExit('生命周期任务暂停/恢复请使用 run_strategy_lifecycle_v1.py')
+        print(json.dumps(status, ensure_ascii=False, indent=2, default=str))
+        return 0
     if args.command == "status":
         daemon = _daemon_for_cli(args)
         status = daemon.status_payload()

@@ -1,0 +1,305 @@
+{
+  "version": "TRUSTED_REAL_REAUDIT_V1",
+  "checked_at": "2026-09-29T14:43:21.918191+00:00",
+  "status": "PASS",
+  "account_count": 21,
+  "account_days": 2562,
+  "accounts": [
+    {
+      "case": "A_DUAL_MA_TRAILING_50000",
+      "account": "ACCEPT_A_DUAL_MA_TRAILING_BASE",
+      "status": "PASS",
+      "advance_allowed": true,
+      "reasons": [],
+      "plan_id": "2aaf8007dfba5284d45d4aa31f1b20d0f7a2fee1490b1898955d4ecfc5176c2a",
+      "job_sha256": "4259d60413eeac377a568c913c43ba8db7ec602e48b951de5a50323bda481f70",
+      "result_sha256": "7e1453a796f75226d06f93e076051560dfc527846fb1374bf32d7e9cc281d1d3",
+      "settlement_sha256": "e825c3c9c0c206ea424e0a6decf7d4eb80edb34bd3947899a2246a57f5516877",
+      "days": 122
+    },
+    {
+      "case": "A_DUAL_MA_TRAILING_50000",
+      "account": "ACCEPT_A_DUAL_MA_TRAILING_STRESS",
+      "status": "PASS",
+      "advance_allowed": true,
+      "reasons": [],
+      "plan_id": "11266543801204981fa355f2f627adb3a654e9396bc0721ba0c852a0fe39bba0",
+      "job_sha256": "4259d60413eeac377a568c913c43ba8db7ec602e48b951de5a50323bda481f70",
+      "result_sha256": "c43d41cb602febc97585081af3d57dca09296243ec98d3d6d95c3ec48151536d",
+      "settlement_sha256": "f4c82bb7df1354304c1efafe4562f4535529e9e211874861fbf98f4bd001a610",
+      "days": 122
+    },
+    {
+      "case": "A_DUAL_MA_TRAILING_50000",
+      "account": "ACCEPT_A_DUAL_MA_TRAILING_BENCHMARK",
+      "status": "PASS",
+      "advance_allowed": true,
+      "reasons": [],
+      "plan_id": "90ddc792501e249ba0eb979fa411b87952772205ab05f825cc0ac73ab2728af4",
+      "job_sha256": "4259d60413eeac377a568c913c43ba8db7ec602e48b951de5a50323bda481f70",
+      "result_sha256": "9fd19b9d707b9d087dcf4f475fe3382ff95e14e61f0a05858bfb70887e6336cb",
+      "settlement_sha256": "230191baff2bf3eb486ab001a4755ee145ea39a599075ca1eaeb97b9214d4c69",
+      "days": 122
+    },
+    {
+      "case": "A_MA10_COST_STOP_100000",
+      "account": "ACCEPT_A_MA10_COST_STOP_100000_BASE",
+      "status": "PASS",
+      "advance_allowed": true,
+      "reasons": [],
+      "plan_id": "1831a669827e529d89d7673ec71a10ae7d055b3d8ed2aa3383e3099d22d90f61",
+      "job_sha256": "1e62774ae3c86c3c83794c57650d84b3789089a81045dc8e2d4223068e60d5e9",
+      "result_sha256": "25698f247c974faa89b480e9c6b7dc9f61d522416528662a64640a441ec92b57",
+      "settlement_sha256": "58ef1ee75f4de8f0e8e37e24ba6a167ad4ba8176fd05b273580455b2c3feb595",
+      "days": 122
+    },
+    {
+      "case": "A_MA10_COST_STOP_100000",
+      "account": "ACCEPT_A_MA10_COST_STOP_100000_STRESS",
+      "status": "PASS",
+      "advance_allowed": true,
+      "reasons": [],
+      "plan_id": "e8e7e5a56c9f81e435690e605867328980e23fff6b964587a149a76811fb3a6c",
+      "job_sha256": "1e62774ae3c86c3c83794c57650d84b3789089a81045dc8e2d4223068e60d5e9",
+      "result_sha256": "2ea18c4aa7e542166766521d84d6fd427acff674f6a1fa75a1392ed2b101e389",
+      "settlement_sha256": "152686c2aa71fd416862314db5735580b1eb840c0e9037222755c2225e6bae19",
+      "days": 122
+    },
+    {
+      "case": "A_MA10_COST_STOP_100000",
+      "account": "ACCEPT_A_MA10_COST_STOP_100000_BENCHMARK",
+      "status": "PASS",
+      "advance_allowed": true,
+      "reasons": [],
+      "plan_id": "91eef9fee6c9a6efafdb611cc34b06eda4cb0b632645eaf237a927f32757c50b",
+      "job_sha256": "1e62774ae3c86c3c83794c57650d84b3789089a81045dc8e2d4223068e60d5e9",
+      "result_sha256": "c7f558912236860c8186bebfe72d9464fa3d12b11b8cb4ecbfcbc6bdd4c35d0b",
+      "settlement_sha256": "d4cbff99d5ecac9ccba3bf6efa87e6090cec531a11fb42c536a78b5409a86f7e",
+      "days": 122
+    },
+    {
+      "case": "A_MA10_COST_STOP_50000",
+      "account": "ACCEPT_A_MA10_COST_STOP_BASE",
+      "status": "PASS",
+      "advance_allowed": true,
+      "reasons": [],
+      "plan_id": "c293e528b483c5e77a0f02d11dd8d901bf9a1914e1e15b034a6d8b3fc3e9885a",
+      "job_sha256": "394b732d140d107ed47c13f1552e265e0c04f062f32cb40b637c365a88d66978",
+      "result_sha256": "aeada6ba2de50553cd2e4e50b6e7c60c65ac109eda73366c35823ad9a003ccb8",
+      "settlement_sha256": "be087ada865d3ae7f9b0d4bd0460772bb52288353f4bef92f7e68ce95326cfda",
+      "days": 122
+    },
+    {
+      "case": "A_MA10_COST_STOP_50000",
+      "account": "ACCEPT_A_MA10_COST_STOP_STRESS",
+      "status": "PASS",
+      "advance_allowed": true,
+      "reasons": [],
+      "plan_id": "015a000c0a5afffac3c43a43beb3ae880303cf2459db315ae52224fa61b07971",
+      "job_sha256": "394b732d140d107ed47c13f1552e265e0c04f062f32cb40b637c365a88d66978",
+      "result_sha256": "b58155c02d940463c04484f2f0dbacc9f95d20a494c3f1eeb48bd17525365e52",
+      "settlement_sha256": "fb94fadafdf45643da518ffd3a5ef0fa116d6d8c496056e3153d8636953fb47a",
+      "days": 122
+    },
+    {
+      "case": "A_MA10_COST_STOP_50000",
+      "account": "ACCEPT_A_MA10_COST_STOP_BENCHMARK",
+      "status": "PASS",
+      "advance_allowed": true,
+      "reasons": [],
+      "plan_id": "d1ea0ad59d7b8b44466fad0e2d23ec444a11e1d69baa59543791b67985dac1cf",
+      "job_sha256": "394b732d140d107ed47c13f1552e265e0c04f062f32cb40b637c365a88d66978",
+      "result_sha256": "645c8a2d00a0fdeba8e6361f14d2f7b7257826ec91ced8c6a53c9a1606e495bb",
+      "settlement_sha256": "5fcde3e01df87ba82b4015877973ca5331af47f907aa57edac6a34e34fe970a2",
+      "days": 122
+    },
+    {
+      "case": "A_MA20_TAKE_PROFIT_50000",
+      "account": "ACCEPT_A_MA20_TAKE_PROFIT_BASE",
+      "status": "PASS",
+      "advance_allowed": true,
+      "reasons": [],
+      "plan_id": "04dcb088eed0756d90afd6ab988e2d8105ef91108857204ba02df6b66d04f2c0",
+      "job_sha256": "186481d1c7bcc022428945b0870c256a3675ac6aa8f8c2058b8e2d324b439556",
+      "result_sha256": "505150247147f3e08e0d1b8f9dc98e4ffffe6989155918394a7070957c1fff4a",
+      "settlement_sha256": "cc54d7209f28d4f4defc217a29a952e95b36f6b82a2216e8d0910bafeab2502b",
+      "days": 122
+    },
+    {
+      "case": "A_MA20_TAKE_PROFIT_50000",
+      "account": "ACCEPT_A_MA20_TAKE_PROFIT_STRESS",
+      "status": "PASS",
+      "advance_allowed": true,
+      "reasons": [],
+      "plan_id": "ae6772238df8c2c5934da6db78110204d52884e513e2846d40614186c4a35e6a",
+      "job_sha256": "186481d1c7bcc022428945b0870c256a3675ac6aa8f8c2058b8e2d324b439556",
+      "result_sha256": "ebaf7eec3b5943e49f7de0b37e93082ecb4fb1077e3ef1fb2d5cc9477ecdc3ee",
+      "settlement_sha256": "569909227cb202e3811dda26b4f036a83c94616209e846650216f43b29b3080d",
+      "days": 122
+    },
+    {
+      "case": "A_MA20_TAKE_PROFIT_50000",
+      "account": "ACCEPT_A_MA20_TAKE_PROFIT_BENCHMARK",
+      "status": "PASS",
+      "advance_allowed": true,
+      "reasons": [],
+      "plan_id": "03a7a6514f0ef2576029e5fa9b9f50861bd3e01b923af5875119ca27ec3fc432",
+      "job_sha256": "186481d1c7bcc022428945b0870c256a3675ac6aa8f8c2058b8e2d324b439556",
+      "result_sha256": "6d2f129678edfbb7edee5813c15567dcc43ffbba891c2f786d745e732abc0e92",
+      "settlement_sha256": "55711231bd72f039465994a4860e97b621de139c9921dfeee8cd83de836e6c79",
+      "days": 122
+    },
+    {
+      "case": "B_DUAL_MA_TRAILING_50000",
+      "account": "ACCEPT_B_DUAL_MA_TRAILING_BASE",
+      "status": "PASS",
+      "advance_allowed": true,
+      "reasons": [],
+      "plan_id": "e77beeb14e9853da27c9ae057b0deff55313620257f932337e90018798ca0811",
+      "job_sha256": "7f765cacd737176b106d854ee38bd3be41fa893ef30f4cdb9a73656837b1950d",
+      "result_sha256": "abb4383a3f3319830fe44c1ab79aca969d34ef1fc6e9066b24b6d67c16a813fb",
+      "settlement_sha256": "4755b170d58ef50bc1103a90de5a14093ad456b896b28fdca2931e560afe7957",
+      "days": 122
+    },
+    {
+      "case": "B_DUAL_MA_TRAILING_50000",
+      "account": "ACCEPT_B_DUAL_MA_TRAILING_STRESS",
+      "status": "PASS",
+      "advance_allowed": true,
+      "reasons": [],
+      "plan_id": "1798e22e796af14df4a77198da249fdfb1bf3befbc1f88c33aebcffd0078f2a2",
+      "job_sha256": "7f765cacd737176b106d854ee38bd3be41fa893ef30f4cdb9a73656837b1950d",
+      "result_sha256": "ecfecef3029cb451f163e010ca845d2e7feadeab52720ba9a5f9b2c0ac2a041c",
+      "settlement_sha256": "b7a97ed2c3e0142aebd4dfa6622432ee1f455dab8b9113b6dab28059355968f8",
+      "days": 122
+    },
+    {
+      "case": "B_DUAL_MA_TRAILING_50000",
+      "account": "ACCEPT_B_DUAL_MA_TRAILING_BENCHMARK",
+      "status": "PASS",
+      "advance_allowed": true,
+      "reasons": [],
+      "plan_id": "633aceb67c8b90230af736fc18c193817e6662004ba4ed4f9d25b81595a02fd1",
+      "job_sha256": "7f765cacd737176b106d854ee38bd3be41fa893ef30f4cdb9a73656837b1950d",
+      "result_sha256": "aac96da853f87fc6e23385951cbaa9cde8e1138aef51850fc5b75a78ccab15e5",
+      "settlement_sha256": "58f4b0094b7058cf4ffd64ccf0ed3fb18211334c7627f30f07fed7b8a5743b21",
+      "days": 122
+    },
+    {
+      "case": "B_MA10_COST_STOP_50000",
+      "account": "ACCEPT_B_MA10_COST_STOP_BASE",
+      "status": "PASS",
+      "advance_allowed": true,
+      "reasons": [],
+      "plan_id": "405444dcfdecb49bb05fcc3e1be4651b4f7b3b1215062e2e22f4f0f34e6aa817",
+      "job_sha256": "7b2ece67a7fa3d65e137db7fb64efed6a555f6bd39a73288c297f04520e78d35",
+      "result_sha256": "62ed5694f6d910d984984b7bf65b347449ddd22d1bb738b35e8f523290e792a2",
+      "settlement_sha256": "b3930e859cbe73ae38753f49bf51adf445d26d704080b96b191037b7da9bb9b8",
+      "days": 122
+    },
+    {
+      "case": "B_MA10_COST_STOP_50000",
+      "account": "ACCEPT_B_MA10_COST_STOP_STRESS",
+      "status": "PASS",
+      "advance_allowed": true,
+      "reasons": [],
+      "plan_id": "b46e3d209687acfa2620adfbbd4dc7a8408413d508fd6605a5e2eb74b904b0f8",
+      "job_sha256": "7b2ece67a7fa3d65e137db7fb64efed6a555f6bd39a73288c297f04520e78d35",
+      "result_sha256": "6e715b9aeafb4b83f8bd39d2e23d909b3adb41e73071ac059da6dbe7d2552af6",
+      "settlement_sha256": "d6fad598a18b72f61d54781ead120e89767d535a21fb6895bc63cdd453ec9b0b",
+      "days": 122
+    },
+    {
+      "case": "B_MA10_COST_STOP_50000",
+      "account": "ACCEPT_B_MA10_COST_STOP_BENCHMARK",
+      "status": "PASS",
+      "advance_allowed": true,
+      "reasons": [],
+      "plan_id": "0dda140767e9b49f2fd0c5d5dfacf6da9b099fbf437362271becac1424a6a2a0",
+      "job_sha256": "7b2ece67a7fa3d65e137db7fb64efed6a555f6bd39a73288c297f04520e78d35",
+      "result_sha256": "8ffa428d042ec62ed27f0199d84c4bd5d9ae1c81f355e7cd2d91ca3f50bd22a5",
+      "settlement_sha256": "d7ed9bc5580cd9d34226ef4c89db16d8115116a68d254daa7e46acd459c7fe38",
+      "days": 122
+    },
+    {
+      "case": "B_MA20_TAKE_PROFIT_50000",
+      "account": "ACCEPT_B_MA20_TAKE_PROFIT_BASE",
+      "status": "PASS",
+      "advance_allowed": true,
+      "reasons": [],
+      "plan_id": "192e774ed0a7c7b119c62b8a6887fd2e0bc183d6153b2cdd0713460dd26d23c6",
+      "job_sha256": "f7cf0cb7fe6d2c187f7be2e66155bf3016ea1881a4fdbd9424a4686f3168b8d5",
+      "result_sha256": "feb0aec220597755f87316261a21282b611b438057525c3066802664b290969d",
+      "settlement_sha256": "30aa3651186bf469783f75e4992ff1ca6230765cd52294f548730f9d43e49635",
+      "days": 122
+    },
+    {
+      "case": "B_MA20_TAKE_PROFIT_50000",
+      "account": "ACCEPT_B_MA20_TAKE_PROFIT_STRESS",
+      "status": "PASS",
+      "advance_allowed": true,
+      "reasons": [],
+      "plan_id": "4c32a75c36c1eb46072db43e915ff6a7ab8a30475fc3ab26d37b5d67097c8189",
+      "job_sha256": "f7cf0cb7fe6d2c187f7be2e66155bf3016ea1881a4fdbd9424a4686f3168b8d5",
+      "result_sha256": "e728b528fd409a7083a790b63d60bf16c8e4f13bec2a89ff823be8b8946fa555",
+      "settlement_sha256": "9e770f139df82e8c8e0201812609a93065d5d3321c1bb15e3523c3d226926978",
+      "days": 122
+    },
+    {
+      "case": "B_MA20_TAKE_PROFIT_50000",
+      "account": "ACCEPT_B_MA20_TAKE_PROFIT_BENCHMARK",
+      "status": "PASS",
+      "advance_allowed": true,
+      "reasons": [],
+      "plan_id": "c2a26ed3af31d99ed7dfff79731419b5ddf9be903a6e739da326f616da0ba291",
+      "job_sha256": "f7cf0cb7fe6d2c187f7be2e66155bf3016ea1881a4fdbd9424a4686f3168b8d5",
+      "result_sha256": "c9bcbebd2d00ae2cf95568202b306eec9b404caea9dec8710a0aa6678fe321f3",
+      "settlement_sha256": "a4d7bba9927918d56e65b93c830e67199a8dd4f781a32c9b7abfab585fc87d91",
+      "days": 122
+    }
+  ],
+  "negative_control": {
+    "mutation": "in-memory first daily cash +1",
+    "source_result_sha256": "aeada6ba2de50553cd2e4e50b6e7c60c65ac109eda73366c35823ad9a003ccb8",
+    "rejected": true,
+    "error_type": "ValueError",
+    "reason": "DAILY_CASH_CONFLICT"
+  },
+  "original_account_and_budget_bytes_unchanged": true,
+  "recovery": {
+    "record_sha256": "09ab503176281d2cb9713e3deee156130843b1e2121daf30e9994238124f3382",
+    "record_status": "PASS",
+    "all_recorded_hashes_still_match": true,
+    "boundary_record_sha256": "418594a1663d200c8519db090c1f615fe754dbbf2b528ae536f605b9c3a31d35",
+    "boundary": {
+      "returncode": 0,
+      "boundary": "ACCOUNT_EXECUTION_FINISHED_BEFORE_VERIFICATION_AND_REPORT",
+      "verification_existed": false,
+      "stdout": "",
+      "stderr": ""
+    }
+  },
+  "trigger_evaluations": {
+    "EXIT_TRAILING_STOP": 12,
+    "EXIT_FIXED_COST_STOP": 20,
+    "EXIT_FIXED_TAKE_PROFIT": 14
+  },
+  "capital_comparison_base": {
+    "50000": {
+      "net_return": 0.11604383399999985,
+      "max_drawdown": 0.06834843600000018,
+      "total_fees": 249.2483,
+      "trade_count": 26
+    },
+    "100000": {
+      "net_return": 0.11766874699999996,
+      "max_drawdown": 0.07010787899999993,
+      "total_fees": 491.3653,
+      "trade_count": 26
+    }
+  },
+  "scope": "ENGINEERING_ACCOUNT_RECONCILIATION_ONLY",
+  "strategy_effectiveness_established": false,
+  "independent_validation_passed": false,
+  "formal_qualification": false
+}

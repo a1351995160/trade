@@ -1,0 +1,7 @@
+{
+  "kind": "ACCEPT_B_MA10_COST_STOP_BASE",
+  "reservation": "RES-000001",
+  "receipt_id": "3984fd0e7d1730500686a7098dab4f38b0f11ccc44594bd6a09bf212b1f0ee8e",
+  "started_at": "2026-09-29T14:37:28.304510+00:00",
+  "counted_before_account_calculation": true
+}

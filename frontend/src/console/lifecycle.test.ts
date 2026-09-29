@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { canOperate, lifecycleState, observationDays, qualificationText, sourceText } from './lifecycle.ts'
+import { canCreateBinding, canOperate, lifecycleState, observationDays, qualificationText, sourceText } from './lifecycle.ts'
 
 test('completion never becomes effectiveness or real observation', () => {
   assert.equal(lifecycleState('COMPLETED'), '指定阶段已完成')
@@ -14,12 +14,18 @@ test('real records and unknown states remain explicit', () => {
   assert.match(lifecycleState('NEW_STATUS'), /NEW_STATUS/)
   assert.match(sourceText({ profile: 'HISTORICAL_MODELED' }), /采用模型/)
 })
-test('readonly and real jobs do not gain browser mutations', () => {
-  const view = { bindings: {}, binding_catalog: {}, jobs: {}, background_enabled: false, actions_allowed: true }
-  assert.equal(canOperate(view, { profile: 'REAL', status: 'READY' }), false)
-  assert.equal(canOperate({ ...view, actions_allowed: false }, { profile: 'SYNTHETIC' }), false)
-  assert.equal(canOperate(view, { profile: 'SYNTHETIC', status: 'READY' }), true)
-  assert.equal(canOperate(view, { profile: 'SYNTHETIC', status: 'RUNNING' }), false)
+test('only server registered jobs and bindings gain browser actions', () => {
+  const view = { bindings: {}, binding_catalog: {}, jobs: {}, background_enabled: false, actions_allowed: true,
+    operation_permissions: { job_ids: ['registered'], create_binding_ids: ['trusted'] } }
+  assert.equal(canOperate(view, { profile: 'REAL', status: 'READY' }, 'registered'), true)
+  assert.equal(canOperate(view, { profile: 'REAL', status: 'READY' }, 'other'), false)
+  assert.equal(canOperate(view, { profile: 'SYNTHETIC', status: 'READY' }, 'other'), false)
+  assert.equal(canOperate({ ...view, actions_allowed: false }, { status: 'READY' }, 'registered'), false)
+  assert.equal(canOperate(view, { status: 'RUNNING' }, 'registered'), false)
+  assert.equal(canOperate({ ...view, operation_permissions: undefined }, { profile: 'SYNTHETIC' }, 'registered'), false)
+  assert.equal(canCreateBinding(view, 'trusted'), true)
+  assert.equal(canCreateBinding(view, 'other'), false)
+  assert.equal(canCreateBinding({ ...view, actions_allowed: false }, 'trusted'), false)
 })
 
 test('exhausted research attempts have an explicit Chinese status', () => {

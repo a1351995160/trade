@@ -1,0 +1,107 @@
+{
+  "task_id": "12108db6cd474c79354b4bf56ec2b763834f521d0bf9ece2ca455f0e7f2808a2",
+  "preview_identity": "6da90ea50eb3211c3107fba36890d87abdef90d04c73adfcec80f5a8ca9f0e45",
+  "plan_ids": {
+    "ACCEPT_B_MA10_COST_STOP_BASE": "405444dcfdecb49bb05fcc3e1be4651b4f7b3b1215062e2e22f4f0f34e6aa817",
+    "ACCEPT_B_MA10_COST_STOP_STRESS": "b46e3d209687acfa2620adfbbd4dc7a8408413d508fd6605a5e2eb74b904b0f8",
+    "ACCEPT_B_MA10_COST_STOP_BENCHMARK": "0dda140767e9b49f2fd0c5d5dfacf6da9b099fbf437362271becac1424a6a2a0"
+  },
+  "request": {
+    "strategy_id": "ACCEPT_B_MA10_COST_STOP",
+    "rule": {
+      "version": "RESEARCH_RULE_STRATEGY_V3",
+      "hypothesis": "固定工程验收规则，不做有效性或未来收益主张。",
+      "change_reason": "按事前约定覆盖参数、多条件、退出和真实账户，不根据本轮收益修改。",
+      "indicator_instances": [
+        {
+          "instance_id": "ma10",
+          "id": "MA",
+          "version": "MA_ARITHMETIC_V1",
+          "params": {
+            "window": 10
+          }
+        }
+      ],
+      "buy": {
+        "op": "gt",
+        "args": [
+          {
+            "op": "field",
+            "args": [
+              "close"
+            ],
+            "params": {}
+          },
+          {
+            "op": "indicator",
+            "args": [
+              "ma10"
+            ],
+            "params": {
+              "output": "ma",
+              "version": "MA_ARITHMETIC_V1"
+            }
+          }
+        ],
+        "params": {}
+      },
+      "sell": {
+        "op": "lt",
+        "args": [
+          {
+            "op": "field",
+            "args": [
+              "close"
+            ],
+            "params": {}
+          },
+          {
+            "op": "indicator",
+            "args": [
+              "ma10"
+            ],
+            "params": {
+              "output": "ma",
+              "version": "MA_ARITHMETIC_V1"
+            }
+          }
+        ],
+        "params": {}
+      },
+      "market_filter": null,
+      "min_hold_sessions": 5,
+      "max_hold_sessions": 40,
+      "cooldown_sessions": 3,
+      "target_weight": 0.4,
+      "exits": {
+        "execution_mode": "CLOSE_CONFIRM_NEXT_SESSION_OPEN",
+        "stop_loss_pct": 0.05,
+        "take_profit_pct": null,
+        "trailing_activate_pct": null,
+        "trailing_pct": null
+      }
+    },
+    "dataset_id": "ACCEPTANCE_POOL_B_2022",
+    "feature_start": 20220407,
+    "account_start": 20220706,
+    "account_end": 20221230,
+    "symbols": [
+      "000006.SZ",
+      "000733.SZ",
+      "002036.SZ"
+    ],
+    "initial_cash": 50000,
+    "max_positions": 2,
+    "max_symbol_exposure_bps": 5000,
+    "costs": [
+      "BASE",
+      "STRESS"
+    ],
+    "benchmark": "FULL_POOL_BUY_HOLD",
+    "purpose": "EXPLORATORY",
+    "authorization_ref": "B_MA10_COST_STOP_50000"
+  },
+  "rule_identity": "fa7b5c57e0273b2532ca8413856f74f91d5d7cc0584a9755dafe3f4704d126fc",
+  "input_identity": "a74c880706b0a5260e2fca973b298526d032537a6893bb45f74b8d685efaa6ff",
+  "job_sha256": "7b2ece67a7fa3d65e137db7fb64efed6a555f6bd39a73288c297f04520e78d35"
+}

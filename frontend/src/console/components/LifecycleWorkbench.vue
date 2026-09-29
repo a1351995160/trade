@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { canOperate, dataSummary, lifecycleRequest, lifecycleState, objectStatus, observationDays, qualificationText, sourceText } from '../lifecycle'
+import StrategySubmission from './StrategySubmission.vue'
+import { canCreateBinding, canOperate, dataSummary, lifecycleRequest, lifecycleState, objectStatus, observationDays, qualificationText, sourceText } from '../lifecycle'
 import type { LifecycleRecord, LifecycleView } from '../lifecycle'
 
 const view = ref<LifecycleView | null>(null)
@@ -15,8 +16,8 @@ const startAt = ref('')
 const endAt = ref('')
 const tradeDate = ref('')
 const count = ref(1)
-const available = computed(() => Object.entries(view.value?.binding_catalog ?? {}).filter(([, item]) =>
-  ['RESEARCH', 'PAPER', 'VALIDATION', 'PORTFOLIO', 'DAILY_PLAN', 'CAPTURE_OPEN', 'CAPTURE_CLOSE'].includes(item.kind)))
+const available = computed(() => Object.entries(view.value?.binding_catalog ?? {}).filter(([id]) =>
+  view.value !== null && canCreateBinding(view.value, id)))
 const actionNames: Record<string, string> = { create: '创建有限任务', start: '启动任务', pause: '暂停任务', resume: '恢复任务', tick: '推进一个阶段' }
 async function refresh() {
   busy.value = true; error.value = ''
@@ -60,6 +61,7 @@ onMounted(refresh)
 </script>
 
 <template>
+  <StrategySubmission />
   <section class="lifecycle-workbench" aria-labelledby="lifecycle-title">
     <header><div><p class="eyebrow">研究 · 验证 · 观察 · 每日计划</p><h2 id="lifecycle-title">自主研究进展</h2>
       <p>查看每个阶段的真实证据和等待原因。阶段执行完成，不等于策略已被证明有效。</p></div>
@@ -73,7 +75,7 @@ onMounted(refresh)
         <article><h3>真实观察</h3><p>按各账户分别记录</p><small>不合计独立账户，不把合成天数算入。</small></article>
         <article><h3>策略有效性</h3><p>只认原资格服务</p><small>任务完成或回测盈利均不自动授予资格。</small></article>
       </div>
-      <p class="notice">{{ view.actions_allowed ? '当前页面只允许已授权的合成治理操作；真实任务继续沿显式 CLI 执行。' : '当前为只读模式。刷新不会启动研究、采集或交易。' }} 后台自动运行：{{ view.background_enabled ? '已启用' : '未启用' }}。</p>
+      <p class="notice">{{ view.actions_allowed ? '仅可操作维护者已登记且当前授权允许的对象；每次执行仍会重新核验。' : '当前为只读模式。刷新不会启动研究、采集或交易。' }} 后台自动运行：{{ view.background_enabled ? '已启用' : '未启用' }}。</p>
       <h3>业务对象</h3>
       <p v-if="!Object.keys(view.bindings).length">尚未配置研究或观察对象。</p>
       <article v-for="(record, id) in view.bindings" :key="id" class="object-card">
@@ -93,10 +95,10 @@ onMounted(refresh)
         <h4>{{ id }} <span>{{ lifecycleState(job.status) }}</span></h4>
         <p>已开始 {{ job.calls_started ?? '—' }} / {{ job.max_calls ?? '—' }} 次；原研究预算仍单独约束。</p>
         <p v-if="job.reason">原因：{{ job.reason }}</p><p v-if="job.next_check_at">下一检查时间：{{ job.next_check_at }}</p>
-        <div v-if="canOperate(view, job)" class="actions"><button v-for="action in ['start', 'pause', 'resume', 'tick']" :key="action" :disabled="busy" @click="prepare(action, { job_id: id })">{{ actionNames[action] }}</button></div>
+        <div v-if="canOperate(view, job, String(id))" class="actions"><button v-for="action in ['start', 'pause', 'resume', 'tick']" :key="action" :disabled="busy" @click="prepare(action, { job_id: id })">{{ actionNames[action] }}</button></div>
         <details><summary>查看阶段记录与来源</summary><pre>{{ JSON.stringify(job, null, 2) }}</pre></details>
       </article>
-      <details v-if="view.actions_allowed"><summary>创建一个有限任务</summary><form @submit.prevent="create" class="create-form">
+      <details v-if="available.length"><summary>创建一个有限任务</summary><form @submit.prevent="create" class="create-form">
         <label>任务名称（英文字母、数字或下划线）<input v-model="jobId" required pattern="[A-Za-z0-9_-]{1,120}" /></label>
         <label>已有业务对象<select v-model="bindingId" required><option value="">请选择</option><option v-for="([id, item]) in available" :key="id" :value="id">{{ id }} · {{ item.kind }}</option></select></label>
         <label>开始时间<input v-model="startAt" type="datetime-local" required /></label><label>结束时间与任务到期<input v-model="endAt" type="datetime-local" required /></label>

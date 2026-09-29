@@ -1,6 +1,8 @@
 """统一生命周期服务：部署绑定固定业务入口，沿用其原授权和证据。"""
 from copy import deepcopy
 from pathlib import Path
+import hashlib
+import json
 
 from .bounded_research_v1 import _put, _read
 from .common import stable_hash
@@ -9,6 +11,7 @@ from .research_lifecycle_jobs_v1 import KINDS, LifecycleJobsV1, _identity
 
 
 _BINDINGS = {
+    'PUBLIC_ACCOUNT': {'kind', 'job_path', 'job_sha256'},
     'RESEARCH': {'kind', 'root', 'implementation'},
     'PAPER': {'kind', 'root', 'snapshot_root', 'snapshots'},
     'DAILY_PLAN': {'kind', 'root'},
@@ -23,15 +26,19 @@ _BINDINGS = {
 
 
 class LifecycleServiceV2:
-    def __init__(self, root, bindings, *, research_loader=None, synthetic_clock=None):
+    def __init__(self, root, bindings, *, research_loader=None, synthetic_clock=None, real_binding_ids=(), research_services=None):
         self.root = Path(root).absolute()
         if self.root.resolve() != self.root or '..' in self.root.parts:
             raise ValueError('LIFECYCLE_ROOT_REDIRECTED')
         if not isinstance(bindings, dict):
             raise ValueError('LIFECYCLE_BINDINGS_REQUIRED')
         self.bindings = deepcopy(bindings)
+        self.real_binding_ids = frozenset(real_binding_ids)
+        if not self.real_binding_ids <= set(self.bindings):
+            raise ValueError('LIFECYCLE_REAL_BINDING_NOT_REGISTERED')
         self.research_loader = research_loader  # 仅部署注入；JSON、HTTP 均无法指定代码。
         self.synthetic_clock = synthetic_clock
+        self.research_services = dict(research_services or {})
         for key, binding in self.bindings.items():
             _identity(key)
             paper_capture = isinstance(binding, dict) and binding.get('kind') == 'PAPER' and set(binding) == {'kind', 'root', 'snapshot_root', 'capture_jobs'}
@@ -49,7 +56,7 @@ class LifecycleServiceV2:
 
     def _paths(self, binding):
         for key, value in binding.items():
-            if key.endswith('_root') or key in {'root', 'path'}:
+            if key.endswith('_root') or key in {'root', 'path'} or key.endswith('_path'):
                 self._path(value)
             elif key == 'exposure_roots':
                 for root in value:
@@ -64,6 +71,13 @@ class LifecycleServiceV2:
         return ForwardPaperSessionV1(binding['root'], clock=self.synthetic_clock)
 
     def _research(self, binding):
+        if binding['implementation'] == 'DIAGNOSIS_V3':
+            from .diagnosis_research_v3 import DiagnosisResearchV3
+            research = self.research_services.get(str(self._path(binding['root'])))
+            if not isinstance(research, DiagnosisResearchV3) or research.root != self._path(binding['root']):
+                raise ValueError('LIFECYCLE_DIAGNOSIS_V3_DEPLOYMENT_REQUIRED')
+            research.config()
+            return research
         if binding['implementation'] == 'DIAGNOSIS_V1':
             from .diagnosis_research_v1 import DiagnosisResearchV1
             return DiagnosisResearchV1(binding['root'])
@@ -75,6 +89,52 @@ class LifecycleServiceV2:
             return BoundedResearchSessionV2(binding['root'])
         raise ValueError('LIFECYCLE_RESEARCH_IMPLEMENTATION_UNSUPPORTED')
 
+    def _public_account(self, binding):
+        from scripts.run_strategy_account_v1 import validate_sources
+        path = self._path(binding['job_path'])
+        # 公共入口的 JOB.json 没有旧有界档案的 _integrity 字段。
+        # 对将要解析的同一份字节核对部署冻结哈希，避免二次读取竞态。
+        raw = path.read_bytes()
+        if hashlib.sha256(raw).hexdigest() != binding['job_sha256']:
+            raise ValueError('LIFECYCLE_PUBLIC_JOB_CHANGED')
+        job = json.loads(raw)
+        if Path(job['root']).resolve() != path.parent:
+            raise ValueError('LIFECYCLE_PUBLIC_JOB_ROOT_CONFLICT')
+        self._path(job['budget_path'])
+        validate_sources(job)
+        allowed = 'chanlun_trader.research_factory.strategy_submission_v1:'
+        if any(item.get('loader') != allowed + 'load_frozen_bundle' for item in job['items'].values()):
+            raise ValueError('LIFECYCLE_PUBLIC_LOADER_REQUIRED')
+        return job
+
+    def _public_verify(self, binding):
+        from .research_evidence_v1 import verify_job_evidence
+        job = self._public_account(binding)
+        evidence = {name: verify_job_evidence(binding['job_path'], name=name) for name in job['plans']}
+        return {'job_sha256': binding['job_sha256'], 'items': evidence,
+                'advance_allowed': all(value.get('advance_allowed') is True for value in evidence.values())}
+
+    def _public_stage(self, binding, stage, *, recover):
+        from scripts.run_strategy_account_v1 import execute_accounts, report_account_job
+        job = self._public_account(binding)
+        root = Path(job['root'])
+        if stage['key'] == 'EXECUTE':
+            index = execute_accounts(binding['job_path'], recover=True)
+            return {'phase': 'EXECUTE', 'index_hash': stable_hash(index)}
+        evidence = self._public_verify(binding)
+        from .exploration_governance import immutable
+        if stage['key'] == 'VERIFY':
+            immutable(root / 'VERIFICATION.json', evidence)
+            return {'phase': 'VERIFY', 'evidence_hash': stable_hash(evidence), 'advance_allowed': evidence['advance_allowed']}
+        if stage['key'] == 'REPORT':
+            # 此文件由公共 immutable 写入，必须与本次独立重核结果逐项相等。
+            frozen = json.loads((root / 'VERIFICATION.json').read_bytes())
+            if not evidence['advance_allowed'] or frozen != evidence or stable_hash(frozen) != stable_hash(evidence):
+                raise ValueError('LIFECYCLE_PUBLIC_VERIFICATION_NOT_PASSED')
+            index = report_account_job(binding['job_path'])
+            return {'phase': 'REPORT', 'index_hash': stable_hash(index), 'evidence_hash': stable_hash(evidence)}
+        raise ValueError('LIFECYCLE_PUBLIC_STAGE_INVALID')
+
     def _scope(self, binding):
         kind = binding['kind']
         if kind.startswith('CAPTURE_'):
@@ -82,12 +142,21 @@ class LifecycleServiceV2:
             if authority.get('kind') not in {'PAPER', 'VALIDATION'}:
                 raise ValueError('LIFECYCLE_CAPTURE_EXISTING_AUTHORITY_REQUIRED')
             return self._scope(authority)
-        if kind == 'RESEARCH':
+        if kind == 'PUBLIC_ACCOUNT':
+            frozen = self._public_account(binding)
+            identity, objective, profile = stable_hash(frozen), frozen['objective_id'], 'REAL'
+        elif kind == 'RESEARCH':
             research = self._research(binding)
-            session = research.session if binding['implementation'] in {'DIAGNOSIS_V1', 'DIAGNOSIS_V2'} else research
-            frozen = session.scope()
-            objective, identity = frozen['objective_id'], frozen['scope_id']
-            profile = frozen['input_manifest']['profile']
+            if binding['implementation'] == 'DIAGNOSIS_V3':
+                frozen = research.config()
+                authorization = research.campaign.status()['authorization']
+                objective, identity = authorization['objective_id'], stable_hash(frozen)
+                profile = ('SYNTHETIC' if frozen['model_budget_guarantee'].get('provider') == 'SYNTHETIC_NO_BILLING' else 'REAL')
+            else:
+                session = research.session if binding['implementation'] in {'DIAGNOSIS_V1', 'DIAGNOSIS_V2'} else research
+                frozen = session.scope()
+                objective, identity = frozen['objective_id'], frozen['scope_id']
+                profile = frozen['input_manifest']['profile']
         elif kind in {'PAPER', 'DAILY_PLAN'}:
             frozen = self._paper(binding).header()
             identity, objective, profile = frozen['header_id'], 'PAPER', frozen['profile']
@@ -118,6 +187,8 @@ class LifecycleServiceV2:
 
     def create_job(self, job_id, *, binding_id, expires_at, max_calls, stages, trading_calendar=()):
         binding = self.bindings[binding_id]
+        if binding['kind'] == 'PUBLIC_ACCOUNT' and [stage['key'] for stage in stages] != ['EXECUTE', 'VERIFY', 'REPORT']:
+            raise ValueError('LIFECYCLE_PUBLIC_STAGES_REQUIRED')
         scope, profile = self._scope(binding)
         return self.jobs.create(job_id, scope_ref=scope, kind=binding['kind'], config_hash=stable_hash(binding),
                                 expires_at=expires_at, max_calls=max_calls, stages=stages,
@@ -127,9 +198,19 @@ class LifecycleServiceV2:
         binding = self.bindings[binding_id]
         self._paths(binding)
         kind = binding['kind']
+        if kind == 'PUBLIC_ACCOUNT':
+            from scripts.run_strategy_account_v1 import status
+            self._public_account(binding)
+            return status(binding['job_path'])
         if kind == 'RESEARCH':
             return self._research(binding).status()
-        if kind in {'PAPER', 'DAILY_PLAN'}:
+        if kind == 'DAILY_PLAN':
+            from .trusted_daily_plan_v1 import trusted_daily_plan
+            paper = self._paper(binding)
+            header = paper.header()
+            return {**paper._status(header, paper._records(header)),
+                    'daily_plan_view': trusted_daily_plan(paper)}
+        if kind == 'PAPER':
             paper = self._paper(binding)
             paper.lock().probe()
             header = paper.header()
@@ -151,8 +232,8 @@ class LifecycleServiceV2:
             exposures = [record for root in binding['exposure_roots'] for record in read_governance_exposures(root)]
             return audit_data_qualification(binding['manifests'], exposures)
         if kind == 'ARCHIVE':
-            from .strategy_qualification_v1 import BoundedStrategyArchiveV1
-            archive = BoundedStrategyArchiveV1(binding['archive_root'])
+            from .public_strategy_archive_v3 import archive_for_ids
+            archive = archive_for_ids(binding['archive_root'], binding['strategy_ids'])
             return {'status': 'STRATEGY_ADMISSIONS', 'strategies': {
                 key: archive.admission(key, purpose='FORMAL_OBSERVATION') for key in binding['strategy_ids']}}
         if kind.startswith('CAPTURE_'):
@@ -170,11 +251,38 @@ class LifecycleServiceV2:
                 views[key] = {'status': 'BLOCKED', 'reason': str(exc)}
         jobs = {path.parent.name: self.jobs.status(path.parent.name)
                 for path in sorted(self.jobs.root.glob('*/CONFIG.json'))}
+        from .trusted_research_host_v1 import TrustedResearchHostV1
+        host = TrustedResearchHostV1(self).status()
         return {'version': 'LIFECYCLE_SERVICE_V2', 'bindings': views, 'jobs': jobs,
                 'binding_catalog': {key: {'kind': item['kind']} for key, item in self.bindings.items()},
-                'background_enabled': False, 'real_execution_authorized': False,
+                'background_enabled': host['background_enabled'], 'host': host,
+                'real_execution_authorized': bool(self.real_binding_ids),
                 'completion': {'engineering': 'AVAILABLE', 'tests': 'SEE_DELIVERY_REPORT',
                                'real_data': 'PER_BINDING_EVIDENCE', 'strategy_effectiveness': 'PER_CANONICAL_ADMISSION'}}
+
+    def operation_permissions(self, policy):
+        """按冻结绑定计算界面权限；实际执行仍重新核对原授权。"""
+        allowed = []
+        for key, binding in self.bindings.items():
+            try:
+                _, profile = self._scope(binding)
+                if ((profile == 'SYNTHETIC' and policy.governance_allowed)
+                        or (profile != 'SYNTHETIC' and key in self.real_binding_ids
+                            and getattr(policy, 'trusted_research_allowed', False))):
+                    allowed.append(key)
+            except (ValueError, OSError, KeyError, PermissionError):
+                continue
+        hashes = {stable_hash(self.bindings[key]) for key in allowed}
+        jobs = []
+        for path in sorted(self.jobs.root.glob('*/CONFIG.json')):
+            try:
+                config, _, _ = self.jobs._load(path.parent.name)
+                self._binding(config)
+                if config['config_hash'] in hashes:
+                    jobs.append(path.parent.name)
+            except (ValueError, OSError, KeyError, PermissionError):
+                continue
+        return {'create_binding_ids': sorted(allowed), 'job_ids': jobs}
 
     def _snapshot(self, binding, stage):
         from .forward_snapshot_v1 import SnapshotStoreV1
@@ -210,8 +318,21 @@ class LifecycleServiceV2:
         binding = self._binding(config)
         kind = binding['kind']
         status, reason = 'READY', 'EXISTING_SERVICE_RECHECK_REQUIRED'
-        if kind == 'RESEARCH':
+        if kind == 'PUBLIC_ACCOUNT':
+            from scripts.run_strategy_account_v1 import service
+            job = self._public_account(binding)
+            if stage['key'] == 'EXECUTE' and any(not (Path(job['root']) / (name + '_START.json')).exists() for name in job['plans']):
+                service(job).active()
+            elif stage['key'] == 'REPORT' and not (Path(job['root']) / 'VERIFICATION.json').exists():
+                status, reason = 'WAITING_QUALIFICATION', 'PUBLIC_VERIFICATION_REQUIRED'
+        elif kind == 'RESEARCH':
             research = self._research(binding)
+            if binding['implementation'] == 'DIAGNOSIS_V3':
+                current = research.status()
+                state = current.get('status', 'READY')
+                if state not in {'READY', 'IN_PROGRESS'}:
+                    return {'status': 'WAITING_QUALIFICATION', 'reason': state}
+                return {'status': 'READY', 'reason': 'CAMPAIGN_RECHECK_ON_DISPATCH'}
             session = research.session if binding['implementation'] in {'DIAGNOSIS_V1', 'DIAGNOSIS_V2'} else research
             session.scope(active=True)
             current = research.status()
@@ -287,6 +408,13 @@ class LifecycleServiceV2:
         if readiness['status'] != 'READY':
             return {'status': 'UNRESOLVED', 'receipt_ref': None, 'reason': readiness['reason']}
         kind = binding['kind']
+        if kind == 'PUBLIC_ACCOUNT':
+            reference = self._public_stage(binding, stage, recover=False)
+            result = self._result(config, operation_id, reference)
+            if reference.get('advance_allowed') is False:
+                result['status'] = 'FAILED'
+                result['reason'] = 'PUBLIC_EVIDENCE_GATE_FAILED'
+            return result
         if kind.startswith('CAPTURE_'):
             from .forward_snapshot_v1 import SnapshotStoreV1
             result = SnapshotStoreV1(binding['snapshot_root']).capture_tdx(phase=kind.removeprefix('CAPTURE_'), symbols=binding['symbols'])
@@ -301,7 +429,8 @@ class LifecycleServiceV2:
             from .bounded_model_v1 import BoundedCodexInvokerV1
             from scripts.run_bounded_research_v1 import load_s1
             research = self._research(binding)
-            result = research.tick(loader=self.research_loader or load_s1, invoker=BoundedCodexInvokerV1())
+            result = (research.tick() if binding['implementation'] == 'DIAGNOSIS_V3' else
+                      research.tick(loader=self.research_loader or load_s1, invoker=BoundedCodexInvokerV1()))
             reference = {'status_hash': stable_hash(result), 'scope_ref': config['scope_ref'], 'status': result['status']}
         elif kind == 'VALIDATION':
             from .formal_assessment_v1 import FormalAssessmentServiceV1
@@ -330,8 +459,19 @@ class LifecycleServiceV2:
             if receipt['config_identity'] != stable_hash(config) or receipt['operation_id'] != operation_id:
                 raise ValueError('LIFECYCLE_RECEIPT_CONFLICT')
             # 原回执只能结算调度阶段，不升级任何策略资格。
-            return {'status': 'COMPLETED', 'receipt_ref': {'path': str(path), 'hash': stable_hash(receipt)},
+            failed = receipt.get('reference', {}).get('advance_allowed') is False
+            return {'status': 'FAILED' if failed else 'COMPLETED', 'receipt_ref': {'path': str(path), 'hash': stable_hash(receipt)},
                     'reason': 'EXISTING_SERVICE_RECEIPT'}
+        if binding['kind'] == 'PUBLIC_ACCOUNT':
+            try:
+                reference = self._public_stage(binding, stage, recover=True)
+            except (ValueError, OSError, RuntimeError) as exc:
+                return {'status': 'UNRESOLVED', 'receipt_ref': None, 'reason': str(exc)[:2000]}
+            result = self._result(config, operation_id, reference)
+            if reference.get('advance_allowed') is False:
+                result['status'] = 'FAILED'
+                result['reason'] = 'PUBLIC_EVIDENCE_GATE_FAILED'
+            return result
         if binding['kind'] == 'PAPER':
             snapshot = self._snapshot(binding, stage)
             paper = self._paper(binding)
@@ -371,7 +511,7 @@ class LifecycleServiceV2:
         return {**value, 'preview_hash': stable_hash(identity)}
 
     def perform(self, policy, *, action, payload, preview_hash, confirmed):
-        if not policy.governance_allowed or confirmed is not True:
+        if not (policy.governance_allowed or getattr(policy, 'trusted_research_allowed', False)) or confirmed is not True:
             raise PermissionError('LIFECYCLE_EXPLICIT_GOVERNED_CONFIRMATION_REQUIRED')
         with ObjectiveMutationLock.for_resource(self.root / 'lifecycle-control'):
             preview = self.action_preview(action, payload)
@@ -384,5 +524,10 @@ class LifecycleServiceV2:
                 config, _, _ = self.jobs._load(payload['job_id'])
                 profile = config['profile']
             if profile != 'SYNTHETIC':
-                raise PermissionError('LIFECYCLE_REAL_WEB_MUTATION_NOT_AUTHORIZED')
+                allowed = (payload['binding_id'] in self.real_binding_ids if action == 'create' else
+                    any(stable_hash(self.bindings[key]) == config['config_hash'] for key in self.real_binding_ids))
+                if not allowed or not getattr(policy, 'trusted_research_allowed', False):
+                    raise PermissionError('LIFECYCLE_REAL_WEB_MUTATION_NOT_AUTHORIZED')
+            elif not policy.governance_allowed:
+                raise PermissionError('LIFECYCLE_SYNTHETIC_GOVERNANCE_REQUIRED')
             return self.create_job(**payload) if action == 'create' else getattr(self.jobs, action)(payload['job_id'])
