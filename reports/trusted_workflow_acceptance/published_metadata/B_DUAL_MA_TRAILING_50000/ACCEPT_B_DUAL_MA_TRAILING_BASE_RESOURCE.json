@@ -1,0 +1,10 @@
+{
+  "returncode": 0,
+  "stdout": "",
+  "stderr": "",
+  "timed_out": false,
+  "launcher_pid": 4128,
+  "resource_platform": "nt",
+  "windows_job_bound": true,
+  "elapsed_wall_seconds": 11.360000000000582
+}

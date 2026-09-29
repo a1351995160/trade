@@ -1,0 +1,13 @@
+{
+  "kind": "ACCEPT_B_MA20_TAKE_PROFIT_BASE",
+  "reservation": "RES-000001",
+  "receipt_id": "4f509af8de3179db8dd4a21a9d05d793bfb8e5a8303a97f58533eed8b3399673",
+  "started_at": "2026-09-29T14:38:06.756996+00:00",
+  "counted_before_account_calculation": true,
+  "completed": true,
+  "wall_seconds": 10.45300000000043,
+  "result_sha256": "feb0aec220597755f87316261a21282b611b438057525c3066802664b290969d",
+  "error": null,
+  "settled_at": "2026-09-29T14:38:17.235463+00:00",
+  "repair_exposures": 0
+}

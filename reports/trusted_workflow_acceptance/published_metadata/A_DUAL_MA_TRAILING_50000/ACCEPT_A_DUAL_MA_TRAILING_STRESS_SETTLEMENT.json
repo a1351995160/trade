@@ -1,0 +1,13 @@
+{
+  "kind": "ACCEPT_A_DUAL_MA_TRAILING_STRESS",
+  "reservation": "RES-000002",
+  "receipt_id": "6c4a4d991766a33a061137f63b180cd49729ce8b569bde304ee5b9638680fa58",
+  "started_at": "2026-09-29T14:35:04.874774+00:00",
+  "counted_before_account_calculation": true,
+  "completed": true,
+  "wall_seconds": 11.265999999999622,
+  "result_sha256": "c43d41cb602febc97585081af3d57dca09296243ec98d3d6d95c3ec48151536d",
+  "error": null,
+  "settled_at": "2026-09-29T14:35:16.153194+00:00",
+  "repair_exposures": 0
+}

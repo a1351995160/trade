@@ -138,7 +138,14 @@ def backend_for(strategy,options=None):
     """按账户能力选后端；注册新候选不修改此处的策略名称列表。"""
     options=options or {}
     if strategy.requirements.asset=='A_SHARE':
-        if 'RESEARCH_RULE_STRATEGY_V2' in strategy.requirements.capabilities:
+        if 'FULL_POOL_BUY_HOLD_V1' in strategy.requirements.capabilities:
+            from .research_benchmark_v1 import FullPoolBuyHoldBackendV1
+            if 'window' not in options or set(options) - {'window', 'costs', 'initial_cash', 'execution_profile'}:
+                raise ValueError('BENCHMARK_BACKEND_OPTIONS_INVALID')
+            backend = FullPoolBuyHoldBackendV1(**options)
+            backend.check(strategy.requirements)
+            return backend
+        if {'RESEARCH_RULE_STRATEGY_V2', 'RESEARCH_RULE_STRATEGY_V3'} & set(strategy.requirements.capabilities):
             from .rule_account_backend_v2 import RuleAccountBackendV2
             if 'window' not in options or set(options) - {'window', 'costs', 'initial_cash',
                     'max_positions', 'max_symbol_exposure_bps', 'execution_profile'}:

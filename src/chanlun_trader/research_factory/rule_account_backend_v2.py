@@ -5,6 +5,7 @@ import hashlib
 import re
 
 import pandas as pd
+import numpy as np
 
 from .common import stable_hash
 from .formal_account_backend_v1 import FormalAccountBackendV1, normalized_costs, normalized_window, window_input_identity
@@ -54,15 +55,22 @@ class RuleAccountBackendV2:
             raise ValueError('RULE_PORTFOLIO_LIMIT_INVALID')
 
     def check(self, requirements):
-        if requirements != ResearchRuleStrategyV2.requirements:
+        from .research_rule_strategy_v3 import CAPABILITY
+        if (requirements != ResearchRuleStrategyV2.requirements
+                and requirements.capabilities != (CAPABILITY, 'EXECUTION_STATE', 'PERSONAL_CASH_DIVIDEND')):
             raise ValueError('RULE_BACKEND_REQUIREMENTS_UNSUPPORTED')
 
     def validate_strategy(self, strategy):
-        if type(strategy) is not ResearchRuleStrategyV2:
+        from .research_rule_strategy_v3 import ResearchRuleStrategyV3
+        if type(strategy) not in (ResearchRuleStrategyV2, ResearchRuleStrategyV3):
             raise ValueError('RULE_BACKEND_STRATEGY_UNSUPPORTED')
 
     def describe(self):
-        paths = [Path(__file__), Path(__file__).with_name('forward_paper_engine_v1.py')]
+        paths = [Path(__file__), Path(__file__).with_name('forward_paper_engine_v1.py'),
+                 Path(__file__).with_name('rule_exit_adapter_v3.py'),
+                 Path(__file__).with_name('portfolio_execution_v1.py'),
+                 Path(__file__).parent.parent / 'engine' / 'daily_exit_v1.py',
+                 Path(__file__).parent.parent / 'engine' / 'daily_exit_v2.py']
         return {'backend': 'RULE_ACCOUNT_BACKEND_V2', 'window': deepcopy(self.window),
             'costs': deepcopy(self.costs), 'initial_cash': self.initial_cash,
             'max_positions': self.max_positions, 'max_symbol_exposure_bps': self.max_symbol_exposure_bps,
@@ -74,6 +82,9 @@ class RuleAccountBackendV2:
     def run(self, strategy, bundle, actions, guard):
         self.validate_strategy(strategy)
         self.check(strategy.requirements)
+        if getattr(strategy, 'exit_rules', None) is not None and strategy.exit_rules.enabled:
+            from .rule_exit_adapter_v3 import validate_exit_actions
+            validate_exit_actions(bundle['events'])
         observed = self.execution_profile == 'OBSERVED'
         if not observed:
             _require_historical_profile(bundle)
@@ -85,6 +96,16 @@ class RuleAccountBackendV2:
         validator = object.__new__(FormalAccountBackendV1)
         validator.window = self.window
         validator._validate_bundle(bundle)
+        turn = bundle['turn']
+        if not {'symbol', 'date', 'volume', 'tradestatus'} <= set(turn):
+            raise ValueError('RULE_VENDOR_STATE_FIELDS_MISSING')
+        if not np.isfinite(turn['volume'].to_numpy(dtype=float)).all() or (turn['volume'] < 0).any():
+            raise ValueError('RULE_VENDOR_VOLUME_INVALID')
+        # V2的固定依赖仍包含turn；V3和全池基准只要求各自真实声明的字段。
+        if 'turn' in strategy.requirements.fields:
+            if ('turn' not in turn or not np.isfinite(turn['turn'].to_numpy(dtype=float)).all()
+                    or (turn['turn'] < 0).any()):
+                raise ValueError('RULE_REQUIRED_FIELD_MISSING_OR_INVALID:turn')
         if observed:
             validator._observed_sessions(bundle)
         identity_fn = window_input_identity if observed else rule_input_identity
@@ -210,11 +231,12 @@ def _independent_reconcile(paper, initial_cash, day):
             key = (trade.strategy_id, trade.symbol)
             quantities[key] = quantities.get(key, 0) + direction*trade.quantity
             if buy:
-                lots.append({'key': key, 'bought': session, 'remaining': trade.quantity, 'dividends': {}})
+                lots.append({'lot_id': trade.lot_id, 'key': key, 'bought': session, 'remaining': trade.quantity, 'dividends': {}})
             else:
                 remaining = trade.quantity
                 for lot in lots:
-                    if lot['key'] != key or not lot['remaining'] or not remaining:
+                    if (lot['key'] != key or not lot['remaining'] or not remaining
+                            or (trade.lot_id is not None and lot['lot_id'] != trade.lot_id)):
                         continue
                     if session <= lot['bought']:
                         raise ValueError('RULE_T1_RECONCILIATION_FAILED')

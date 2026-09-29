@@ -1,0 +1,26 @@
+{
+  "status": "DATA_CONFIGURATION_ONLY_NOT_DEPLOYED",
+  "roots": {
+    "acceptance_A": "E:\\llmwiki\\autonomous-strategy-research-v1\\autonomous-completion-20260927\\THREE_SYMBOL_DATA",
+    "acceptance_B": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\sources_B"
+  },
+  "datasets": [
+    {
+      "dataset_id": "ACCEPTANCE_POOL_A_2022",
+      "root_id": "acceptance_A",
+      "external_manifest": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\manifest_A.json"
+    }
+  ],
+  "pending_datasets": [
+    {
+      "dataset_id": "ACCEPTANCE_POOL_B_2022",
+      "reason": "LOGIN_TIMEOUT_NO_VENDOR_RESPONSES"
+    }
+  ],
+  "data_authorization_scope": {
+    "purpose": "EXPLORATORY",
+    "start": "2022-01-01",
+    "end": "2024-07-31"
+  },
+  "authorization_receipt_created": false
+}

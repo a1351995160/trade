@@ -1,0 +1,14 @@
+{
+  "api": "query_history_k_data_plus",
+  "file": "DAILY_002036.SZ.json",
+  "request": {
+    "start_date": "2022-01-01",
+    "end_date": "2024-07-31",
+    "code": "sz.002036",
+    "fields": "date,code,open,high,low,close,preclose,volume,amount,adjustflag,turn,tradestatus,isST",
+    "frequency": "d",
+    "adjustflag": "3"
+  },
+  "started_at": "2026-09-29T14:17:14.577976+00:00",
+  "automatic_retry": false
+}

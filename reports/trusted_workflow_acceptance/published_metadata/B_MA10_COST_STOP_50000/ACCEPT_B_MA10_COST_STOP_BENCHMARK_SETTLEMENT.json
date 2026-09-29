@@ -1,0 +1,13 @@
+{
+  "kind": "ACCEPT_B_MA10_COST_STOP_BENCHMARK",
+  "reservation": "RES-000003",
+  "receipt_id": "3984fd0e7d1730500686a7098dab4f38b0f11ccc44594bd6a09bf212b1f0ee8e",
+  "started_at": "2026-09-29T14:37:49.789918+00:00",
+  "counted_before_account_calculation": true,
+  "completed": true,
+  "wall_seconds": 7.530999999999949,
+  "result_sha256": "8ffa428d042ec62ed27f0199d84c4bd5d9ae1c81f355e7cd2d91ca3f50bd22a5",
+  "error": null,
+  "settled_at": "2026-09-29T14:37:57.340806+00:00",
+  "repair_exposures": 0
+}

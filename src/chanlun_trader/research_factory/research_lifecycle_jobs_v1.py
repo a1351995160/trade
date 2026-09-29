@@ -10,7 +10,7 @@ from .common import stable_hash
 from .mutation_boundary import MutationBusyError, ObjectiveMutationLock
 
 
-KINDS = {"CAPTURE_OPEN", "CAPTURE_CLOSE", "RESEARCH", "VALIDATION", "PAPER", "PORTFOLIO", "DAILY_PLAN"}
+KINDS = {"CAPTURE_OPEN", "CAPTURE_CLOSE", "RESEARCH", "VALIDATION", "PAPER", "PORTFOLIO", "DAILY_PLAN", "PUBLIC_ACCOUNT"}
 WAITING = {"WAITING_DATA", "WAITING_QUALIFICATION", "BUDGET_EXHAUSTED"}
 TERMINAL = {"COMPLETED", "FAILED", "MISSED_WINDOW"}
 
@@ -154,6 +154,8 @@ class LifecycleJobsV1:
         completed = len(results) == len(config["stages"]) and all(value["status"] in TERMINAL for value in results.values())
         if pending or unresolved:
             status = "RECOVERY_REQUIRED"
+        elif config["kind"] == "PUBLIC_ACCOUNT" and any(row["status"] in {"FAILED", "MISSED_WINDOW"} for row in results.values()):
+            status = "FAILED"
         elif completed:
             status = "COMPLETED" if all(value["status"] == "COMPLETED" for value in results.values()) else "COMPLETED_WITH_ISSUES"
         elif state["paused"]:
@@ -229,6 +231,8 @@ class LifecycleJobsV1:
             if config["source_identity"] != source_identity():
                 raise ValueError("JOB_SOURCE_CHANGED")
             now = self._now(config["profile"])
+            if config["kind"] == "PUBLIC_ACCOUNT" and any(row["status"] in {"FAILED", "MISSED_WINDOW"} for row in state["stages"].values()):
+                return self._summary(config, state)
             if state["paused"] or not state["started"]:
                 return self._summary(config, state)
             dispatcher = self.dispatchers.get(config["kind"])

@@ -142,6 +142,25 @@ class StrategyBatchGovernanceV1(ETFAccountGovernanceV1):
             raise PermissionError('EXACT_STRATEGY_PLANS_APPROVAL_REQUIRED')
         return self._confirm_validated(source,inputs)
 
+    def confirm_campaign_scope(self, campaign, operation_ids, inputs):
+        """已有总任务派生精确账户用途，不冒充新的逐候选用户确认。"""
+        source = {'origin': 'CAMPAIGN_V1', 'campaign_root': str(campaign.root),
+                  'authorization_id': campaign.authorization_id, 'operation_ids': operation_ids,
+                  'expires_at': campaign.status()['authorization']['expires_at']}
+        validate_campaign_source(source, self.plans, self.objective_id)
+        return self._confirm_validated(source, inputs)
+
+    def start(self, name):
+        receipt = self.active()
+        if receipt['source'].get('origin') == 'CAMPAIGN_V1':
+            source = receipt['source']
+            campaign = validate_campaign_source(source, self.plans, self.objective_id)
+            if name not in source['operation_ids']:
+                raise PermissionError('CAMPAIGN_ACCOUNT_PURPOSE_NOT_AUTHORIZED')
+            # 先记总资源START；此后崩溃保留未知消费，绝不再次派发。
+            campaign.start_operation(source['operation_ids'][name])
+        return super().start(name)
+
     def confirm_research_scope(self,session,name):
         """父研究任务覆盖本候选；不伪造用户逐候选确认，也不扩充父任务范围。"""
         if self.root != session.path(name,'governance') or self.budget_path != session.path('search_budget_registry.json'):
@@ -195,6 +214,11 @@ class StrategyBatchGovernanceV1(ETFAccountGovernanceV1):
         receipt=self.active();start=read_json(self.root/(name+'_START.json'))
         if start['receipt_id']!=receipt['receipt_id'] or (self.root/(name+'_SETTLEMENT.json')).exists():
             raise PermissionError('STRATEGY_EXECUTION_NOT_ACTIVE')
+        if receipt['source'].get('origin') == 'CAMPAIGN_V1':
+            campaign = validate_campaign_source(receipt['source'], self.plans, self.objective_id)
+            operation = campaign.status()['operations'][receipt['source']['operation_ids'][name]]
+            if operation['status'] != 'RUNNING':
+                raise PermissionError('CAMPAIGN_ACCOUNT_OPERATION_NOT_RUNNING')
         budget=SearchBudgetRegistryV1(self.objective_id,self.budget_path)
         budget.reconcile(expected_used={(self.budget_kind,receipt['receipt_id']+':'+name):1})
         return {**receipt,'execution_purpose':name,'execution_consumed':True}
@@ -207,6 +231,8 @@ class StrategyBatchGovernanceV1(ETFAccountGovernanceV1):
             raise PermissionError('STRATEGY_PLAN_CONFLICT')
         if (self.root/'REVOKED.json').exists():raise PermissionError('STRATEGY_REVOKED')
         if datetime.now(timezone.utc)>=datetime.fromisoformat(receipt['expires_at']):raise PermissionError('STRATEGY_EXPIRED')
+        if receipt['source'].get('origin') == 'CAMPAIGN_V1':
+            validate_campaign_source(receipt['source'], self.plans, self.objective_id)
         if receipt['source'].get('origin')=='BOUNDED_RESEARCH_SCOPE':
             from .bounded_research_v1 import BoundedResearchSessionV1
             source=receipt['source'];session=BoundedResearchSessionV1(source['scope_root'])
@@ -216,3 +242,24 @@ class StrategyBatchGovernanceV1(ETFAccountGovernanceV1):
             if scope['scope_id']!=source['scope_id']:
                 raise PermissionError('STRATEGY_SCOPE_IDENTITY_CONFLICT')
         return receipt
+
+
+def validate_campaign_source(source, plans, objective_id):
+    """也供离线证据门核对父授权；历史核验不要求父授权仍未到期。"""
+    from .research_campaign_v1 import ResearchCampaignV1
+    if set(source) != {'origin', 'campaign_root', 'authorization_id', 'operation_ids', 'expires_at'} or source['origin'] != 'CAMPAIGN_V1':
+        raise PermissionError('CAMPAIGN_ACCOUNT_SOURCE_INVALID')
+    campaign = ResearchCampaignV1(source['campaign_root'], source['authorization_id'])
+    current = campaign.status()
+    authorization = current['authorization']
+    mapping = source['operation_ids']
+    if (authorization['objective_id'] != objective_id or source['expires_at'] != authorization['expires_at']
+            or not isinstance(mapping, dict) or set(mapping) != set(plans) or len(set(mapping.values())) != len(mapping)):
+        raise PermissionError('CAMPAIGN_ACCOUNT_AUTHORITY_CONFLICT')
+    for name, operation_id in mapping.items():
+        operation = current['operations'].get(operation_id, {})
+        if (operation.get('kind') != 'ACCOUNT' or operation.get('stage') != 'EXPLORATION'
+                or operation.get('subject_identity') != plans[name]['plan_id']
+                or operation.get('status') not in {'RESERVED', 'RUNNING', 'UNKNOWN', 'COMPLETED', 'FAILED'}):
+            raise PermissionError('CAMPAIGN_ACCOUNT_OPERATION_CONFLICT')
+    return campaign

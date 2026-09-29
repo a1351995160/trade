@@ -1,0 +1,11 @@
+{
+  "task_id": "36c99e1025cd299aa89f9d55e4a7b78011e54a44e8732988a8b45f874817df9b",
+  "status": "APPROVED",
+  "receipt_id": "4f509af8de3179db8dd4a21a9d05d793bfb8e5a8303a97f58533eed8b3399673",
+  "plan_ids": {
+    "ACCEPT_B_MA20_TAKE_PROFIT_BASE": "192e774ed0a7c7b119c62b8a6887fd2e0bc183d6153b2cdd0713460dd26d23c6",
+    "ACCEPT_B_MA20_TAKE_PROFIT_STRESS": "4c32a75c36c1eb46072db43e915ff6a7ab8a30475fc3ab26d37b5d67097c8189",
+    "ACCEPT_B_MA20_TAKE_PROFIT_BENCHMARK": "c2a26ed3af31d99ed7dfff79731419b5ddf9be903a6e739da326f616da0ba291"
+  },
+  "strategy_qualified": false
+}

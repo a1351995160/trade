@@ -1,0 +1,11 @@
+{
+  "api": "query_adjust_factor",
+  "file": "ADJUST_000006.SZ.json",
+  "request": {
+    "start_date": "2022-01-01",
+    "end_date": "2024-07-31",
+    "code": "sz.000006"
+  },
+  "started_at": "2026-09-29T14:17:11.887773+00:00",
+  "automatic_retry": false
+}

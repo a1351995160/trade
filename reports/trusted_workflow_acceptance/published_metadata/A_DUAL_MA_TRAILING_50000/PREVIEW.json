@@ -1,0 +1,1412 @@
+{
+  "request": {
+    "strategy_id": "ACCEPT_A_DUAL_MA_TRAILING",
+    "rule": {
+      "version": "RESEARCH_RULE_STRATEGY_V3",
+      "hypothesis": "固定工程验收规则，不做有效性或未来收益主张。",
+      "change_reason": "按事前约定覆盖参数、多条件、退出和真实账户，不根据本轮收益修改。",
+      "indicator_instances": [
+        {
+          "instance_id": "ma10",
+          "id": "MA",
+          "version": "MA_ARITHMETIC_V1",
+          "params": {
+            "window": 10
+          }
+        },
+        {
+          "instance_id": "ma20",
+          "id": "MA",
+          "version": "MA_ARITHMETIC_V1",
+          "params": {
+            "window": 20
+          }
+        }
+      ],
+      "buy": {
+        "op": "and",
+        "args": [
+          {
+            "op": "cross_up",
+            "args": [
+              {
+                "op": "field",
+                "args": [
+                  "close"
+                ],
+                "params": {}
+              },
+              {
+                "op": "indicator",
+                "args": [
+                  "ma10"
+                ],
+                "params": {
+                  "output": "ma",
+                  "version": "MA_ARITHMETIC_V1"
+                }
+              }
+            ],
+            "params": {}
+          },
+          {
+            "op": "gt",
+            "args": [
+              {
+                "op": "indicator",
+                "args": [
+                  "ma10"
+                ],
+                "params": {
+                  "output": "ma",
+                  "version": "MA_ARITHMETIC_V1"
+                }
+              },
+              {
+                "op": "indicator",
+                "args": [
+                  "ma20"
+                ],
+                "params": {
+                  "output": "ma",
+                  "version": "MA_ARITHMETIC_V1"
+                }
+              }
+            ],
+            "params": {}
+          }
+        ],
+        "params": {}
+      },
+      "sell": {
+        "op": "cross_down",
+        "args": [
+          {
+            "op": "field",
+            "args": [
+              "close"
+            ],
+            "params": {}
+          },
+          {
+            "op": "indicator",
+            "args": [
+              "ma20"
+            ],
+            "params": {
+              "output": "ma",
+              "version": "MA_ARITHMETIC_V1"
+            }
+          }
+        ],
+        "params": {}
+      },
+      "market_filter": null,
+      "min_hold_sessions": 5,
+      "max_hold_sessions": 40,
+      "cooldown_sessions": 3,
+      "target_weight": 0.4,
+      "exits": {
+        "execution_mode": "CLOSE_CONFIRM_NEXT_SESSION_OPEN",
+        "stop_loss_pct": null,
+        "take_profit_pct": null,
+        "trailing_activate_pct": 0.05,
+        "trailing_pct": 0.04
+      }
+    },
+    "dataset_id": "ACCEPTANCE_POOL_A_2022",
+    "feature_start": 20220407,
+    "account_start": 20220706,
+    "account_end": 20221230,
+    "symbols": [
+      "000001.SZ",
+      "000002.SZ",
+      "600000.SH"
+    ],
+    "initial_cash": 50000,
+    "max_positions": 2,
+    "max_symbol_exposure_bps": 5000,
+    "costs": [
+      "BASE",
+      "STRESS"
+    ],
+    "benchmark": "FULL_POOL_BUY_HOLD",
+    "purpose": "EXPLORATORY",
+    "authorization_ref": "A_DUAL_MA_TRAILING_50000"
+  },
+  "rule_identity": "bb3b33667bcc61fbe85a20e0a4d4c0a9ac9bdbf77bc73c1754e13867ec97ff41",
+  "actual_rule": {
+    "strategy_id": "ACCEPT_A_DUAL_MA_TRAILING",
+    "catalog_sha256": "a74f3936989489ad8080d0f62fa9e1acd8fe09426c25fc72be3cbdda20d75f6f",
+    "rule_identity": "bb3b33667bcc61fbe85a20e0a4d4c0a9ac9bdbf77bc73c1754e13867ec97ff41",
+    "rule": {
+      "version": "RESEARCH_RULE_STRATEGY_V3",
+      "indicator_instances": [
+        {
+          "instance_id": "ma10",
+          "id": "MA",
+          "version": "MA_ARITHMETIC_V1",
+          "params": {
+            "window": 10,
+            "price": "close"
+          }
+        },
+        {
+          "instance_id": "ma20",
+          "id": "MA",
+          "version": "MA_ARITHMETIC_V1",
+          "params": {
+            "window": 20,
+            "price": "close"
+          }
+        }
+      ],
+      "buy": {
+        "op": "and",
+        "args": [
+          {
+            "op": "cross_up",
+            "args": [
+              {
+                "op": "field",
+                "args": [
+                  "close"
+                ],
+                "params": {}
+              },
+              {
+                "op": "indicator",
+                "args": [
+                  "ma10"
+                ],
+                "params": {
+                  "output": "ma",
+                  "version": "MA_ARITHMETIC_V1"
+                }
+              }
+            ],
+            "params": {}
+          },
+          {
+            "op": "gt",
+            "args": [
+              {
+                "op": "indicator",
+                "args": [
+                  "ma10"
+                ],
+                "params": {
+                  "output": "ma",
+                  "version": "MA_ARITHMETIC_V1"
+                }
+              },
+              {
+                "op": "indicator",
+                "args": [
+                  "ma20"
+                ],
+                "params": {
+                  "output": "ma",
+                  "version": "MA_ARITHMETIC_V1"
+                }
+              }
+            ],
+            "params": {}
+          }
+        ],
+        "params": {}
+      },
+      "sell": {
+        "op": "cross_down",
+        "args": [
+          {
+            "op": "field",
+            "args": [
+              "close"
+            ],
+            "params": {}
+          },
+          {
+            "op": "indicator",
+            "args": [
+              "ma20"
+            ],
+            "params": {
+              "output": "ma",
+              "version": "MA_ARITHMETIC_V1"
+            }
+          }
+        ],
+        "params": {}
+      },
+      "market_filter": null,
+      "min_hold_sessions": 5,
+      "max_hold_sessions": 40,
+      "cooldown_sessions": 3,
+      "target_weight": 0.4,
+      "exits": {
+        "execution_mode": "CLOSE_CONFIRM_NEXT_SESSION_OPEN",
+        "take_profit_pct": null,
+        "trailing_activate_pct": 0.05,
+        "trailing_pct": 0.04,
+        "stop_loss_pct": null
+      }
+    },
+    "indicators": [
+      {
+        "instance_id": "ma10",
+        "id": "MA",
+        "version": "MA_ARITHMETIC_V1",
+        "params": {
+          "window": 10,
+          "price": "close"
+        },
+        "outputs": [
+          "ma"
+        ],
+        "inputs": [
+          "close"
+        ],
+        "extra_data": [],
+        "warmup_bars": 10,
+        "instance_identity": "560a52d208edd8a7"
+      },
+      {
+        "instance_id": "ma20",
+        "id": "MA",
+        "version": "MA_ARITHMETIC_V1",
+        "params": {
+          "window": 20,
+          "price": "close"
+        },
+        "outputs": [
+          "ma"
+        ],
+        "inputs": [
+          "close"
+        ],
+        "extra_data": [],
+        "warmup_bars": 20,
+        "instance_identity": "1f5aeacde9bce7d4"
+      }
+    ],
+    "exit_policy": {
+      "version": "RESEARCH_CLOSE_EXIT_V1",
+      "execution_mode": "CLOSE_CONFIRM_NEXT_SESSION_OPEN",
+      "cost_anchor": "LOT_ACTUAL_FILL_WITH_SLIPPAGE_EXCLUDING_COMMISSION",
+      "trailing_anchor": "HIGHEST_COMPLETED_RAW_PLUS_PAID_GROSS_CASH_SINCE_FILL",
+      "comparison_price_policy": "RAW_PLUS_PAID_GROSS_CASH_V1",
+      "cash_dividend_policy": "LOT_ENTITLED_PAID_GROSS_CASH_PER_SHARE_ADDED_TO_RAW_CLOSE",
+      "supported_cash_payment": "PAYMENT_DATE_EQUALS_EFFECTIVE_DATE",
+      "fill_price_policy": "RAW_EXECUTION_TAX_AND_FEES_SEPARATE",
+      "risk_exit_min_hold_exempt": true,
+      "signal_exit_min_hold_exempt": false,
+      "flat_signal_sell": "EXIT_PRIORITY",
+      "risk_exit_requires_position": true,
+      "pending_exit": "PERSIST_UNTIL_FILLED",
+      "account_execution_required": true
+    }
+  },
+  "data_metadata": {
+    "dataset_id": "ACCEPTANCE_POOL_A_2022",
+    "symbols": [
+      "000001.SZ",
+      "000002.SZ",
+      "600000.SH"
+    ],
+    "start": "2022-01-01",
+    "end": "2024-07-31",
+    "adapter": "BAOSTOCK_RESPONSE_JSON_V1",
+    "metadata_hash": "14c446bd56fe0f39619c1962ec84dfc3e0fe2cf62374618b51aab3207b60723a",
+    "historical_independence": "UNKNOWN",
+    "independent_confirmation_eligible": false,
+    "data_qualification": "CONTENT_NOT_VALIDATED",
+    "limitations": [
+      "原件待检查；历史可见性仅建模；停牌、非现金公司行动尚不支持。"
+    ]
+  },
+  "capabilities": {
+    "version": "RESEARCH_CAPABILITIES_V1",
+    "rules": {
+      "version": "RESEARCH_RULE_STRATEGY_V3",
+      "catalog_sha256": "a74f3936989489ad8080d0f62fa9e1acd8fe09426c25fc72be3cbdda20d75f6f",
+      "indicators": [
+        {
+          "id": "ACCUMULATION_DISTRIBUTION",
+          "version": "ACCUMULATION_DISTRIBUTION_V1",
+          "primary_output": "ad_line",
+          "params": {},
+          "formula_hash": "0a077bff32fa955b",
+          "outputs": [
+            "ad_line",
+            "money_flow_volume"
+          ]
+        },
+        {
+          "id": "AMOUNT_MA",
+          "version": "AMOUNT_MA_V1",
+          "primary_output": "amount_ma",
+          "params": {
+            "window": 20
+          },
+          "formula_hash": "1db0e857dc1f6903",
+          "outputs": [
+            "amount_ma"
+          ]
+        },
+        {
+          "id": "ATR",
+          "version": "ATR_V1",
+          "primary_output": "atr",
+          "params": {
+            "window": 14
+          },
+          "formula_hash": "ee0b29349319db95",
+          "outputs": [
+            "atr",
+            "tr"
+          ]
+        },
+        {
+          "id": "BAR_SHAPE",
+          "version": "BAR_SHAPE_V1",
+          "primary_output": "body_ratio",
+          "params": {
+            "window": 20
+          },
+          "formula_hash": "9cfe9075f1d12bb0",
+          "outputs": [
+            "body_ratio",
+            "upper_shadow_ratio",
+            "lower_shadow_ratio",
+            "range_pct",
+            "gap_pct"
+          ]
+        },
+        {
+          "id": "BIAS",
+          "version": "BIAS_V1",
+          "primary_output": "bias",
+          "params": {
+            "window": 6,
+            "price": "close"
+          },
+          "formula_hash": "e8d1e5dcf1023e7f",
+          "outputs": [
+            "bias",
+            "ma"
+          ]
+        },
+        {
+          "id": "BOLLINGER",
+          "version": "BOLLINGER_V1",
+          "primary_output": "middle",
+          "params": {
+            "window": 20,
+            "multiplier": 2.0,
+            "ddof": 0,
+            "price": "close"
+          },
+          "formula_hash": "3480821467f9c5eb",
+          "outputs": [
+            "middle",
+            "upper",
+            "lower",
+            "bandwidth",
+            "percent_b",
+            "std"
+          ]
+        },
+        {
+          "id": "CCI",
+          "version": "CCI_V1",
+          "primary_output": "cci",
+          "params": {
+            "window": 14
+          },
+          "formula_hash": "cd8061e2b3340c60",
+          "outputs": [
+            "cci",
+            "typical_price"
+          ]
+        },
+        {
+          "id": "CHAIKIN_MONEY_FLOW",
+          "version": "CHAIKIN_MONEY_FLOW_V1",
+          "primary_output": "cmf",
+          "params": {
+            "window": 20
+          },
+          "formula_hash": "5c664a5d731e51d0",
+          "outputs": [
+            "cmf",
+            "mfv_sum",
+            "volume_sum"
+          ]
+        },
+        {
+          "id": "DEMA",
+          "version": "DEMA_V1",
+          "primary_output": "dema",
+          "params": {
+            "window": 20,
+            "price": "close"
+          },
+          "formula_hash": "144a491f5137c006",
+          "outputs": [
+            "dema",
+            "ema1",
+            "ema2"
+          ]
+        },
+        {
+          "id": "DMI",
+          "version": "DMI_ADX_V1",
+          "primary_output": "plus_di",
+          "params": {
+            "window": 14
+          },
+          "formula_hash": "cdcbc9469a2e86f8",
+          "outputs": [
+            "plus_di",
+            "minus_di",
+            "adx",
+            "atr"
+          ]
+        },
+        {
+          "id": "DONCHIAN",
+          "version": "DONCHIAN_V1",
+          "primary_output": "upper",
+          "params": {
+            "window": 20,
+            "shift": 0
+          },
+          "formula_hash": "13f84352449e832d",
+          "outputs": [
+            "upper",
+            "lower",
+            "middle"
+          ]
+        },
+        {
+          "id": "DRAWDOWN_FROM_PEAK",
+          "version": "DRAWDOWN_FROM_PEAK_V1",
+          "primary_output": "drawdown",
+          "params": {
+            "window": 60,
+            "price": "close"
+          },
+          "formula_hash": "323eb2f2f877715e",
+          "outputs": [
+            "drawdown",
+            "peak"
+          ]
+        },
+        {
+          "id": "EMA",
+          "version": "EMA_V1",
+          "primary_output": "ema",
+          "params": {
+            "window": 12,
+            "price": "close"
+          },
+          "formula_hash": "1918df41bd28a6f6",
+          "outputs": [
+            "ema"
+          ]
+        },
+        {
+          "id": "HISTORICAL_RETURN",
+          "version": "HISTORICAL_RETURN_V1",
+          "primary_output": "return",
+          "params": {
+            "window": 20,
+            "price": "close",
+            "log": false
+          },
+          "formula_hash": "1ed2518cc8caa8d2",
+          "outputs": [
+            "return",
+            "ref_close"
+          ]
+        },
+        {
+          "id": "HLC3",
+          "version": "HLC3_V1",
+          "primary_output": "hlc3",
+          "params": {},
+          "formula_hash": "b696637411190f5e",
+          "outputs": [
+            "hlc3"
+          ]
+        },
+        {
+          "id": "KDJ",
+          "version": "KDJ_V1",
+          "primary_output": "rsv",
+          "params": {
+            "n": 9,
+            "k_period": 3,
+            "d_period": 3
+          },
+          "formula_hash": "313886dff6d1a75b",
+          "outputs": [
+            "rsv",
+            "k",
+            "d",
+            "j"
+          ]
+        },
+        {
+          "id": "KELTNER",
+          "version": "KELTNER_V1",
+          "primary_output": "upper",
+          "params": {
+            "window": 20,
+            "atr_window": 10,
+            "multiplier": 2.0
+          },
+          "formula_hash": "eccf47a9e4bcde58",
+          "outputs": [
+            "upper",
+            "middle",
+            "lower",
+            "atr"
+          ]
+        },
+        {
+          "id": "MA",
+          "version": "MA_ARITHMETIC_V1",
+          "primary_output": "ma",
+          "params": {
+            "window": 20,
+            "price": "close"
+          },
+          "formula_hash": "9ddb2dd0255ef4d4",
+          "outputs": [
+            "ma"
+          ]
+        },
+        {
+          "id": "MACD",
+          "version": "MACD_V1",
+          "primary_output": "ema_fast",
+          "params": {
+            "fast": 12,
+            "slow": 26,
+            "signal": 9
+          },
+          "formula_hash": "df0cca186db9c57d",
+          "outputs": [
+            "ema_fast",
+            "ema_slow",
+            "dif",
+            "dea",
+            "hist"
+          ]
+        },
+        {
+          "id": "MACD_HIST_RAW",
+          "version": "MACD_HIST_RAW_V1",
+          "primary_output": "dif",
+          "params": {
+            "fast": 12,
+            "slow": 26,
+            "signal": 9
+          },
+          "formula_hash": "a36eabdc1c9dad2b",
+          "outputs": [
+            "dif",
+            "dea",
+            "hist_raw"
+          ]
+        },
+        {
+          "id": "MFI",
+          "version": "MFI_V1",
+          "primary_output": "mfi",
+          "params": {
+            "window": 14
+          },
+          "formula_hash": "8ef004d0ba7d84c7",
+          "outputs": [
+            "mfi",
+            "typical_price"
+          ]
+        },
+        {
+          "id": "MTM",
+          "version": "MTM_V1",
+          "primary_output": "mtm",
+          "params": {
+            "window": 12,
+            "price": "close"
+          },
+          "formula_hash": "5c49d02424d919ab",
+          "outputs": [
+            "mtm",
+            "ref_close"
+          ]
+        },
+        {
+          "id": "NATR",
+          "version": "NATR_V1",
+          "primary_output": "natr",
+          "params": {
+            "window": 14
+          },
+          "formula_hash": "b106398293058166",
+          "outputs": [
+            "natr",
+            "atr"
+          ]
+        },
+        {
+          "id": "OBV",
+          "version": "OBV_V1",
+          "primary_output": "obv",
+          "params": {},
+          "formula_hash": "09a5a8c3d0896910",
+          "outputs": [
+            "obv"
+          ]
+        },
+        {
+          "id": "PRICE_EXTREMES",
+          "version": "PRICE_EXTREMES_V1",
+          "primary_output": "hhv",
+          "params": {
+            "window": 20
+          },
+          "formula_hash": "3bdda3d8c3b7b9ab",
+          "outputs": [
+            "hhv",
+            "llv"
+          ]
+        },
+        {
+          "id": "PRIOR_BREAKOUT",
+          "version": "PRIOR_BREAKOUT_V1",
+          "primary_output": "prior_high",
+          "params": {
+            "window": 20
+          },
+          "formula_hash": "7e95fa01c0931607",
+          "outputs": [
+            "prior_high",
+            "prior_low",
+            "break_up",
+            "break_down"
+          ]
+        },
+        {
+          "id": "PSY",
+          "version": "PSY_V1",
+          "primary_output": "psy",
+          "params": {
+            "window": 12,
+            "price": "close"
+          },
+          "formula_hash": "2fa16d130fdd60b2",
+          "outputs": [
+            "psy"
+          ]
+        },
+        {
+          "id": "PVT",
+          "version": "PVT_V1",
+          "primary_output": "pvt",
+          "params": {},
+          "formula_hash": "647eaa33e1148fa2",
+          "outputs": [
+            "pvt"
+          ]
+        },
+        {
+          "id": "RMA",
+          "version": "RMA_WILDER_V1",
+          "primary_output": "rma",
+          "params": {
+            "window": 14,
+            "price": "close"
+          },
+          "formula_hash": "c41d6c35c58ea67c",
+          "outputs": [
+            "rma"
+          ]
+        },
+        {
+          "id": "ROC",
+          "version": "ROC_V1",
+          "primary_output": "roc",
+          "params": {
+            "window": 12,
+            "price": "close"
+          },
+          "formula_hash": "7ee81553b63300eb",
+          "outputs": [
+            "roc",
+            "ref_close"
+          ]
+        },
+        {
+          "id": "ROLLING_SLOPE",
+          "version": "ROLLING_SLOPE_V1",
+          "primary_output": "slope",
+          "params": {
+            "window": 20,
+            "price": "close"
+          },
+          "formula_hash": "53d3106834a2cfa1",
+          "outputs": [
+            "slope"
+          ]
+        },
+        {
+          "id": "ROLLING_VOLATILITY",
+          "version": "ROLLING_VOLATILITY_V1",
+          "primary_output": "volatility",
+          "params": {
+            "window": 20,
+            "price": "close",
+            "annualize": 0,
+            "ddof": 1
+          },
+          "formula_hash": "10cfb05d7bb06efe",
+          "outputs": [
+            "volatility",
+            "return"
+          ]
+        },
+        {
+          "id": "ROLLING_VWAP",
+          "version": "ROLLING_VWAP_V1",
+          "primary_output": "rolling_vwap",
+          "params": {
+            "window": 20
+          },
+          "formula_hash": "b503cc074d5e9427",
+          "outputs": [
+            "rolling_vwap"
+          ]
+        },
+        {
+          "id": "RSI",
+          "version": "RSI_V1",
+          "primary_output": "rsi",
+          "params": {
+            "window": 14,
+            "price": "close"
+          },
+          "formula_hash": "45051f76b0d87e25",
+          "outputs": [
+            "rsi"
+          ]
+        },
+        {
+          "id": "RSI_REGIME_FLAG",
+          "version": "RSI_REGIME_FLAG_V1",
+          "primary_output": "regime",
+          "params": {
+            "window": 14,
+            "low": 30.0,
+            "high": 70.0
+          },
+          "formula_hash": "d0dd45e505863019",
+          "outputs": [
+            "regime",
+            "rsi_input"
+          ]
+        },
+        {
+          "id": "RVOL_INCL_CURRENT",
+          "version": "RVOL_INCL_CURRENT_V1",
+          "primary_output": "rvol",
+          "params": {
+            "window": 20
+          },
+          "formula_hash": "2405473479838a07",
+          "outputs": [
+            "rvol",
+            "volume_ma"
+          ]
+        },
+        {
+          "id": "RVOL_PRIOR",
+          "version": "RVOL_PRIOR_V1",
+          "primary_output": "rvol",
+          "params": {
+            "window": 20
+          },
+          "formula_hash": "80a611d3af18b937",
+          "outputs": [
+            "rvol",
+            "volume_ma_prior"
+          ]
+        },
+        {
+          "id": "SAR",
+          "version": "SAR_V1",
+          "primary_output": "sar",
+          "params": {
+            "step": 0.02,
+            "max_step": 0.2
+          },
+          "formula_hash": "7b7fe4941bc1cf9f",
+          "outputs": [
+            "sar",
+            "sar_trend"
+          ]
+        },
+        {
+          "id": "SMA_TDX",
+          "version": "SMA_TDX_V1",
+          "primary_output": "sma_tdx",
+          "params": {
+            "window": 9,
+            "weight": 1,
+            "price": "close"
+          },
+          "formula_hash": "42b57ad814997208",
+          "outputs": [
+            "sma_tdx"
+          ]
+        },
+        {
+          "id": "STREAK",
+          "version": "STREAK_V1",
+          "primary_output": "up_streak",
+          "params": {
+            "price": "close"
+          },
+          "formula_hash": "79c0b3420a317871",
+          "outputs": [
+            "up_streak",
+            "down_streak"
+          ]
+        },
+        {
+          "id": "TEMA",
+          "version": "TEMA_V1",
+          "primary_output": "tema",
+          "params": {
+            "window": 20,
+            "price": "close"
+          },
+          "formula_hash": "3007cfaf4525e238",
+          "outputs": [
+            "tema",
+            "ema1",
+            "ema2",
+            "ema3"
+          ]
+        },
+        {
+          "id": "TIME_SERIES_ZSCORE",
+          "version": "TIME_SERIES_ZSCORE_V1",
+          "primary_output": "ts_zscore",
+          "params": {
+            "window": 60,
+            "price": "close",
+            "ddof": 1
+          },
+          "formula_hash": "d33c45d7289bb60d",
+          "outputs": [
+            "ts_zscore",
+            "mean",
+            "std"
+          ]
+        },
+        {
+          "id": "TREND_STRENGTH_RATIO",
+          "version": "TREND_STRENGTH_RATIO_V1",
+          "primary_output": "strength",
+          "params": {
+            "window": 14,
+            "ma_window": 20
+          },
+          "formula_hash": "6f7c8b602525d3d9",
+          "outputs": [
+            "strength",
+            "adx",
+            "ma_distance"
+          ]
+        },
+        {
+          "id": "TRIX",
+          "version": "TRIX_V1",
+          "primary_output": "trix",
+          "params": {
+            "window": 12,
+            "signal": 9,
+            "price": "close"
+          },
+          "formula_hash": "4784ec61b61a4039",
+          "outputs": [
+            "trix",
+            "trix_ma"
+          ]
+        },
+        {
+          "id": "TRUE_RANGE",
+          "version": "TRUE_RANGE_V1",
+          "primary_output": "tr",
+          "params": {},
+          "formula_hash": "b16d47e01652d353",
+          "outputs": [
+            "tr"
+          ]
+        },
+        {
+          "id": "TURNOVER_RATE",
+          "version": "TURNOVER_RATE_BAOSTOCK_TURN_V1",
+          "primary_output": "turnover_rate",
+          "params": {},
+          "formula_hash": "97612d2cd93ba582",
+          "outputs": [
+            "turnover_rate"
+          ]
+        },
+        {
+          "id": "VOLUME_BREAKOUT_SCORE",
+          "version": "VOLUME_BREAKOUT_SCORE_V1",
+          "primary_output": "score",
+          "params": {
+            "window": 20,
+            "volume_window": 20
+          },
+          "formula_hash": "6823df3e4c52feea",
+          "outputs": [
+            "score",
+            "break_up",
+            "rvol"
+          ]
+        },
+        {
+          "id": "VOLUME_MA",
+          "version": "VOLUME_MA_V1",
+          "primary_output": "volume_ma",
+          "params": {
+            "window": 20
+          },
+          "formula_hash": "92f65c4583a9b4fe",
+          "outputs": [
+            "volume_ma"
+          ]
+        },
+        {
+          "id": "VWAP_SESSION_PROXY",
+          "version": "VWAP_SESSION_PROXY_V1",
+          "primary_output": "vwap_session_proxy",
+          "params": {},
+          "formula_hash": "3c6195c67d98b217",
+          "outputs": [
+            "vwap_session_proxy"
+          ]
+        },
+        {
+          "id": "WILLIAMS_R",
+          "version": "WILLIAMS_R_V1",
+          "primary_output": "wr",
+          "params": {
+            "window": 14
+          },
+          "formula_hash": "f9bd1caf187e6794",
+          "outputs": [
+            "wr",
+            "hhv",
+            "llv"
+          ]
+        },
+        {
+          "id": "WMA",
+          "version": "WMA_V1",
+          "primary_output": "wma",
+          "params": {
+            "window": 20,
+            "price": "close"
+          },
+          "formula_hash": "883d0c0def38e571",
+          "outputs": [
+            "wma"
+          ]
+        }
+      ],
+      "operators": [
+        "above",
+        "and",
+        "below",
+        "between",
+        "const",
+        "cross_down",
+        "cross_up",
+        "eq",
+        "field",
+        "ge",
+        "gt",
+        "indicator",
+        "le",
+        "lt",
+        "ne",
+        "not",
+        "or",
+        "ref"
+      ],
+      "fields": [
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "amount",
+        "prev_close"
+      ],
+      "max_depth": 6,
+      "max_nodes": 64,
+      "max_lag_sessions": 60,
+      "max_holding_sessions": 252,
+      "max_cooldown_sessions": 60,
+      "target_weight_range": [
+        0.01,
+        1.0
+      ],
+      "indicator_parameters": "显式实例；非开放参数只接受目录默认值",
+      "market_filter_scope": "同证券合格价格与成交字段；不接受未经资格核验的外部市场状态",
+      "qualification": "EXPLORATORY_ONLY",
+      "window_overrides": {
+        "MA": [
+          1,
+          252
+        ],
+        "ROLLING_VOLATILITY": [
+          2,
+          252
+        ]
+      },
+      "exit_policy": {
+        "version": "RESEARCH_CLOSE_EXIT_V1",
+        "execution_mode": "CLOSE_CONFIRM_NEXT_SESSION_OPEN",
+        "cost_anchor": "LOT_ACTUAL_FILL_WITH_SLIPPAGE_EXCLUDING_COMMISSION",
+        "trailing_anchor": "HIGHEST_COMPLETED_RAW_PLUS_PAID_GROSS_CASH_SINCE_FILL",
+        "comparison_price_policy": "RAW_PLUS_PAID_GROSS_CASH_V1",
+        "cash_dividend_policy": "LOT_ENTITLED_PAID_GROSS_CASH_PER_SHARE_ADDED_TO_RAW_CLOSE",
+        "supported_cash_payment": "PAYMENT_DATE_EQUALS_EFFECTIVE_DATE",
+        "fill_price_policy": "RAW_EXECUTION_TAX_AND_FEES_SEPARATE",
+        "risk_exit_min_hold_exempt": true,
+        "signal_exit_min_hold_exempt": false,
+        "flat_signal_sell": "EXIT_PRIORITY",
+        "risk_exit_requires_position": true,
+        "pending_exit": "PERSIST_UNTIL_FILLED",
+        "account_execution_required": true
+      },
+      "exit_configuration_validated": true
+    },
+    "features": [
+      {
+        "id": "indicator_rules",
+        "name": "指标买卖规则",
+        "engine": true,
+        "public_entry": true,
+        "evidence": "NOT_ACCEPTED"
+      },
+      {
+        "id": "cost_stop",
+        "name": "按实际买入成本止损",
+        "engine": true,
+        "public_entry": true,
+        "evidence": "NOT_ACCEPTED"
+      },
+      {
+        "id": "take_profit",
+        "name": "固定比例止盈",
+        "engine": true,
+        "public_entry": true,
+        "evidence": "NOT_ACCEPTED"
+      },
+      {
+        "id": "trailing_stop",
+        "name": "从持仓最高收盘价回落退出",
+        "engine": true,
+        "public_entry": true,
+        "evidence": "NOT_ACCEPTED"
+      },
+      {
+        "id": "full_pool_benchmark",
+        "name": "全股票池买入持有基准",
+        "engine": true,
+        "public_entry": true,
+        "evidence": "NOT_ACCEPTED"
+      },
+      {
+        "id": "atr_stop",
+        "name": "按ATR波幅退出",
+        "engine": true,
+        "public_entry": false,
+        "evidence": "NOT_ACCEPTED"
+      },
+      {
+        "id": "volatility_rank",
+        "name": "跨股票按波动率排名选股",
+        "engine": false,
+        "public_entry": false,
+        "evidence": "UNSUPPORTED"
+      }
+    ],
+    "data": {
+      "schema_version": "RESEARCH_DATA_PROVIDER_V1",
+      "content_read": false,
+      "datasets": [
+        {
+          "dataset_id": "ACCEPTANCE_POOL_A_2022",
+          "symbols": [
+            "000001.SZ",
+            "000002.SZ",
+            "600000.SH"
+          ],
+          "start": "2022-01-01",
+          "end": "2024-07-31",
+          "adapter": "BAOSTOCK_RESPONSE_JSON_V1",
+          "metadata_hash": "14c446bd56fe0f39619c1962ec84dfc3e0fe2cf62374618b51aab3207b60723a",
+          "historical_independence": "UNKNOWN",
+          "independent_confirmation_eligible": false,
+          "data_qualification": "CONTENT_NOT_VALIDATED",
+          "limitations": [
+            "原件待检查；历史可见性仅建模；停牌、非现金公司行动尚不支持。"
+          ]
+        },
+        {
+          "dataset_id": "ACCEPTANCE_POOL_B_2022",
+          "symbols": [
+            "000006.SZ",
+            "000733.SZ",
+            "002036.SZ"
+          ],
+          "start": "2022-01-01",
+          "end": "2024-07-31",
+          "adapter": "BAOSTOCK_RESPONSE_JSON_V1",
+          "metadata_hash": "b53fa9868006a6977b06be229c11f97d5a3abdf365253b4cafbe04faab89f420",
+          "historical_independence": "UNKNOWN",
+          "independent_confirmation_eligible": false,
+          "data_qualification": "CONTENT_NOT_VALIDATED",
+          "limitations": [
+            "原件待检查；历史可见性仅建模；停牌、非现金公司行动尚不支持。"
+          ]
+        }
+      ]
+    },
+    "qualification": "EXPLORATORY_ONLY",
+    "limitations": [
+      "配置可解析不等于账户入口已接通。",
+      "测试通过不等于策略有效。",
+      "止损在收盘确认，下一交易日尝试成交，不能保证按止损线成交。",
+      "波动率指标与跨股票波动率排名是两项不同能力。"
+    ],
+    "source_hashes": {
+      "research_capabilities_v1.py": "271f67634c1dacd1696e309dadb2f8184927a3f972e1681a9f8b9211a87c0e89",
+      "research_rule_strategy_v3.py": "5d998eb18ecba96e223f5c48ff74cb5b0f1180c202481413e68d76b2b512fc11",
+      "strategy_submission_v1.py": "5a2acd496ae1a3f0df2d3087a9e7020fd3a4fa2e0147771ebf13b23b170ac2aa",
+      "research_data_provider_v1.py": "846024a55b1eac7908e0c89e5bf3650bf0400c225d4671ec7f641337336ca7e3",
+      "rule_account_backend_v2.py": "8a632c9eeee782bf6429898529a92c6e56463ebf29b5943a090da480ebe89d61",
+      "rule_exit_adapter_v3.py": "47fb80135d1a257072bbe13aaa7dbd098efcf06ba3cb189d6b505ecae04d488c",
+      "forward_paper_engine_v1.py": "8aa4c43709bcb2467ee03dcd2f6324ada36f0b7c20f40d9639d4fd00b973cd79",
+      "strategy_interface_v1.py": "7df9e774f9974d0af16c76d727c52b02361ebcc44de1d1d14b4c62af3369cdde",
+      "research_benchmark_v1.py": "c3786b9d41fc3a3bc9a01d97119cd83210f8c6099fcc778a63fd367a77eb6946"
+    },
+    "implementation_sha256": "271f67634c1dacd1696e309dadb2f8184927a3f972e1681a9f8b9211a87c0e89",
+    "examples": {
+      "ma_cross": {
+        "version": "RESEARCH_RULE_STRATEGY_V3",
+        "hypothesis": "均线交叉示例，效果尚未验证",
+        "change_reason": "公共能力示例",
+        "buy": {
+          "op": "cross_up",
+          "args": [
+            {
+              "op": "indicator",
+              "args": [
+                "fast"
+              ],
+              "params": {
+                "output": "ma",
+                "version": "MA_ARITHMETIC_V1"
+              }
+            },
+            {
+              "op": "indicator",
+              "args": [
+                "slow"
+              ],
+              "params": {
+                "output": "ma",
+                "version": "MA_ARITHMETIC_V1"
+              }
+            }
+          ],
+          "params": {}
+        },
+        "sell": {
+          "op": "cross_down",
+          "args": [
+            {
+              "op": "indicator",
+              "args": [
+                "fast"
+              ],
+              "params": {
+                "output": "ma",
+                "version": "MA_ARITHMETIC_V1"
+              }
+            },
+            {
+              "op": "indicator",
+              "args": [
+                "slow"
+              ],
+              "params": {
+                "output": "ma",
+                "version": "MA_ARITHMETIC_V1"
+              }
+            }
+          ],
+          "params": {}
+        },
+        "market_filter": null,
+        "min_hold_sessions": 5,
+        "max_hold_sessions": 40,
+        "cooldown_sessions": 5,
+        "target_weight": 0.5,
+        "indicator_instances": [
+          {
+            "instance_id": "fast",
+            "id": "MA",
+            "version": "MA_ARITHMETIC_V1",
+            "params": {
+              "window": 10,
+              "price": "close"
+            }
+          },
+          {
+            "instance_id": "slow",
+            "id": "MA",
+            "version": "MA_ARITHMETIC_V1",
+            "params": {
+              "window": 20,
+              "price": "close"
+            }
+          }
+        ],
+        "exits": {
+          "execution_mode": "CLOSE_CONFIRM_NEXT_SESSION_OPEN",
+          "stop_loss_pct": null,
+          "take_profit_pct": null,
+          "trailing_activate_pct": null,
+          "trailing_pct": null
+        }
+      },
+      "ma_cross_with_exits": {
+        "version": "RESEARCH_RULE_STRATEGY_V3",
+        "hypothesis": "均线交叉与成本退出配置示例，效果尚未验证",
+        "change_reason": "公共能力示例",
+        "buy": {
+          "op": "cross_up",
+          "args": [
+            {
+              "op": "indicator",
+              "args": [
+                "fast"
+              ],
+              "params": {
+                "output": "ma",
+                "version": "MA_ARITHMETIC_V1"
+              }
+            },
+            {
+              "op": "indicator",
+              "args": [
+                "slow"
+              ],
+              "params": {
+                "output": "ma",
+                "version": "MA_ARITHMETIC_V1"
+              }
+            }
+          ],
+          "params": {}
+        },
+        "sell": {
+          "op": "cross_down",
+          "args": [
+            {
+              "op": "indicator",
+              "args": [
+                "fast"
+              ],
+              "params": {
+                "output": "ma",
+                "version": "MA_ARITHMETIC_V1"
+              }
+            },
+            {
+              "op": "indicator",
+              "args": [
+                "slow"
+              ],
+              "params": {
+                "output": "ma",
+                "version": "MA_ARITHMETIC_V1"
+              }
+            }
+          ],
+          "params": {}
+        },
+        "market_filter": null,
+        "min_hold_sessions": 5,
+        "max_hold_sessions": 40,
+        "cooldown_sessions": 5,
+        "target_weight": 0.5,
+        "indicator_instances": [
+          {
+            "instance_id": "fast",
+            "id": "MA",
+            "version": "MA_ARITHMETIC_V1",
+            "params": {
+              "window": 10,
+              "price": "close"
+            }
+          },
+          {
+            "instance_id": "slow",
+            "id": "MA",
+            "version": "MA_ARITHMETIC_V1",
+            "params": {
+              "window": 20,
+              "price": "close"
+            }
+          }
+        ],
+        "exits": {
+          "execution_mode": "CLOSE_CONFIRM_NEXT_SESSION_OPEN",
+          "stop_loss_pct": 0.08,
+          "take_profit_pct": 0.2,
+          "trailing_activate_pct": 0.1,
+          "trailing_pct": 0.05
+        }
+      }
+    },
+    "acceptance": {
+      "s1": "EXTERNAL_PUBLICATION",
+      "meaning": "发布验收单独查询已有凭证；无有效发布凭证时保持未验收，入口可用不代表验收完成。"
+    },
+    "fingerprint": "9ce2a76374f1a24604960e2535ae4f396ffe4b9f6186c2eb671cad6e5cf00380"
+  },
+  "required_fields": [
+    "close"
+  ],
+  "status": "PREVIEW_ONLY_CONTENT_AND_AUTHORIZATION_NOT_CHECKED",
+  "limitations": [
+    "基准按完整股票池等权一次买入；现金整手约束可能导致部分证券未成交。",
+    "预览不读取行情、不授予执行许可。"
+  ],
+  "preview_identity": "30143f035257c76e417b9e96506796adc4e1fe1a3452bde7b33773066178286b"
+}

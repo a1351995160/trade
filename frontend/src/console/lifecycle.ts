@@ -4,6 +4,7 @@ export interface LifecycleView {
   binding_catalog: Record<string, { kind: string }>
   jobs: Record<string, LifecycleRecord>
   actions_allowed?: boolean
+  operation_permissions?: { create_binding_ids: string[]; job_ids: string[] }
   background_enabled: boolean
 }
 
@@ -50,8 +51,13 @@ export function sourceText(record: LifecycleRecord): string {
     : profile === 'HISTORICAL_MODELED' || profile === 'S1_MODELED_DAILY' ? '真实历史数据，部分时点采用模型'
       : '以原服务来源记录为准'
 }
-export function canOperate(view: LifecycleView, job: LifecycleRecord): boolean {
-  return view.actions_allowed === true && job.profile === 'SYNTHETIC' && job.status !== 'RUNNING'
+export function canOperate(view: LifecycleView, job: LifecycleRecord, jobId = ''): boolean {
+  return view.actions_allowed === true && job.status !== 'RUNNING'
+    && view.operation_permissions?.job_ids.includes(jobId) === true
+}
+export function canCreateBinding(view: LifecycleView, bindingId: string): boolean {
+  return view.actions_allowed === true
+    && view.operation_permissions?.create_binding_ids.includes(bindingId) === true
 }
 export async function lifecycleRequest(path = '', body?: unknown): Promise<LifecycleRecord> {
   const response = await fetch(`/api/research-lifecycle${path}`, body === undefined ? undefined : {

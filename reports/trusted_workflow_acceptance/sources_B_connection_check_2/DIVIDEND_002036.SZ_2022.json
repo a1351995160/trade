@@ -1,0 +1,50 @@
+{
+  "provider": "BaoStock",
+  "api": "query_dividend_data",
+  "request": {
+    "code": "sz.002036",
+    "year": "2022",
+    "yearType": "report"
+  },
+  "requested_at_utc": "2026-09-29T14:17:15.602397+00:00",
+  "received_at_utc": "2026-09-29T14:17:15.639321+00:00",
+  "historical_available_at_verified": false,
+  "mode": "HISTORICAL_MODELED",
+  "fields": [
+    "code",
+    "dividPreNoticeDate",
+    "dividAgmPumDate",
+    "dividPlanAnnounceDate",
+    "dividPlanDate",
+    "dividRegistDate",
+    "dividOperateDate",
+    "dividPayDate",
+    "dividStockMarketDate",
+    "dividCashPsBeforeTax",
+    "dividCashPsAfterTax",
+    "dividStocksPs",
+    "dividCashStock",
+    "dividReserveToStockPs"
+  ],
+  "error_code": "0",
+  "error_msg": "success",
+  "raw_rows": [
+    [
+      "sz.002036",
+      "",
+      "2022-05-17",
+      "2022-04-26",
+      "2022-07-05",
+      "2022-07-08",
+      "2022-07-11",
+      "2022-07-11",
+      "",
+      "0.011",
+      "0.0098999或0.0109999",
+      "0.000000",
+      "10派0.109999元（含税，扣税后0.098999或0.109999元）",
+      ""
+    ]
+  ],
+  "raw_rows_sha256": "5e5bdc54176becb0d6ab0d1ce5460ff5e5d7108ee250ac17044a7e77dcb5bfd1"
+}

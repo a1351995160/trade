@@ -1,0 +1,66 @@
+{
+  "task_id": "12108db6cd474c79354b4bf56ec2b763834f521d0bf9ece2ca455f0e7f2808a2",
+  "preview_identity": "6da90ea50eb3211c3107fba36890d87abdef90d04c73adfcec80f5a8ca9f0e45",
+  "input_identity": "a74c880706b0a5260e2fca973b298526d032537a6893bb45f74b8d685efaa6ff",
+  "job_path": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\12108db6cd474c79354b4bf56ec2b763834f521d0bf9ece2ca455f0e7f2808a2\\account\\JOB.json",
+  "objective_id": "TRUSTED_ACCEPTANCE_B_MA10_COST_STOP_50000",
+  "status": "FROZEN_REQUIRES_EXISTING_GOVERNANCE_APPROVAL",
+  "benchmark": "FULL_POOL_BUY_HOLD",
+  "qualification": {
+    "purpose": "EXPLORATORY",
+    "account_data_ready": true,
+    "historical_availability": "MODELED",
+    "historical_independence": "UNKNOWN",
+    "independent_confirmation_eligible": false,
+    "strategy_qualified": false,
+    "field_status": {
+      "prices": "VENDOR_ASSERTED",
+      "turn": "VENDOR_ASSERTED",
+      "security_status": "VENDOR_ASSERTED_WITH_MODELED_ELIGIBILITY",
+      "action_dates": "VENDOR_ASSERTED",
+      "availability_time": "MODELED"
+    },
+    "price_basis": {
+      "execution": "RAW",
+      "indicators": "CAUSAL_CASH_ACTION_TRANSFORM"
+    },
+    "checks": {
+      "cash_action_reference_checks": [
+        {
+          "event_id": "000006.SZ:20220621:CASH",
+          "reference_delta": 0.001000000000000334
+        },
+        {
+          "event_id": "000733.SZ:20220714:CASH",
+          "reference_delta": 0.0
+        },
+        {
+          "event_id": "002036.SZ:20220711:CASH",
+          "reference_delta": 0.0009999999999976694
+        }
+      ],
+      "coverage_basis": "VENDOR_CASH_ACTION_RECORDS_AND_EVERY_RAW_PRECLOSE_TRANSITION",
+      "publication_dates": "VENDOR_ASSERTED_NOT_INDEPENDENTLY_VERIFIED",
+      "historical_available_at_verified": false
+    },
+    "source_hashes": {
+      "TRADE_DATES.json": "87f146a3e741deadb598eefaadfe8cc0c09ec590be39e0ac9ee5dd94bd691f4c",
+      "DAILY_000006.SZ.json": "d607e9d1e78a02b55a754d6e7262f6c1b5c5884a0fc8901eb300348a13523dde",
+      "DIVIDEND_000006.SZ_2022.json": "ecd40c8fa69174c708594144c26971d83e2f13d0caecdd6ead247ec9c39be3cd",
+      "ADJUST_000006.SZ.json": "1241802e0bc91989ca1adb14229932a284a0693113661457319ed7e7bcf12082",
+      "DAILY_000733.SZ.json": "d78480745979954f3dd8fd55452926e34de7be918bb4ac90833822367aabf259",
+      "DIVIDEND_000733.SZ_2022.json": "0062777b348566409d54ade49b89cd7506678306c97b96750f9126247397e5e2",
+      "ADJUST_000733.SZ.json": "a53dfdf19e7c637f83fdb5d6aad9b84c964e2ab58420054698ae5a18cfd8bbec",
+      "DAILY_002036.SZ.json": "0c532cd298044e8f9625c91d8f68379efb53e54557f07bcacbb5336851996dea",
+      "DIVIDEND_002036.SZ_2022.json": "e2faff2407348633fbf2b000bb35b0d58bb6ae93d6825e17836feafa6f0a1913",
+      "ADJUST_002036.SZ.json": "611a4c492461d6b2f5f21a4a69399d91b4e4b670b5f8e3cc87eb559cf209af97"
+    },
+    "manifest_hash": "b53fa9868006a6977b06be229c11f97d5a3abdf365253b4cafbe04faab89f420"
+  },
+  "job_sha256": "7b2ece67a7fa3d65e137db7fb64efed6a555f6bd39a73288c297f04520e78d35",
+  "plan_ids": {
+    "ACCEPT_B_MA10_COST_STOP_BASE": "405444dcfdecb49bb05fcc3e1be4651b4f7b3b1215062e2e22f4f0f34e6aa817",
+    "ACCEPT_B_MA10_COST_STOP_STRESS": "b46e3d209687acfa2620adfbbd4dc7a8408413d508fd6605a5e2eb74b904b0f8",
+    "ACCEPT_B_MA10_COST_STOP_BENCHMARK": "0dda140767e9b49f2fd0c5d5dfacf6da9b099fbf437362271becac1424a6a2a0"
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "objective_id": "TRUSTED_ACCEPTANCE_A_MA10_COST_STOP_50000",
+  "budget_path": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\A_MA10_COST_STOP_50000\\budget.json",
+  "data_authorization": {
+    "authorization_id": "A_MA10_COST_STOP_50000",
+    "purpose": "EXPLORATORY",
+    "dataset_ids": [
+      "ACCEPTANCE_POOL_A_2022"
+    ],
+    "start": "2022-01-01",
+    "end": "2024-07-31"
+  },
+  "source": {
+    "origin": "USER_EXPLICIT_CURRENT_TASK",
+    "statement": "用户已授权执行整个可信研究计划及具备前置条件的真实固定账户验收；本次限事前冻结A池规则及资金，不搜索收益、不读取封存窗口、不授予资格。"
+  },
+  "expires_at": "2026-10-06T13:56:13.347731+00:00",
+  "account_authorization": {
+    "initial_cash": 50000,
+    "symbols": [
+      "000001.SZ",
+      "000002.SZ",
+      "600000.SH"
+    ],
+    "feature_start": 20220407,
+    "account_start": 20220706,
+    "account_end": 20221230,
+    "max_positions": 2,
+    "max_symbol_exposure_bps": 5000,
+    "costs": [
+      "BASE",
+      "STRESS"
+    ],
+    "benchmark": "FULL_POOL_BUY_HOLD",
+    "purpose": "FROZEN_PUBLIC_ACCOUNT_PLANS",
+    "rule_identity": "fa7b5c57e0273b2532ca8413856f74f91d5d7cc0584a9755dafe3f4704d126fc",
+    "max_account_jobs": 3
+  }
+}

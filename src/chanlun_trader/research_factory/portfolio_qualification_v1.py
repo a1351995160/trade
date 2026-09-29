@@ -12,7 +12,7 @@ from .common import stable_hash
 from .forward_paper_v1 import ForwardPaperSessionV1, _stamp
 from .mutation_boundary import ObjectiveMutationLock
 from .portfolio_execution_v1 import PortfolioExecutionPolicyV1
-from .strategy_qualification_v1 import BoundedStrategyArchiveV1
+from .public_strategy_archive_v3 import archive_for_ids
 
 
 def _now():
@@ -64,7 +64,7 @@ class PortfolioQualificationV1:
                  'PORTFOLIO_FUTURE_WINDOW_REQUIRED')
         _require(_stamp(execution.valid_until) > pd.Timestamp(str(calendar[-1]), tz='Asia/Shanghai') + pd.Timedelta(days=1),
                  'PORTFOLIO_POLICY_EXPIRES_DURING_WINDOW')
-        archive = BoundedStrategyArchiveV1(archive_root)
+        archive = archive_for_ids(archive_root, [member.strategy_id for member in execution.members])
         members = {}
         for member in execution.members:
             item = archive.load(member.strategy_id)
@@ -122,7 +122,7 @@ class PortfolioQualificationV1:
 
     def readiness(self):
         frozen = self.frozen()
-        archive = BoundedStrategyArchiveV1(frozen['archive_root'])
+        archive = archive_for_ids(frozen['archive_root'], list(frozen['members']))
         reasons, admissions = [], {}
         for key, member in frozen['members'].items():
             item = archive.load(key)

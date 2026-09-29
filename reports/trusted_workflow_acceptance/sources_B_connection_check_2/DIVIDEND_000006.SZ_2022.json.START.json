@@ -1,0 +1,11 @@
+{
+  "api": "query_dividend_data",
+  "file": "DIVIDEND_000006.SZ_2022.json",
+  "request": {
+    "code": "sz.000006",
+    "year": "2022",
+    "yearType": "report"
+  },
+  "started_at": "2026-09-29T14:17:11.845897+00:00",
+  "automatic_retry": false
+}

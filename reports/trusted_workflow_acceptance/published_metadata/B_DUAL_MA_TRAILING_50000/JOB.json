@@ -1,0 +1,3287 @@
+{
+  "plans": {
+    "ACCEPT_B_DUAL_MA_TRAILING_BASE": {
+      "strategy": {
+        "interface": "STRATEGY_INTERFACE_V1",
+        "strategy_id": "ACCEPT_B_DUAL_MA_TRAILING_BASE",
+        "parameters": {
+          "rule_definition": {
+            "strategy_id": "ACCEPT_B_DUAL_MA_TRAILING_BASE",
+            "catalog_sha256": "a74f3936989489ad8080d0f62fa9e1acd8fe09426c25fc72be3cbdda20d75f6f",
+            "rule_identity": "bb3b33667bcc61fbe85a20e0a4d4c0a9ac9bdbf77bc73c1754e13867ec97ff41",
+            "rule": {
+              "version": "RESEARCH_RULE_STRATEGY_V3",
+              "indicator_instances": [
+                {
+                  "instance_id": "ma10",
+                  "id": "MA",
+                  "version": "MA_ARITHMETIC_V1",
+                  "params": {
+                    "window": 10,
+                    "price": "close"
+                  }
+                },
+                {
+                  "instance_id": "ma20",
+                  "id": "MA",
+                  "version": "MA_ARITHMETIC_V1",
+                  "params": {
+                    "window": 20,
+                    "price": "close"
+                  }
+                }
+              ],
+              "buy": {
+                "op": "and",
+                "args": [
+                  {
+                    "op": "cross_up",
+                    "args": [
+                      {
+                        "op": "field",
+                        "args": [
+                          "close"
+                        ],
+                        "params": {}
+                      },
+                      {
+                        "op": "indicator",
+                        "args": [
+                          "ma10"
+                        ],
+                        "params": {
+                          "output": "ma",
+                          "version": "MA_ARITHMETIC_V1"
+                        }
+                      }
+                    ],
+                    "params": {}
+                  },
+                  {
+                    "op": "gt",
+                    "args": [
+                      {
+                        "op": "indicator",
+                        "args": [
+                          "ma10"
+                        ],
+                        "params": {
+                          "output": "ma",
+                          "version": "MA_ARITHMETIC_V1"
+                        }
+                      },
+                      {
+                        "op": "indicator",
+                        "args": [
+                          "ma20"
+                        ],
+                        "params": {
+                          "output": "ma",
+                          "version": "MA_ARITHMETIC_V1"
+                        }
+                      }
+                    ],
+                    "params": {}
+                  }
+                ],
+                "params": {}
+              },
+              "sell": {
+                "op": "cross_down",
+                "args": [
+                  {
+                    "op": "field",
+                    "args": [
+                      "close"
+                    ],
+                    "params": {}
+                  },
+                  {
+                    "op": "indicator",
+                    "args": [
+                      "ma20"
+                    ],
+                    "params": {
+                      "output": "ma",
+                      "version": "MA_ARITHMETIC_V1"
+                    }
+                  }
+                ],
+                "params": {}
+              },
+              "market_filter": null,
+              "min_hold_sessions": 5,
+              "max_hold_sessions": 40,
+              "cooldown_sessions": 3,
+              "target_weight": 0.4,
+              "exits": {
+                "execution_mode": "CLOSE_CONFIRM_NEXT_SESSION_OPEN",
+                "take_profit_pct": null,
+                "stop_loss_pct": null,
+                "trailing_activate_pct": 0.05,
+                "trailing_pct": 0.04
+              }
+            },
+            "indicators": [
+              {
+                "instance_id": "ma10",
+                "id": "MA",
+                "version": "MA_ARITHMETIC_V1",
+                "params": {
+                  "window": 10,
+                  "price": "close"
+                },
+                "outputs": [
+                  "ma"
+                ],
+                "inputs": [
+                  "close"
+                ],
+                "extra_data": [],
+                "warmup_bars": 10,
+                "instance_identity": "560a52d208edd8a7"
+              },
+              {
+                "instance_id": "ma20",
+                "id": "MA",
+                "version": "MA_ARITHMETIC_V1",
+                "params": {
+                  "window": 20,
+                  "price": "close"
+                },
+                "outputs": [
+                  "ma"
+                ],
+                "inputs": [
+                  "close"
+                ],
+                "extra_data": [],
+                "warmup_bars": 20,
+                "instance_identity": "1f5aeacde9bce7d4"
+              }
+            ],
+            "exit_policy": {
+              "version": "RESEARCH_CLOSE_EXIT_V1",
+              "execution_mode": "CLOSE_CONFIRM_NEXT_SESSION_OPEN",
+              "cost_anchor": "LOT_ACTUAL_FILL_WITH_SLIPPAGE_EXCLUDING_COMMISSION",
+              "trailing_anchor": "HIGHEST_COMPLETED_RAW_PLUS_PAID_GROSS_CASH_SINCE_FILL",
+              "comparison_price_policy": "RAW_PLUS_PAID_GROSS_CASH_V1",
+              "cash_dividend_policy": "LOT_ENTITLED_PAID_GROSS_CASH_PER_SHARE_ADDED_TO_RAW_CLOSE",
+              "supported_cash_payment": "PAYMENT_DATE_EQUALS_EFFECTIVE_DATE",
+              "fill_price_policy": "RAW_EXECUTION_TAX_AND_FEES_SEPARATE",
+              "risk_exit_min_hold_exempt": true,
+              "signal_exit_min_hold_exempt": false,
+              "flat_signal_sell": "EXIT_PRIORITY",
+              "risk_exit_requires_position": true,
+              "pending_exit": "PERSIST_UNTIL_FILLED",
+              "account_execution_required": true
+            }
+          },
+          "candidate_payload": {
+            "version": "RESEARCH_RULE_STRATEGY_V3",
+            "hypothesis": "固定工程验收规则，不做有效性或未来收益主张。",
+            "change_reason": "按事前约定覆盖参数、多条件、退出和真实账户，不根据本轮收益修改。",
+            "indicator_instances": [
+              {
+                "instance_id": "ma10",
+                "id": "MA",
+                "version": "MA_ARITHMETIC_V1",
+                "params": {
+                  "window": 10,
+                  "price": "close"
+                }
+              },
+              {
+                "instance_id": "ma20",
+                "id": "MA",
+                "version": "MA_ARITHMETIC_V1",
+                "params": {
+                  "window": 20,
+                  "price": "close"
+                }
+              }
+            ],
+            "buy": {
+              "op": "and",
+              "args": [
+                {
+                  "op": "cross_up",
+                  "args": [
+                    {
+                      "op": "field",
+                      "args": [
+                        "close"
+                      ],
+                      "params": {}
+                    },
+                    {
+                      "op": "indicator",
+                      "args": [
+                        "ma10"
+                      ],
+                      "params": {
+                        "output": "ma",
+                        "version": "MA_ARITHMETIC_V1"
+                      }
+                    }
+                  ],
+                  "params": {}
+                },
+                {
+                  "op": "gt",
+                  "args": [
+                    {
+                      "op": "indicator",
+                      "args": [
+                        "ma10"
+                      ],
+                      "params": {
+                        "output": "ma",
+                        "version": "MA_ARITHMETIC_V1"
+                      }
+                    },
+                    {
+                      "op": "indicator",
+                      "args": [
+                        "ma20"
+                      ],
+                      "params": {
+                        "output": "ma",
+                        "version": "MA_ARITHMETIC_V1"
+                      }
+                    }
+                  ],
+                  "params": {}
+                }
+              ],
+              "params": {}
+            },
+            "sell": {
+              "op": "cross_down",
+              "args": [
+                {
+                  "op": "field",
+                  "args": [
+                    "close"
+                  ],
+                  "params": {}
+                },
+                {
+                  "op": "indicator",
+                  "args": [
+                    "ma20"
+                  ],
+                  "params": {
+                    "output": "ma",
+                    "version": "MA_ARITHMETIC_V1"
+                  }
+                }
+              ],
+              "params": {}
+            },
+            "market_filter": null,
+            "min_hold_sessions": 5,
+            "max_hold_sessions": 40,
+            "cooldown_sessions": 3,
+            "target_weight": 0.4,
+            "exits": {
+              "execution_mode": "CLOSE_CONFIRM_NEXT_SESSION_OPEN",
+              "take_profit_pct": null,
+              "stop_loss_pct": null,
+              "trailing_activate_pct": 0.05,
+              "trailing_pct": 0.04
+            }
+          },
+          "rule_identity": "bb3b33667bcc61fbe85a20e0a4d4c0a9ac9bdbf77bc73c1754e13867ec97ff41",
+          "factor_ids": [
+            "MA"
+          ]
+        },
+        "requirements": {
+          "asset": "A_SHARE",
+          "frequency": "1D",
+          "price_view": "CAUSAL_HFQ_FEATURE_RAW_EXECUTION",
+          "fields": [
+            "close"
+          ],
+          "warmup_sessions": 21,
+          "intents": [
+            "TARGET_WEIGHT"
+          ],
+          "execution": "NEXT_SESSION_OPEN",
+          "capabilities": [
+            "RESEARCH_RULE_STRATEGY_V3",
+            "EXECUTION_STATE",
+            "PERSONAL_CASH_DIVIDEND"
+          ]
+        },
+        "implementation_options": {},
+        "source_hashes": {
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\scripts\\probe_all_indicator_strategy_v1.py": "70be6c40c57621925c33e44e6b855b832ad6b97f4c38494903fabd08d2d90dc8",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\scripts\\verify_fixed_strategy_state_v1.py": "d2bd3223709404a0862f60207ed1427e4feb1cdfd3ad25a733285b1551950cb1",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\engine\\conditions_v2.py": "8dca21c32e80e1638afccd5341a3d6b2bd1a3191b9a0eeb0584ba9f6be4c4ff8",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\engine\\custom_indicators_v2.py": "41935d278f579653f4394da290eba89c81482ede9a7878bd3217aaaaa7cea331",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\engine\\daily_exit_v1.py": "e6a6cfe3d2f88983d039d4a651c577333c2874d1b1b1aebc8fb37a5b8c742479",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\engine\\daily_exit_v2.py": "d47f86ba7462281914a7b36f07a026b7bcf641dc56e0649b64fbc747b29a5aad",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\engine\\indicator_registry_v2.py": "0eb71b9616d6af25bdfeddeaa582187e3799aff38e77d68ecda0168896d328e0",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\engine\\indicators_v2.py": "26bd38a7fc869a9eb7c8121c37af918f902cd80b11eeecd1549eb128fc0ffebe",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\engine\\individual_dividend_accounting_v1.py": "90ab925dee89ba3b5a4862fe6c98092ac03c24c7299aa6131902d86841afaa47",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\causal_dividend_features_v1.py": "7e4345de56663f9ac907d859843e2a999a148a53a5e79e5e992980ee72be5883",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\research_rule_strategy_v2.py": "ffe52dc2b333ea6dc0ac8fe3ee635119a21a48b669760ff7ee3a64d40eb4d09a",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\research_rule_strategy_v3.py": "5d998eb18ecba96e223f5c48ff74cb5b0f1180c202481413e68d76b2b512fc11"
+        }
+      },
+      "backend": {
+        "backend": "RULE_ACCOUNT_BACKEND_V2",
+        "window": {
+          "symbols": [
+            "000006.SZ",
+            "000733.SZ",
+            "002036.SZ"
+          ],
+          "feature_start": 20220407,
+          "account_start": 20220706,
+          "account_end": 20221230,
+          "calendar": [
+            20220407,
+            20220408,
+            20220411,
+            20220412,
+            20220413,
+            20220414,
+            20220415,
+            20220418,
+            20220419,
+            20220420,
+            20220421,
+            20220422,
+            20220425,
+            20220426,
+            20220427,
+            20220428,
+            20220429,
+            20220505,
+            20220506,
+            20220509,
+            20220510,
+            20220511,
+            20220512,
+            20220513,
+            20220516,
+            20220517,
+            20220518,
+            20220519,
+            20220520,
+            20220523,
+            20220524,
+            20220525,
+            20220526,
+            20220527,
+            20220530,
+            20220531,
+            20220601,
+            20220602,
+            20220606,
+            20220607,
+            20220608,
+            20220609,
+            20220610,
+            20220613,
+            20220614,
+            20220615,
+            20220616,
+            20220617,
+            20220620,
+            20220621,
+            20220622,
+            20220623,
+            20220624,
+            20220627,
+            20220628,
+            20220629,
+            20220630,
+            20220701,
+            20220704,
+            20220705,
+            20220706,
+            20220707,
+            20220708,
+            20220711,
+            20220712,
+            20220713,
+            20220714,
+            20220715,
+            20220718,
+            20220719,
+            20220720,
+            20220721,
+            20220722,
+            20220725,
+            20220726,
+            20220727,
+            20220728,
+            20220729,
+            20220801,
+            20220802,
+            20220803,
+            20220804,
+            20220805,
+            20220808,
+            20220809,
+            20220810,
+            20220811,
+            20220812,
+            20220815,
+            20220816,
+            20220817,
+            20220818,
+            20220819,
+            20220822,
+            20220823,
+            20220824,
+            20220825,
+            20220826,
+            20220829,
+            20220830,
+            20220831,
+            20220901,
+            20220902,
+            20220905,
+            20220906,
+            20220907,
+            20220908,
+            20220909,
+            20220913,
+            20220914,
+            20220915,
+            20220916,
+            20220919,
+            20220920,
+            20220921,
+            20220922,
+            20220923,
+            20220926,
+            20220927,
+            20220928,
+            20220929,
+            20220930,
+            20221010,
+            20221011,
+            20221012,
+            20221013,
+            20221014,
+            20221017,
+            20221018,
+            20221019,
+            20221020,
+            20221021,
+            20221024,
+            20221025,
+            20221026,
+            20221027,
+            20221028,
+            20221031,
+            20221101,
+            20221102,
+            20221103,
+            20221104,
+            20221107,
+            20221108,
+            20221109,
+            20221110,
+            20221111,
+            20221114,
+            20221115,
+            20221116,
+            20221117,
+            20221118,
+            20221121,
+            20221122,
+            20221123,
+            20221124,
+            20221125,
+            20221128,
+            20221129,
+            20221130,
+            20221201,
+            20221202,
+            20221205,
+            20221206,
+            20221207,
+            20221208,
+            20221209,
+            20221212,
+            20221213,
+            20221214,
+            20221215,
+            20221216,
+            20221219,
+            20221220,
+            20221221,
+            20221222,
+            20221223,
+            20221226,
+            20221227,
+            20221228,
+            20221229,
+            20221230
+          ]
+        },
+        "costs": {
+          "commission_rate": 0.00025,
+          "min_commission": 5.0,
+          "stamp_tax_rate": 0.0005,
+          "slippage_bps": 0.001
+        },
+        "initial_cash": 50000.0,
+        "max_positions": 2,
+        "max_symbol_exposure_bps": 5000,
+        "initial_decision": "FIRST_ACCOUNT_CLOSE",
+        "source_hashes": {
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\rule_account_backend_v2.py": "8a632c9eeee782bf6429898529a92c6e56463ebf29b5943a090da480ebe89d61",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\forward_paper_engine_v1.py": "8aa4c43709bcb2467ee03dcd2f6324ada36f0b7c20f40d9639d4fd00b973cd79",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\rule_exit_adapter_v3.py": "47fb80135d1a257072bbe13aaa7dbd098efcf06ba3cb189d6b505ecae04d488c",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\portfolio_execution_v1.py": "ce0a3f2deede67dea545ffbdd49a427a3d8495727bf9d60fb00b0e8eafdca105",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\engine\\daily_exit_v1.py": "e6a6cfe3d2f88983d039d4a651c577333c2874d1b1b1aebc8fb37a5b8c742479",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\engine\\daily_exit_v2.py": "d47f86ba7462281914a7b36f07a026b7bcf641dc56e0649b64fbc747b29a5aad"
+        },
+        "profile": "HISTORICAL_MODELED",
+        "strategy_qualified": false,
+        "independent_confirmation_eligible": false
+      },
+      "runtime": {
+        "factory": "chanlun_trader.research_factory.strategy_submission_v1:public_rule_factory",
+        "factory_kwargs": {
+          "payload": {
+            "version": "RESEARCH_RULE_STRATEGY_V3",
+            "hypothesis": "固定工程验收规则，不做有效性或未来收益主张。",
+            "change_reason": "按事前约定覆盖参数、多条件、退出和真实账户，不根据本轮收益修改。",
+            "indicator_instances": [
+              {
+                "instance_id": "ma10",
+                "id": "MA",
+                "version": "MA_ARITHMETIC_V1",
+                "params": {
+                  "window": 10
+                }
+              },
+              {
+                "instance_id": "ma20",
+                "id": "MA",
+                "version": "MA_ARITHMETIC_V1",
+                "params": {
+                  "window": 20
+                }
+              }
+            ],
+            "buy": {
+              "op": "and",
+              "args": [
+                {
+                  "op": "cross_up",
+                  "args": [
+                    {
+                      "op": "field",
+                      "args": [
+                        "close"
+                      ],
+                      "params": {}
+                    },
+                    {
+                      "op": "indicator",
+                      "args": [
+                        "ma10"
+                      ],
+                      "params": {
+                        "output": "ma",
+                        "version": "MA_ARITHMETIC_V1"
+                      }
+                    }
+                  ],
+                  "params": {}
+                },
+                {
+                  "op": "gt",
+                  "args": [
+                    {
+                      "op": "indicator",
+                      "args": [
+                        "ma10"
+                      ],
+                      "params": {
+                        "output": "ma",
+                        "version": "MA_ARITHMETIC_V1"
+                      }
+                    },
+                    {
+                      "op": "indicator",
+                      "args": [
+                        "ma20"
+                      ],
+                      "params": {
+                        "output": "ma",
+                        "version": "MA_ARITHMETIC_V1"
+                      }
+                    }
+                  ],
+                  "params": {}
+                }
+              ],
+              "params": {}
+            },
+            "sell": {
+              "op": "cross_down",
+              "args": [
+                {
+                  "op": "field",
+                  "args": [
+                    "close"
+                  ],
+                  "params": {}
+                },
+                {
+                  "op": "indicator",
+                  "args": [
+                    "ma20"
+                  ],
+                  "params": {
+                    "output": "ma",
+                    "version": "MA_ARITHMETIC_V1"
+                  }
+                }
+              ],
+              "params": {}
+            },
+            "market_filter": null,
+            "min_hold_sessions": 5,
+            "max_hold_sessions": 40,
+            "cooldown_sessions": 3,
+            "target_weight": 0.4,
+            "exits": {
+              "execution_mode": "CLOSE_CONFIRM_NEXT_SESSION_OPEN",
+              "stop_loss_pct": null,
+              "take_profit_pct": null,
+              "trailing_activate_pct": 0.05,
+              "trailing_pct": 0.04
+            }
+          },
+          "strategy_id": "ACCEPT_B_DUAL_MA_TRAILING_BASE"
+        },
+        "loader": "chanlun_trader.research_factory.strategy_submission_v1:load_frozen_bundle",
+        "loader_kwargs": {
+          "path": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\351c3622f416b7e8a00aa7676568fc1aa2a22dd2af74acd135b7bea121daebaf\\INPUT.json",
+          "sha256": "717ce818f4392dbdf60578e12c8a16b53a066550ad56f9435f7c577847d964a6",
+          "input_identity": "a74c880706b0a5260e2fca973b298526d032537a6893bb45f74b8d685efaa6ff"
+        },
+        "dependency_files": [
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\351c3622f416b7e8a00aa7676568fc1aa2a22dd2af74acd135b7bea121daebaf\\INPUT.json",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\351c3622f416b7e8a00aa7676568fc1aa2a22dd2af74acd135b7bea121daebaf\\PREVIEW.json",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\research_capabilities_v1.py",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\research_data_provider_v1.py"
+        ],
+        "backend_options": {
+          "window": {
+            "symbols": [
+              "000006.SZ",
+              "000733.SZ",
+              "002036.SZ"
+            ],
+            "feature_start": 20220407,
+            "account_start": 20220706,
+            "account_end": 20221230,
+            "calendar": [
+              20220407,
+              20220408,
+              20220411,
+              20220412,
+              20220413,
+              20220414,
+              20220415,
+              20220418,
+              20220419,
+              20220420,
+              20220421,
+              20220422,
+              20220425,
+              20220426,
+              20220427,
+              20220428,
+              20220429,
+              20220505,
+              20220506,
+              20220509,
+              20220510,
+              20220511,
+              20220512,
+              20220513,
+              20220516,
+              20220517,
+              20220518,
+              20220519,
+              20220520,
+              20220523,
+              20220524,
+              20220525,
+              20220526,
+              20220527,
+              20220530,
+              20220531,
+              20220601,
+              20220602,
+              20220606,
+              20220607,
+              20220608,
+              20220609,
+              20220610,
+              20220613,
+              20220614,
+              20220615,
+              20220616,
+              20220617,
+              20220620,
+              20220621,
+              20220622,
+              20220623,
+              20220624,
+              20220627,
+              20220628,
+              20220629,
+              20220630,
+              20220701,
+              20220704,
+              20220705,
+              20220706,
+              20220707,
+              20220708,
+              20220711,
+              20220712,
+              20220713,
+              20220714,
+              20220715,
+              20220718,
+              20220719,
+              20220720,
+              20220721,
+              20220722,
+              20220725,
+              20220726,
+              20220727,
+              20220728,
+              20220729,
+              20220801,
+              20220802,
+              20220803,
+              20220804,
+              20220805,
+              20220808,
+              20220809,
+              20220810,
+              20220811,
+              20220812,
+              20220815,
+              20220816,
+              20220817,
+              20220818,
+              20220819,
+              20220822,
+              20220823,
+              20220824,
+              20220825,
+              20220826,
+              20220829,
+              20220830,
+              20220831,
+              20220901,
+              20220902,
+              20220905,
+              20220906,
+              20220907,
+              20220908,
+              20220909,
+              20220913,
+              20220914,
+              20220915,
+              20220916,
+              20220919,
+              20220920,
+              20220921,
+              20220922,
+              20220923,
+              20220926,
+              20220927,
+              20220928,
+              20220929,
+              20220930,
+              20221010,
+              20221011,
+              20221012,
+              20221013,
+              20221014,
+              20221017,
+              20221018,
+              20221019,
+              20221020,
+              20221021,
+              20221024,
+              20221025,
+              20221026,
+              20221027,
+              20221028,
+              20221031,
+              20221101,
+              20221102,
+              20221103,
+              20221104,
+              20221107,
+              20221108,
+              20221109,
+              20221110,
+              20221111,
+              20221114,
+              20221115,
+              20221116,
+              20221117,
+              20221118,
+              20221121,
+              20221122,
+              20221123,
+              20221124,
+              20221125,
+              20221128,
+              20221129,
+              20221130,
+              20221201,
+              20221202,
+              20221205,
+              20221206,
+              20221207,
+              20221208,
+              20221209,
+              20221212,
+              20221213,
+              20221214,
+              20221215,
+              20221216,
+              20221219,
+              20221220,
+              20221221,
+              20221222,
+              20221223,
+              20221226,
+              20221227,
+              20221228,
+              20221229,
+              20221230
+            ]
+          },
+          "costs": "BASE",
+          "initial_cash": 50000,
+          "max_positions": 2,
+          "max_symbol_exposure_bps": 5000
+        },
+        "benchmark_id": "ACCEPT_B_DUAL_MA_TRAILING_BENCHMARK",
+        "source_identity": [
+          "2931cbde08cef9c81bbd9807a79eef12ad1259ab",
+          true
+        ],
+        "source_hashes": {
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\scripts\\run_strategy_account_v1.py": "a2d2e28a547c205d618c5836a3fc0548c41525f60fbd7d3109c88eeb0793d42b",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\strategy_submission_v1.py": "5a2acd496ae1a3f0df2d3087a9e7020fd3a4fa2e0147771ebf13b23b170ac2aa",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\351c3622f416b7e8a00aa7676568fc1aa2a22dd2af74acd135b7bea121daebaf\\INPUT.json": "717ce818f4392dbdf60578e12c8a16b53a066550ad56f9435f7c577847d964a6",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\synthetic_batch_resources.py": "66b5b6a8da80e1521a192eb0fda4746a36e46efcc48b4a2bf3d6eced1b39e420",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\etf_account_governance_v1.py": "10c7aa814dfa45cc4fa3a4e851ff3827cb7e06f9ab4e139aff33cde74cc4bcc3",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\budget.py": "55bcddb16a106a71830642bce237eb0cda90aaf945fab21de953d1ee60150861",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\research_capabilities_v1.py": "271f67634c1dacd1696e309dadb2f8184927a3f972e1681a9f8b9211a87c0e89",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\research_data_provider_v1.py": "846024a55b1eac7908e0c89e5bf3650bf0400c225d4671ec7f641337336ca7e3",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\351c3622f416b7e8a00aa7676568fc1aa2a22dd2af74acd135b7bea121daebaf\\PREVIEW.json": "6ae02569dc60f990e8f58fcd0560c8493fa205744a5516aa7352cba6b63f2b48"
+        }
+      },
+      "plan_id": "e77beeb14e9853da27c9ae057b0deff55313620257f932337e90018798ca0811"
+    },
+    "ACCEPT_B_DUAL_MA_TRAILING_STRESS": {
+      "strategy": {
+        "interface": "STRATEGY_INTERFACE_V1",
+        "strategy_id": "ACCEPT_B_DUAL_MA_TRAILING_STRESS",
+        "parameters": {
+          "rule_definition": {
+            "strategy_id": "ACCEPT_B_DUAL_MA_TRAILING_STRESS",
+            "catalog_sha256": "a74f3936989489ad8080d0f62fa9e1acd8fe09426c25fc72be3cbdda20d75f6f",
+            "rule_identity": "bb3b33667bcc61fbe85a20e0a4d4c0a9ac9bdbf77bc73c1754e13867ec97ff41",
+            "rule": {
+              "version": "RESEARCH_RULE_STRATEGY_V3",
+              "indicator_instances": [
+                {
+                  "instance_id": "ma10",
+                  "id": "MA",
+                  "version": "MA_ARITHMETIC_V1",
+                  "params": {
+                    "window": 10,
+                    "price": "close"
+                  }
+                },
+                {
+                  "instance_id": "ma20",
+                  "id": "MA",
+                  "version": "MA_ARITHMETIC_V1",
+                  "params": {
+                    "window": 20,
+                    "price": "close"
+                  }
+                }
+              ],
+              "buy": {
+                "op": "and",
+                "args": [
+                  {
+                    "op": "cross_up",
+                    "args": [
+                      {
+                        "op": "field",
+                        "args": [
+                          "close"
+                        ],
+                        "params": {}
+                      },
+                      {
+                        "op": "indicator",
+                        "args": [
+                          "ma10"
+                        ],
+                        "params": {
+                          "output": "ma",
+                          "version": "MA_ARITHMETIC_V1"
+                        }
+                      }
+                    ],
+                    "params": {}
+                  },
+                  {
+                    "op": "gt",
+                    "args": [
+                      {
+                        "op": "indicator",
+                        "args": [
+                          "ma10"
+                        ],
+                        "params": {
+                          "output": "ma",
+                          "version": "MA_ARITHMETIC_V1"
+                        }
+                      },
+                      {
+                        "op": "indicator",
+                        "args": [
+                          "ma20"
+                        ],
+                        "params": {
+                          "output": "ma",
+                          "version": "MA_ARITHMETIC_V1"
+                        }
+                      }
+                    ],
+                    "params": {}
+                  }
+                ],
+                "params": {}
+              },
+              "sell": {
+                "op": "cross_down",
+                "args": [
+                  {
+                    "op": "field",
+                    "args": [
+                      "close"
+                    ],
+                    "params": {}
+                  },
+                  {
+                    "op": "indicator",
+                    "args": [
+                      "ma20"
+                    ],
+                    "params": {
+                      "output": "ma",
+                      "version": "MA_ARITHMETIC_V1"
+                    }
+                  }
+                ],
+                "params": {}
+              },
+              "market_filter": null,
+              "min_hold_sessions": 5,
+              "max_hold_sessions": 40,
+              "cooldown_sessions": 3,
+              "target_weight": 0.4,
+              "exits": {
+                "execution_mode": "CLOSE_CONFIRM_NEXT_SESSION_OPEN",
+                "take_profit_pct": null,
+                "stop_loss_pct": null,
+                "trailing_activate_pct": 0.05,
+                "trailing_pct": 0.04
+              }
+            },
+            "indicators": [
+              {
+                "instance_id": "ma10",
+                "id": "MA",
+                "version": "MA_ARITHMETIC_V1",
+                "params": {
+                  "window": 10,
+                  "price": "close"
+                },
+                "outputs": [
+                  "ma"
+                ],
+                "inputs": [
+                  "close"
+                ],
+                "extra_data": [],
+                "warmup_bars": 10,
+                "instance_identity": "560a52d208edd8a7"
+              },
+              {
+                "instance_id": "ma20",
+                "id": "MA",
+                "version": "MA_ARITHMETIC_V1",
+                "params": {
+                  "window": 20,
+                  "price": "close"
+                },
+                "outputs": [
+                  "ma"
+                ],
+                "inputs": [
+                  "close"
+                ],
+                "extra_data": [],
+                "warmup_bars": 20,
+                "instance_identity": "1f5aeacde9bce7d4"
+              }
+            ],
+            "exit_policy": {
+              "version": "RESEARCH_CLOSE_EXIT_V1",
+              "execution_mode": "CLOSE_CONFIRM_NEXT_SESSION_OPEN",
+              "cost_anchor": "LOT_ACTUAL_FILL_WITH_SLIPPAGE_EXCLUDING_COMMISSION",
+              "trailing_anchor": "HIGHEST_COMPLETED_RAW_PLUS_PAID_GROSS_CASH_SINCE_FILL",
+              "comparison_price_policy": "RAW_PLUS_PAID_GROSS_CASH_V1",
+              "cash_dividend_policy": "LOT_ENTITLED_PAID_GROSS_CASH_PER_SHARE_ADDED_TO_RAW_CLOSE",
+              "supported_cash_payment": "PAYMENT_DATE_EQUALS_EFFECTIVE_DATE",
+              "fill_price_policy": "RAW_EXECUTION_TAX_AND_FEES_SEPARATE",
+              "risk_exit_min_hold_exempt": true,
+              "signal_exit_min_hold_exempt": false,
+              "flat_signal_sell": "EXIT_PRIORITY",
+              "risk_exit_requires_position": true,
+              "pending_exit": "PERSIST_UNTIL_FILLED",
+              "account_execution_required": true
+            }
+          },
+          "candidate_payload": {
+            "version": "RESEARCH_RULE_STRATEGY_V3",
+            "hypothesis": "固定工程验收规则，不做有效性或未来收益主张。",
+            "change_reason": "按事前约定覆盖参数、多条件、退出和真实账户，不根据本轮收益修改。",
+            "indicator_instances": [
+              {
+                "instance_id": "ma10",
+                "id": "MA",
+                "version": "MA_ARITHMETIC_V1",
+                "params": {
+                  "window": 10,
+                  "price": "close"
+                }
+              },
+              {
+                "instance_id": "ma20",
+                "id": "MA",
+                "version": "MA_ARITHMETIC_V1",
+                "params": {
+                  "window": 20,
+                  "price": "close"
+                }
+              }
+            ],
+            "buy": {
+              "op": "and",
+              "args": [
+                {
+                  "op": "cross_up",
+                  "args": [
+                    {
+                      "op": "field",
+                      "args": [
+                        "close"
+                      ],
+                      "params": {}
+                    },
+                    {
+                      "op": "indicator",
+                      "args": [
+                        "ma10"
+                      ],
+                      "params": {
+                        "output": "ma",
+                        "version": "MA_ARITHMETIC_V1"
+                      }
+                    }
+                  ],
+                  "params": {}
+                },
+                {
+                  "op": "gt",
+                  "args": [
+                    {
+                      "op": "indicator",
+                      "args": [
+                        "ma10"
+                      ],
+                      "params": {
+                        "output": "ma",
+                        "version": "MA_ARITHMETIC_V1"
+                      }
+                    },
+                    {
+                      "op": "indicator",
+                      "args": [
+                        "ma20"
+                      ],
+                      "params": {
+                        "output": "ma",
+                        "version": "MA_ARITHMETIC_V1"
+                      }
+                    }
+                  ],
+                  "params": {}
+                }
+              ],
+              "params": {}
+            },
+            "sell": {
+              "op": "cross_down",
+              "args": [
+                {
+                  "op": "field",
+                  "args": [
+                    "close"
+                  ],
+                  "params": {}
+                },
+                {
+                  "op": "indicator",
+                  "args": [
+                    "ma20"
+                  ],
+                  "params": {
+                    "output": "ma",
+                    "version": "MA_ARITHMETIC_V1"
+                  }
+                }
+              ],
+              "params": {}
+            },
+            "market_filter": null,
+            "min_hold_sessions": 5,
+            "max_hold_sessions": 40,
+            "cooldown_sessions": 3,
+            "target_weight": 0.4,
+            "exits": {
+              "execution_mode": "CLOSE_CONFIRM_NEXT_SESSION_OPEN",
+              "take_profit_pct": null,
+              "stop_loss_pct": null,
+              "trailing_activate_pct": 0.05,
+              "trailing_pct": 0.04
+            }
+          },
+          "rule_identity": "bb3b33667bcc61fbe85a20e0a4d4c0a9ac9bdbf77bc73c1754e13867ec97ff41",
+          "factor_ids": [
+            "MA"
+          ]
+        },
+        "requirements": {
+          "asset": "A_SHARE",
+          "frequency": "1D",
+          "price_view": "CAUSAL_HFQ_FEATURE_RAW_EXECUTION",
+          "fields": [
+            "close"
+          ],
+          "warmup_sessions": 21,
+          "intents": [
+            "TARGET_WEIGHT"
+          ],
+          "execution": "NEXT_SESSION_OPEN",
+          "capabilities": [
+            "RESEARCH_RULE_STRATEGY_V3",
+            "EXECUTION_STATE",
+            "PERSONAL_CASH_DIVIDEND"
+          ]
+        },
+        "implementation_options": {},
+        "source_hashes": {
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\scripts\\probe_all_indicator_strategy_v1.py": "70be6c40c57621925c33e44e6b855b832ad6b97f4c38494903fabd08d2d90dc8",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\scripts\\verify_fixed_strategy_state_v1.py": "d2bd3223709404a0862f60207ed1427e4feb1cdfd3ad25a733285b1551950cb1",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\engine\\conditions_v2.py": "8dca21c32e80e1638afccd5341a3d6b2bd1a3191b9a0eeb0584ba9f6be4c4ff8",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\engine\\custom_indicators_v2.py": "41935d278f579653f4394da290eba89c81482ede9a7878bd3217aaaaa7cea331",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\engine\\daily_exit_v1.py": "e6a6cfe3d2f88983d039d4a651c577333c2874d1b1b1aebc8fb37a5b8c742479",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\engine\\daily_exit_v2.py": "d47f86ba7462281914a7b36f07a026b7bcf641dc56e0649b64fbc747b29a5aad",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\engine\\indicator_registry_v2.py": "0eb71b9616d6af25bdfeddeaa582187e3799aff38e77d68ecda0168896d328e0",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\engine\\indicators_v2.py": "26bd38a7fc869a9eb7c8121c37af918f902cd80b11eeecd1549eb128fc0ffebe",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\engine\\individual_dividend_accounting_v1.py": "90ab925dee89ba3b5a4862fe6c98092ac03c24c7299aa6131902d86841afaa47",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\causal_dividend_features_v1.py": "7e4345de56663f9ac907d859843e2a999a148a53a5e79e5e992980ee72be5883",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\research_rule_strategy_v2.py": "ffe52dc2b333ea6dc0ac8fe3ee635119a21a48b669760ff7ee3a64d40eb4d09a",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\research_rule_strategy_v3.py": "5d998eb18ecba96e223f5c48ff74cb5b0f1180c202481413e68d76b2b512fc11"
+        }
+      },
+      "backend": {
+        "backend": "RULE_ACCOUNT_BACKEND_V2",
+        "window": {
+          "symbols": [
+            "000006.SZ",
+            "000733.SZ",
+            "002036.SZ"
+          ],
+          "feature_start": 20220407,
+          "account_start": 20220706,
+          "account_end": 20221230,
+          "calendar": [
+            20220407,
+            20220408,
+            20220411,
+            20220412,
+            20220413,
+            20220414,
+            20220415,
+            20220418,
+            20220419,
+            20220420,
+            20220421,
+            20220422,
+            20220425,
+            20220426,
+            20220427,
+            20220428,
+            20220429,
+            20220505,
+            20220506,
+            20220509,
+            20220510,
+            20220511,
+            20220512,
+            20220513,
+            20220516,
+            20220517,
+            20220518,
+            20220519,
+            20220520,
+            20220523,
+            20220524,
+            20220525,
+            20220526,
+            20220527,
+            20220530,
+            20220531,
+            20220601,
+            20220602,
+            20220606,
+            20220607,
+            20220608,
+            20220609,
+            20220610,
+            20220613,
+            20220614,
+            20220615,
+            20220616,
+            20220617,
+            20220620,
+            20220621,
+            20220622,
+            20220623,
+            20220624,
+            20220627,
+            20220628,
+            20220629,
+            20220630,
+            20220701,
+            20220704,
+            20220705,
+            20220706,
+            20220707,
+            20220708,
+            20220711,
+            20220712,
+            20220713,
+            20220714,
+            20220715,
+            20220718,
+            20220719,
+            20220720,
+            20220721,
+            20220722,
+            20220725,
+            20220726,
+            20220727,
+            20220728,
+            20220729,
+            20220801,
+            20220802,
+            20220803,
+            20220804,
+            20220805,
+            20220808,
+            20220809,
+            20220810,
+            20220811,
+            20220812,
+            20220815,
+            20220816,
+            20220817,
+            20220818,
+            20220819,
+            20220822,
+            20220823,
+            20220824,
+            20220825,
+            20220826,
+            20220829,
+            20220830,
+            20220831,
+            20220901,
+            20220902,
+            20220905,
+            20220906,
+            20220907,
+            20220908,
+            20220909,
+            20220913,
+            20220914,
+            20220915,
+            20220916,
+            20220919,
+            20220920,
+            20220921,
+            20220922,
+            20220923,
+            20220926,
+            20220927,
+            20220928,
+            20220929,
+            20220930,
+            20221010,
+            20221011,
+            20221012,
+            20221013,
+            20221014,
+            20221017,
+            20221018,
+            20221019,
+            20221020,
+            20221021,
+            20221024,
+            20221025,
+            20221026,
+            20221027,
+            20221028,
+            20221031,
+            20221101,
+            20221102,
+            20221103,
+            20221104,
+            20221107,
+            20221108,
+            20221109,
+            20221110,
+            20221111,
+            20221114,
+            20221115,
+            20221116,
+            20221117,
+            20221118,
+            20221121,
+            20221122,
+            20221123,
+            20221124,
+            20221125,
+            20221128,
+            20221129,
+            20221130,
+            20221201,
+            20221202,
+            20221205,
+            20221206,
+            20221207,
+            20221208,
+            20221209,
+            20221212,
+            20221213,
+            20221214,
+            20221215,
+            20221216,
+            20221219,
+            20221220,
+            20221221,
+            20221222,
+            20221223,
+            20221226,
+            20221227,
+            20221228,
+            20221229,
+            20221230
+          ]
+        },
+        "costs": {
+          "commission_rate": 0.0005,
+          "min_commission": 10.0,
+          "stamp_tax_rate": 0.0005,
+          "slippage_bps": 0.002
+        },
+        "initial_cash": 50000.0,
+        "max_positions": 2,
+        "max_symbol_exposure_bps": 5000,
+        "initial_decision": "FIRST_ACCOUNT_CLOSE",
+        "source_hashes": {
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\rule_account_backend_v2.py": "8a632c9eeee782bf6429898529a92c6e56463ebf29b5943a090da480ebe89d61",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\forward_paper_engine_v1.py": "8aa4c43709bcb2467ee03dcd2f6324ada36f0b7c20f40d9639d4fd00b973cd79",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\rule_exit_adapter_v3.py": "47fb80135d1a257072bbe13aaa7dbd098efcf06ba3cb189d6b505ecae04d488c",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\portfolio_execution_v1.py": "ce0a3f2deede67dea545ffbdd49a427a3d8495727bf9d60fb00b0e8eafdca105",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\engine\\daily_exit_v1.py": "e6a6cfe3d2f88983d039d4a651c577333c2874d1b1b1aebc8fb37a5b8c742479",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\engine\\daily_exit_v2.py": "d47f86ba7462281914a7b36f07a026b7bcf641dc56e0649b64fbc747b29a5aad"
+        },
+        "profile": "HISTORICAL_MODELED",
+        "strategy_qualified": false,
+        "independent_confirmation_eligible": false
+      },
+      "runtime": {
+        "factory": "chanlun_trader.research_factory.strategy_submission_v1:public_rule_factory",
+        "factory_kwargs": {
+          "payload": {
+            "version": "RESEARCH_RULE_STRATEGY_V3",
+            "hypothesis": "固定工程验收规则，不做有效性或未来收益主张。",
+            "change_reason": "按事前约定覆盖参数、多条件、退出和真实账户，不根据本轮收益修改。",
+            "indicator_instances": [
+              {
+                "instance_id": "ma10",
+                "id": "MA",
+                "version": "MA_ARITHMETIC_V1",
+                "params": {
+                  "window": 10
+                }
+              },
+              {
+                "instance_id": "ma20",
+                "id": "MA",
+                "version": "MA_ARITHMETIC_V1",
+                "params": {
+                  "window": 20
+                }
+              }
+            ],
+            "buy": {
+              "op": "and",
+              "args": [
+                {
+                  "op": "cross_up",
+                  "args": [
+                    {
+                      "op": "field",
+                      "args": [
+                        "close"
+                      ],
+                      "params": {}
+                    },
+                    {
+                      "op": "indicator",
+                      "args": [
+                        "ma10"
+                      ],
+                      "params": {
+                        "output": "ma",
+                        "version": "MA_ARITHMETIC_V1"
+                      }
+                    }
+                  ],
+                  "params": {}
+                },
+                {
+                  "op": "gt",
+                  "args": [
+                    {
+                      "op": "indicator",
+                      "args": [
+                        "ma10"
+                      ],
+                      "params": {
+                        "output": "ma",
+                        "version": "MA_ARITHMETIC_V1"
+                      }
+                    },
+                    {
+                      "op": "indicator",
+                      "args": [
+                        "ma20"
+                      ],
+                      "params": {
+                        "output": "ma",
+                        "version": "MA_ARITHMETIC_V1"
+                      }
+                    }
+                  ],
+                  "params": {}
+                }
+              ],
+              "params": {}
+            },
+            "sell": {
+              "op": "cross_down",
+              "args": [
+                {
+                  "op": "field",
+                  "args": [
+                    "close"
+                  ],
+                  "params": {}
+                },
+                {
+                  "op": "indicator",
+                  "args": [
+                    "ma20"
+                  ],
+                  "params": {
+                    "output": "ma",
+                    "version": "MA_ARITHMETIC_V1"
+                  }
+                }
+              ],
+              "params": {}
+            },
+            "market_filter": null,
+            "min_hold_sessions": 5,
+            "max_hold_sessions": 40,
+            "cooldown_sessions": 3,
+            "target_weight": 0.4,
+            "exits": {
+              "execution_mode": "CLOSE_CONFIRM_NEXT_SESSION_OPEN",
+              "stop_loss_pct": null,
+              "take_profit_pct": null,
+              "trailing_activate_pct": 0.05,
+              "trailing_pct": 0.04
+            }
+          },
+          "strategy_id": "ACCEPT_B_DUAL_MA_TRAILING_STRESS"
+        },
+        "loader": "chanlun_trader.research_factory.strategy_submission_v1:load_frozen_bundle",
+        "loader_kwargs": {
+          "path": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\351c3622f416b7e8a00aa7676568fc1aa2a22dd2af74acd135b7bea121daebaf\\INPUT.json",
+          "sha256": "717ce818f4392dbdf60578e12c8a16b53a066550ad56f9435f7c577847d964a6",
+          "input_identity": "a74c880706b0a5260e2fca973b298526d032537a6893bb45f74b8d685efaa6ff"
+        },
+        "dependency_files": [
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\351c3622f416b7e8a00aa7676568fc1aa2a22dd2af74acd135b7bea121daebaf\\INPUT.json",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\351c3622f416b7e8a00aa7676568fc1aa2a22dd2af74acd135b7bea121daebaf\\PREVIEW.json",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\research_capabilities_v1.py",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\research_data_provider_v1.py"
+        ],
+        "backend_options": {
+          "window": {
+            "symbols": [
+              "000006.SZ",
+              "000733.SZ",
+              "002036.SZ"
+            ],
+            "feature_start": 20220407,
+            "account_start": 20220706,
+            "account_end": 20221230,
+            "calendar": [
+              20220407,
+              20220408,
+              20220411,
+              20220412,
+              20220413,
+              20220414,
+              20220415,
+              20220418,
+              20220419,
+              20220420,
+              20220421,
+              20220422,
+              20220425,
+              20220426,
+              20220427,
+              20220428,
+              20220429,
+              20220505,
+              20220506,
+              20220509,
+              20220510,
+              20220511,
+              20220512,
+              20220513,
+              20220516,
+              20220517,
+              20220518,
+              20220519,
+              20220520,
+              20220523,
+              20220524,
+              20220525,
+              20220526,
+              20220527,
+              20220530,
+              20220531,
+              20220601,
+              20220602,
+              20220606,
+              20220607,
+              20220608,
+              20220609,
+              20220610,
+              20220613,
+              20220614,
+              20220615,
+              20220616,
+              20220617,
+              20220620,
+              20220621,
+              20220622,
+              20220623,
+              20220624,
+              20220627,
+              20220628,
+              20220629,
+              20220630,
+              20220701,
+              20220704,
+              20220705,
+              20220706,
+              20220707,
+              20220708,
+              20220711,
+              20220712,
+              20220713,
+              20220714,
+              20220715,
+              20220718,
+              20220719,
+              20220720,
+              20220721,
+              20220722,
+              20220725,
+              20220726,
+              20220727,
+              20220728,
+              20220729,
+              20220801,
+              20220802,
+              20220803,
+              20220804,
+              20220805,
+              20220808,
+              20220809,
+              20220810,
+              20220811,
+              20220812,
+              20220815,
+              20220816,
+              20220817,
+              20220818,
+              20220819,
+              20220822,
+              20220823,
+              20220824,
+              20220825,
+              20220826,
+              20220829,
+              20220830,
+              20220831,
+              20220901,
+              20220902,
+              20220905,
+              20220906,
+              20220907,
+              20220908,
+              20220909,
+              20220913,
+              20220914,
+              20220915,
+              20220916,
+              20220919,
+              20220920,
+              20220921,
+              20220922,
+              20220923,
+              20220926,
+              20220927,
+              20220928,
+              20220929,
+              20220930,
+              20221010,
+              20221011,
+              20221012,
+              20221013,
+              20221014,
+              20221017,
+              20221018,
+              20221019,
+              20221020,
+              20221021,
+              20221024,
+              20221025,
+              20221026,
+              20221027,
+              20221028,
+              20221031,
+              20221101,
+              20221102,
+              20221103,
+              20221104,
+              20221107,
+              20221108,
+              20221109,
+              20221110,
+              20221111,
+              20221114,
+              20221115,
+              20221116,
+              20221117,
+              20221118,
+              20221121,
+              20221122,
+              20221123,
+              20221124,
+              20221125,
+              20221128,
+              20221129,
+              20221130,
+              20221201,
+              20221202,
+              20221205,
+              20221206,
+              20221207,
+              20221208,
+              20221209,
+              20221212,
+              20221213,
+              20221214,
+              20221215,
+              20221216,
+              20221219,
+              20221220,
+              20221221,
+              20221222,
+              20221223,
+              20221226,
+              20221227,
+              20221228,
+              20221229,
+              20221230
+            ]
+          },
+          "costs": "STRESS",
+          "initial_cash": 50000,
+          "max_positions": 2,
+          "max_symbol_exposure_bps": 5000
+        },
+        "benchmark_id": "ACCEPT_B_DUAL_MA_TRAILING_BENCHMARK",
+        "source_identity": [
+          "2931cbde08cef9c81bbd9807a79eef12ad1259ab",
+          true
+        ],
+        "source_hashes": {
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\scripts\\run_strategy_account_v1.py": "a2d2e28a547c205d618c5836a3fc0548c41525f60fbd7d3109c88eeb0793d42b",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\strategy_submission_v1.py": "5a2acd496ae1a3f0df2d3087a9e7020fd3a4fa2e0147771ebf13b23b170ac2aa",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\351c3622f416b7e8a00aa7676568fc1aa2a22dd2af74acd135b7bea121daebaf\\INPUT.json": "717ce818f4392dbdf60578e12c8a16b53a066550ad56f9435f7c577847d964a6",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\synthetic_batch_resources.py": "66b5b6a8da80e1521a192eb0fda4746a36e46efcc48b4a2bf3d6eced1b39e420",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\etf_account_governance_v1.py": "10c7aa814dfa45cc4fa3a4e851ff3827cb7e06f9ab4e139aff33cde74cc4bcc3",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\budget.py": "55bcddb16a106a71830642bce237eb0cda90aaf945fab21de953d1ee60150861",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\research_capabilities_v1.py": "271f67634c1dacd1696e309dadb2f8184927a3f972e1681a9f8b9211a87c0e89",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\research_data_provider_v1.py": "846024a55b1eac7908e0c89e5bf3650bf0400c225d4671ec7f641337336ca7e3",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\351c3622f416b7e8a00aa7676568fc1aa2a22dd2af74acd135b7bea121daebaf\\PREVIEW.json": "6ae02569dc60f990e8f58fcd0560c8493fa205744a5516aa7352cba6b63f2b48"
+        }
+      },
+      "plan_id": "1798e22e796af14df4a77198da249fdfb1bf3befbc1f88c33aebcffd0078f2a2"
+    },
+    "ACCEPT_B_DUAL_MA_TRAILING_BENCHMARK": {
+      "strategy": {
+        "interface": "STRATEGY_INTERFACE_V1",
+        "strategy_id": "ACCEPT_B_DUAL_MA_TRAILING_BENCHMARK",
+        "parameters": {
+          "candidate_payload": {
+            "version": "FULL_POOL_BUY_HOLD_V1",
+            "symbols": [
+              "000006.SZ",
+              "000733.SZ",
+              "002036.SZ"
+            ]
+          },
+          "rule_identity": "685569df1514bdee6d73e4f390cfa53fa2437b2d6e8304e16d6ba401afea3565",
+          "target_weight": 0.3333333333333333,
+          "rebalance": false,
+          "first_decision": "FIRST_ACCOUNT_CLOSE",
+          "retry_unfilled": false,
+          "exit_policy": "HOLD_TO_WINDOW_END_MARK_TO_MARKET"
+        },
+        "requirements": {
+          "asset": "A_SHARE",
+          "frequency": "1D",
+          "price_view": "CAUSAL_HFQ_FEATURE_RAW_EXECUTION",
+          "fields": [
+            "close"
+          ],
+          "warmup_sessions": 1,
+          "intents": [
+            "TARGET_WEIGHT"
+          ],
+          "execution": "NEXT_SESSION_OPEN",
+          "capabilities": [
+            "FULL_POOL_BUY_HOLD_V1",
+            "EXECUTION_STATE",
+            "PERSONAL_CASH_DIVIDEND"
+          ]
+        },
+        "implementation_options": {},
+        "source_hashes": {
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\research_benchmark_v1.py": "c3786b9d41fc3a3bc9a01d97119cd83210f8c6099fcc778a63fd367a77eb6946"
+        }
+      },
+      "backend": {
+        "backend": "FULL_POOL_BUY_HOLD_V1",
+        "window": {
+          "symbols": [
+            "000006.SZ",
+            "000733.SZ",
+            "002036.SZ"
+          ],
+          "feature_start": 20220407,
+          "account_start": 20220706,
+          "account_end": 20221230,
+          "calendar": [
+            20220407,
+            20220408,
+            20220411,
+            20220412,
+            20220413,
+            20220414,
+            20220415,
+            20220418,
+            20220419,
+            20220420,
+            20220421,
+            20220422,
+            20220425,
+            20220426,
+            20220427,
+            20220428,
+            20220429,
+            20220505,
+            20220506,
+            20220509,
+            20220510,
+            20220511,
+            20220512,
+            20220513,
+            20220516,
+            20220517,
+            20220518,
+            20220519,
+            20220520,
+            20220523,
+            20220524,
+            20220525,
+            20220526,
+            20220527,
+            20220530,
+            20220531,
+            20220601,
+            20220602,
+            20220606,
+            20220607,
+            20220608,
+            20220609,
+            20220610,
+            20220613,
+            20220614,
+            20220615,
+            20220616,
+            20220617,
+            20220620,
+            20220621,
+            20220622,
+            20220623,
+            20220624,
+            20220627,
+            20220628,
+            20220629,
+            20220630,
+            20220701,
+            20220704,
+            20220705,
+            20220706,
+            20220707,
+            20220708,
+            20220711,
+            20220712,
+            20220713,
+            20220714,
+            20220715,
+            20220718,
+            20220719,
+            20220720,
+            20220721,
+            20220722,
+            20220725,
+            20220726,
+            20220727,
+            20220728,
+            20220729,
+            20220801,
+            20220802,
+            20220803,
+            20220804,
+            20220805,
+            20220808,
+            20220809,
+            20220810,
+            20220811,
+            20220812,
+            20220815,
+            20220816,
+            20220817,
+            20220818,
+            20220819,
+            20220822,
+            20220823,
+            20220824,
+            20220825,
+            20220826,
+            20220829,
+            20220830,
+            20220831,
+            20220901,
+            20220902,
+            20220905,
+            20220906,
+            20220907,
+            20220908,
+            20220909,
+            20220913,
+            20220914,
+            20220915,
+            20220916,
+            20220919,
+            20220920,
+            20220921,
+            20220922,
+            20220923,
+            20220926,
+            20220927,
+            20220928,
+            20220929,
+            20220930,
+            20221010,
+            20221011,
+            20221012,
+            20221013,
+            20221014,
+            20221017,
+            20221018,
+            20221019,
+            20221020,
+            20221021,
+            20221024,
+            20221025,
+            20221026,
+            20221027,
+            20221028,
+            20221031,
+            20221101,
+            20221102,
+            20221103,
+            20221104,
+            20221107,
+            20221108,
+            20221109,
+            20221110,
+            20221111,
+            20221114,
+            20221115,
+            20221116,
+            20221117,
+            20221118,
+            20221121,
+            20221122,
+            20221123,
+            20221124,
+            20221125,
+            20221128,
+            20221129,
+            20221130,
+            20221201,
+            20221202,
+            20221205,
+            20221206,
+            20221207,
+            20221208,
+            20221209,
+            20221212,
+            20221213,
+            20221214,
+            20221215,
+            20221216,
+            20221219,
+            20221220,
+            20221221,
+            20221222,
+            20221223,
+            20221226,
+            20221227,
+            20221228,
+            20221229,
+            20221230
+          ]
+        },
+        "costs": {
+          "commission_rate": 0.00025,
+          "min_commission": 5.0,
+          "stamp_tax_rate": 0.0005,
+          "slippage_bps": 0.001
+        },
+        "initial_cash": 50000.0,
+        "max_positions": 3,
+        "max_symbol_exposure_bps": 3333,
+        "initial_decision": "FIRST_ACCOUNT_CLOSE",
+        "source_hashes": {
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\rule_account_backend_v2.py": "8a632c9eeee782bf6429898529a92c6e56463ebf29b5943a090da480ebe89d61",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\forward_paper_engine_v1.py": "8aa4c43709bcb2467ee03dcd2f6324ada36f0b7c20f40d9639d4fd00b973cd79",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\rule_exit_adapter_v3.py": "47fb80135d1a257072bbe13aaa7dbd098efcf06ba3cb189d6b505ecae04d488c",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\portfolio_execution_v1.py": "ce0a3f2deede67dea545ffbdd49a427a3d8495727bf9d60fb00b0e8eafdca105",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\engine\\daily_exit_v1.py": "e6a6cfe3d2f88983d039d4a651c577333c2874d1b1b1aebc8fb37a5b8c742479",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\engine\\daily_exit_v2.py": "d47f86ba7462281914a7b36f07a026b7bcf641dc56e0649b64fbc747b29a5aad",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\research_benchmark_v1.py": "c3786b9d41fc3a3bc9a01d97119cd83210f8c6099fcc778a63fd367a77eb6946"
+        },
+        "profile": "HISTORICAL_MODELED",
+        "strategy_qualified": false,
+        "independent_confirmation_eligible": false,
+        "allocation": "FULL_POOL_EQUAL_INITIAL_TARGET_NO_REBALANCE",
+        "retry_unfilled": false,
+        "terminal_liquidation": false,
+        "initial_budget_per_symbol": 16666.666666666668,
+        "rounding": "BOARD_LOTS_AND_FEES_MAY_REDUCE_ACTUAL_COVERAGE",
+        "size_policy": "EXISTING_ACCOUNT_EQUITY_AND_CASH_LIMITS_AT_FIRST_OPEN"
+      },
+      "runtime": {
+        "factory": "chanlun_trader.research_factory.strategy_submission_v1:public_benchmark_factory",
+        "factory_kwargs": {
+          "payload": {
+            "version": "FULL_POOL_BUY_HOLD_V1",
+            "symbols": [
+              "000006.SZ",
+              "000733.SZ",
+              "002036.SZ"
+            ]
+          },
+          "strategy_id": "ACCEPT_B_DUAL_MA_TRAILING_BENCHMARK"
+        },
+        "loader": "chanlun_trader.research_factory.strategy_submission_v1:load_frozen_bundle",
+        "loader_kwargs": {
+          "path": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\351c3622f416b7e8a00aa7676568fc1aa2a22dd2af74acd135b7bea121daebaf\\INPUT.json",
+          "sha256": "717ce818f4392dbdf60578e12c8a16b53a066550ad56f9435f7c577847d964a6",
+          "input_identity": "a74c880706b0a5260e2fca973b298526d032537a6893bb45f74b8d685efaa6ff"
+        },
+        "dependency_files": [
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\351c3622f416b7e8a00aa7676568fc1aa2a22dd2af74acd135b7bea121daebaf\\INPUT.json",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\351c3622f416b7e8a00aa7676568fc1aa2a22dd2af74acd135b7bea121daebaf\\PREVIEW.json",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\research_capabilities_v1.py",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\research_data_provider_v1.py"
+        ],
+        "backend_options": {
+          "window": {
+            "symbols": [
+              "000006.SZ",
+              "000733.SZ",
+              "002036.SZ"
+            ],
+            "feature_start": 20220407,
+            "account_start": 20220706,
+            "account_end": 20221230,
+            "calendar": [
+              20220407,
+              20220408,
+              20220411,
+              20220412,
+              20220413,
+              20220414,
+              20220415,
+              20220418,
+              20220419,
+              20220420,
+              20220421,
+              20220422,
+              20220425,
+              20220426,
+              20220427,
+              20220428,
+              20220429,
+              20220505,
+              20220506,
+              20220509,
+              20220510,
+              20220511,
+              20220512,
+              20220513,
+              20220516,
+              20220517,
+              20220518,
+              20220519,
+              20220520,
+              20220523,
+              20220524,
+              20220525,
+              20220526,
+              20220527,
+              20220530,
+              20220531,
+              20220601,
+              20220602,
+              20220606,
+              20220607,
+              20220608,
+              20220609,
+              20220610,
+              20220613,
+              20220614,
+              20220615,
+              20220616,
+              20220617,
+              20220620,
+              20220621,
+              20220622,
+              20220623,
+              20220624,
+              20220627,
+              20220628,
+              20220629,
+              20220630,
+              20220701,
+              20220704,
+              20220705,
+              20220706,
+              20220707,
+              20220708,
+              20220711,
+              20220712,
+              20220713,
+              20220714,
+              20220715,
+              20220718,
+              20220719,
+              20220720,
+              20220721,
+              20220722,
+              20220725,
+              20220726,
+              20220727,
+              20220728,
+              20220729,
+              20220801,
+              20220802,
+              20220803,
+              20220804,
+              20220805,
+              20220808,
+              20220809,
+              20220810,
+              20220811,
+              20220812,
+              20220815,
+              20220816,
+              20220817,
+              20220818,
+              20220819,
+              20220822,
+              20220823,
+              20220824,
+              20220825,
+              20220826,
+              20220829,
+              20220830,
+              20220831,
+              20220901,
+              20220902,
+              20220905,
+              20220906,
+              20220907,
+              20220908,
+              20220909,
+              20220913,
+              20220914,
+              20220915,
+              20220916,
+              20220919,
+              20220920,
+              20220921,
+              20220922,
+              20220923,
+              20220926,
+              20220927,
+              20220928,
+              20220929,
+              20220930,
+              20221010,
+              20221011,
+              20221012,
+              20221013,
+              20221014,
+              20221017,
+              20221018,
+              20221019,
+              20221020,
+              20221021,
+              20221024,
+              20221025,
+              20221026,
+              20221027,
+              20221028,
+              20221031,
+              20221101,
+              20221102,
+              20221103,
+              20221104,
+              20221107,
+              20221108,
+              20221109,
+              20221110,
+              20221111,
+              20221114,
+              20221115,
+              20221116,
+              20221117,
+              20221118,
+              20221121,
+              20221122,
+              20221123,
+              20221124,
+              20221125,
+              20221128,
+              20221129,
+              20221130,
+              20221201,
+              20221202,
+              20221205,
+              20221206,
+              20221207,
+              20221208,
+              20221209,
+              20221212,
+              20221213,
+              20221214,
+              20221215,
+              20221216,
+              20221219,
+              20221220,
+              20221221,
+              20221222,
+              20221223,
+              20221226,
+              20221227,
+              20221228,
+              20221229,
+              20221230
+            ]
+          },
+          "costs": "BASE",
+          "initial_cash": 50000
+        },
+        "benchmark_id": "ACCEPT_B_DUAL_MA_TRAILING_BENCHMARK",
+        "source_identity": [
+          "2931cbde08cef9c81bbd9807a79eef12ad1259ab",
+          true
+        ],
+        "source_hashes": {
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\scripts\\run_strategy_account_v1.py": "a2d2e28a547c205d618c5836a3fc0548c41525f60fbd7d3109c88eeb0793d42b",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\strategy_submission_v1.py": "5a2acd496ae1a3f0df2d3087a9e7020fd3a4fa2e0147771ebf13b23b170ac2aa",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\351c3622f416b7e8a00aa7676568fc1aa2a22dd2af74acd135b7bea121daebaf\\INPUT.json": "717ce818f4392dbdf60578e12c8a16b53a066550ad56f9435f7c577847d964a6",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\synthetic_batch_resources.py": "66b5b6a8da80e1521a192eb0fda4746a36e46efcc48b4a2bf3d6eced1b39e420",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\etf_account_governance_v1.py": "10c7aa814dfa45cc4fa3a4e851ff3827cb7e06f9ab4e139aff33cde74cc4bcc3",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\budget.py": "55bcddb16a106a71830642bce237eb0cda90aaf945fab21de953d1ee60150861",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\research_capabilities_v1.py": "271f67634c1dacd1696e309dadb2f8184927a3f972e1681a9f8b9211a87c0e89",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\research_data_provider_v1.py": "846024a55b1eac7908e0c89e5bf3650bf0400c225d4671ec7f641337336ca7e3",
+          "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\351c3622f416b7e8a00aa7676568fc1aa2a22dd2af74acd135b7bea121daebaf\\PREVIEW.json": "6ae02569dc60f990e8f58fcd0560c8493fa205744a5516aa7352cba6b63f2b48"
+        }
+      },
+      "plan_id": "633aceb67c8b90230af736fc18c193817e6662004ba4ed4f9d25b81595a02fd1"
+    }
+  },
+  "items": {
+    "ACCEPT_B_DUAL_MA_TRAILING_BASE": {
+      "factory": "chanlun_trader.research_factory.strategy_submission_v1:public_rule_factory",
+      "factory_kwargs": {
+        "payload": {
+          "version": "RESEARCH_RULE_STRATEGY_V3",
+          "hypothesis": "固定工程验收规则，不做有效性或未来收益主张。",
+          "change_reason": "按事前约定覆盖参数、多条件、退出和真实账户，不根据本轮收益修改。",
+          "indicator_instances": [
+            {
+              "instance_id": "ma10",
+              "id": "MA",
+              "version": "MA_ARITHMETIC_V1",
+              "params": {
+                "window": 10
+              }
+            },
+            {
+              "instance_id": "ma20",
+              "id": "MA",
+              "version": "MA_ARITHMETIC_V1",
+              "params": {
+                "window": 20
+              }
+            }
+          ],
+          "buy": {
+            "op": "and",
+            "args": [
+              {
+                "op": "cross_up",
+                "args": [
+                  {
+                    "op": "field",
+                    "args": [
+                      "close"
+                    ],
+                    "params": {}
+                  },
+                  {
+                    "op": "indicator",
+                    "args": [
+                      "ma10"
+                    ],
+                    "params": {
+                      "output": "ma",
+                      "version": "MA_ARITHMETIC_V1"
+                    }
+                  }
+                ],
+                "params": {}
+              },
+              {
+                "op": "gt",
+                "args": [
+                  {
+                    "op": "indicator",
+                    "args": [
+                      "ma10"
+                    ],
+                    "params": {
+                      "output": "ma",
+                      "version": "MA_ARITHMETIC_V1"
+                    }
+                  },
+                  {
+                    "op": "indicator",
+                    "args": [
+                      "ma20"
+                    ],
+                    "params": {
+                      "output": "ma",
+                      "version": "MA_ARITHMETIC_V1"
+                    }
+                  }
+                ],
+                "params": {}
+              }
+            ],
+            "params": {}
+          },
+          "sell": {
+            "op": "cross_down",
+            "args": [
+              {
+                "op": "field",
+                "args": [
+                  "close"
+                ],
+                "params": {}
+              },
+              {
+                "op": "indicator",
+                "args": [
+                  "ma20"
+                ],
+                "params": {
+                  "output": "ma",
+                  "version": "MA_ARITHMETIC_V1"
+                }
+              }
+            ],
+            "params": {}
+          },
+          "market_filter": null,
+          "min_hold_sessions": 5,
+          "max_hold_sessions": 40,
+          "cooldown_sessions": 3,
+          "target_weight": 0.4,
+          "exits": {
+            "execution_mode": "CLOSE_CONFIRM_NEXT_SESSION_OPEN",
+            "stop_loss_pct": null,
+            "take_profit_pct": null,
+            "trailing_activate_pct": 0.05,
+            "trailing_pct": 0.04
+          }
+        },
+        "strategy_id": "ACCEPT_B_DUAL_MA_TRAILING_BASE"
+      },
+      "loader": "chanlun_trader.research_factory.strategy_submission_v1:load_frozen_bundle",
+      "loader_kwargs": {
+        "path": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\351c3622f416b7e8a00aa7676568fc1aa2a22dd2af74acd135b7bea121daebaf\\INPUT.json",
+        "sha256": "717ce818f4392dbdf60578e12c8a16b53a066550ad56f9435f7c577847d964a6",
+        "input_identity": "a74c880706b0a5260e2fca973b298526d032537a6893bb45f74b8d685efaa6ff"
+      },
+      "dependency_files": [
+        "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\351c3622f416b7e8a00aa7676568fc1aa2a22dd2af74acd135b7bea121daebaf\\INPUT.json",
+        "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\351c3622f416b7e8a00aa7676568fc1aa2a22dd2af74acd135b7bea121daebaf\\PREVIEW.json",
+        "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\research_capabilities_v1.py",
+        "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\research_data_provider_v1.py"
+      ],
+      "backend_options": {
+        "window": {
+          "symbols": [
+            "000006.SZ",
+            "000733.SZ",
+            "002036.SZ"
+          ],
+          "feature_start": 20220407,
+          "account_start": 20220706,
+          "account_end": 20221230,
+          "calendar": [
+            20220407,
+            20220408,
+            20220411,
+            20220412,
+            20220413,
+            20220414,
+            20220415,
+            20220418,
+            20220419,
+            20220420,
+            20220421,
+            20220422,
+            20220425,
+            20220426,
+            20220427,
+            20220428,
+            20220429,
+            20220505,
+            20220506,
+            20220509,
+            20220510,
+            20220511,
+            20220512,
+            20220513,
+            20220516,
+            20220517,
+            20220518,
+            20220519,
+            20220520,
+            20220523,
+            20220524,
+            20220525,
+            20220526,
+            20220527,
+            20220530,
+            20220531,
+            20220601,
+            20220602,
+            20220606,
+            20220607,
+            20220608,
+            20220609,
+            20220610,
+            20220613,
+            20220614,
+            20220615,
+            20220616,
+            20220617,
+            20220620,
+            20220621,
+            20220622,
+            20220623,
+            20220624,
+            20220627,
+            20220628,
+            20220629,
+            20220630,
+            20220701,
+            20220704,
+            20220705,
+            20220706,
+            20220707,
+            20220708,
+            20220711,
+            20220712,
+            20220713,
+            20220714,
+            20220715,
+            20220718,
+            20220719,
+            20220720,
+            20220721,
+            20220722,
+            20220725,
+            20220726,
+            20220727,
+            20220728,
+            20220729,
+            20220801,
+            20220802,
+            20220803,
+            20220804,
+            20220805,
+            20220808,
+            20220809,
+            20220810,
+            20220811,
+            20220812,
+            20220815,
+            20220816,
+            20220817,
+            20220818,
+            20220819,
+            20220822,
+            20220823,
+            20220824,
+            20220825,
+            20220826,
+            20220829,
+            20220830,
+            20220831,
+            20220901,
+            20220902,
+            20220905,
+            20220906,
+            20220907,
+            20220908,
+            20220909,
+            20220913,
+            20220914,
+            20220915,
+            20220916,
+            20220919,
+            20220920,
+            20220921,
+            20220922,
+            20220923,
+            20220926,
+            20220927,
+            20220928,
+            20220929,
+            20220930,
+            20221010,
+            20221011,
+            20221012,
+            20221013,
+            20221014,
+            20221017,
+            20221018,
+            20221019,
+            20221020,
+            20221021,
+            20221024,
+            20221025,
+            20221026,
+            20221027,
+            20221028,
+            20221031,
+            20221101,
+            20221102,
+            20221103,
+            20221104,
+            20221107,
+            20221108,
+            20221109,
+            20221110,
+            20221111,
+            20221114,
+            20221115,
+            20221116,
+            20221117,
+            20221118,
+            20221121,
+            20221122,
+            20221123,
+            20221124,
+            20221125,
+            20221128,
+            20221129,
+            20221130,
+            20221201,
+            20221202,
+            20221205,
+            20221206,
+            20221207,
+            20221208,
+            20221209,
+            20221212,
+            20221213,
+            20221214,
+            20221215,
+            20221216,
+            20221219,
+            20221220,
+            20221221,
+            20221222,
+            20221223,
+            20221226,
+            20221227,
+            20221228,
+            20221229,
+            20221230
+          ]
+        },
+        "costs": "BASE",
+        "initial_cash": 50000,
+        "max_positions": 2,
+        "max_symbol_exposure_bps": 5000
+      },
+      "benchmark_id": "ACCEPT_B_DUAL_MA_TRAILING_BENCHMARK",
+      "source_identity": [
+        "2931cbde08cef9c81bbd9807a79eef12ad1259ab",
+        true
+      ],
+      "source_hashes": {
+        "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\scripts\\run_strategy_account_v1.py": "a2d2e28a547c205d618c5836a3fc0548c41525f60fbd7d3109c88eeb0793d42b",
+        "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\strategy_submission_v1.py": "5a2acd496ae1a3f0df2d3087a9e7020fd3a4fa2e0147771ebf13b23b170ac2aa",
+        "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\351c3622f416b7e8a00aa7676568fc1aa2a22dd2af74acd135b7bea121daebaf\\INPUT.json": "717ce818f4392dbdf60578e12c8a16b53a066550ad56f9435f7c577847d964a6",
+        "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\synthetic_batch_resources.py": "66b5b6a8da80e1521a192eb0fda4746a36e46efcc48b4a2bf3d6eced1b39e420",
+        "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\etf_account_governance_v1.py": "10c7aa814dfa45cc4fa3a4e851ff3827cb7e06f9ab4e139aff33cde74cc4bcc3",
+        "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\budget.py": "55bcddb16a106a71830642bce237eb0cda90aaf945fab21de953d1ee60150861",
+        "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\research_capabilities_v1.py": "271f67634c1dacd1696e309dadb2f8184927a3f972e1681a9f8b9211a87c0e89",
+        "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\research_data_provider_v1.py": "846024a55b1eac7908e0c89e5bf3650bf0400c225d4671ec7f641337336ca7e3",
+        "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\351c3622f416b7e8a00aa7676568fc1aa2a22dd2af74acd135b7bea121daebaf\\PREVIEW.json": "6ae02569dc60f990e8f58fcd0560c8493fa205744a5516aa7352cba6b63f2b48"
+      }
+    },
+    "ACCEPT_B_DUAL_MA_TRAILING_STRESS": {
+      "factory": "chanlun_trader.research_factory.strategy_submission_v1:public_rule_factory",
+      "factory_kwargs": {
+        "payload": {
+          "version": "RESEARCH_RULE_STRATEGY_V3",
+          "hypothesis": "固定工程验收规则，不做有效性或未来收益主张。",
+          "change_reason": "按事前约定覆盖参数、多条件、退出和真实账户，不根据本轮收益修改。",
+          "indicator_instances": [
+            {
+              "instance_id": "ma10",
+              "id": "MA",
+              "version": "MA_ARITHMETIC_V1",
+              "params": {
+                "window": 10
+              }
+            },
+            {
+              "instance_id": "ma20",
+              "id": "MA",
+              "version": "MA_ARITHMETIC_V1",
+              "params": {
+                "window": 20
+              }
+            }
+          ],
+          "buy": {
+            "op": "and",
+            "args": [
+              {
+                "op": "cross_up",
+                "args": [
+                  {
+                    "op": "field",
+                    "args": [
+                      "close"
+                    ],
+                    "params": {}
+                  },
+                  {
+                    "op": "indicator",
+                    "args": [
+                      "ma10"
+                    ],
+                    "params": {
+                      "output": "ma",
+                      "version": "MA_ARITHMETIC_V1"
+                    }
+                  }
+                ],
+                "params": {}
+              },
+              {
+                "op": "gt",
+                "args": [
+                  {
+                    "op": "indicator",
+                    "args": [
+                      "ma10"
+                    ],
+                    "params": {
+                      "output": "ma",
+                      "version": "MA_ARITHMETIC_V1"
+                    }
+                  },
+                  {
+                    "op": "indicator",
+                    "args": [
+                      "ma20"
+                    ],
+                    "params": {
+                      "output": "ma",
+                      "version": "MA_ARITHMETIC_V1"
+                    }
+                  }
+                ],
+                "params": {}
+              }
+            ],
+            "params": {}
+          },
+          "sell": {
+            "op": "cross_down",
+            "args": [
+              {
+                "op": "field",
+                "args": [
+                  "close"
+                ],
+                "params": {}
+              },
+              {
+                "op": "indicator",
+                "args": [
+                  "ma20"
+                ],
+                "params": {
+                  "output": "ma",
+                  "version": "MA_ARITHMETIC_V1"
+                }
+              }
+            ],
+            "params": {}
+          },
+          "market_filter": null,
+          "min_hold_sessions": 5,
+          "max_hold_sessions": 40,
+          "cooldown_sessions": 3,
+          "target_weight": 0.4,
+          "exits": {
+            "execution_mode": "CLOSE_CONFIRM_NEXT_SESSION_OPEN",
+            "stop_loss_pct": null,
+            "take_profit_pct": null,
+            "trailing_activate_pct": 0.05,
+            "trailing_pct": 0.04
+          }
+        },
+        "strategy_id": "ACCEPT_B_DUAL_MA_TRAILING_STRESS"
+      },
+      "loader": "chanlun_trader.research_factory.strategy_submission_v1:load_frozen_bundle",
+      "loader_kwargs": {
+        "path": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\351c3622f416b7e8a00aa7676568fc1aa2a22dd2af74acd135b7bea121daebaf\\INPUT.json",
+        "sha256": "717ce818f4392dbdf60578e12c8a16b53a066550ad56f9435f7c577847d964a6",
+        "input_identity": "a74c880706b0a5260e2fca973b298526d032537a6893bb45f74b8d685efaa6ff"
+      },
+      "dependency_files": [
+        "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\351c3622f416b7e8a00aa7676568fc1aa2a22dd2af74acd135b7bea121daebaf\\INPUT.json",
+        "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\351c3622f416b7e8a00aa7676568fc1aa2a22dd2af74acd135b7bea121daebaf\\PREVIEW.json",
+        "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\research_capabilities_v1.py",
+        "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\research_data_provider_v1.py"
+      ],
+      "backend_options": {
+        "window": {
+          "symbols": [
+            "000006.SZ",
+            "000733.SZ",
+            "002036.SZ"
+          ],
+          "feature_start": 20220407,
+          "account_start": 20220706,
+          "account_end": 20221230,
+          "calendar": [
+            20220407,
+            20220408,
+            20220411,
+            20220412,
+            20220413,
+            20220414,
+            20220415,
+            20220418,
+            20220419,
+            20220420,
+            20220421,
+            20220422,
+            20220425,
+            20220426,
+            20220427,
+            20220428,
+            20220429,
+            20220505,
+            20220506,
+            20220509,
+            20220510,
+            20220511,
+            20220512,
+            20220513,
+            20220516,
+            20220517,
+            20220518,
+            20220519,
+            20220520,
+            20220523,
+            20220524,
+            20220525,
+            20220526,
+            20220527,
+            20220530,
+            20220531,
+            20220601,
+            20220602,
+            20220606,
+            20220607,
+            20220608,
+            20220609,
+            20220610,
+            20220613,
+            20220614,
+            20220615,
+            20220616,
+            20220617,
+            20220620,
+            20220621,
+            20220622,
+            20220623,
+            20220624,
+            20220627,
+            20220628,
+            20220629,
+            20220630,
+            20220701,
+            20220704,
+            20220705,
+            20220706,
+            20220707,
+            20220708,
+            20220711,
+            20220712,
+            20220713,
+            20220714,
+            20220715,
+            20220718,
+            20220719,
+            20220720,
+            20220721,
+            20220722,
+            20220725,
+            20220726,
+            20220727,
+            20220728,
+            20220729,
+            20220801,
+            20220802,
+            20220803,
+            20220804,
+            20220805,
+            20220808,
+            20220809,
+            20220810,
+            20220811,
+            20220812,
+            20220815,
+            20220816,
+            20220817,
+            20220818,
+            20220819,
+            20220822,
+            20220823,
+            20220824,
+            20220825,
+            20220826,
+            20220829,
+            20220830,
+            20220831,
+            20220901,
+            20220902,
+            20220905,
+            20220906,
+            20220907,
+            20220908,
+            20220909,
+            20220913,
+            20220914,
+            20220915,
+            20220916,
+            20220919,
+            20220920,
+            20220921,
+            20220922,
+            20220923,
+            20220926,
+            20220927,
+            20220928,
+            20220929,
+            20220930,
+            20221010,
+            20221011,
+            20221012,
+            20221013,
+            20221014,
+            20221017,
+            20221018,
+            20221019,
+            20221020,
+            20221021,
+            20221024,
+            20221025,
+            20221026,
+            20221027,
+            20221028,
+            20221031,
+            20221101,
+            20221102,
+            20221103,
+            20221104,
+            20221107,
+            20221108,
+            20221109,
+            20221110,
+            20221111,
+            20221114,
+            20221115,
+            20221116,
+            20221117,
+            20221118,
+            20221121,
+            20221122,
+            20221123,
+            20221124,
+            20221125,
+            20221128,
+            20221129,
+            20221130,
+            20221201,
+            20221202,
+            20221205,
+            20221206,
+            20221207,
+            20221208,
+            20221209,
+            20221212,
+            20221213,
+            20221214,
+            20221215,
+            20221216,
+            20221219,
+            20221220,
+            20221221,
+            20221222,
+            20221223,
+            20221226,
+            20221227,
+            20221228,
+            20221229,
+            20221230
+          ]
+        },
+        "costs": "STRESS",
+        "initial_cash": 50000,
+        "max_positions": 2,
+        "max_symbol_exposure_bps": 5000
+      },
+      "benchmark_id": "ACCEPT_B_DUAL_MA_TRAILING_BENCHMARK",
+      "source_identity": [
+        "2931cbde08cef9c81bbd9807a79eef12ad1259ab",
+        true
+      ],
+      "source_hashes": {
+        "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\scripts\\run_strategy_account_v1.py": "a2d2e28a547c205d618c5836a3fc0548c41525f60fbd7d3109c88eeb0793d42b",
+        "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\strategy_submission_v1.py": "5a2acd496ae1a3f0df2d3087a9e7020fd3a4fa2e0147771ebf13b23b170ac2aa",
+        "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\351c3622f416b7e8a00aa7676568fc1aa2a22dd2af74acd135b7bea121daebaf\\INPUT.json": "717ce818f4392dbdf60578e12c8a16b53a066550ad56f9435f7c577847d964a6",
+        "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\synthetic_batch_resources.py": "66b5b6a8da80e1521a192eb0fda4746a36e46efcc48b4a2bf3d6eced1b39e420",
+        "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\etf_account_governance_v1.py": "10c7aa814dfa45cc4fa3a4e851ff3827cb7e06f9ab4e139aff33cde74cc4bcc3",
+        "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\budget.py": "55bcddb16a106a71830642bce237eb0cda90aaf945fab21de953d1ee60150861",
+        "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\research_capabilities_v1.py": "271f67634c1dacd1696e309dadb2f8184927a3f972e1681a9f8b9211a87c0e89",
+        "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\research_data_provider_v1.py": "846024a55b1eac7908e0c89e5bf3650bf0400c225d4671ec7f641337336ca7e3",
+        "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\351c3622f416b7e8a00aa7676568fc1aa2a22dd2af74acd135b7bea121daebaf\\PREVIEW.json": "6ae02569dc60f990e8f58fcd0560c8493fa205744a5516aa7352cba6b63f2b48"
+      }
+    },
+    "ACCEPT_B_DUAL_MA_TRAILING_BENCHMARK": {
+      "factory": "chanlun_trader.research_factory.strategy_submission_v1:public_benchmark_factory",
+      "factory_kwargs": {
+        "payload": {
+          "version": "FULL_POOL_BUY_HOLD_V1",
+          "symbols": [
+            "000006.SZ",
+            "000733.SZ",
+            "002036.SZ"
+          ]
+        },
+        "strategy_id": "ACCEPT_B_DUAL_MA_TRAILING_BENCHMARK"
+      },
+      "loader": "chanlun_trader.research_factory.strategy_submission_v1:load_frozen_bundle",
+      "loader_kwargs": {
+        "path": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\351c3622f416b7e8a00aa7676568fc1aa2a22dd2af74acd135b7bea121daebaf\\INPUT.json",
+        "sha256": "717ce818f4392dbdf60578e12c8a16b53a066550ad56f9435f7c577847d964a6",
+        "input_identity": "a74c880706b0a5260e2fca973b298526d032537a6893bb45f74b8d685efaa6ff"
+      },
+      "dependency_files": [
+        "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\351c3622f416b7e8a00aa7676568fc1aa2a22dd2af74acd135b7bea121daebaf\\INPUT.json",
+        "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\351c3622f416b7e8a00aa7676568fc1aa2a22dd2af74acd135b7bea121daebaf\\PREVIEW.json",
+        "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\research_capabilities_v1.py",
+        "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\research_data_provider_v1.py"
+      ],
+      "backend_options": {
+        "window": {
+          "symbols": [
+            "000006.SZ",
+            "000733.SZ",
+            "002036.SZ"
+          ],
+          "feature_start": 20220407,
+          "account_start": 20220706,
+          "account_end": 20221230,
+          "calendar": [
+            20220407,
+            20220408,
+            20220411,
+            20220412,
+            20220413,
+            20220414,
+            20220415,
+            20220418,
+            20220419,
+            20220420,
+            20220421,
+            20220422,
+            20220425,
+            20220426,
+            20220427,
+            20220428,
+            20220429,
+            20220505,
+            20220506,
+            20220509,
+            20220510,
+            20220511,
+            20220512,
+            20220513,
+            20220516,
+            20220517,
+            20220518,
+            20220519,
+            20220520,
+            20220523,
+            20220524,
+            20220525,
+            20220526,
+            20220527,
+            20220530,
+            20220531,
+            20220601,
+            20220602,
+            20220606,
+            20220607,
+            20220608,
+            20220609,
+            20220610,
+            20220613,
+            20220614,
+            20220615,
+            20220616,
+            20220617,
+            20220620,
+            20220621,
+            20220622,
+            20220623,
+            20220624,
+            20220627,
+            20220628,
+            20220629,
+            20220630,
+            20220701,
+            20220704,
+            20220705,
+            20220706,
+            20220707,
+            20220708,
+            20220711,
+            20220712,
+            20220713,
+            20220714,
+            20220715,
+            20220718,
+            20220719,
+            20220720,
+            20220721,
+            20220722,
+            20220725,
+            20220726,
+            20220727,
+            20220728,
+            20220729,
+            20220801,
+            20220802,
+            20220803,
+            20220804,
+            20220805,
+            20220808,
+            20220809,
+            20220810,
+            20220811,
+            20220812,
+            20220815,
+            20220816,
+            20220817,
+            20220818,
+            20220819,
+            20220822,
+            20220823,
+            20220824,
+            20220825,
+            20220826,
+            20220829,
+            20220830,
+            20220831,
+            20220901,
+            20220902,
+            20220905,
+            20220906,
+            20220907,
+            20220908,
+            20220909,
+            20220913,
+            20220914,
+            20220915,
+            20220916,
+            20220919,
+            20220920,
+            20220921,
+            20220922,
+            20220923,
+            20220926,
+            20220927,
+            20220928,
+            20220929,
+            20220930,
+            20221010,
+            20221011,
+            20221012,
+            20221013,
+            20221014,
+            20221017,
+            20221018,
+            20221019,
+            20221020,
+            20221021,
+            20221024,
+            20221025,
+            20221026,
+            20221027,
+            20221028,
+            20221031,
+            20221101,
+            20221102,
+            20221103,
+            20221104,
+            20221107,
+            20221108,
+            20221109,
+            20221110,
+            20221111,
+            20221114,
+            20221115,
+            20221116,
+            20221117,
+            20221118,
+            20221121,
+            20221122,
+            20221123,
+            20221124,
+            20221125,
+            20221128,
+            20221129,
+            20221130,
+            20221201,
+            20221202,
+            20221205,
+            20221206,
+            20221207,
+            20221208,
+            20221209,
+            20221212,
+            20221213,
+            20221214,
+            20221215,
+            20221216,
+            20221219,
+            20221220,
+            20221221,
+            20221222,
+            20221223,
+            20221226,
+            20221227,
+            20221228,
+            20221229,
+            20221230
+          ]
+        },
+        "costs": "BASE",
+        "initial_cash": 50000
+      },
+      "benchmark_id": "ACCEPT_B_DUAL_MA_TRAILING_BENCHMARK",
+      "source_identity": [
+        "2931cbde08cef9c81bbd9807a79eef12ad1259ab",
+        true
+      ],
+      "source_hashes": {
+        "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\scripts\\run_strategy_account_v1.py": "a2d2e28a547c205d618c5836a3fc0548c41525f60fbd7d3109c88eeb0793d42b",
+        "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\strategy_submission_v1.py": "5a2acd496ae1a3f0df2d3087a9e7020fd3a4fa2e0147771ebf13b23b170ac2aa",
+        "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\351c3622f416b7e8a00aa7676568fc1aa2a22dd2af74acd135b7bea121daebaf\\INPUT.json": "717ce818f4392dbdf60578e12c8a16b53a066550ad56f9435f7c577847d964a6",
+        "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\synthetic_batch_resources.py": "66b5b6a8da80e1521a192eb0fda4746a36e46efcc48b4a2bf3d6eced1b39e420",
+        "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\etf_account_governance_v1.py": "10c7aa814dfa45cc4fa3a4e851ff3827cb7e06f9ab4e139aff33cde74cc4bcc3",
+        "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\budget.py": "55bcddb16a106a71830642bce237eb0cda90aaf945fab21de953d1ee60150861",
+        "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\research_capabilities_v1.py": "271f67634c1dacd1696e309dadb2f8184927a3f972e1681a9f8b9211a87c0e89",
+        "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\research_data_provider_v1.py": "846024a55b1eac7908e0c89e5bf3650bf0400c225d4671ec7f641337336ca7e3",
+        "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\351c3622f416b7e8a00aa7676568fc1aa2a22dd2af74acd135b7bea121daebaf\\PREVIEW.json": "6ae02569dc60f990e8f58fcd0560c8493fa205744a5516aa7352cba6b63f2b48"
+      }
+    }
+  },
+  "root": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\351c3622f416b7e8a00aa7676568fc1aa2a22dd2af74acd135b7bea121daebaf\\account",
+  "objective_id": "TRUSTED_ACCEPTANCE_B_DUAL_MA_TRAILING_50000",
+  "budget_path": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\B_DUAL_MA_TRAILING_50000\\budget.json",
+  "input_identity": "a74c880706b0a5260e2fca973b298526d032537a6893bb45f74b8d685efaa6ff",
+  "source_hashes": {
+    "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\scripts\\run_strategy_account_v1.py": "a2d2e28a547c205d618c5836a3fc0548c41525f60fbd7d3109c88eeb0793d42b",
+    "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\strategy_submission_v1.py": "5a2acd496ae1a3f0df2d3087a9e7020fd3a4fa2e0147771ebf13b23b170ac2aa",
+    "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\351c3622f416b7e8a00aa7676568fc1aa2a22dd2af74acd135b7bea121daebaf\\INPUT.json": "717ce818f4392dbdf60578e12c8a16b53a066550ad56f9435f7c577847d964a6",
+    "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\synthetic_batch_resources.py": "66b5b6a8da80e1521a192eb0fda4746a36e46efcc48b4a2bf3d6eced1b39e420",
+    "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\etf_account_governance_v1.py": "10c7aa814dfa45cc4fa3a4e851ff3827cb7e06f9ab4e139aff33cde74cc4bcc3",
+    "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\budget.py": "55bcddb16a106a71830642bce237eb0cda90aaf945fab21de953d1ee60150861",
+    "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\research_capabilities_v1.py": "271f67634c1dacd1696e309dadb2f8184927a3f972e1681a9f8b9211a87c0e89",
+    "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\research_data_provider_v1.py": "846024a55b1eac7908e0c89e5bf3650bf0400c225d4671ec7f641337336ca7e3",
+    "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\351c3622f416b7e8a00aa7676568fc1aa2a22dd2af74acd135b7bea121daebaf\\PREVIEW.json": "6ae02569dc60f990e8f58fcd0560c8493fa205744a5516aa7352cba6b63f2b48",
+    "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\scripts\\probe_all_indicator_strategy_v1.py": "70be6c40c57621925c33e44e6b855b832ad6b97f4c38494903fabd08d2d90dc8",
+    "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\scripts\\verify_fixed_strategy_state_v1.py": "d2bd3223709404a0862f60207ed1427e4feb1cdfd3ad25a733285b1551950cb1",
+    "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\engine\\conditions_v2.py": "8dca21c32e80e1638afccd5341a3d6b2bd1a3191b9a0eeb0584ba9f6be4c4ff8",
+    "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\engine\\custom_indicators_v2.py": "41935d278f579653f4394da290eba89c81482ede9a7878bd3217aaaaa7cea331",
+    "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\engine\\daily_exit_v1.py": "e6a6cfe3d2f88983d039d4a651c577333c2874d1b1b1aebc8fb37a5b8c742479",
+    "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\engine\\daily_exit_v2.py": "d47f86ba7462281914a7b36f07a026b7bcf641dc56e0649b64fbc747b29a5aad",
+    "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\engine\\indicator_registry_v2.py": "0eb71b9616d6af25bdfeddeaa582187e3799aff38e77d68ecda0168896d328e0",
+    "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\engine\\indicators_v2.py": "26bd38a7fc869a9eb7c8121c37af918f902cd80b11eeecd1549eb128fc0ffebe",
+    "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\engine\\individual_dividend_accounting_v1.py": "90ab925dee89ba3b5a4862fe6c98092ac03c24c7299aa6131902d86841afaa47",
+    "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\causal_dividend_features_v1.py": "7e4345de56663f9ac907d859843e2a999a148a53a5e79e5e992980ee72be5883",
+    "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\research_rule_strategy_v2.py": "ffe52dc2b333ea6dc0ac8fe3ee635119a21a48b669760ff7ee3a64d40eb4d09a",
+    "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\research_rule_strategy_v3.py": "5d998eb18ecba96e223f5c48ff74cb5b0f1180c202481413e68d76b2b512fc11",
+    "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\rule_account_backend_v2.py": "8a632c9eeee782bf6429898529a92c6e56463ebf29b5943a090da480ebe89d61",
+    "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\forward_paper_engine_v1.py": "8aa4c43709bcb2467ee03dcd2f6324ada36f0b7c20f40d9639d4fd00b973cd79",
+    "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\rule_exit_adapter_v3.py": "47fb80135d1a257072bbe13aaa7dbd098efcf06ba3cb189d6b505ecae04d488c",
+    "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\portfolio_execution_v1.py": "ce0a3f2deede67dea545ffbdd49a427a3d8495727bf9d60fb00b0e8eafdca105",
+    "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\src\\chanlun_trader\\research_factory\\research_benchmark_v1.py": "c3786b9d41fc3a3bc9a01d97119cd83210f8c6099fcc778a63fd367a77eb6946"
+  },
+  "benchmark_id": "ACCEPT_B_DUAL_MA_TRAILING_BENCHMARK",
+  "resources": {
+    "worker_seconds": 900,
+    "memory_mib": 2048,
+    "total_seconds": 2700,
+    "threads": 1,
+    "concurrency": 1
+  },
+  "prepared_at": "2026-09-29T14:36:44.399670+00:00"
+}

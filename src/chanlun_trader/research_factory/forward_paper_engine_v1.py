@@ -1,4 +1,5 @@
 """前瞻观察的薄账户适配：使用既有订单、成交、风控和账本。"""
+import math
 from copy import deepcopy
 import json
 
@@ -29,6 +30,12 @@ class ForwardPaperEngineV1:
         self.strategies = {key: paper_strategy(value['proposal'], strategy_id=key)
                            for key, value in header['strategies'].items()}
         self.rule_states = {}
+        from .rule_exit_adapter_v3 import RuleExitAdapterV3, validate_exit_actions
+        self.rule_exits = {key: RuleExitAdapterV3(key, strategy.exit_rules)
+                           for key, strategy in self.strategies.items()
+                           if getattr(strategy, 'exit_rules', None) is not None and strategy.exit_rules.enabled}
+        if self.rule_exits:
+            validate_exit_actions(header.get('account_events', []))
         self.store, self.master = MarketDataStore(), SecurityMaster()
         self._load_bars(self.bars)
         from .portfolio_execution_v1 import PortfolioExecutionPolicyV1
@@ -78,8 +85,11 @@ class ForwardPaperEngineV1:
         result = []
         for decision in decisions:
             held = self.engine.ledger.position_qty(decision['strategy_id'], decision['symbol'])
-            result.append({**decision, 'side': 'SELL' if held else 'HOLD', 'target_weight': 0.0,
-                           'reason': self.observation['reason_codes'][0]})
+            forced = {**decision, 'side': 'SELL' if held else 'HOLD', 'target_weight': 0.0,
+                      'reason': self.observation['reason_codes'][0]}
+            # 观察风险覆盖是整个持仓退出，不能继承普通风险规则的分笔筛选。
+            forced.pop('exit_lot_ids', None)
+            result.append(forced)
         return result
 
     def _load_bars(self, rows):
@@ -119,6 +129,9 @@ class ForwardPaperEngineV1:
         validate_portfolio_plan(plan, policy=self.portfolio, ledger=self.engine.ledger,
             input_identity=plan['input_identity'], event_at=ts, admissions=admissions)
         self._accept_actions(snapshot)
+        if self.rule_exits:
+            from .rule_exit_adapter_v3 import validate_exit_actions
+            validate_exit_actions(getattr(self.engine.ledger, 'events', []))
         if self.header.get('company_actions') in ('OBSERVED_CASH_DIVIDEND_V1', 'HISTORICAL_CASH_DIVIDEND_V2', 'OBSERVED_FROZEN_CASH_DIVIDEND_V2'):
             self.engine.ledger.on_open(ts)
         # OPEN仅装入实际收到的开盘快照；完整日线直到CLOSE阶段才进入账户。
@@ -144,7 +157,21 @@ class ForwardPaperEngineV1:
             admission_check=observed_admission,
             orders_provider=self.engine.order_manager.open_orders, prices=prices, session_at=ts)
         self.engine.risk = self.engine.broker.risk = risk
-        for item in plan['intents']:
+        execution_intents = []
+        for intent in plan['intents']:
+            if 'exit_lot_ids' in intent:
+                if intent['side'] != 'SELL' or intent['strategy_id'] not in self.rule_exits:
+                    raise ValueError('RULE_EXIT_INTENT_SCOPE_INVALID')
+                for lot_id in intent['exit_lot_ids']:
+                    lot = self.engine.ledger.lots.get(lot_id)
+                    if (lot is None or lot.strategy_id != intent['strategy_id'] or lot.symbol != intent['symbol']
+                            or lot.exit_state not in ('EXIT_DUE', 'SELL_PENDING', 'PARTIALLY_FILLED')):
+                        raise ValueError('RULE_EXIT_PENDING_LOT_REQUIRED')
+                    execution_intents.append({**intent, '_lot_id': lot_id,
+                        'intent_id': intent['intent_id'] + ':' + lot_id})
+            else:
+                execution_intents.append(intent)
+        for item in execution_intents:
             symbol, strategy_id, side = item['symbol'], item['strategy_id'], item['side']
             state = states[symbol]
             if state['suspended'] or not state['listed'] or state['delisted']:
@@ -155,7 +182,8 @@ class ForwardPaperEngineV1:
                                              target_weight=item['target_weight'])
                 position_id = None
             else:
-                quantity = self.engine.ledger.position_qty(strategy_id, symbol)
+                quantity = (self.engine.ledger.sellable_lot_quantity(item['_lot_id'], ts)
+                            if '_lot_id' in item else self.engine.ledger.position_qty(strategy_id, symbol))
                 position = self.engine.ledger.get_position(strategy_id, symbol)
                 position_id = position.position_id if position else None
             if quantity <= 0:
@@ -164,9 +192,10 @@ class ForwardPaperEngineV1:
             order = Order(order_id='', strategy_id=strategy_id, intent_id=item['intent_id'],
                 signal_id=item['intent_id'], symbol=symbol, side=Side(side), quantity=quantity,
                 created_at=ts, eligible_at=ts, time_in_force=TimeInForce.DAY,
-                position_id=position_id, priority=item['priority'],
+                position_id=position_id, lot_id=item.get('_lot_id'), priority=item['priority'],
                 metadata={'plan_id': plan['plan_id'], 'paper': True,
-                          'target_weight':item.get('target_weight',0.0)}, reason='FORWARD_OBSERVED_OPEN')
+                          'target_weight':item.get('target_weight',0.0)},
+                reason=item['reason'] if '_lot_id' in item else 'FORWARD_OBSERVED_OPEN')
             self.engine.order_manager.create_order(order, ts)
             self.engine.order_manager.submit(order, ts)
         self.engine.broker.process_orders(EventKind.SESSION_OPEN, ts)
@@ -178,6 +207,9 @@ class ForwardPaperEngineV1:
     def close(self, snapshot):
         ts = pd.Timestamp(snapshot.get('processed_at', snapshot['received_at']))
         self._accept_actions(snapshot)
+        if self.rule_exits:
+            from .rule_exit_adapter_v3 import validate_exit_actions
+            validate_exit_actions(getattr(self.engine.ledger, 'events', []))
         self.bars.extend(deepcopy(snapshot['payload']['bars']))
         self.turn.extend(deepcopy(snapshot['payload']['turn']))
         self._load_bars(self.bars)
@@ -205,6 +237,12 @@ class ForwardPaperEngineV1:
         registry = pilot_registry()
         result = []
         all_bars, all_turn = pd.DataFrame(self.bars), pd.DataFrame(self.turn)
+        risk_decisions = {}
+        calendar = sorted(set(int(row['date']) for row in self.bars) | set(self.header['calendar']))
+        day = max(int(row['date']) for row in self.bars)
+        for strategy_id, adapter in self.rule_exits.items():
+            for exit_decision in adapter.evaluate(self.engine.ledger, self.store, calendar, day):
+                risk_decisions.setdefault((strategy_id, exit_decision.symbol), []).append(exit_decision)
         by_symbol = {row['symbol']: row for row in states}
         for symbol in self.symbols:
             bars = all_bars.loc[all_bars.symbol == symbol].sort_values('date').copy()
@@ -214,7 +252,11 @@ class ForwardPaperEngineV1:
             series = {key: pd.Series(bars[key].to_numpy(dtype=float), index=index)
                       for key in ('open','high','low','close','volume','amount','prev_close')}
             vendor = all_turn.loc[all_turn.symbol == symbol].set_index('date').reindex(index)
-            turnover = pd.Series(vendor.turn.to_numpy(dtype=float), index=index)
+            turnover = pd.Series(vendor['turn'].to_numpy(dtype=float), index=index) if 'turn' in vendor else None
+            needs_turn = any('turn' in strategy.requirements.fields for strategy in self.strategies.values())
+            if needs_turn and (turnover is None or turnover.isna().any()
+                               or not turnover.map(lambda value: math.isfinite(value) and value >= 0).all()):
+                raise ValueError('PAPER_REQUIRED_FIELD_MISSING_OR_INVALID:turn')
             columns = {}
             # 旧策略仍复用固定指标矩阵；新规则按实际引用计算多输出。
             legacy = [s for s in self.strategies.values() if not hasattr(s, 'build_feature_matrix')]
@@ -237,7 +279,8 @@ class ForwardPaperEngineV1:
                                                   tuple(map(int, index)), int(index[-1]))
                     rule_context = Context(features, tuple(map(int, index)), len(index)-1,
                                            account, deepcopy(self.rule_states.get(state_key, {})))
-                decision = strategy.on_close(rule_context)
+                decision = (strategy.on_signal_close(rule_context) if hasattr(strategy, 'on_signal_close')
+                            else strategy.on_close(rule_context))
                 validate_decision(decision, strategy.requirements)
                 if hasattr(strategy, 'build_feature_matrix') and decision.state is not None:
                     self.rule_states[state_key] = deepcopy(decision.state)
@@ -245,9 +288,15 @@ class ForwardPaperEngineV1:
                 state = by_symbol[symbol]
                 if side == 'BUY' and (state['is_st'] or state['suspended'] or not state['listed'] or state['delisted']):
                     side = 'HOLD'
-                result.append({'strategy_id': strategy_id, 'symbol': symbol, 'side': side,
-                               'reason': decision.reason,
-                               'target_weight':decision.intent.weight if decision.intent is not None else 0.0})
+                record = {'strategy_id': strategy_id, 'symbol': symbol, 'side': side,
+                          'reason': decision.reason,
+                          'target_weight': decision.intent.weight if decision.intent is not None else 0.0}
+                exits = risk_decisions.get(state_key, [])
+                # 普通信号已经要求全仓退出时保留该退出；否则仅出售风险触发的分笔。
+                if exits and side != 'SELL':
+                    record.update(side='SELL', target_weight=0.0, reason='RULE_RISK_EXIT_V3',
+                                  exit_lot_ids=sorted(item.lot_id for item in exits))
+                result.append(record)
         return result
 
     def _invariants(self):
@@ -258,6 +307,8 @@ class ForwardPaperEngineV1:
         value = {'economic': economic_state(self.engine),
             'equity': self.engine.ledger.current_equity(), 'skipped_intents': self.skips,
             'invariant_errors': self.engine.ledger.check_invariants()}
+        if self.rule_exits:
+            value['rule_exit_states'] = {key: adapter.state() for key, adapter in sorted(self.rule_exits.items())}
         if self.rule_states:
             value['rule_states'] = {f'{key[0]}:{key[1]}': state for key, state in sorted(self.rule_states.items())}
         if hasattr(self, 'observation'):
@@ -266,6 +317,12 @@ class ForwardPaperEngineV1:
 
 
 def paper_strategy(payload, *, strategy_id):
+    if isinstance(payload, dict) and payload.get('version') == 'FULL_POOL_BUY_HOLD_V1':
+        from .research_benchmark_v1 import FullPoolBuyHoldStrategyV1
+        return FullPoolBuyHoldStrategyV1(payload, strategy_id=strategy_id)
+    if isinstance(payload, dict) and payload.get('version') == 'RESEARCH_RULE_STRATEGY_V3':
+        from .research_rule_strategy_v3 import ResearchRuleStrategyV3
+        return ResearchRuleStrategyV3(payload, strategy_id=strategy_id)
     if isinstance(payload, dict) and payload.get('version') == 'RESEARCH_RULE_STRATEGY_V2':
         from .research_rule_strategy_v2 import ResearchRuleStrategyV2
         return ResearchRuleStrategyV2(payload, strategy_id=strategy_id)

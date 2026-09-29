@@ -11,7 +11,7 @@ import pandas as pd
 from .bounded_research_v1 import _put, _read, source_identity
 from .common import stable_hash
 from .durability import _atomic_write
-from .forward_paper_engine_v1 import ForwardPaperEngineV1
+from .forward_paper_engine_v1 import ForwardPaperEngineV1, paper_strategy
 from .mutation_boundary import ObjectiveMutationLock
 
 
@@ -43,7 +43,7 @@ def _portfolio_qualification(root, *, policy, strategy_ids, calendar, company_ac
     return frozen, report
 
 
-def _data_check(payload, symbols, *, day=None, warmup=False, allow_cash_actions=False):
+def _data_check(payload, symbols, *, day=None, warmup=False, allow_cash_actions=False, require_turn=True):
     if not isinstance(payload, dict) or payload.get('corporate_actions_complete') is not True:
         raise ValueError('FORWARD_PAPER_ACTION_COVERAGE_REQUIRED')
     actions = payload.get('corporate_actions')
@@ -74,9 +74,13 @@ def _data_check(payload, symbols, *, day=None, warmup=False, allow_cash_actions=
         if len(turn_keys) != len(set(turn_keys)) or set(turn_keys) != set(keys):
             raise ValueError('FORWARD_PAPER_TURN_COVERAGE')
         for row in turns:
-            if (isinstance(row.get('turn'), bool) or not isinstance(row.get('turn'), (int,float))
-                    or not math.isfinite(row['turn']) or row['turn'] < 0
-                    or row.get('tradestatus') not in (0,1)):
+            if not require_turn and 'turn' not in row and (isinstance(row.get('volume'), bool)
+                    or not isinstance(row.get('volume'), (int, float))
+                    or not math.isfinite(row['volume']) or row['volume'] < 0):
+                raise ValueError('FORWARD_PAPER_VENDOR_VOLUME_INVALID')
+            if (row.get('tradestatus') not in (0,1) or ((require_turn or 'turn' in row) and (
+                    isinstance(row.get('turn'), bool) or not isinstance(row.get('turn'), (int,float))
+                    or not math.isfinite(row['turn']) or row['turn'] < 0))):
                 raise ValueError('FORWARD_PAPER_TURN_INVALID')
     if not warmup:
         states = payload.get('states')
@@ -117,7 +121,7 @@ class ForwardPaperSessionV1:
                company_actions='STOP_ON_ANY_OBSERVATION_ACTION', portfolio_review_root=None,
                observation_policy=None):
         from .portfolio_execution_v1 import PortfolioExecutionPolicyV1
-        from .strategy_qualification_v1 import BoundedStrategyArchiveV1
+        from .public_strategy_archive_v3 import archive_for_ids
         if profile not in ('REAL_OBSERVED','SYNTHETIC') or (clock is not None and profile != 'SYNTHETIC'):
             raise ValueError('FORWARD_PAPER_PROFILE_INVALID')
         if purpose not in ('ENGINEERING_OBSERVATION','FORMAL_OBSERVATION'):
@@ -160,12 +164,7 @@ class ForwardPaperSessionV1:
                     or not 1 <= observation_policy['min_complete_days'] <= observation_policy['review_after'] <= len(calendar) - 2
                     or not 1 <= observation_policy['max_drawdown_bps'] <= 10000):
                 raise ValueError('FORWARD_PAPER_OBSERVATION_POLICY_INVALID')
-        warm_days = _data_check(warmup,symbols,warmup=True)
-        if len(warm_days)<60 or warm_days[-1]>=calendar[0]:
-            raise ValueError('FORWARD_PAPER_WARMUP_INVALID')
-        if profile == 'REAL_OBSERVED' and warmup.get('source_profile') not in ('HISTORICAL_REAL','REAL_OBSERVED'):
-            raise PermissionError('FORWARD_PAPER_REAL_WARMUP_REQUIRED')
-        archive = BoundedStrategyArchiveV1(archive_root)
+        archive = archive_for_ids(archive_root, strategy_ids)
         portfolio_qualification = None
         if purpose == 'FORMAL_OBSERVATION' and len(portfolio.members) > 1:
             if portfolio_review_root is None or profile != 'REAL_OBSERVED':
@@ -192,7 +191,7 @@ class ForwardPaperSessionV1:
                     or portfolio.members[0].weight_bps != 10000 or portfolio.max_positions != 2
                     or portfolio.max_symbol_exposure_bps != 5000 or portfolio.max_buy_turnover_bps != 10000):
                 raise PermissionError('FORWARD_PAPER_FORMAL_EVIDENCE_SCOPE_CONFLICT')
-            if profile == 'REAL_OBSERVED' and item['source_profile'] == 'SYNTHETIC':
+            if profile == 'REAL_OBSERVED' and item['source_profile'] in ('SYNTHETIC', 'UNVERIFIED'):
                 raise PermissionError('FORWARD_PAPER_SYNTHETIC_STRATEGY_NOT_REAL')
             member = next(member for member in portfolio.members if member.strategy_id == strategy_id)
             if member.rule_identity != item['rule_identity']:
@@ -200,6 +199,12 @@ class ForwardPaperSessionV1:
             strategies[strategy_id] = {key: deepcopy(item[key]) for key in
                                       ('proposal','rule_identity','archive_hash','source_profile')}
             admissions[strategy_id] = admission
+        warm_days = _data_check(warmup,symbols,warmup=True, require_turn=any(
+            'turn' in paper_strategy(item['proposal'], strategy_id=key).requirements.fields for key, item in strategies.items()))
+        if len(warm_days)<60 or warm_days[-1]>=calendar[0]:
+            raise ValueError('FORWARD_PAPER_WARMUP_INVALID')
+        if profile == 'REAL_OBSERVED' and warmup.get('source_profile') not in ('HISTORICAL_REAL','REAL_OBSERVED'):
+            raise PermissionError('FORWARD_PAPER_REAL_WARMUP_REQUIRED')
         created = _stamp(clock() if clock else _now())
         if profile == 'REAL_OBSERVED' and calendar[0] < int(created.strftime('%Y%m%d')):
             raise ValueError('FORWARD_PAPER_NO_HISTORICAL_START')
@@ -237,8 +242,8 @@ class ForwardPaperSessionV1:
         return value
 
     def _admissions(self,header):
-        from .strategy_qualification_v1 import BoundedStrategyArchiveV1
-        archive = BoundedStrategyArchiveV1(header['archive_root'])
+        from .public_strategy_archive_v3 import archive_for_ids
+        archive = archive_for_ids(header['archive_root'], list(header['strategies']))
         result={}
         for key,frozen in header['strategies'].items():
             current=archive.load(key)
@@ -411,7 +416,9 @@ class ForwardPaperSessionV1:
                 _atomic_write(self.path('HEAD.json'),self._head(header,len(records),
                     records[-1]['record_hash'] if records else header['header_id'],stable_hash(revoked)))
                 raise ValueError('FORWARD_PAPER_CORPORATE_ACTION_HALTED')
-            _data_check(payload,header['policy']['symbols'],day=day,allow_cash_actions=dynamic_actions)
+            _data_check(payload,header['policy']['symbols'],day=day,allow_cash_actions=dynamic_actions,
+                require_turn=any('turn' in paper_strategy(item['proposal'], strategy_id=key).requirements.fields
+                                 for key, item in header['strategies'].items()))
             last_bars=(records[-1]['snapshot']['payload']['bars'] if records else header['warmup']['bars'])
             if phase=='OPEN' or not records:
                 prior={}

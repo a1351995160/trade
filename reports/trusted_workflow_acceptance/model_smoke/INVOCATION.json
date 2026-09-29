@@ -1,0 +1,281 @@
+{
+  "context_hash": "08460b8d2e3f6e30fed029d303fbb101bddc796bf4963be65d7f99be68c610c7",
+  "proposal": {
+    "version": "RESEARCH_RULE_STRATEGY_V3",
+    "hypothesis": "冻结股票池与给定历史窗口内，研究一个以20日向上突破、前置相对成交量和DMI趋势强度共同确认的探索性规则；该规则仅用于接线验证，不声称有效或推荐交易。",
+    "change_reason": "无父候选；采用价格突破叠加量能与方向性过滤，卖出信号使用20日向下破位或RSI过热回落条件，风险退出由成本止损、固定止盈和移动退出独立声明，避免用均线卖出冒充成本止损。",
+    "buy": {
+      "op": "and",
+      "args": [
+        {
+          "op": "eq",
+          "args": [
+            {
+              "op": "indicator",
+              "args": [
+                "pb20"
+              ],
+              "params": {
+                "output": "break_up",
+                "version": "PRIOR_BREAKOUT_V1"
+              }
+            },
+            {
+              "op": "const",
+              "args": [],
+              "params": {
+                "value": 1
+              }
+            }
+          ],
+          "params": {}
+        },
+        {
+          "op": "gt",
+          "args": [
+            {
+              "op": "indicator",
+              "args": [
+                "rvol20p"
+              ],
+              "params": {
+                "output": "rvol",
+                "version": "RVOL_PRIOR_V1"
+              }
+            },
+            {
+              "op": "const",
+              "args": [],
+              "params": {
+                "value": 1.2
+              }
+            }
+          ],
+          "params": {}
+        },
+        {
+          "op": "gt",
+          "args": [
+            {
+              "op": "indicator",
+              "args": [
+                "dmi14"
+              ],
+              "params": {
+                "output": "plus_di",
+                "version": "DMI_ADX_V1"
+              }
+            },
+            {
+              "op": "indicator",
+              "args": [
+                "dmi14"
+              ],
+              "params": {
+                "output": "minus_di",
+                "version": "DMI_ADX_V1"
+              }
+            }
+          ],
+          "params": {}
+        },
+        {
+          "op": "ge",
+          "args": [
+            {
+              "op": "indicator",
+              "args": [
+                "dmi14"
+              ],
+              "params": {
+                "output": "adx",
+                "version": "DMI_ADX_V1"
+              }
+            },
+            {
+              "op": "const",
+              "args": [],
+              "params": {
+                "value": 18
+              }
+            }
+          ],
+          "params": {}
+        }
+      ],
+      "params": {}
+    },
+    "sell": {
+      "op": "or",
+      "args": [
+        {
+          "op": "eq",
+          "args": [
+            {
+              "op": "indicator",
+              "args": [
+                "pb20"
+              ],
+              "params": {
+                "output": "break_down",
+                "version": "PRIOR_BREAKOUT_V1"
+              }
+            },
+            {
+              "op": "const",
+              "args": [],
+              "params": {
+                "value": 1
+              }
+            }
+          ],
+          "params": {}
+        },
+        {
+          "op": "cross_down",
+          "args": [
+            {
+              "op": "indicator",
+              "args": [
+                "rsi14"
+              ],
+              "params": {
+                "output": "rsi",
+                "version": "RSI_V1"
+              }
+            },
+            {
+              "op": "const",
+              "args": [],
+              "params": {
+                "value": 65
+              }
+            }
+          ],
+          "params": {}
+        }
+      ],
+      "params": {}
+    },
+    "market_filter": {
+      "op": "and",
+      "args": [
+        {
+          "op": "gt",
+          "args": [
+            {
+              "op": "field",
+              "args": [
+                "close"
+              ],
+              "params": {}
+            },
+            {
+              "op": "const",
+              "args": [],
+              "params": {
+                "value": 0
+              }
+            }
+          ],
+          "params": {}
+        },
+        {
+          "op": "gt",
+          "args": [
+            {
+              "op": "field",
+              "args": [
+                "volume"
+              ],
+              "params": {}
+            },
+            {
+              "op": "const",
+              "args": [],
+              "params": {
+                "value": 0
+              }
+            }
+          ],
+          "params": {}
+        },
+        {
+          "op": "gt",
+          "args": [
+            {
+              "op": "field",
+              "args": [
+                "amount"
+              ],
+              "params": {}
+            },
+            {
+              "op": "const",
+              "args": [],
+              "params": {
+                "value": 0
+              }
+            }
+          ],
+          "params": {}
+        }
+      ],
+      "params": {}
+    },
+    "min_hold_sessions": 3,
+    "max_hold_sessions": 30,
+    "cooldown_sessions": 5,
+    "target_weight": 0.5,
+    "indicator_instances": [
+      {
+        "instance_id": "pb20",
+        "id": "PRIOR_BREAKOUT",
+        "version": "PRIOR_BREAKOUT_V1",
+        "params": {
+          "window": 20
+        }
+      },
+      {
+        "instance_id": "rvol20p",
+        "id": "RVOL_PRIOR",
+        "version": "RVOL_PRIOR_V1",
+        "params": {
+          "window": 20
+        }
+      },
+      {
+        "instance_id": "dmi14",
+        "id": "DMI",
+        "version": "DMI_ADX_V1",
+        "params": {
+          "window": 14
+        }
+      },
+      {
+        "instance_id": "rsi14",
+        "id": "RSI",
+        "version": "RSI_V1",
+        "params": {
+          "window": 14,
+          "price": "close"
+        }
+      }
+    ],
+    "exits": {
+      "execution_mode": "CLOSE_CONFIRM_NEXT_SESSION_OPEN",
+      "stop_loss_pct": 0.06,
+      "take_profit_pct": 0.12,
+      "trailing_activate_pct": 0.08,
+      "trailing_pct": 0.04
+    }
+  },
+  "model_id": "NONE",
+  "runtime_version": "UNKNOWN",
+  "duration_seconds": 42.668162,
+  "response_hash": "54554ac6f3277f426c0cdff2b93fbba66873a7df2dfadf39b83aa14830ff9ce2",
+  "success_hash": "8ccb0b4546b1f51037c4c1e17e18de082e14ab1d3b1363df65689872db15b553",
+  "origin": "REAL_CODEX_SUBPROCESS",
+  "synthetic": false,
+  "_integrity": "efd24dc33efc1a36005831c2a169080835636d03e2c8f574d53d53d8acff2198"
+}

@@ -19,6 +19,7 @@ jobs:
     env:
       PYTHONUTF8: "1"
       PYTHONDONTWRITEBYTECODE: "1"
+      CHANLUN_PROCESS_EVIDENCE_DIR: ${{ runner.temp }}/trusted-resource-evidence
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -26,9 +27,35 @@ jobs:
           python-version: "3.13"
       - name: Install frozen test dependencies
         run: python -m pip install --disable-pip-version-check --only-binary ":all:" --no-binary "pytdx" --require-hashes -r .github/workflows/requirements-p3b.txt
+      - name: Check generated capability documentation and public examples
+        run: python scripts/generate_research_capabilities_v1.py --check
       - name: Verify new workflow and original entry contracts
         run: >-
           python -m pytest -q
+          tests/research_factory/test_research_capabilities_v1.py
+          tests/research_factory/test_research_capabilities_docs_v1.py
+          tests/research_factory/test_published_acceptance_v1.py
+          tests/research_factory/test_research_rule_strategy_v3.py
+          tests/research_factory/test_research_data_provider_v1.py
+          tests/research_factory/test_dynamic_turn_dependencies_v3.py
+          tests/research_factory/test_strategy_submission_v1.py
+          tests/research_factory/test_strategy_submission_web_v1.py
+          tests/research_factory/test_research_evidence_v1.py
+          tests/research_factory/test_rule_exit_integration_v3.py
+          tests/research_factory/test_research_benchmark_v1.py
+          tests/research_factory/test_trusted_research_host_v1.py
+          tests/research_factory/test_synthetic_batch_resources.py
+          tests/research_factory/test_research_campaign_v1.py
+          tests/research_factory/test_diagnosis_research_v3.py
+          tests/research_factory/test_campaign_confirmation_v1.py
+          tests/research_factory/test_formal_rule_adapter_v3.py
+          tests/research_factory/test_public_strategy_archive_v3.py
+          tests/research_factory/test_public_strategy_lifecycle_cli_v3.py
+          tests/research_factory/test_trusted_daily_plan_v1.py
+          tests/research_factory/test_trusted_research_system_v1.py
+          tests/research_factory/test_bounded_model_v3.py
+          tests/research_factory/test_strategy_account_reports_v3.py
+          tests/research_factory/test_trusted_research_cli_v1.py
           tests/research_factory/test_research_data_qualification_v1.py
           tests/research_factory/test_validation_protocol_v2.py
           tests/research_factory/test_formal_evidence_v2.py

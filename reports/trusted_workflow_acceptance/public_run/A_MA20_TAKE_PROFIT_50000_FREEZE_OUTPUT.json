@@ -1,0 +1,66 @@
+{
+  "task_id": "a57e9408c0ae8e329292f8459c4eaa47ab2aebab24872d35d760d032ee9c8c7a",
+  "preview_identity": "34ba6c25bceadf70224a72e7a058cea0ad847e1a1c74a2f9c02b1bf8949e211d",
+  "input_identity": "355cd3be7e4b519222eed14180e7ea82c7005773b2e465534fd90e1b02ffd754",
+  "job_path": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output\\tasks\\a57e9408c0ae8e329292f8459c4eaa47ab2aebab24872d35d760d032ee9c8c7a\\account\\JOB.json",
+  "objective_id": "TRUSTED_ACCEPTANCE_A_MA20_TAKE_PROFIT_50000",
+  "status": "FROZEN_REQUIRES_EXISTING_GOVERNANCE_APPROVAL",
+  "benchmark": "FULL_POOL_BUY_HOLD",
+  "qualification": {
+    "purpose": "EXPLORATORY",
+    "account_data_ready": true,
+    "historical_availability": "MODELED",
+    "historical_independence": "UNKNOWN",
+    "independent_confirmation_eligible": false,
+    "strategy_qualified": false,
+    "field_status": {
+      "prices": "VENDOR_ASSERTED",
+      "turn": "VENDOR_ASSERTED",
+      "security_status": "VENDOR_ASSERTED_WITH_MODELED_ELIGIBILITY",
+      "action_dates": "VENDOR_ASSERTED",
+      "availability_time": "MODELED"
+    },
+    "price_basis": {
+      "execution": "RAW",
+      "indicators": "CAUSAL_CASH_ACTION_TRANSFORM"
+    },
+    "checks": {
+      "cash_action_reference_checks": [
+        {
+          "event_id": "000001.SZ:20220722:CASH",
+          "reference_delta": -0.002000000000000668
+        },
+        {
+          "event_id": "000002.SZ:20220825:CASH",
+          "reference_delta": 0.006126000000000076
+        },
+        {
+          "event_id": "600000.SH:20220721:CASH",
+          "reference_delta": 0.0
+        }
+      ],
+      "coverage_basis": "VENDOR_CASH_ACTION_RECORDS_AND_EVERY_RAW_PRECLOSE_TRANSITION",
+      "publication_dates": "VENDOR_ASSERTED_NOT_INDEPENDENTLY_VERIFIED",
+      "historical_available_at_verified": false
+    },
+    "source_hashes": {
+      "TRADE_DATES.json": "87f146a3e741deadb598eefaadfe8cc0c09ec590be39e0ac9ee5dd94bd691f4c",
+      "DAILY_000001.SZ.json": "d87fa6b1ca79c7ad68faedc209ef071dcf4e3fb4d569f422a12d7e27edceb47b",
+      "DIVIDEND_000001.SZ_2022.json": "9677b3014752079ff16bf5ab791086bc4ffaf333764bb090eddab5c00f5c737a",
+      "ADJUST_000001.SZ.json": "4627d76ea28719d59fc4ec6187d02c320fc20738b387f41c46dd622a9841515c",
+      "DAILY_000002.SZ.json": "f1900e703a2faf34be88fa02ecc3b189b87a07ddf3f35d6f59ee5c795962076b",
+      "DIVIDEND_000002.SZ_2022.json": "1de1e91d679579d8e970c12c4b6fa52db48c3995d557f836b2b7e6d2549fe210",
+      "ADJUST_000002.SZ.json": "ac3ebafbb24beccd0d070bef1887df8419e284b90f30475ef3ada4ab821ba145",
+      "DAILY_600000.SH.json": "05d4d725d011533498972b7429bc7ca6e77ec1e1cc7142cff8d0ee939f5b6eb8",
+      "DIVIDEND_600000.SH_2022.json": "efd747a0c8e6e6c2c5ba08478e8fef97a411be975ececac9cfffedbdec1e591d",
+      "ADJUST_600000.SH.json": "e286528aca0f10ef36ff28b33ea52c4909e391535e9b8787389fc5a0c47b13ce"
+    },
+    "manifest_hash": "14c446bd56fe0f39619c1962ec84dfc3e0fe2cf62374618b51aab3207b60723a"
+  },
+  "job_sha256": "186481d1c7bcc022428945b0870c256a3675ac6aa8f8c2058b8e2d324b439556",
+  "plan_ids": {
+    "ACCEPT_A_MA20_TAKE_PROFIT_BASE": "04dcb088eed0756d90afd6ab988e2d8105ef91108857204ba02df6b66d04f2c0",
+    "ACCEPT_A_MA20_TAKE_PROFIT_STRESS": "ae6772238df8c2c5934da6db78110204d52884e513e2846d40614186c4a35e6a",
+    "ACCEPT_A_MA20_TAKE_PROFIT_BENCHMARK": "03a7a6514f0ef2576029e5fa9b9f50861bd3e01b923af5875119ca27ec3fc432"
+  }
+}

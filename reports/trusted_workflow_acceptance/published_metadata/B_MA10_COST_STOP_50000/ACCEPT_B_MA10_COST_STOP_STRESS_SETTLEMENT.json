@@ -1,0 +1,13 @@
+{
+  "kind": "ACCEPT_B_MA10_COST_STOP_STRESS",
+  "reservation": "RES-000002",
+  "receipt_id": "3984fd0e7d1730500686a7098dab4f38b0f11ccc44594bd6a09bf212b1f0ee8e",
+  "started_at": "2026-09-29T14:37:39.081538+00:00",
+  "counted_before_account_calculation": true,
+  "completed": true,
+  "wall_seconds": 10.655999999999949,
+  "result_sha256": "6e715b9aeafb4b83f8bd39d2e23d909b3adb41e73071ac059da6dbe7d2552af6",
+  "error": null,
+  "settled_at": "2026-09-29T14:37:49.765659+00:00",
+  "repair_exposures": 0
+}

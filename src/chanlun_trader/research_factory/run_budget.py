@@ -421,6 +421,8 @@ class AutonomousRunBudgetV1:
             payload = json.loads(self.path.read_text(encoding="utf-8"))
         except (OSError, ValueError) as exc:
             raise BudgetLedgerMismatchError("cannot load autonomous run budget") from exc
+        if payload.get("schema_version") == "autonomous-run-budget-v3" and self.schema_version != "autonomous-run-budget-v3":
+            raise BudgetLedgerMismatchError("CAMPAIGN_REQUIRES_RESOURCE_AWARE_ENTRY")
         persisted_contract = payload.get("contract") if isinstance(payload.get("contract"), Mapping) else payload
         for key in ("run_id", "objective_id", "max_batches", "max_total_predictive_trials", "max_trials_per_batch", "max_hypotheses_per_batch", "max_candidates_per_batch"):
             if key in persisted_contract and str(persisted_contract[key]) != str(getattr(self.contract, key)):
@@ -514,3 +516,97 @@ class AutonomousRunBudgetV1:
         temporary = self.path.with_name(self.path.name + ".tmp")
         temporary.write_text(json.dumps(self.to_dict(), ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         os.replace(temporary, self.path)
+
+
+class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
+    """同一权威事件流上的多资源版本；旧缺失维度不能被推断成零。"""
+
+    schema_version = "autonomous-run-budget-v3"
+    resource_names = ("candidate_attempts", "data_experiments", "account_jobs", "model_calls",
+                      "model_tokens", "model_cost_microunits", "verification_jobs", "wall_seconds")
+
+    def _load(self):
+        if self.path is not None and self.path.exists():
+            stored = json.loads(self.path.read_text(encoding="utf-8"))
+            if stored.get("schema_version") != self.schema_version:
+                raise BudgetLedgerMismatchError("LEGACY_RESOURCE_USAGE_UNKNOWN")
+        super()._load()
+
+    def to_dict(self):
+        result = super().to_dict()
+        result['campaign_event_head'] = self._events[-1]['event_id'] if self._events else None
+        return result
+
+    def _load_events(self):
+        super()._load_events()
+        if self.path is not None and self.path.exists():
+            snapshot = json.loads(self.path.read_text(encoding="utf-8"))
+            head = snapshot.get('campaign_event_head')
+            if head and head not in self._event_ids:
+                raise BudgetLedgerMismatchError('CAMPAIGN_EVENT_HISTORY_TRUNCATED')
+        for event in self._events:
+            expected = stable_hash({"run_id": self.run_id, "event_type": event["event_type"], "payload": event["payload"]})
+            if event.get("event_id") != expected:
+                raise BudgetLedgerMismatchError("CAMPAIGN_EVENT_HASH_CONFLICT")
+        if self.path is not None and self.path.exists() and not self._events:
+            raise BudgetLedgerMismatchError("CAMPAIGN_EVENT_HISTORY_MISSING")
+
+    def _replay_events_if_state_is_empty(self):
+        # V2 的事件是权威；快照可落后于最后一次持久化事件。
+        self._reservations, self._trial_identities = {}, {}
+        self._completed_trial_ids, self._used_trial_ids = set(), set()
+        self._started_batch_ids, self._completed_batch_ids = set(), set()
+        self._legacy_used_count = 0
+        super()._replay_events_if_state_is_empty()
+        for event in self._events:
+            if event['event_type'] == 'RUN_TRIAL_RELEASED':
+                trial_id = event['payload']['trial_id']
+                if trial_id not in self._used_trial_ids:
+                    self._reservations.pop(trial_id, None)
+
+    def campaign_view(self):
+        authorization, operations, stages = None, {}, {}
+        paused = False
+        for event in self._events:
+            kind, item = event['event_type'], event['payload']
+            if kind == 'CAMPAIGN_AUTHORIZED':
+                if authorization is not None:
+                    raise BudgetLedgerMismatchError('CAMPAIGN_AUTHORIZATION_DUPLICATED')
+                authorization = dict(item)
+            elif kind == 'CAMPAIGN_PAUSED':
+                paused = True
+            elif kind == 'CAMPAIGN_RESUMED':
+                paused = False
+            elif kind == 'CAMPAIGN_STAGE_CHANGED':
+                stages[item['stage']] = dict(item)
+            elif kind == 'CAMPAIGN_OPERATION_RESERVED':
+                if item['operation_id'] in operations:
+                    raise BudgetLedgerMismatchError('CAMPAIGN_OPERATION_DUPLICATED')
+                operations[item['operation_id']] = {**item, 'status': 'RESERVED'}
+            elif kind in ('CAMPAIGN_OPERATION_STARTED', 'CAMPAIGN_OPERATION_UNKNOWN', 'CAMPAIGN_OPERATION_SETTLED'):
+                operation = operations.get(item['operation_id'])
+                if operation is None or operation['status'] in ('COMPLETED', 'FAILED'):
+                    raise BudgetLedgerMismatchError('CAMPAIGN_OPERATION_EVENT_ORDER')
+                operation.update(item)
+                operation['status'] = {'CAMPAIGN_OPERATION_STARTED': 'RUNNING', 'CAMPAIGN_OPERATION_UNKNOWN': 'UNKNOWN',
+                                       'CAMPAIGN_OPERATION_SETTLED': item.get('outcome')}[kind]
+        if authorization is None:
+            return {'authorization': None, 'operations': {}, 'stages': {}, 'paused': False}
+        used = {name: 0 for name in self.resource_names}
+        reserved = dict(used)
+        for operation in operations.values():
+            settled = operation['status'] in ('COMPLETED', 'FAILED')
+            destination = used if settled else reserved
+            for name, amount in operation.get('actual' if settled else 'upper_bounds', {}).items():
+                destination[name] += amount
+        remaining = {name: authorization['resource_limits'][name] - used[name] - reserved[name] for name in used}
+        if min(remaining.values()) < 0:
+            raise BudgetLedgerMismatchError('CAMPAIGN_RESOURCE_USAGE_EXCEEDS_LIMIT')
+        return {'authorization': authorization, 'operations': operations, 'stages': stages, 'paused': paused,
+                'used': used, 'reserved': reserved, 'remaining': remaining}
+
+    def campaign_event(self, kind, payload):
+        if not kind.startswith('CAMPAIGN_'):
+            raise ValueError('CAMPAIGN_EVENT_KIND_INVALID')
+        self._append_event(kind, payload)
+        self._persist()

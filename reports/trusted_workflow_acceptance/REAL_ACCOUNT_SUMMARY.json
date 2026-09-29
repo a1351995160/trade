@@ -1,0 +1,413 @@
+{
+  "status": "ALL_21_ACCOUNTS_VERIFIED",
+  "scope": "ENGINEERING_ONLY",
+  "strategy_qualified": false,
+  "cases": [
+    {
+      "case": "A_DUAL_MA_TRAILING_50000",
+      "task_id": "814ca737dc2b44e3d9acf9c61f53c7f3dfdbdb97218d47cd9c5de5a848656c5e",
+      "initial_cash": 50000,
+      "symbols": [
+        "000001.SZ",
+        "000002.SZ",
+        "600000.SH"
+      ],
+      "accounts": {
+        "ACCEPT_A_DUAL_MA_TRAILING_BASE": {
+          "status": "PASS",
+          "days": 122,
+          "metrics": {
+            "net_return": 0.12305482199999962,
+            "max_drawdown": 0.04775330044868564,
+            "total_fees": 89.5489,
+            "trade_count": 9
+          },
+          "exit_behavior": "VERIFIED",
+          "exit_rows": 73,
+          "triggered_evaluations": 2,
+          "trigger_reasons": {
+            "EXIT_TRAILING_STOP": 2
+          }
+        },
+        "ACCEPT_A_DUAL_MA_TRAILING_STRESS": {
+          "status": "PASS",
+          "days": 122,
+          "metrics": {
+            "net_return": 0.11880832400000019,
+            "max_drawdown": 0.04783000213965516,
+            "total_fees": 135.9638,
+            "trade_count": 9
+          },
+          "exit_behavior": "VERIFIED",
+          "exit_rows": 73,
+          "triggered_evaluations": 2,
+          "trigger_reasons": {
+            "EXIT_TRAILING_STOP": 2
+          }
+        },
+        "ACCEPT_A_DUAL_MA_TRAILING_BENCHMARK": {
+          "status": "PASS",
+          "days": 122,
+          "metrics": {
+            "net_return": -0.03896718399999999,
+            "max_drawdown": 0.20276718399999993,
+            "total_fees": 15.0,
+            "trade_count": 3
+          },
+          "exit_behavior": "NOT_CONFIGURED",
+          "exit_rows": 0,
+          "triggered_evaluations": 0,
+          "trigger_reasons": {}
+        }
+      }
+    },
+    {
+      "case": "A_MA10_COST_STOP_100000",
+      "task_id": "80cdfd8a85b5f82ea8aead402551dacca8b1362acce5231402705da63169173a",
+      "initial_cash": 100000,
+      "symbols": [
+        "000001.SZ",
+        "000002.SZ",
+        "600000.SH"
+      ],
+      "accounts": {
+        "ACCEPT_A_MA10_COST_STOP_100000_BASE": {
+          "status": "PASS",
+          "days": 122,
+          "metrics": {
+            "net_return": 0.11766874699999996,
+            "max_drawdown": 0.07010787899999993,
+            "total_fees": 491.3653,
+            "trade_count": 26
+          },
+          "exit_behavior": "VERIFIED",
+          "exit_rows": 133,
+          "triggered_evaluations": 3,
+          "trigger_reasons": {
+            "EXIT_FIXED_COST_STOP": 3
+          }
+        },
+        "ACCEPT_A_MA10_COST_STOP_100000_STRESS": {
+          "status": "PASS",
+          "days": 122,
+          "metrics": {
+            "net_return": 0.10304217199999988,
+            "max_drawdown": 0.07439615799999999,
+            "total_fees": 739.8028,
+            "trade_count": 26
+          },
+          "exit_behavior": "VERIFIED",
+          "exit_rows": 133,
+          "triggered_evaluations": 3,
+          "trigger_reasons": {
+            "EXIT_FIXED_COST_STOP": 3
+          }
+        },
+        "ACCEPT_A_MA10_COST_STOP_100000_BENCHMARK": {
+          "status": "PASS",
+          "days": 122,
+          "metrics": {
+            "net_return": -0.039206076000000034,
+            "max_drawdown": 0.207686076,
+            "total_fees": 24.561799999999998,
+            "trade_count": 3
+          },
+          "exit_behavior": "NOT_CONFIGURED",
+          "exit_rows": 0,
+          "triggered_evaluations": 0,
+          "trigger_reasons": {}
+        }
+      }
+    },
+    {
+      "case": "A_MA10_COST_STOP_50000",
+      "task_id": "52925275c2c99149639b2c30b5e3ca4f441d9fb0bbb910db3aa37c586c2ba009",
+      "initial_cash": 50000,
+      "symbols": [
+        "000001.SZ",
+        "000002.SZ",
+        "600000.SH"
+      ],
+      "accounts": {
+        "ACCEPT_A_MA10_COST_STOP_BASE": {
+          "status": "PASS",
+          "days": 122,
+          "metrics": {
+            "net_return": 0.11604383399999985,
+            "max_drawdown": 0.06834843600000018,
+            "total_fees": 249.2483,
+            "trade_count": 26
+          },
+          "exit_behavior": "VERIFIED",
+          "exit_rows": 133,
+          "triggered_evaluations": 3,
+          "trigger_reasons": {
+            "EXIT_FIXED_COST_STOP": 3
+          }
+        },
+        "ACCEPT_A_MA10_COST_STOP_STRESS": {
+          "status": "PASS",
+          "days": 122,
+          "metrics": {
+            "net_return": 0.10322782600000013,
+            "max_drawdown": 0.07290335999999997,
+            "total_fees": 381.5287,
+            "trade_count": 26
+          },
+          "exit_behavior": "VERIFIED",
+          "exit_rows": 133,
+          "triggered_evaluations": 3,
+          "trigger_reasons": {
+            "EXIT_FIXED_COST_STOP": 3
+          }
+        },
+        "ACCEPT_A_MA10_COST_STOP_BENCHMARK": {
+          "status": "PASS",
+          "days": 122,
+          "metrics": {
+            "net_return": -0.03896718399999999,
+            "max_drawdown": 0.20276718399999993,
+            "total_fees": 15.0,
+            "trade_count": 3
+          },
+          "exit_behavior": "NOT_CONFIGURED",
+          "exit_rows": 0,
+          "triggered_evaluations": 0,
+          "trigger_reasons": {}
+        }
+      }
+    },
+    {
+      "case": "A_MA20_TAKE_PROFIT_50000",
+      "task_id": "a57e9408c0ae8e329292f8459c4eaa47ab2aebab24872d35d760d032ee9c8c7a",
+      "initial_cash": 50000,
+      "symbols": [
+        "000001.SZ",
+        "000002.SZ",
+        "600000.SH"
+      ],
+      "accounts": {
+        "ACCEPT_A_MA20_TAKE_PROFIT_BASE": {
+          "status": "PASS",
+          "days": 122,
+          "metrics": {
+            "net_return": 0.02003844400000032,
+            "max_drawdown": 0.10287815599999972,
+            "total_fees": 216.8487,
+            "trade_count": 23
+          },
+          "exit_behavior": "VERIFIED",
+          "exit_rows": 108,
+          "triggered_evaluations": 2,
+          "trigger_reasons": {
+            "EXIT_FIXED_TAKE_PROFIT": 2
+          }
+        },
+        "ACCEPT_A_MA20_TAKE_PROFIT_STRESS": {
+          "status": "PASS",
+          "days": 122,
+          "metrics": {
+            "net_return": 0.009505739999999818,
+            "max_drawdown": 0.11019392400000028,
+            "total_fees": 331.3239,
+            "trade_count": 23
+          },
+          "exit_behavior": "VERIFIED",
+          "exit_rows": 108,
+          "triggered_evaluations": 2,
+          "trigger_reasons": {
+            "EXIT_FIXED_TAKE_PROFIT": 2
+          }
+        },
+        "ACCEPT_A_MA20_TAKE_PROFIT_BENCHMARK": {
+          "status": "PASS",
+          "days": 122,
+          "metrics": {
+            "net_return": -0.03896718399999999,
+            "max_drawdown": 0.20276718399999993,
+            "total_fees": 15.0,
+            "trade_count": 3
+          },
+          "exit_behavior": "NOT_CONFIGURED",
+          "exit_rows": 0,
+          "triggered_evaluations": 0,
+          "trigger_reasons": {}
+        }
+      }
+    },
+    {
+      "case": "B_DUAL_MA_TRAILING_50000",
+      "task_id": "351c3622f416b7e8a00aa7676568fc1aa2a22dd2af74acd135b7bea121daebaf",
+      "initial_cash": 50000,
+      "symbols": [
+        "000006.SZ",
+        "000733.SZ",
+        "002036.SZ"
+      ],
+      "accounts": {
+        "ACCEPT_B_DUAL_MA_TRAILING_BASE": {
+          "status": "PASS",
+          "days": 122,
+          "metrics": {
+            "net_return": 0.08668184400000034,
+            "max_drawdown": 0.07395430999999986,
+            "total_fees": 135.7578,
+            "trade_count": 14
+          },
+          "exit_behavior": "VERIFIED",
+          "exit_rows": 113,
+          "triggered_evaluations": 4,
+          "trigger_reasons": {
+            "EXIT_TRAILING_STOP": 4
+          }
+        },
+        "ACCEPT_B_DUAL_MA_TRAILING_STRESS": {
+          "status": "PASS",
+          "days": 122,
+          "metrics": {
+            "net_return": 0.08023592600000007,
+            "max_drawdown": 0.07791207999999983,
+            "total_fees": 207.81369999999998,
+            "trade_count": 14
+          },
+          "exit_behavior": "VERIFIED",
+          "exit_rows": 113,
+          "triggered_evaluations": 4,
+          "trigger_reasons": {
+            "EXIT_TRAILING_STOP": 4
+          }
+        },
+        "ACCEPT_B_DUAL_MA_TRAILING_BENCHMARK": {
+          "status": "PASS",
+          "days": 122,
+          "metrics": {
+            "net_return": 0.05496980000000007,
+            "max_drawdown": 0.16315233943659657,
+            "total_fees": 15.0,
+            "trade_count": 3
+          },
+          "exit_behavior": "NOT_CONFIGURED",
+          "exit_rows": 0,
+          "triggered_evaluations": 0,
+          "trigger_reasons": {}
+        }
+      }
+    },
+    {
+      "case": "B_MA10_COST_STOP_50000",
+      "task_id": "12108db6cd474c79354b4bf56ec2b763834f521d0bf9ece2ca455f0e7f2808a2",
+      "initial_cash": 50000,
+      "symbols": [
+        "000006.SZ",
+        "000733.SZ",
+        "002036.SZ"
+      ],
+      "accounts": {
+        "ACCEPT_B_MA10_COST_STOP_BASE": {
+          "status": "PASS",
+          "days": 122,
+          "metrics": {
+            "net_return": 0.07934507400000035,
+            "max_drawdown": 0.10575227797023601,
+            "total_fees": 337.8963,
+            "trade_count": 36
+          },
+          "exit_behavior": "VERIFIED",
+          "exit_rows": 144,
+          "triggered_evaluations": 4,
+          "trigger_reasons": {
+            "EXIT_FIXED_COST_STOP": 4
+          }
+        },
+        "ACCEPT_B_MA10_COST_STOP_STRESS": {
+          "status": "PASS",
+          "days": 122,
+          "metrics": {
+            "net_return": 0.0625046920000003,
+            "max_drawdown": 0.10589797070082074,
+            "total_fees": 520.2754,
+            "trade_count": 36
+          },
+          "exit_behavior": "VERIFIED",
+          "exit_rows": 144,
+          "triggered_evaluations": 4,
+          "trigger_reasons": {
+            "EXIT_FIXED_COST_STOP": 4
+          }
+        },
+        "ACCEPT_B_MA10_COST_STOP_BENCHMARK": {
+          "status": "PASS",
+          "days": 122,
+          "metrics": {
+            "net_return": 0.05496980000000007,
+            "max_drawdown": 0.16315233943659657,
+            "total_fees": 15.0,
+            "trade_count": 3
+          },
+          "exit_behavior": "NOT_CONFIGURED",
+          "exit_rows": 0,
+          "triggered_evaluations": 0,
+          "trigger_reasons": {}
+        }
+      }
+    },
+    {
+      "case": "B_MA20_TAKE_PROFIT_50000",
+      "task_id": "36c99e1025cd299aa89f9d55e4a7b78011e54a44e8732988a8b45f874817df9b",
+      "initial_cash": 50000,
+      "symbols": [
+        "000006.SZ",
+        "000733.SZ",
+        "002036.SZ"
+      ],
+      "accounts": {
+        "ACCEPT_B_MA20_TAKE_PROFIT_BASE": {
+          "status": "PASS",
+          "days": 122,
+          "metrics": {
+            "net_return": 0.13127974399999998,
+            "max_drawdown": 0.10681431389776297,
+            "total_fees": 297.6228,
+            "trade_count": 31
+          },
+          "exit_behavior": "VERIFIED",
+          "exit_rows": 130,
+          "triggered_evaluations": 5,
+          "trigger_reasons": {
+            "EXIT_FIXED_TAKE_PROFIT": 5
+          }
+        },
+        "ACCEPT_B_MA20_TAKE_PROFIT_STRESS": {
+          "status": "PASS",
+          "days": 122,
+          "metrics": {
+            "net_return": 0.11563399000000008,
+            "max_drawdown": 0.11170316851505502,
+            "total_fees": 455.5005,
+            "trade_count": 31
+          },
+          "exit_behavior": "VERIFIED",
+          "exit_rows": 130,
+          "triggered_evaluations": 5,
+          "trigger_reasons": {
+            "EXIT_FIXED_TAKE_PROFIT": 5
+          }
+        },
+        "ACCEPT_B_MA20_TAKE_PROFIT_BENCHMARK": {
+          "status": "PASS",
+          "days": 122,
+          "metrics": {
+            "net_return": 0.05496980000000007,
+            "max_drawdown": 0.16315233943659657,
+            "total_fees": 15.0,
+            "trade_count": 3
+          },
+          "exit_behavior": "NOT_CONFIGURED",
+          "exit_rows": 0,
+          "triggered_evaluations": 0,
+          "trigger_reasons": {}
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "roots": {
+    "acceptance_A": "E:/llmwiki/autonomous-strategy-research-v1/autonomous-completion-20260927/THREE_SYMBOL_DATA",
+    "acceptance_B": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\sources_B_connection_check_2"
+  },
+  "datasets": [
+    {
+      "dataset_id": "ACCEPTANCE_POOL_A_2022",
+      "root_id": "acceptance_A",
+      "manifest_path": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\manifest_A.json"
+    },
+    {
+      "dataset_id": "ACCEPTANCE_POOL_B_2022",
+      "root_id": "acceptance_B",
+      "manifest_path": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\manifest_B.json"
+    }
+  ],
+  "authorizations": {
+    "A_DUAL_MA_TRAILING_50000": {
+      "path": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\A_DUAL_MA_TRAILING_50000_AUTHORITY.json",
+      "sha256": "668df8faaccf4335252321b0a88b075fb0d2d5982ba21a2b309befc39322bcf8"
+    },
+    "A_MA10_COST_STOP_100000": {
+      "path": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\A_MA10_COST_STOP_100000_AUTHORITY.json",
+      "sha256": "d1bf947dfbd506b57f464bb3903714cadd36837a61e0795f905f84c183f53bfe"
+    },
+    "A_MA10_COST_STOP_50000": {
+      "path": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\A_MA10_COST_STOP_50000_AUTHORITY.json",
+      "sha256": "90e0a5cf524ddf2bb4cfe72468d683d5972ff1c3d60e696233588caa64516733"
+    },
+    "A_MA20_TAKE_PROFIT_50000": {
+      "path": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\A_MA20_TAKE_PROFIT_50000_AUTHORITY.json",
+      "sha256": "6bbadc08809b9a6b5d89332078daafe717929e95ced66fe6921be9e458eae39c"
+    },
+    "B_MA10_COST_STOP_50000": {
+      "path": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\B_MA10_COST_STOP_50000_AUTHORITY.json",
+      "sha256": "50ffd141ddddee1bb070d85171edafa30ba45be82bbd6b76b963b7295df9181c"
+    },
+    "B_MA20_TAKE_PROFIT_50000": {
+      "path": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\B_MA20_TAKE_PROFIT_50000_AUTHORITY.json",
+      "sha256": "00a7651f78fcf237a734eb04f67db53dd14f161cf70532bdcf1726d4a2277e01"
+    },
+    "B_DUAL_MA_TRAILING_50000": {
+      "path": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\B_DUAL_MA_TRAILING_50000_AUTHORITY.json",
+      "sha256": "cedba61df55e928659b8146a89f52442345061bc87c291c6bf7b09c44a6ba636"
+    }
+  },
+  "output_root": "E:\\worktrees\\trusted-strategy-research\\trade-system-contract-port-v1\\reports\\trusted_workflow_acceptance\\public_run\\output"
+}

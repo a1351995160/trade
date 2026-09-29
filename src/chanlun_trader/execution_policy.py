@@ -16,6 +16,12 @@ class ExecutionPolicy:
     # 只读计算端点（对请求体内合成数据做纯计算，不写研究状态）。
     # 默认 False：默认策略下所有 POST 仍一律拒绝，边界不变。
     allow_readonly_compute: bool = False
+    # 仅公共可信研究入口；不扩大旧治理端点权限。
+    allow_trusted_research: bool = False
+
+    @property
+    def trusted_research_allowed(self) -> bool:
+        return self.mode == "GOVERNED" and self.workspace_kind == "EXTERNAL" and self.allow_trusted_research
 
     @property
     def governance_allowed(self) -> bool:

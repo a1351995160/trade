@@ -1,0 +1,39 @@
+{
+  "provider": "BaoStock",
+  "api": "query_adjust_factor",
+  "request": {
+    "start_date": "2022-01-01",
+    "end_date": "2024-07-31",
+    "code": "sz.000006"
+  },
+  "requested_at_utc": "2026-09-29T14:17:11.887773+00:00",
+  "received_at_utc": "2026-09-29T14:17:11.925530+00:00",
+  "historical_available_at_verified": false,
+  "mode": "HISTORICAL_MODELED",
+  "fields": [
+    "code",
+    "dividOperateDate",
+    "foreAdjustFactor",
+    "backAdjustFactor",
+    "adjustFactor"
+  ],
+  "error_code": "0",
+  "error_msg": "success",
+  "raw_rows": [
+    [
+      "sz.000006",
+      "2022-06-21",
+      "0.979866",
+      "42.950603",
+      "42.950603"
+    ],
+    [
+      "sz.000006",
+      "2023-06-28",
+      "1.000000",
+      "43.833157",
+      "43.833157"
+    ]
+  ],
+  "raw_rows_sha256": "63e3e1dad65ab8fec17069619a02baef6720cb704da6426b81f5225383cb3500"
+}

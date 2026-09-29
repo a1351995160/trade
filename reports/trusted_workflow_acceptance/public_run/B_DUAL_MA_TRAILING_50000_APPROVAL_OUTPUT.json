@@ -1,0 +1,147 @@
+{
+  "task_id": "351c3622f416b7e8a00aa7676568fc1aa2a22dd2af74acd135b7bea121daebaf",
+  "preview_identity": "c9675af578d55304f6db196cb71824015710dc40a5e1048dff7d7bbf7811e457",
+  "plan_ids": {
+    "ACCEPT_B_DUAL_MA_TRAILING_BASE": "e77beeb14e9853da27c9ae057b0deff55313620257f932337e90018798ca0811",
+    "ACCEPT_B_DUAL_MA_TRAILING_STRESS": "1798e22e796af14df4a77198da249fdfb1bf3befbc1f88c33aebcffd0078f2a2",
+    "ACCEPT_B_DUAL_MA_TRAILING_BENCHMARK": "633aceb67c8b90230af736fc18c193817e6662004ba4ed4f9d25b81595a02fd1"
+  },
+  "request": {
+    "strategy_id": "ACCEPT_B_DUAL_MA_TRAILING",
+    "rule": {
+      "version": "RESEARCH_RULE_STRATEGY_V3",
+      "hypothesis": "固定工程验收规则，不做有效性或未来收益主张。",
+      "change_reason": "按事前约定覆盖参数、多条件、退出和真实账户，不根据本轮收益修改。",
+      "indicator_instances": [
+        {
+          "instance_id": "ma10",
+          "id": "MA",
+          "version": "MA_ARITHMETIC_V1",
+          "params": {
+            "window": 10
+          }
+        },
+        {
+          "instance_id": "ma20",
+          "id": "MA",
+          "version": "MA_ARITHMETIC_V1",
+          "params": {
+            "window": 20
+          }
+        }
+      ],
+      "buy": {
+        "op": "and",
+        "args": [
+          {
+            "op": "cross_up",
+            "args": [
+              {
+                "op": "field",
+                "args": [
+                  "close"
+                ],
+                "params": {}
+              },
+              {
+                "op": "indicator",
+                "args": [
+                  "ma10"
+                ],
+                "params": {
+                  "output": "ma",
+                  "version": "MA_ARITHMETIC_V1"
+                }
+              }
+            ],
+            "params": {}
+          },
+          {
+            "op": "gt",
+            "args": [
+              {
+                "op": "indicator",
+                "args": [
+                  "ma10"
+                ],
+                "params": {
+                  "output": "ma",
+                  "version": "MA_ARITHMETIC_V1"
+                }
+              },
+              {
+                "op": "indicator",
+                "args": [
+                  "ma20"
+                ],
+                "params": {
+                  "output": "ma",
+                  "version": "MA_ARITHMETIC_V1"
+                }
+              }
+            ],
+            "params": {}
+          }
+        ],
+        "params": {}
+      },
+      "sell": {
+        "op": "cross_down",
+        "args": [
+          {
+            "op": "field",
+            "args": [
+              "close"
+            ],
+            "params": {}
+          },
+          {
+            "op": "indicator",
+            "args": [
+              "ma20"
+            ],
+            "params": {
+              "output": "ma",
+              "version": "MA_ARITHMETIC_V1"
+            }
+          }
+        ],
+        "params": {}
+      },
+      "market_filter": null,
+      "min_hold_sessions": 5,
+      "max_hold_sessions": 40,
+      "cooldown_sessions": 3,
+      "target_weight": 0.4,
+      "exits": {
+        "execution_mode": "CLOSE_CONFIRM_NEXT_SESSION_OPEN",
+        "stop_loss_pct": null,
+        "take_profit_pct": null,
+        "trailing_activate_pct": 0.05,
+        "trailing_pct": 0.04
+      }
+    },
+    "dataset_id": "ACCEPTANCE_POOL_B_2022",
+    "feature_start": 20220407,
+    "account_start": 20220706,
+    "account_end": 20221230,
+    "symbols": [
+      "000006.SZ",
+      "000733.SZ",
+      "002036.SZ"
+    ],
+    "initial_cash": 50000,
+    "max_positions": 2,
+    "max_symbol_exposure_bps": 5000,
+    "costs": [
+      "BASE",
+      "STRESS"
+    ],
+    "benchmark": "FULL_POOL_BUY_HOLD",
+    "purpose": "EXPLORATORY",
+    "authorization_ref": "B_DUAL_MA_TRAILING_50000"
+  },
+  "rule_identity": "bb3b33667bcc61fbe85a20e0a4d4c0a9ac9bdbf77bc73c1754e13867ec97ff41",
+  "input_identity": "a74c880706b0a5260e2fca973b298526d032537a6893bb45f74b8d685efaa6ff",
+  "job_sha256": "7f765cacd737176b106d854ee38bd3be41fa893ef30f4cdb9a73656837b1950d"
+}

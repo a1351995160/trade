@@ -1,0 +1,104 @@
+{
+  "version": "BOUNDED_BAOSTOCK_ACQUISITION_V1",
+  "purpose": "EXPLORATORY_ENGINEERING_ACCEPTANCE",
+  "symbols": [
+    "000006.SZ",
+    "000733.SZ",
+    "002036.SZ"
+  ],
+  "max_requests": 9,
+  "authorization_scope": "User requested implementation of the trusted workflow plan; root delegated nine read-only requests. No strategy performance evaluation.",
+  "requests": [
+    {
+      "api": "query_history_k_data_plus",
+      "file": "DAILY_000006.SZ.json",
+      "request": {
+        "start_date": "2022-01-01",
+        "end_date": "2024-07-31",
+        "code": "sz.000006",
+        "fields": "date,code,open,high,low,close,preclose,volume,amount,adjustflag,turn,tradestatus,isST",
+        "frequency": "d",
+        "adjustflag": "3"
+      }
+    },
+    {
+      "api": "query_dividend_data",
+      "file": "DIVIDEND_000006.SZ_2022.json",
+      "request": {
+        "code": "sz.000006",
+        "year": "2022",
+        "yearType": "report"
+      }
+    },
+    {
+      "api": "query_adjust_factor",
+      "file": "ADJUST_000006.SZ.json",
+      "request": {
+        "start_date": "2022-01-01",
+        "end_date": "2024-07-31",
+        "code": "sz.000006"
+      }
+    },
+    {
+      "api": "query_history_k_data_plus",
+      "file": "DAILY_000733.SZ.json",
+      "request": {
+        "start_date": "2022-01-01",
+        "end_date": "2024-07-31",
+        "code": "sz.000733",
+        "fields": "date,code,open,high,low,close,preclose,volume,amount,adjustflag,turn,tradestatus,isST",
+        "frequency": "d",
+        "adjustflag": "3"
+      }
+    },
+    {
+      "api": "query_dividend_data",
+      "file": "DIVIDEND_000733.SZ_2022.json",
+      "request": {
+        "code": "sz.000733",
+        "year": "2022",
+        "yearType": "report"
+      }
+    },
+    {
+      "api": "query_adjust_factor",
+      "file": "ADJUST_000733.SZ.json",
+      "request": {
+        "start_date": "2022-01-01",
+        "end_date": "2024-07-31",
+        "code": "sz.000733"
+      }
+    },
+    {
+      "api": "query_history_k_data_plus",
+      "file": "DAILY_002036.SZ.json",
+      "request": {
+        "start_date": "2022-01-01",
+        "end_date": "2024-07-31",
+        "code": "sz.002036",
+        "fields": "date,code,open,high,low,close,preclose,volume,amount,adjustflag,turn,tradestatus,isST",
+        "frequency": "d",
+        "adjustflag": "3"
+      }
+    },
+    {
+      "api": "query_dividend_data",
+      "file": "DIVIDEND_002036.SZ_2022.json",
+      "request": {
+        "code": "sz.002036",
+        "year": "2022",
+        "yearType": "report"
+      }
+    },
+    {
+      "api": "query_adjust_factor",
+      "file": "ADJUST_002036.SZ.json",
+      "request": {
+        "start_date": "2022-01-01",
+        "end_date": "2024-07-31",
+        "code": "sz.002036"
+      }
+    }
+  ],
+  "independent_confirmation_eligible": false
+}

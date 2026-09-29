@@ -8,7 +8,10 @@ import sys
 
 
 class WindowsMemoryJob:
-    def __init__(self, memory_mib):
+    def __init__(self, memory_mib, *, process_limit=2):
+        if type(process_limit) is not int or not 1 <= process_limit <= 3:
+            raise ValueError("BATCH_PROCESS_LIMIT_INVALID")
+        self.process_limit = process_limit
         from ctypes import wintypes
 
         class Basic(ctypes.Structure):
@@ -37,9 +40,9 @@ class WindowsMemoryJob:
         if not self.handle:
             raise ctypes.WinError(ctypes.get_last_error())
         limits = Extended()
-        # Windows venv 有启动器及实际解释器两个进程，共享同一个总提交内存上限。
+        # 默认容纳venv启动器和解释器；固定DATA任务可显式增加一个Git进程，总提交内存上限不变。
         limits.basic.flags = 0x00000200 | 0x00002000 | 0x00000008
-        limits.basic.active_processes = 2
+        limits.basic.active_processes = process_limit
         limits.job_memory = memory_mib * 1024 * 1024
         if not self.kernel.SetInformationJobObject(self.handle, 9, ctypes.byref(limits), ctypes.sizeof(limits)):
             error = ctypes.WinError(ctypes.get_last_error())
@@ -102,6 +105,8 @@ class WindowsMemoryJob:
 def worker_resource_handshake():
     """worker 在导入领域/数值组件前阻塞；收到父进程完成约束安装后的启动信号。"""
     config = json.loads(sys.stdin.readline())
+    if type(config.get("process_limit")) is not int or not 1 <= config["process_limit"] <= 3:
+        raise ValueError("BATCH_PROCESS_LIMIT_INVALID")
     if os.name == "posix" and sys.platform.startswith("linux"):
         import resource
         library = ctypes.CDLL(None, use_errno=True)
@@ -111,18 +116,31 @@ def worker_resource_handshake():
         resource.setrlimit(resource.RLIMIT_AS, (memory, memory))
         signal.signal(signal.SIGALRM, signal.SIG_DFL)
         signal.setitimer(signal.ITIMER_REAL, config["wall_seconds"])
-    elif os.name != "nt":
+    elif os.name == "nt":
+        launcher = config.get("launcher_pid")
+        if type(launcher) is not int or launcher not in (os.getpid(), os.getppid()):
+            raise RuntimeError("BATCH_WINDOWS_LAUNCHER_BINDING_FAILED")
+        inside = ctypes.c_int(0)
+        kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel.GetCurrentProcess.restype = ctypes.c_void_p
+        kernel.IsProcessInJob.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.POINTER(ctypes.c_int)]
+        if not kernel.IsProcessInJob(kernel.GetCurrentProcess(), None, ctypes.byref(inside)) or not inside.value:
+            raise RuntimeError("BATCH_WINDOWS_JOB_NOT_INSTALLED")
+        config["windows_job_verified"] = True
+    else:
         raise RuntimeError("BATCH_RESOURCE_PLATFORM_UNSUPPORTED")
     return config
 
 
-def run_bounded_worker(command, *, root, memory_mib, wall_seconds, on_started, environment=None, execution=None):
+def run_bounded_worker(command, *, root, memory_mib, wall_seconds, on_started, environment=None, execution=None, process_limit=2):
     """仅启动显式 Python worker；先安装 OS 上限，再允许调用领域服务。"""
+    if type(process_limit) is not int or not 1 <= process_limit <= 3:
+        raise ValueError("BATCH_PROCESS_LIMIT_INVALID")
     if type(memory_mib) is not int or memory_mib < 1 or wall_seconds <= 0:
         raise ValueError("BATCH_RESOURCE_LIMIT_INVALID")
     if os.name != "nt" and not sys.platform.startswith("linux"):
         raise RuntimeError("BATCH_RESOURCE_PLATFORM_UNSUPPORTED")
-    job = WindowsMemoryJob(memory_mib) if os.name == "nt" else None
+    job = WindowsMemoryJob(memory_mib, process_limit=process_limit) if os.name == "nt" else None
     process = None
     try:
         process = subprocess.Popen(command, cwd=root, env=environment, stdin=subprocess.PIPE,
@@ -134,14 +152,15 @@ def run_bounded_worker(command, *, root, memory_mib, wall_seconds, on_started, e
         if job:
             job.resume(process)
         config = {"memory_mib": memory_mib, "wall_seconds": wall_seconds, "parent_pid": os.getpid(),
-                  "execution": execution}
+                  "launcher_pid": process.pid, "resource_platform": os.name,
+                  "execution": execution, "process_limit": process_limit, "process_limit_enforced": job is not None}
         try:
             stdout, stderr = process.communicate((json.dumps(config) + "\n").encode(), timeout=wall_seconds)
-            return {"returncode": process.returncode, "stdout": stdout, "stderr": stderr, "timed_out": False}
+            return {"returncode": process.returncode, "stdout": stdout, "stderr": stderr, "timed_out": False, "launcher_pid": process.pid, "resource_platform": os.name, "windows_job_bound": job is not None, "process_limit": process_limit, "process_limit_enforced": job is not None}
         except subprocess.TimeoutExpired:
             process.kill()
             stdout, stderr = process.communicate()
-            return {"returncode": process.returncode, "stdout": stdout, "stderr": stderr, "timed_out": True}
+            return {"returncode": process.returncode, "stdout": stdout, "stderr": stderr, "timed_out": True, "launcher_pid": process.pid, "resource_platform": os.name, "windows_job_bound": job is not None, "process_limit": process_limit, "process_limit_enforced": job is not None}
     finally:
         if process is not None and process.poll() is None:
             process.kill()
