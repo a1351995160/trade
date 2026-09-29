@@ -21,3 +21,17 @@
 /reports/trusted_workflow_acceptance/** -text
 /reports/formal_account_method_v3_20260929/** -text
 /reports/formal_account_method_v3_20260929_run2/** -text
+
+# These immutable evidence files contain original Windows line endings.
+/reports/trusted_workflow_acceptance/** whitespace=cr-at-eol
+/reports/formal_account_method_v3_20260929/** whitespace=cr-at-eol
+/reports/formal_account_method_v3_20260929_run2/** whitespace=cr-at-eol
+/src/chanlun_trader/research_factory/research_rule_strategy_v3.py whitespace=cr-at-eol
+/src/chanlun_trader/research_factory/research_benchmark_v1.py whitespace=cr-at-eol
+# Preserve two source-byte identities in the published acceptance receipt.
+# Their exact content is checked by test_published_acceptance_v1.py.
+/src/chanlun_trader/research_factory/research_data_provider_v1.py whitespace=-blank-at-eof
+/src/chanlun_trader/research_factory/strategy_submission_v1.py whitespace=-blank-at-eol
+# Failure transcripts retain pytest's original diagnostic indentation.
+/reports/trusted-new-critical-tests.xml -whitespace
+/reports/trusted-process-fix-tests.xml -whitespace
