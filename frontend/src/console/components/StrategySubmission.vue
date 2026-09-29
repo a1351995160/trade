@@ -65,7 +65,7 @@ onMounted(() => action(async () => {
       <label>初始资金（元）<input v-model.number="money" type="number" min="1" required /></label><label>最多同时持有几只<input v-model.number="positions" type="number" min="1" required /></label>
       <label>指标预热起日<input v-model="preheat" type="date" required /></label><label>账户评价起日<input v-model="start" type="date" required /></label><label>账户评价结束日<input v-model="end" type="date" required /></label>
       <label>已登记授权编号<input v-model="authority" required /></label><p>股票池是可选择范围，持仓数是同时持有上限；正常成本、压力成本及全池买入持有基准分别记账。</p>
-    </fieldset><button :disabled="busy || !enabled">3. 查看实际规则和数据条件</button>
+    </fieldset><button type="submit" :disabled="busy || !enabled">3. 查看实际规则和数据条件</button>
   </form>
   <section v-if="preview"><h3>3. 核对并冻结</h3><p>冻结保存本次规则和输入，修改需新任务；不会自行授予执行权限。</p><pre>{{ JSON.stringify(preview, null, 2) }}</pre><button :disabled="busy || !enabled" @click="freeze">冻结这份预览</button></section>
   <section v-if="approval"><h3>批准已冻结计划</h3><p>下列规则、资金、日期与计划身份必须在已有授权范围内。批准不会授予策略有效性资格。</p><pre>{{ JSON.stringify(approval, null, 2) }}</pre><button :disabled="busy || !enabled" @click="approve">批准这份固定计划</button></section>
