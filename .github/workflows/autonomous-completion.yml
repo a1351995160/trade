@@ -19,7 +19,6 @@ jobs:
     env:
       PYTHONUTF8: "1"
       PYTHONDONTWRITEBYTECODE: "1"
-      CHANLUN_PROCESS_EVIDENCE_DIR: ${{ runner.temp }}/trusted-resource-evidence
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -30,6 +29,8 @@ jobs:
       - name: Check generated capability documentation and public examples
         run: python scripts/generate_research_capabilities_v1.py --check
       - name: Verify new workflow and original entry contracts
+        env:
+          CHANLUN_PROCESS_EVIDENCE_DIR: ${{ runner.temp }}/trusted-resource-evidence
         run: >-
           python -m pytest -q
           tests/research_factory/test_research_capabilities_v1.py
