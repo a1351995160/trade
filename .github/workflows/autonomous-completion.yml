@@ -14,6 +14,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
+        suite: [workflow, formal-scope]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 150
     env:
@@ -29,6 +30,7 @@ jobs:
       - name: Check generated capability documentation and public examples
         run: python scripts/generate_research_capabilities_v1.py --check
       - name: Verify new workflow and original entry contracts
+        if: matrix.suite == 'workflow'
         env:
           CHANLUN_PROCESS_EVIDENCE_DIR: ${{ runner.temp }}/trusted-resource-evidence
         run: >-
@@ -60,7 +62,6 @@ jobs:
           tests/research_factory/test_research_data_qualification_v1.py
           tests/research_factory/test_validation_protocol_v2.py
           tests/research_factory/test_formal_evidence_v2.py
-          tests/research_factory/test_formal_rule_adapter_v2.py
           tests/research_factory/test_method_applicability_v1.py
           tests/research_factory/test_research_rule_strategy_v2.py
           tests/research_factory/test_rule_account_backend_v2.py
@@ -81,8 +82,15 @@ jobs:
           tests/research_factory/test_strategy_lifecycle_cli_v1.py
           --basetemp=${{ runner.temp }}/autonomous-completion-tests
           --junitxml=completion-tests.xml
+      - name: Verify complete frozen formal-scope family
+        if: matrix.suite == 'formal-scope'
+        run: >-
+          python -m pytest -q
+          tests/research_factory/test_formal_rule_adapter_v2.py
+          --basetemp=${{ runner.temp }}/formal-scope-tests
+          --junitxml=completion-tests.xml
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: completion-${{ matrix.os }}
+          name: completion-${{ matrix.os }}-${{ matrix.suite }}
           path: completion-tests.xml
