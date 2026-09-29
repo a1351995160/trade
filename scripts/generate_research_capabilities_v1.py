@@ -27,7 +27,7 @@ def check_examples(snapshot):
         raise AssertionError('DOCUMENTATION_MUST_NOT_AUTHORIZE_EXECUTION')
     results = {}
     with TemporaryDirectory(prefix='capability_preview_') as temporary:
-        root = Path(temporary)
+        root = Path(temporary).resolve()
         service = StrategySubmissionV1(MetadataOnlyProvider(), no_authority, root)
         for name, rule in snapshot['examples'].items():
             request = {'strategy_id': name, 'rule': rule, 'dataset_id': 'documentation_example',

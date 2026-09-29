@@ -32,3 +32,16 @@ def test_example_cannot_self_declare_qualification():
     snapshot['examples']['ma_cross']['qualified'] = True
     with pytest.raises(ValueError):
         check_examples(snapshot)
+
+
+def test_owned_temporary_directory_uses_canonical_path(tmp_path, monkeypatch):
+    from contextlib import nullcontext
+    import scripts.generate_research_capabilities_v1 as generator
+
+    owned = tmp_path / 'owned'
+    owned.mkdir()
+    alias = owned / '..' / owned.name
+    monkeypatch.setattr(generator, 'TemporaryDirectory', lambda **kwargs: nullcontext(str(alias)))
+    results = check_examples(capabilities())
+    assert results
+    assert list(owned.iterdir()) == []
