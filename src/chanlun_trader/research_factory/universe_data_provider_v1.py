@@ -4,7 +4,7 @@ from __future__ import annotations
 from copy import deepcopy
 import hashlib
 import json
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import re
 
 import pandas as pd
@@ -40,9 +40,12 @@ class UniverseDataProviderV1:
         if not isinstance(relative, str):
             raise ValueError('DATA_PATH_OUTSIDE_ROOT')
         value = Path(relative)
-        if value.is_absolute() or '..' in value.parts:
+        windows_value = PureWindowsPath(relative)
+        if value.anchor or windows_value.anchor or '..' in value.parts or '..' in windows_value.parts:
             raise ValueError('DATA_PATH_OUTSIDE_ROOT')
         path = root / value
+        if not path.is_relative_to(root):
+            raise ValueError('DATA_PATH_OUTSIDE_ROOT')
         if path.resolve() != path or not path.is_file():
             raise ValueError('DATA_PATH_INVALID_OR_REDIRECTED')
         return path
@@ -409,7 +412,8 @@ class UniverseDataProviderV1:
         if digest != metadata['sha256']:
             raise ValueError('DATA_SOURCE_CONTENT_CHANGED:' + name)
         if metadata['format'] == 'PARQUET':
-            value = self._read_parquet(path)
+            # 保留原件声明的 object/None；原生 Arrow 字符串共享对象表示，避免重复展开长来源字段。
+            value = self._read_parquet(path, preserve_pandas_objects=True)
         else:
             value = json.loads(path.read_text(encoding='utf-8-sig'))
             if not isinstance(value, list):
@@ -422,27 +426,50 @@ class UniverseDataProviderV1:
         return value
 
     @staticmethod
-    def _read_parquet(path):
-        """逐批展开完整原件；来源长字符串跨批共享，字段/缺值/类型保持原样。"""
+    def _read_parquet(path, *, preserve_pandas_objects=False):
+        """逐批展开原件；保真模式保留 object 及原生 Arrow 字符串的值和空值。"""
         parquet = pq.ParquetFile(path)
         parts, strings = [], {}
-        for batch in parquet.iter_batches(batch_size=8192, use_threads=False):
+        source_pandas_metadata = parquet.schema_arrow.pandas_metadata
+        pandas_metadata = source_pandas_metadata or {}
+        object_columns = {column.get('field_name', column.get('name'))
+                          for column in pandas_metadata.get('columns', [])
+                          if column.get('numpy_type') == 'object'}
+        if source_pandas_metadata is None:
+            # 原生 Arrow 没有声明 Pandas dtype；字符串用共享 Python str/None 保留其语义。
+            # 已声明的 str/string 扩展列仍遵循 Pandas 元数据，不转成 object。
+            object_columns.update(field.name for field in parquet.schema_arrow
+                                  if pa.types.is_string(field.type) or pa.types.is_large_string(field.type))
+
+        def to_frame(batch):
             frame = batch.to_pandas(deduplicate_objects=True, use_threads=False)
-            for name in frame.select_dtypes(include='object'):
+            if preserve_pandas_objects:
+                for name in object_columns.intersection(frame.columns):
+                    # Pandas 3 标准恢复会把 object 字符串升级为 str 并把 None 转为 nan。
+                    # 对象以原 Arrow 空值/结构重建，仍只展开当前批次。
+                    values = batch.column(batch.schema.get_field_index(name)).to_pylist()
+                    frame[name] = pd.Series(values, index=frame.index, dtype='object')
+            for name in frame:
+                dtype = frame[name].dtype
+                if not (pd.api.types.is_object_dtype(dtype)
+                        or isinstance(dtype, pd.StringDtype) and dtype.storage == 'python'):
+                    continue
                 values = frame[name].to_numpy(copy=True)
                 for i, value in enumerate(values):
                     if isinstance(value, str):
                         values[i] = strings.setdefault(value, value)
-                # 明确保留 object；不用 map 的推断把 None/对象数值转换成其它类型。
-                frame[name] = pd.Series(values, index=frame.index, dtype='object')
-            parts.append(frame)
-            del batch, frame
+                # 保留本批恢复的 dtype；Arrow 字符串扩展数组不转成 object。
+                frame[name] = pd.Series(values, index=frame.index, dtype=dtype)
+            return frame
+
+        for batch in parquet.iter_batches(batch_size=8192, use_threads=False):
+            parts.append(to_frame(batch))
+            del batch
         if not parts:
-            return pa.Table.from_batches([], schema=parquet.schema_arrow).to_pandas(
-                deduplicate_objects=True, use_threads=False)
+            return to_frame(pa.Table.from_batches([], schema=parquet.schema_arrow))
         if len(parts) == 1:
             return parts[0]
-        index_columns = (parquet.schema_arrow.pandas_metadata or {}).get('index_columns', [])
+        index_columns = pandas_metadata.get('index_columns', [])
         result = pd.concat(parts, ignore_index=not any(isinstance(column, str) for column in index_columns))
         # RangeIndex 只在元数据中保存；每批转换会产生局部 RangeIndex，合并后恢复原轴。
         if len(index_columns) == 1 and isinstance(index_columns[0], dict) and index_columns[0].get('kind') == 'range':

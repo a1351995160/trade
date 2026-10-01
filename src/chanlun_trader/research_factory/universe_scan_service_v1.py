@@ -260,7 +260,8 @@ def _worker(root: Path) -> int:
     intent_path = _file(root / "SCAN_INTENT.json", root)
     intent = read_json(intent_path)
     if (intent["intent_identity"] != stable_hash({k: v for k, v in intent.items() if k != "intent_identity"})
-            or intent["root"] != str(root) or HANDSHAKE.get("execution") != {"purpose": intent["scan_id"]}
+            or intent["root"] != str(root) or HANDSHAKE.get("execution") != {
+                "purpose": intent["scan_id"], "intent_identity": intent["intent_identity"]}
             or HANDSHAKE["memory_mib"] != LIMITS["memory_mib"]
             or not 0 < HANDSHAKE["wall_seconds"] <= LIMITS["wall_seconds"]):
         raise PermissionError("UNIVERSE_SCAN_WORKER_SCOPE_CONFLICT")
@@ -409,7 +410,7 @@ def scan_universe(service, request: dict, preview_identity: str) -> dict:
         try:
             resource = run_bounded_worker([sys.executable, str(Path(__file__)), "--worker", str(root)],
                 root=REPO, memory_mib=LIMITS["memory_mib"], wall_seconds=min(remaining, LIMITS["wall_seconds"]),
-                environment=env, execution={"purpose": key},
+                environment=env, execution={"purpose": key, "intent_identity": intent["intent_identity"]},
                 on_started=lambda pid: immutable(root / "WORKER.json", {"pid": pid, "scan_id": key}))
         except Exception as error:
             resource = {"returncode": None, "timed_out": False, "error": str(error)}
@@ -435,6 +436,9 @@ def validated_scan_snapshot(service, scanned: dict) -> dict:
     if (intent.get("root") != str(root) or intent.get("scan_id") != scanned["scan_id"]
             or intent.get("intent_identity") != stable_hash({k: v for k, v in intent.items() if k != "intent_identity"})):
         raise ValueError("UNIVERSE_SCAN_SNAPSHOT_INTENT_CONFLICT")
+    # 路径允许范围来自当前服务的真实登记，不由可替换工件的自报哈希授予。
+    if intent["registration"] != _registration(service.provider, intent["preview"]["request"]):
+        raise ValueError("UNIVERSE_SCAN_SNAPSHOT_REGISTRATION_CONFLICT")
     _check_code(intent["source_hashes"])
     _check_registration(intent["registration"])
     archived = _archived(root, intent)

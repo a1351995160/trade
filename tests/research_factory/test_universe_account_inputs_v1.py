@@ -10,7 +10,7 @@ import pytest
 
 from chanlun_trader.research_factory.board_execution_policy_v1 import board_policy_identity
 from chanlun_trader.research_factory.universe_account_inputs_v1 import (
-    _frame_identity, prepare_universe_account_inputs_v1, universe_input_identity_v1,
+    _frame_identity, _query_values, prepare_universe_account_inputs_v1, universe_input_identity_v1,
 )
 from chanlun_trader.research_factory.common import canonical_json, stable_hash
 
@@ -216,6 +216,167 @@ def test_frame_identity_streams_all_column_types_in_legacy_order(shuffled):
         reversed_columns, ["symbol", "date"])
     assert _frame_identity(reversed_columns, ["symbol", "date"]) != expected
     pd.testing.assert_frame_equal(frame, before, check_exact=True)
+
+
+@pytest.mark.parametrize("dtype_case", ["object", "python_na", "python_nan", "pyarrow_na", "pyarrow_nan"])
+@pytest.mark.parametrize("shuffled", [False, True])
+def test_long_text_identity_preserves_legacy_sha_without_identity_map(dtype_case, shuffled, monkeypatch):
+    # 重复长来源串在原件中共享对象；恒等 map 不应重新写入整列 Arrow 物理字节。
+    source_text = canonical_json({"source": "TDX", "lineage": "中文来源\u0000📈" * 4096})
+    dtype = object
+    if dtype_case != "object":
+        storage, missing = dtype_case.split("_")
+        dtype = pd.StringDtype(storage=storage, na_value=pd.NA if missing == "na" else np.nan)
+    frame = pd.DataFrame({"symbol": pd.Series(["000001.SZ"] * 5, dtype=object),
+        "date": [20220103, 20220104, 20220105, 20220106, 20220107],
+        "source_lineage_json": pd.Series([source_text, None, np.nan, pd.NA, source_text], dtype=dtype)})
+    if shuffled:
+        frame = frame.iloc[[3, 0, 4, 2, 1]]
+    before = frame.copy(deep=True)
+    expected = _legacy_frame_identity(frame, ["symbol", "date"])
+
+    def no_identity_map(*args, **kwargs):
+        pytest.fail("纯文本/NA 哈希不能重建整列文本缓冲")
+
+    with monkeypatch.context() as boundary:
+        boundary.setattr(pd.Series, "map", no_identity_map)
+        actual = _frame_identity(frame, ["symbol", "date"])
+    assert actual == expected
+    pd.testing.assert_frame_equal(frame, before, check_exact=True)
+    if dtype_case == "object":
+        present = [value for value in frame.source_lineage_json if isinstance(value, str)]
+        assert all(value is source_text for value in present)
+
+
+@pytest.mark.parametrize("case", ["plain_ints", "ints_none", "plain_bool", "bool_none",
+                                  "dates", "nested", "sets", "mixed"])
+def test_non_text_objects_still_use_legacy_serialization_and_type_inference(case, monkeypatch):
+    frame = _identity_frame(case)
+    expected = _legacy_frame_identity(frame, ["symbol", "date"])
+    calls, old_map = [], pd.Series.map
+
+    def tracked_map(series, *args, **kwargs):
+        calls.append(series.name)
+        return old_map(series, *args, **kwargs)
+
+    monkeypatch.setattr(pd.Series, "map", tracked_map)
+    assert _frame_identity(frame, ["symbol", "date"]) == expected
+    assert "value" in calls
+
+
+def _query_scalar_signature(value):
+    if isinstance(value, np.generic):
+        value = value.item()
+    if value is None:
+        return (type(value), "NONE")
+    if value is pd.NA:
+        return (type(value), "PANDAS_NA")
+    if value is pd.NaT:
+        return (type(value), "NAT")
+    if isinstance(value, float) and np.isnan(value):
+        return (type(value), "NAN")
+    return (type(value), value)
+
+
+@pytest.mark.parametrize("dtype_case", ["python_na", "python_nan", "pyarrow_na", "pyarrow_nan",
+                                       "arrow_string", "arrow_large_string"])
+def test_text_query_values_share_original_buffers_and_keep_null_scalars(dtype_case, monkeypatch):
+    import pyarrow as pa
+    if dtype_case.startswith("arrow_"):
+        dtype = pd.ArrowDtype(pa.large_string() if dtype_case == "arrow_large_string" else pa.string())
+    else:
+        storage, missing = dtype_case.split("_")
+        dtype = pd.StringDtype(storage=storage, na_value=pd.NA if missing == "na" else np.nan)
+    long_source = "source-reference-" * 4096
+    series = pd.Series([long_source, None, np.nan, pd.NA, long_source], dtype=dtype)
+    old = [_query_scalar_signature(v) for v in series.to_numpy(copy=False)]
+    original = series.array
+
+    def no_text_expansion(*args, **kwargs):
+        pytest.fail("文本查询缓存不应先展开整列 Python 字符串")
+
+    with monkeypatch.context() as boundary:
+        boundary.setattr(pd.Series, "to_numpy", no_text_expansion)
+        values = _query_values(series)
+    assert values is original
+    if hasattr(original, "_pa_array"):
+        assert values._pa_array is original._pa_array
+    else:
+        assert values._ndarray is original._ndarray
+    assert [_query_scalar_signature(v) for v in values] == old
+
+
+@pytest.mark.parametrize("case", ["nullable_int", "nullable_float", "nullable_bool", "arrow_int",
+                                  "datetime", "timedelta", "numpy_int", "object"])
+def test_non_text_query_values_preserve_old_numpy_types_and_nulls(case, monkeypatch):
+    import pyarrow as pa
+    if case == "nullable_int":
+        series = pd.Series([1, None, 2], dtype="Int64")
+    elif case == "nullable_float":
+        series = pd.Series([1.5, None, 2.5], dtype="Float64")
+    elif case == "nullable_bool":
+        series = pd.Series([True, None, False], dtype="boolean")
+    elif case == "arrow_int":
+        series = pd.Series([1, None, 2], dtype=pd.ArrowDtype(pa.int64()))
+    elif case == "datetime":
+        series = pd.Series(pd.to_datetime(["2022-01-01", None, "2022-01-03"])).astype("datetime64[ns]")
+    elif case == "timedelta":
+        series = pd.Series(pd.to_timedelta([1, None, 3], unit="D"))
+    elif case == "numpy_int":
+        series = pd.Series([1, 2, 3], dtype="int64")
+    else:
+        series = pd.Series(["text", None, {"key": [1, None]}], dtype=object)
+    expected = [_query_scalar_signature(v) for v in series.to_numpy(copy=False)]
+    calls, old_to_numpy = [], pd.Series.to_numpy
+
+    def old_query_path(current, *args, **kwargs):
+        calls.append(kwargs)
+        return old_to_numpy(current, *args, **kwargs)
+
+    with monkeypatch.context() as boundary:
+        boundary.setattr(pd.Series, "to_numpy", old_query_path)
+        values = _query_values(series)
+    assert isinstance(values, np.ndarray)
+    assert calls == [{"copy": False}]
+    assert [_query_scalar_signature(v) for v in values] == expected
+
+
+def test_bar_state_queries_preserve_every_field_type_and_null_with_text_cache_views():
+    import pyarrow as pa
+    bundle, window = valid_universe_bundle_v1()
+    for name in ("daily", "states"):
+        frame = bundle[name]
+        for column in list(frame):
+            if pd.api.types.is_object_dtype(frame[column].dtype):
+                frame[column] = frame[column].astype(pd.StringDtype(storage="pyarrow", na_value=np.nan))
+        frame["context_text_na"] = pd.Series(["source", None, np.nan, pd.NA, "source"] * 3,
+            dtype=pd.StringDtype(storage="pyarrow", na_value=pd.NA))
+        frame["context_text_nan"] = pd.Series(["source", None, np.nan, pd.NA, "source"] * 3,
+            dtype=pd.StringDtype(storage="pyarrow", na_value=np.nan))
+        frame["context_arrow_text"] = pd.Series(["source", None, None, None, "source"] * 3,
+            dtype=pd.ArrowDtype(pa.large_string()))
+        frame["context_numeric"] = pd.Series([1, None, 2, 3, 4] * 3, dtype="Int64")
+        frame["context_arrow_numeric"] = pd.Series([1, None, 2, 3, 4] * 3, dtype=pd.ArrowDtype(pa.int64()))
+        frame["context_datetime"] = pd.Series(pd.to_datetime(["2022-01-01", None,
+            "2022-01-03", "2022-01-04", "2022-01-05"] * 3)).astype("datetime64[ns]")
+    prepared = prepare_universe_account_inputs_v1(bundle, window)
+
+    def all_queries():
+        return {(symbol, day, method): {k: _query_scalar_signature(v) for k, v in
+            getattr(prepared, method)(symbol, day).items()} for symbol in SYMBOLS
+                for day in DAYS for method in ("bar", "state")}
+
+    actual, coverage, identity = all_queries(), prepared.coverage, prepared.input_identity
+    for frame, columns in ((prepared.daily, prepared._daily_columns), (prepared.states, prepared._state_columns)):
+        for name in ("context_text_na", "context_text_nan", "context_arrow_text"):
+            assert columns[name] is frame[name].array
+        for name in ("context_numeric", "context_arrow_numeric", "context_datetime"):
+            assert isinstance(columns[name], np.ndarray)
+    prepared._daily_columns = {name: prepared.daily[name].to_numpy(copy=False) for name in prepared.daily}
+    prepared._state_columns = {name: prepared.states[name].to_numpy(copy=False) for name in prepared.states}
+    assert all_queries() == actual
+    assert prepared._coverage() == coverage
+    assert universe_input_identity_v1(prepared.bundle, window) == identity
 
 
 def test_frame_identity_releases_mapped_columns_and_never_materializes_a_mapped_frame(monkeypatch):

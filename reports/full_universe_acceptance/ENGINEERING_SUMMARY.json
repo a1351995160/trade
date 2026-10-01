@@ -1,5 +1,11 @@
 {
-  "version": "FULL_UNIVERSE_ENGINEERING_DELIVERY_V1",
+  "version": "FULL_UNIVERSE_ENGINEERING_DELIVERY_V2",
+  "runtime_versions": {
+    "python": "3.13.5",
+    "pandas": "3.0.5",
+    "pyarrow": "25.0.1"
+  },
+  "real_check_namespace": "real_v9_path_bound",
   "baseline_commit": "157945d446222b89401736b68c529fd7e3693fce",
   "scope": {
     "boards": [
@@ -18,8 +24,8 @@
   "real_public_checks": {
     "single": {
       "scan_id": "3cbeb1bc6e2dc3049de8b7cfb83733899f6d0273ce3e3779b6e01dad0069ee7a",
-      "scan_identity": "94af513a313dbdf7c9a60000030246384007cfee7d9dc3e24918de7da551c125",
-      "input_identity": "a49395dd5959d7742cd6abb5246b891a6f11437207e466f4174e16b6c5178718",
+      "scan_identity": "dd28c053abee97d9b51efeee227a1fbbdd45af82afce6ca9a7828d6fe63ce9dd",
+      "input_identity": "2bd65c621455b406ddd02fafb6740f990f69920e42f38ab0c65b37866aa3d169",
       "status": "SCAN_DATA_GAPS",
       "target_count": 4607,
       "processed_target_count": 4607,
@@ -51,13 +57,13 @@
       "global_gaps": [
         "UNIVERSE_CORPORATE_COVERAGE_MISSING"
       ],
-      "wall_seconds": 308.699869,
+      "wall_seconds": 600.546954,
       "resource": {
         "returncode": 0,
         "stdout": "",
         "stderr": "",
         "timed_out": false,
-        "launcher_pid": 9500,
+        "launcher_pid": 24416,
         "resource_platform": "nt",
         "windows_job_bound": true,
         "process_limit": 2,
@@ -67,8 +73,8 @@
     },
     "multi": {
       "scan_id": "a91f24dca620bb50eda432e01da300a11973e476300bacc951101a41324fc328",
-      "scan_identity": "7fc9edd9484d05dd2fa95b79b3cd0aa79fbf3e2deea575b9429d2b2a4a09629c",
-      "input_identity": "a49395dd5959d7742cd6abb5246b891a6f11437207e466f4174e16b6c5178718",
+      "scan_identity": "2e890713acd5e644c6a00e4e4caf19fe71aa658b62877d67630e5cbd391fbd35",
+      "input_identity": "2bd65c621455b406ddd02fafb6740f990f69920e42f38ab0c65b37866aa3d169",
       "status": "SCAN_DATA_GAPS",
       "target_count": 4607,
       "processed_target_count": 4607,
@@ -100,13 +106,13 @@
       "global_gaps": [
         "UNIVERSE_CORPORATE_COVERAGE_MISSING"
       ],
-      "wall_seconds": 307.749522,
+      "wall_seconds": 669.802934,
       "resource": {
         "returncode": 0,
         "stdout": "",
         "stderr": "",
         "timed_out": false,
-        "launcher_pid": 30880,
+        "launcher_pid": 31000,
         "resource_platform": "nt",
         "windows_job_bound": true,
         "process_limit": 2,
@@ -137,19 +143,19 @@
     "src/chanlun_trader/research_factory/research_universe_v1.py": "50a2e8a0ac6f4303838543b52a003d365b092366e668a65954811c88706de600",
     "src/chanlun_trader/research_factory/strategy_submission_v1.py": "11b40fae5034054839c5eb4f2dfe2edd5617747d74e5bc429ea2da6c8dcbc067",
     "src/chanlun_trader/research_factory/tdx_research_adapter_v1.py": "59c57dd3607264b996bd792a1101ffba48aa2df5f64c3a22978b324470838d26",
-    "src/chanlun_trader/research_factory/universe_account_inputs_v1.py": "a0861e2b31b9791c372f87e516b260691ea66a48da8ead41be4943ed1cd54416",
-    "src/chanlun_trader/research_factory/universe_data_provider_v1.py": "729bb985aa769e9291e1737bbc79bad3a2054aa84540d4aa5200c57e1658f790",
-    "src/chanlun_trader/research_factory/universe_scan_service_v1.py": "fe8de9fe633f750ffdd3cc4a4c2dba4951717964597fbfff0db9e104f93057c8",
+    "src/chanlun_trader/research_factory/universe_account_inputs_v1.py": "239032c6ca7d67b7706b1b859453d41890a2a7015a73071ff5b9f974130a680e",
+    "src/chanlun_trader/research_factory/universe_data_provider_v1.py": "466bfc80072b9912c0e0bcb851d373f83aab462e57ffc99d68452124b50cad64",
+    "src/chanlun_trader/research_factory/universe_scan_service_v1.py": "e5752b51beb77a5af0fa86bb6f5948a49eb03ca740d7a4fb167a5de30d8f5190",
     "src/chanlun_trader/research_factory/universe_signal_scan_v1.py": "f1644ae5ab9786ee8ca8bfaf21010765a70312a974c70109a72e21ece481a57a",
-    "src/chanlun_trader/research_factory/universe_submission_v1.py": "f06df6973bfcaa3296bde8f66e775df14d936e8bfc8f5d7cbd43fc17e2d0d1e4",
+    "src/chanlun_trader/research_factory/universe_submission_v1.py": "874870d7ed3964f8f37b1b8f6887e29e814666221f46ebb18ca13f5737747013",
     "src/chanlun_trader/synthetic_batch_resources.py": "8604209ae09efd56f56cc6123cba36ed6023a39b8d986af530040c5859ea2ae4"
   },
   "local_current_new_suite": {
-    "tests": "374",
+    "tests": "441",
     "failures": "0",
     "errors": "0",
-    "skipped": "0",
-    "time": "362.212"
+    "skipped": "1",
+    "time": "1491.664"
   },
   "frontend": {
     "tests_passed": 21,

@@ -55,7 +55,7 @@ def replace_registered_source(service, name, change):
     return accesses
 
 
-@pytest.mark.parametrize("metadata_format", ["original", "sorted_bom"])
+@pytest.mark.parametrize("metadata_format", ["original", "sorted_bom", "external"])
 def test_true_public_scan_prepares_inside_bounded_worker_and_reuses_without_new_account_or_scan(tmp_path, monkeypatch, metadata_format):
     service, request, authority, accesses = public_universe_case(tmp_path)
     metadata_path = service.provider._metadata_paths["sample"]
@@ -66,6 +66,15 @@ def test_true_public_scan_prepares_inside_bounded_worker_and_reuses_without_new_
         provider.register_manifest("sample", "data", metadata_path)
         service.provider = provider
         assert metadata_path.read_bytes().startswith(b"\xef\xbb\xbf")
+    elif metadata_format == "external":
+        external = tmp_path / "external-registration" / "original.json"
+        external.parent.mkdir()
+        external.write_bytes(metadata_path.read_bytes())
+        provider = UniverseDataProviderV1(service.provider.roots, accesses.append)
+        provider.register_manifest("sample", "data", external)
+        service.provider = provider
+        metadata_path = external.absolute()
+        assert not metadata_path.is_relative_to(provider.roots["data"])
     normalized = service.preview(request)["request"]
     expected = service.provider.prepare(normalized["dataset_id"], universe_id=normalized["universe_id"],
         symbols=normalized["symbols"], feature_start=normalized["feature_start"],
@@ -99,6 +108,8 @@ def test_true_public_scan_prepares_inside_bounded_worker_and_reuses_without_new_
     assert intent["registration"]["original_metadata_path"] == str(metadata_path)
     assert result["registration"]["original_metadata_sha256"] != result["registration"]["snapshot_sha256"]
     assert "收益" in (root / "REPORT_CN.md").read_text(encoding="utf-8")
+    reference = scan.validated_scan_snapshot(service, result)
+    assert reference["metadata_only"] and reference["input_identity"] == expected["input_identity"]
     monkeypatch.setattr(scan, "run_bounded_worker", lambda *a, **k: pytest.fail("不得免费重扫"))
     repeated = call_scan(service, request)
     assert repeated["scan_identity"] == result["scan_identity"]
@@ -358,3 +369,121 @@ def test_board_policy_code_change_blocks_cached_scan_and_snapshot_without_new_wo
     with pytest.raises(ValueError, match="UNIVERSE_SCAN_CODE_CHANGED"):
         scan.validated_scan_snapshot(service, result)
     assert len(launches) == 1
+
+
+def rewrite_scan_intent(root, change):
+    """模拟落盘工件被替换并重算自身哈希，不改父进程持有的身份。"""
+    path = root / "SCAN_INTENT.json"
+    intent = json.loads(path.read_text(encoding="utf-8"))
+    change(intent)
+    intent["intent_identity"] = scan.stable_hash({k: v for k, v in intent.items() if k != "intent_identity"})
+    path.write_text(json.dumps(intent, ensure_ascii=False), encoding="utf-8")
+    return intent
+
+
+@pytest.mark.parametrize("binding", ["missing", "wrong", "purpose", "extra"])
+def test_worker_requires_exact_parent_intent_binding_before_source_access(tmp_path, monkeypatch, binding):
+    service, request, authority, _ = public_universe_case(tmp_path)
+    launches = []
+    def launch(command, **kwargs):
+        root = Path(command[-1])
+        intent = json.loads((root / "SCAN_INTENT.json").read_text(encoding="utf-8"))
+        expected = {"purpose": intent["scan_id"], "intent_identity": intent["intent_identity"]}
+        assert kwargs["execution"] == expected
+        execution = deepcopy(kwargs["execution"])
+        if binding == "missing":
+            execution.pop("intent_identity")
+        elif binding == "wrong":
+            execution["intent_identity"] = "0" * 64
+        elif binding == "purpose":
+            execution["purpose"] = "different_scan"
+        else:
+            execution["unapproved"] = True
+        kwargs["on_started"](12345)
+        monkeypatch.setattr(scan, "HANDSHAKE", {"execution": execution,
+            "memory_mib": kwargs["memory_mib"], "wall_seconds": kwargs["wall_seconds"]})
+        monkeypatch.setattr(scan, "_check_code", lambda *a: pytest.fail("身份不符不得读取源码"))
+        monkeypatch.setattr(scan, "_check_registration", lambda *a: pytest.fail("身份不符不得探测登记原件"))
+        with pytest.raises(PermissionError, match="UNIVERSE_SCAN_WORKER_SCOPE_CONFLICT"):
+            scan._worker(root)
+        launches.append(execution)
+        return {"returncode": 1, "timed_out": False, "stdout": b"", "stderr": b"",
+                "resource_platform": "SYNTHETIC_NOT_OS_LIMIT_EVIDENCE"}
+    monkeypatch.setattr(scan, "run_bounded_worker", launch)
+    result = call_scan(service, request)
+    assert len(launches) == 1 and result["status"] == "SCAN_BLOCKED"
+    assert result["processed_target_count"] == 0 and result["unknown_target_count"] == 3
+    assert not Path(authority["budget_path"]).exists()
+
+
+@pytest.mark.parametrize("field", ["root", "original_metadata_path"])
+def test_worker_rejects_rehashed_registration_before_any_code_or_registered_source_access(tmp_path, monkeypatch, field):
+    service, request, _, _ = public_universe_case(tmp_path)
+    launches = []
+    def launch(command, **kwargs):
+        root = Path(command[-1])
+        parent_execution = deepcopy(kwargs["execution"])
+        forged = rewrite_scan_intent(root, lambda intent: intent["registration"].update(
+            {field: str((tmp_path / "unregistered" / field).absolute())}))
+        assert forged["intent_identity"] != parent_execution["intent_identity"]
+        kwargs["on_started"](12345)
+        monkeypatch.setattr(scan, "HANDSHAKE", {"execution": parent_execution,
+            "memory_mib": kwargs["memory_mib"], "wall_seconds": kwargs["wall_seconds"]})
+        monkeypatch.setattr(scan, "_check_code", lambda *a: pytest.fail("父身份绑定前不得读取源码"))
+        monkeypatch.setattr(scan, "_check_registration", lambda *a: pytest.fail("父身份绑定前不得探测登记原件"))
+        with pytest.raises(PermissionError, match="UNIVERSE_SCAN_WORKER_SCOPE_CONFLICT"):
+            scan._worker(root)
+        launches.append(parent_execution)
+        return {"returncode": 1, "timed_out": False, "stdout": b"", "stderr": b"",
+                "resource_platform": "SYNTHETIC_NOT_OS_LIMIT_EVIDENCE"}
+    monkeypatch.setattr(scan, "run_bounded_worker", launch)
+    result = call_scan(service, request)
+    assert len(launches) == 1 and result["status"] == "SCAN_BLOCKED"
+    root = service.root / "signal-scans" / result["scan_id"]
+    assert not (root / "INPUT.json").exists()
+
+
+@pytest.mark.parametrize("field", ["root", "original_metadata_path", "original_metadata_sha256",
+    "manifest", "physical_signatures", "universe_identity"])
+def test_snapshot_rebinds_real_provider_before_probing_rehashed_registration(tmp_path, monkeypatch, field):
+    service, request, _, _ = public_universe_case(tmp_path)
+    launches = synthetic_launcher(monkeypatch)
+    result = call_scan(service, request)
+    root = service.root / "signal-scans" / result["scan_id"]
+    forbidden = (tmp_path / "unregistered").absolute()
+    def forge(intent):
+        registration = intent["registration"]
+        if field == "root":
+            registration[field] = str(forbidden)
+        elif field == "original_metadata_path":
+            registration[field] = str(forbidden / "original.json")
+        elif field == "manifest":
+            registration[field]["corporate_actions_complete"] = False
+        elif field == "physical_signatures":
+            registration[field]["unregistered.json"] = {}
+        else:
+            registration[field] = "0" * 64
+    rewrite_scan_intent(root, forge)
+    def forbid_probe(operation):
+        def checked(path, *args, **kwargs):
+            if path.is_relative_to(forbidden):
+                pytest.fail("伪造的登记路径不得进入任何文件探测或读取")
+            return operation(path, *args, **kwargs)
+        return checked
+    for method in ("resolve", "stat", "read_bytes"):
+        monkeypatch.setattr(Path, method, forbid_probe(getattr(Path, method)))
+    with pytest.raises(ValueError, match="UNIVERSE_SCAN_SNAPSHOT_REGISTRATION_CONFLICT"):
+        scan.validated_scan_snapshot(service, result)
+    assert len(launches) == 1
+
+
+@pytest.mark.parametrize("field", ["runtime", "loader", "registration"])
+def test_public_scan_request_cannot_supply_paths_or_execution_configuration(tmp_path, monkeypatch, field):
+    service, request, _, accesses = public_universe_case(tmp_path)
+    request[field] = {"path": str(tmp_path / "unregistered.json")}
+    service.authority = lambda *a: pytest.fail("不可信字段必须在授权读取前拒绝")
+    monkeypatch.setattr(scan, "_registration", lambda *a: pytest.fail("请求不得进入登记读取"))
+    monkeypatch.setattr(scan, "run_bounded_worker", lambda *a, **k: pytest.fail("非法请求不得启动worker"))
+    with pytest.raises(ValueError, match="UNIVERSE_SUBMISSION_REQUEST_FIELDS_INVALID"):
+        call_scan(service, request)
+    assert accesses == [] and not service.root.exists()

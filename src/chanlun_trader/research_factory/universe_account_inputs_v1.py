@@ -84,7 +84,11 @@ def _frame_identity(frame: pd.DataFrame, sort: list[str]) -> str:
     def column_hashes():
         # 保留旧 map 的类型推断，但同时只持有一列映射结果。
         for name, series in selected.items():
-            if name in object_columns:
+            # 纯文本/NA 的恒等 map 不改变哈希；pandas 3 会重新构造 Arrow 文本缓冲。
+            text_only = (isinstance(series.dtype, pd.StringDtype)
+                or (pd.api.types.is_object_dtype(series.dtype)
+                    and pd.api.types.infer_dtype(series.to_numpy(copy=False), skipna=True) == "string"))
+            if name in object_columns and not text_only:
                 series = series.map(lambda value: canonical_json(value)
                     if isinstance(value, (dict, list, tuple, set, frozenset)) else value)
             yield pd.util.hash_pandas_object(series, index=False).to_numpy(copy=False)
@@ -93,6 +97,15 @@ def _frame_identity(frame: pd.DataFrame, sort: list[str]) -> str:
     hashes = combine_hash_arrays(column_hashes(), len(selected.columns))
     digest.update(memoryview(hashes))
     return digest.hexdigest()
+
+
+def _query_values(series: pd.Series):
+    # Arrow 文本的 to_numpy(copy=False) 仍会展开整列 Python 字符串。
+    if (isinstance(series.dtype, pd.StringDtype)
+            or isinstance(series.dtype, pd.ArrowDtype) and pd.api.types.is_string_dtype(series.dtype)):
+        return series.array
+    # Nullable 数值/日期的 array 标量与旧 numpy 口径不同，保持原查询语义。
+    return series.to_numpy(copy=False)
 
 
 def universe_input_identity_v1(bundle: dict, window: dict) -> str:
@@ -195,8 +208,8 @@ class UniverseAccountInputsV1:
         self._daily_index = pd.MultiIndex.from_frame(self.daily[["symbol", "date"]])
         self._turn_index = self.turn.set_index(["symbol", "date"], drop=False)
         self._states_index = pd.MultiIndex.from_frame(self.states[["symbol", self._state_date]])
-        self._daily_columns = {name: self.daily[name].to_numpy(copy=False) for name in self.daily}
-        self._state_columns = {name: self.states[name].to_numpy(copy=False) for name in self.states}
+        self._daily_columns = {name: _query_values(self.daily[name]) for name in self.daily}
+        self._state_columns = {name: _query_values(self.states[name]) for name in self.states}
         self._interval_indices = {symbol: tuple(group[self._state_date])
             for symbol, group in self.states.groupby("symbol", sort=False)} if has_interval else {}
         self.listing_dates, self.listing_date_sources = self._listing_metadata()

@@ -243,7 +243,8 @@ def restore_universe_bundle(value, input_path):
             digest = hashlib.file_digest(stream, 'sha256').hexdigest()
         if digest != info['sha256']:
             raise ValueError('UNIVERSE_FROZEN_FRAME_CHANGED')
-        bundle[key] = UniverseDataProviderV1._read_parquet(path)
+        # 冻结身份包含原 dtype 与缺值；Pandas 3 默认的字符串推断不能改写它们。
+        bundle[key] = UniverseDataProviderV1._read_parquet(path, preserve_pandas_objects=True)
         if len(bundle[key]) != info['rows']:
             raise ValueError('UNIVERSE_FROZEN_FRAME_ROWS_CHANGED')
     if universe_input_identity_v1(bundle, value['window']) != value['input_identity']:

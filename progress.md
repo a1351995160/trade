@@ -2759,3 +2759,19 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 - 测试与真实检查补记：稳定源码20文件集中回归374 passed，362.39秒。大表类型推断取得真实Windows原生异常栈后，临时数组改为逐列局部system pool，原类型/pandas元数据逐项一致；开发探针成功，不作为公共验收。
 - 正式公共两份固定规则各完成4607目标准备/冻结/资格检查，原2GB/900秒限制实际生效，分别309/307秒、worker退出码0；输入身份同为a49395dd5959d7742cd6abb5246b891a6f11437207e466f4174e16b6c5178718。两者SCAN_DATA_GAPS，条件未算4607只保持未知，freeze以UNIVERSE_ACCOUNT_INPUT_NOT_READY:SCAN_DATA_GAPS拒绝，未创建账户预算。
 - 新公开摘要为reports/full_universe_acceptance/ENGINEERING_SUMMARY.json；本机实际SOURCE、冻结及历次失败原件保留在忽略目录。板块制度文件固定LF以保持跨平台及主目录实现字节，原九源码和旧发布原件换行约束保留。远端CI与合并同步以下续交付回执为准。
+
+## 2026-10-02 - Task: 修正全范围CI依赖兼容与完成发布前验收
+
+### What was done
+- 初次Linux/Windows全范围CI各有13项失败，定位为pandas3恢复object字符串及None时改变冻结身份；Provider和冻结恢复增加保真读取，输入查询保留原数值/日期标量语义，纯文本哈希避免恒等map与重复展开大表来源字符串。未重写旧冻结身份或削弱核验断言。
+- 来源边界补强Windows根相对路径/盘符/UNC/父目录的探测前拒绝；归档先核对当前实际provider登记，worker先核对父进程持有的原intent_identity。合法外置元数据及可信本地插件路径保持已有授权边界。新增对应反例，静态扫描逐项结论追加到docs/TRUSTED_RESEARCH_STATIC_REVIEW.md。
+- 更新docs/FULL_UNIVERSE_DELIVERY.md及reports/full_universe_acceptance/ENGINEERING_SUMMARY.json，区分旧依赖结果、最终锁定依赖结果和真实資料缺口；历次资源失败和慢速诊断探针均保留，不当作验收通过。
+
+### Testing
+- 最终稳定源码、CI锁定Python3.13.5/pandas3.0.5/PyArrow25.0.1：21份新功能测试文件440 passed、1 skipped，1491.71秒，0失败/错误。跳过仅因Windows E盘不支持真实符号链接，另有解析重定向拒绝测试；Linux真实链接验证由CI补证。
+- 两份真实正式公共检查在原Windows Job/2048MiB/900秒限额内各处理全部4607目标，分别600.55/669.80秒、worker退出码0。输入身份同为2bd65c621455b406ddd02fafb6740f990f69920e42f38ab0c65b37866aa3d169；两者SCAN_DATA_GAPS，条件0/未知4607。两份freeze均按原资格边界拒绝，ENGINEERING_BUDGET.json仍不存在。
+- Provider定向两套环境各56通过/1跳过，扫描各44通过，输入各101通过；语义、真实受限worker及伪造登记/握手反例均通过。本条不提前将尚待重跑的远端CI或合并同步记作完成。
+
+### Notes
+- 当前真实U8和整份计划仍active，144行情来源、历史状态可见性、完整公司行动、官方除权参考价和历史证券清单完整性未补造。策略资格、独立确认、真实Paper观察仍为否/0天。
+- 本次仅追加本任务验证和发布修复；主目录其他AI研究/progress待同步时原样备份保留，旧绝对路径冻结任务继续保留原工作区。回滚可revert本次修复提交，或停用全范围部署退回157945d原入口，保留所有原件、失败和预算。

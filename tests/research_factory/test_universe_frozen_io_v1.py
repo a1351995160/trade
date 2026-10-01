@@ -17,6 +17,7 @@ def test_frozen_io_preserves_types_and_late_non_null_values_in_bounded_batches(t
         'date': pd.Series([20240102] * count, dtype='int64'),
         'optional': pd.Series([None] * count, dtype='Int64'),
         'known': pd.Series([True] * count, dtype='boolean'),
+        'default_text': pd.Series(['default'] * count),
     })
     original = submission.pq.ParquetWriter
     sizes = []
@@ -36,10 +37,8 @@ def test_frozen_io_preserves_types_and_late_non_null_values_in_bounded_batches(t
     path = tmp_path / 'frozen.parquet'
     submission._write_frame_in_batches(frame, path)
     assert sizes == ([0] if empty else [8192, 3])
-    expected = pd.read_parquet(path)
     monkeypatch.setattr(pd, 'read_parquet', lambda *a, **k: pytest.fail('不得回到整表读取'))
-    restored = UniverseDataProviderV1._read_parquet(path)
-    pd.testing.assert_frame_equal(restored, expected)
+    restored = UniverseDataProviderV1._read_parquet(path, preserve_pandas_objects=True)
     pd.testing.assert_frame_equal(restored, frame)
     if not empty:
         assert restored.late_source.iloc[0] is None
@@ -47,7 +46,7 @@ def test_frozen_io_preserves_types_and_late_non_null_values_in_bounded_batches(t
         assert restored.source.iloc[0] is restored.source.iloc[-1]
 
 
-def test_column_schema_matches_original_full_inference_and_metadata():
+def test_column_schema_matches_original_full_inference_and_metadata(tmp_path):
     frame = pd.DataFrame({
         'source': pd.Series([None, '来源/' + 'x' * 512], dtype=object),
         'nullable': pd.Series([None, 1], dtype='Int64'),
@@ -66,12 +65,17 @@ def test_column_schema_matches_original_full_inference_and_metadata():
     reference = pa.Table.from_pandas(frame, schema=expected, preserve_index=False)
     # Arrow自身重建string的存储后端；与原完整类型推断路径逐项一致。
     pd.testing.assert_frame_equal(table.to_pandas(), reference.to_pandas())
-    pd.testing.assert_frame_equal(table.to_pandas().drop(columns='arrow'), frame.drop(columns='arrow'))
+    path = tmp_path / 'typed.parquet'
+    submission._write_frame_in_batches(frame, path)
+    restored = UniverseDataProviderV1._read_parquet(path, preserve_pandas_objects=True)
+    pd.testing.assert_frame_equal(restored.drop(columns='arrow'), frame.drop(columns='arrow'))
+    assert restored.arrow.tolist() == frame.arrow.tolist()
 
 
 def test_schema_inference_does_not_change_process_memory_pool(monkeypatch):
     frame = pd.DataFrame({'source': [None, '来源/' + 'x' * 512]})
     before = pa.default_memory_pool().backend_name
     monkeypatch.setattr(pa, 'set_memory_pool', lambda *a: pytest.fail('不得更换进程默认池'))
-    assert submission._schema_in_columns(frame).field('source').type == pa.string()
+    original_type = pa.Schema.from_pandas(frame, preserve_index=False).field('source').type
+    assert submission._schema_in_columns(frame).field('source').type == original_type
     assert pa.default_memory_pool().backend_name == before

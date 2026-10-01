@@ -2,9 +2,12 @@
 import hashlib
 import json
 import weakref
+from decimal import Decimal
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
@@ -400,6 +403,64 @@ def test_source_path_escape_is_rejected_at_registration(tmp_path):
         provider(tmp_path, [])
 
 
+@pytest.mark.parametrize('relative', [r'\outside.json', '/outside.json', r'E:outside.json',
+    r'E:\outside.json', r'\\server\share\outside.json', r'\\?\E:\outside.json',
+    '../outside.json', r'nested\..\outside.json', 'nested/../outside.json'])
+def test_source_path_escape_is_rejected_before_any_file_probe(tmp_path, monkeypatch, relative):
+    probes = []
+    def unexpected_probe(*args, **kwargs):
+        probes.append(args)
+        raise AssertionError('非法路径不得进行文件探测')
+    with monkeypatch.context() as patch:
+        for method in ('resolve', 'is_file', 'stat'):
+            patch.setattr(Path, method, unexpected_probe)
+        with pytest.raises(ValueError, match='DATA_PATH_OUTSIDE_ROOT'):
+            UniverseDataProviderV1._path(tmp_path, relative)
+    assert probes == []
+
+
+def test_source_path_allows_registered_subfile_and_still_refuses_missing_file(tmp_path):
+    nested = tmp_path / 'nested'
+    nested.mkdir()
+    target = nested / 'daily.json'
+    target.write_text('[]', encoding='utf-8')
+    assert UniverseDataProviderV1._path(tmp_path, 'nested/daily.json') == target
+    with pytest.raises(ValueError, match='DATA_PATH_INVALID_OR_REDIRECTED'):
+        UniverseDataProviderV1._path(tmp_path, 'nested/missing.json')
+
+
+def test_source_path_still_refuses_symlink_to_existing_file(tmp_path):
+    target = tmp_path / 'actual.json'
+    target.write_text('[]', encoding='utf-8')
+    link = tmp_path / 'redirect.json'
+    try:
+        link.symlink_to(target)
+    except OSError as exc:
+        if getattr(exc, 'winerror', None) in {1, 50, 1314}:
+            pytest.skip('Windows 当前文件系统或账户不支持创建符号链接')
+        raise
+    assert link.is_file()
+    with pytest.raises(ValueError, match='DATA_PATH_INVALID_OR_REDIRECTED'):
+        UniverseDataProviderV1._path(tmp_path, link.name)
+
+
+def test_source_path_refuses_resolved_redirection_before_file_probe(tmp_path, monkeypatch):
+    target = tmp_path / 'redirect.json'
+    redirected = tmp_path.parent / 'outside.json'
+    resolutions = []
+    def resolve(path, *args, **kwargs):
+        resolutions.append(path)
+        return redirected
+    def unexpected_probe(*args, **kwargs):
+        raise AssertionError('解析后重定向的路径不得进行文件探测')
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, 'resolve', resolve)
+        patch.setattr(Path, 'is_file', unexpected_probe)
+        with pytest.raises(ValueError, match='DATA_PATH_INVALID_OR_REDIRECTED'):
+            UniverseDataProviderV1._path(tmp_path, target.name)
+    assert resolutions == [target]
+
+
 def test_new_tdx_chinext_support_does_not_broaden_old_baostock_contract(tmp_path):
     from chanlun_trader.research_factory.research_data_provider_v1 import ResearchDataProviderV1
     old = ResearchDataProviderV1({'root': tmp_path}, lambda event: None)
@@ -559,7 +620,7 @@ def test_parquet_batches_preserve_all_values_dtypes_nulls_and_share_long_strings
         'source': pd.Series([long_source] * count, dtype='object'),
         'available_at': ['2026-08-23T14:04:00+08:00'] * count,
         'availability_status': ['MODELED'] * count,
-        'source_lineage_json': [long_source] * count,
+        'source_lineage_json': pd.Series([long_source] * count, dtype='object'),
         'original_integer': pd.Series(np.arange(count), dtype='int32'),
         'nullable_integer': pd.Series(np.arange(count), dtype='Int64'),
         'raw_float': pd.Series(np.arange(count), dtype='float32'),
@@ -571,7 +632,6 @@ def test_parquet_batches_preserve_all_values_dtypes_nulls_and_share_long_strings
     frame.loc[8193, ['nullable_integer', 'nullable_bool', 'raw_float']] = pd.NA
     path = tmp_path / 'states.parquet'
     frame.to_parquet(path, index=False)
-    expected = pd.read_parquet(path)
     metadata = {'kind': 'STATES', 'format': 'PARQUET', 'source_id': 'states',
         'start': DATES[0], 'end': DATES[-1], 'sha256': hashlib.sha256(path.read_bytes()).hexdigest()}
     sizes = []
@@ -583,7 +643,7 @@ def test_parquet_batches_preserve_all_values_dtypes_nulls_and_share_long_strings
             yield batch
     monkeypatch.setattr(pq.ParquetFile, 'iter_batches', batches)
     result = provider(tmp_path, [])._read(tmp_path, path.name, metadata, 'sample', args['authorization'])
-    pd.testing.assert_frame_equal(result, expected, check_exact=True)
+    pd.testing.assert_frame_equal(result, frame, check_exact=True)
     assert len(sizes) == 3 and sum(sizes) == count and max(sizes) <= 8192
     assert result.source.iloc[1] is None and result.source.iloc[8192] is None
     assert result.source.iloc[0] is result.source.iloc[8193]
@@ -603,7 +663,99 @@ def test_empty_parquet_preserves_original_schema_without_whole_table_load(tmp_pa
     metadata = {'kind': 'STATES', 'format': 'PARQUET', 'source_id': 'states',
         'start': DATES[0], 'end': DATES[-1], 'sha256': hashlib.sha256(path.read_bytes()).hexdigest()}
     actual = provider(tmp_path, [])._read(tmp_path, path.name, metadata, 'sample', args['authorization'])
-    pd.testing.assert_frame_equal(actual, pd.read_parquet(path), check_exact=True)
+    pd.testing.assert_frame_equal(actual, frame, check_exact=True)
+
+
+@pytest.mark.parametrize('empty', [False, True])
+def test_batch_reader_preserves_standard_string_dtypes_and_frozen_object_values(tmp_path, empty):
+    count = 0 if empty else 8195
+    long_source = 'synthetic_lineage_' + 'x' * 1536
+    frame = pd.DataFrame({
+        'implicit_string': ['implicit'] * count,
+        'nullable_string': pd.Series(['nullable'] * count, dtype='string'),
+        'original_source': pd.Series([long_source] * count, dtype='object'),
+        'late_source': pd.Series([None] * min(count, 8192) + ['late'] * max(0, count - 8192), dtype='object'),
+        'original_list': pd.Series([[1, 2]] * count, dtype='object'),
+        'original_dict': pd.Series([{'known': 1, 'missing': None}] * count, dtype='object'),
+        'original_decimal': pd.Series([Decimal('1.25')] * count, dtype='object'),
+        'optional_integer': pd.Series([None] * count, dtype='Int64'),
+    })
+    if not empty:
+        frame.loc[1, ['original_source', 'original_list', 'original_dict', 'original_decimal']] = None
+        frame.loc[8193, 'nullable_string'] = pd.NA
+    path = tmp_path / 'typed_strings.parquet'
+    frame.to_parquet(path, index=False)
+    expected = pd.read_parquet(path)
+    standard = UniverseDataProviderV1._read_parquet(path)
+    pd.testing.assert_frame_equal(standard, expected, check_exact=True)
+    frozen = UniverseDataProviderV1._read_parquet(path, preserve_pandas_objects=True)
+    object_columns = [name for name in frame if pd.api.types.is_object_dtype(frame[name].dtype)]
+    for name in object_columns:
+        pd.testing.assert_series_equal(frozen[name], frame[name], check_exact=True)
+    for name in set(frame) - set(object_columns):
+        pd.testing.assert_series_equal(frozen[name], expected[name], check_exact=True)
+    if not empty:
+        assert frozen.original_source.iloc[1] is None
+        assert frozen.late_source.iloc[0] is None and frozen.late_source.iloc[-1] == 'late'
+        assert frozen.original_source.iloc[0] is frozen.original_source.iloc[-1]
+        assert isinstance(frozen.original_list.iloc[-1], list)
+        assert frozen.original_dict.iloc[-1] == {'known': 1, 'missing': None}
+        assert frozen.original_decimal.iloc[-1] == Decimal('1.25')
+
+
+def test_python_string_extension_shares_long_values_without_becoming_object(tmp_path):
+    count = 8195
+    long_source = 'synthetic_python_string_' + 'x' * 1536
+    frame = pd.DataFrame({'source': pd.Series([long_source] * count, dtype=pd.StringDtype(storage='python'))})
+    frame.loc[8192, 'source'] = pd.NA
+    path = tmp_path / 'python_strings.parquet'
+    frame.to_parquet(path, index=False)
+    # 只在本测试选择已有字符串存储模式，生产读取不修改 Pandas 全局选项。
+    with pd.option_context('mode.string_storage', 'python'):
+        expected = pd.read_parquet(path)
+        actual = UniverseDataProviderV1._read_parquet(path)
+    pd.testing.assert_frame_equal(actual, expected, check_exact=True)
+    assert isinstance(actual.source.dtype, pd.StringDtype) and actual.source.dtype.storage == 'python'
+    assert actual.source.iloc[0] is actual.source.iloc[-1]
+    assert actual.source.iloc[8192] is pd.NA
+
+
+@pytest.mark.parametrize('empty', [False, True])
+def test_native_arrow_state_strings_share_across_batches_without_inventing_pandas_metadata(tmp_path, empty):
+    _, args = registered_dataset(tmp_path)
+    count = 0 if empty else 8195
+    long_source = 'synthetic_native_lineage_' + '原始来源证据' * 120
+    source_values = [long_source] * count
+    if not empty:
+        source_values[1] = source_values[8192] = None
+    string_names = ['source', 'source_lineage_json', *[f'original_string_{i}' for i in range(17)]]
+    arrays = [pa.array(source_values, type=pa.string()), pa.array(source_values, type=pa.large_string())]
+    arrays.extend(pa.array(['MODELED'] * count, type=pa.string()) for _ in range(17))
+    names = [*string_names, *[f'original_integer_{i}' for i in range(3)],
+             *[f'original_bool_{i}' for i in range(6)]]
+    arrays.extend(pa.array(np.arange(count), type=pa.int64()) for _ in range(3))
+    arrays.extend(pa.array([True] * count, type=pa.bool_()) for _ in range(6))
+    table = pa.Table.from_arrays(arrays, names=names)
+    assert len(table.schema) == 28 and table.schema.pandas_metadata is None
+    path = tmp_path / 'native_states.parquet'
+    pq.write_table(table, path)
+    assert pq.ParquetFile(path).schema_arrow.pandas_metadata is None
+    expected_standard = pd.read_parquet(path)
+    standard = UniverseDataProviderV1._read_parquet(path)
+    pd.testing.assert_frame_equal(standard, expected_standard, check_exact=True)
+    expected = expected_standard.copy()
+    for name in string_names:
+        expected[name] = pd.Series(table.column(name).to_pylist(), dtype='object')
+    metadata = {'kind': 'STATES', 'format': 'PARQUET', 'source_id': 'states',
+        'start': DATES[0], 'end': DATES[-1], 'sha256': hashlib.sha256(path.read_bytes()).hexdigest()}
+    actual = provider(tmp_path, [])._read(tmp_path, path.name, metadata, 'sample', args['authorization'])
+    pd.testing.assert_frame_equal(actual, expected, check_exact=True)
+    assert all(pd.api.types.is_object_dtype(actual[name].dtype) for name in string_names)
+    if not empty:
+        assert actual.source.iloc[1] is None and actual.source.iloc[8192] is None
+        assert actual.source.iloc[0] is actual.source.iloc[-1]
+        assert actual.source.iloc[0] is actual.source_lineage_json.iloc[-1]
+        assert actual.original_string_0.iloc[0] is actual.original_string_16.iloc[-1]
 
 
 def test_single_state_source_all_target_and_calendar_rows_reach_inputs_without_recopy(tmp_path, monkeypatch):
