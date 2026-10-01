@@ -77,3 +77,7 @@ frontend/node_modules/
 
 # 完整套件 JUnit 含本机路径与错误文本，不推送
 reports/junit-full-local.xml
+
+# 本机全范围行情、状态及不可公开的冻结研究证据
+/data/full_universe/
+/reports/full_universe_runtime/

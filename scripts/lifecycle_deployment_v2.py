@@ -35,7 +35,10 @@ def build_submission_service(workspace_root, config):
     from chanlun_trader.research_factory.research_data_provider_v1 import ResearchDataProviderV1
     from chanlun_trader.research_factory.strategy_submission_v1 import StrategySubmissionV1
     root = Path(workspace_root).absolute()
-    if root.resolve() != root or not isinstance(config,dict) or set(config) != {'roots','datasets','authorizations','output_root'}:
+    if (root.resolve() != root or not isinstance(config,dict)
+            or set(config) - {'roots','datasets','authorizations','output_root','version'}
+            or not {'roots','datasets','authorizations','output_root'} <= set(config)
+            or config.get('version') not in (None, 'FULL_UNIVERSE_DEPLOYMENT_V1')):
         raise ValueError('SUBMISSION_DEPLOYMENT_CONFIG_INVALID')
     def internal(value):
         path = Path(value)
@@ -80,7 +83,12 @@ def build_submission_service(workspace_root, config):
     def record_access(event):
         record = {**event,'recorded_at':datetime.now(timezone.utc).isoformat()}
         immutable(output / 'data-access' / (uuid.uuid4().hex + '.json'),record)
-    provider = ResearchDataProviderV1(config['roots'],record_access)
+    if config.get('version') == 'FULL_UNIVERSE_DEPLOYMENT_V1':
+        from chanlun_trader.research_factory.universe_data_provider_v1 import UniverseDataProviderV1
+        roots = {key: str(internal(value)) for key, value in config['roots'].items()}
+        provider = UniverseDataProviderV1(roots, record_access)
+    else:
+        provider = ResearchDataProviderV1(config['roots'],record_access)
     if not isinstance(config['datasets'],list):
         raise ValueError('SUBMISSION_DATASETS_REQUIRED')
     for item in config['datasets']:

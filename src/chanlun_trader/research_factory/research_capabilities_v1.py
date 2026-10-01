@@ -28,11 +28,13 @@ def capabilities(*, data_catalog=None):
             {"id": "volatility_rank", "name": "跨股票按波动率排名选股", "engine": False,
              "public_entry": False, "evidence": "UNSUPPORTED"},
         ],
-        "data": data_catalog if data_catalog is not None else {"status": "UNKNOWN"},
+        "data": deepcopy(data_catalog) if data_catalog is not None else {"status": "UNKNOWN"},
         "qualification": "EXPLORATORY_ONLY",
         "limitations": ["配置可解析不等于账户入口已接通。", "测试通过不等于策略有效。",
                         "止损在收盘确认，下一交易日尝试成交，不能保证按止损线成交。",
-                        "波动率指标与跨股票波动率排名是两项不同能力。"],
+                        "波动率指标与跨股票波动率排名是两项不同能力。",
+                        "market_filter只引用同一股票的价格、成交字段，不代表大盘指数过滤。",
+                        "全范围请求引用登记清单；缓存数量不证明完整历史市场或账户数据合格。"],
     }
     sources = ('research_capabilities_v1.py', 'research_rule_strategy_v3.py', 'strategy_submission_v1.py',
                'research_data_provider_v1.py', 'rule_account_backend_v2.py', 'rule_exit_adapter_v3.py',
@@ -44,6 +46,8 @@ def capabilities(*, data_catalog=None):
     with_exits['hypothesis'] = '均线交叉与成本退出配置示例，效果尚未验证'
     with_exits['exits'].update(stop_loss_pct=.08, take_profit_pct=.2, trailing_activate_pct=.1, trailing_pct=.05)
     result['examples'] = {'ma_cross': baseline, 'ma_cross_with_exits': with_exits}
+    result['examples']['multi_indicator'] = multi_indicator_example(rules)
+    result['full_universe'] = full_universe_capabilities_v1(rules)
     result['acceptance'] = {'s1': 'EXTERNAL_PUBLICATION',
                             'meaning': '发布验收单独查询已有凭证；无有效发布凭证时保持未验收，入口可用不代表验收完成。'}
     result["fingerprint"] = stable_hash(result)
@@ -63,7 +67,25 @@ def render_markdown(snapshot=None):
              "| 功能 | 底层能力 | 公共入口 | 验证证据 |", "|---|---|---|---|"]
     for feature in item["features"]:
         lines.append(f'| {feature["name"]} | {"有" if feature["engine"] else "不支持"} | {"已接通" if feature["public_entry"] else "未接通"} | {feature["evidence"]} |')
-    lines += ["", "## 指标参数", "", item["rules"]["indicator_parameters"], ""]
+    scope = item['full_universe']
+    lines += ["", "## 全范围研究与三个板块", "",
+              "全范围请求由系统扫描登记范围的全部证券，再由策略信号选股；所有证券竞争同一份账户资金。",
+              "缓存股票数、历史清单是否完整、信号数据是否齐全、账户是否可运行分别记录。缺口不会缩成少数示例股票。",
+              "", "| 板块 | 股票代码 | 指标与组合 | 账户与退出 | 工程验收 | 真实全范围验收 |",
+              "|---|---|---|---|---|---|"]
+    for board in scope['boards']:
+        lines.append(f"| {board['name']} | {board['code_prefix']} | 同一指标目录、买卖组合规则 | 共享资金、止损/止盈/移动止损 | {board['engineering_evidence']} | {board['real_evidence']} |")
+    lines += ["", f"三板块共同引用 V3 指标目录，共 {scope['indicator_count']} 类指标，版本与参数以本目录为准。",
+              "历史长度不足或缺少所需字段时显示预热/数据缺口；不能填零、默认无信号或改称已完整扫描。",
+              "交易制度按板块与生效日期执行，指标计算能力一致不代表各板块收益相同。",
+              "", "全范围提交使用 `FULL_UNIVERSE_SUBMISSION_V1` 和登记的 `universe_id`，不手填缩小股票名单。",
+              "公共 `scan` 在既有数据授权内固定规则并检查全目标；prepare、冻结、资格与条件计算同处受限进程（900秒/2048MiB/数值线程1）。",
+              "完成资格检查的股票数和实际计算过条件的股票数分别报告；缺来源、当时状态或公司行动证据时保持UNKNOWN，不是零信号。",
+              "信号检查不创建账户预算，不计算实际成交或收益；重复同一意图只读复用，已中断意图需对账，不能重开免费扫描。",
+              "新版本工程及真实验收独立记录；旧发布包不能覆盖全范围、创业板或新源码。",
+              "现金基准与非可投资的期初等权价格对照分开；五万元不能整手买下全池时不改成只买代码靠前几只。",
+              "完整使用方法见 [全范围研究说明](FULL_UNIVERSE_RESEARCH.md)。",
+              "", "## 指标参数", "", item["rules"]["indicator_parameters"], ""]
     for name, bounds in item["rules"]["window_overrides"].items():
         lines.append(f'- {name}：窗口 {bounds[0]}–{bounds[1]} 个交易日。')
     lines += ["", "## 使用边界", ""] + [f'- {text}' for text in item["limitations"]]
@@ -95,6 +117,75 @@ def example_rule(rules):
                                     'params': {**ma['params'], 'window': window}} for alias, window in [('fast', 10), ('slow', 20)]],
             'exits': {'execution_mode': rules['exit_policy']['execution_mode'], 'stop_loss_pct': None,
                       'take_profit_pct': None, 'trailing_activate_pct': None, 'trailing_pct': None}}
+
+
+def multi_indicator_example(rules):
+    """三类指标加量能字段的合法示例；没有读取收益或挑选参数。"""
+    rule = example_rule(rules)
+    catalog = {item['id']: item for item in rules['indicators']}
+    def node(name, args=(), params=None):
+        return {'op': name, 'args': list(args), 'params': {} if params is None else params}
+    def indicator(alias, key):
+        item = catalog[key]
+        rule['indicator_instances'].append({'instance_id': alias, 'id': key,
+            'version': item['version'], 'params': deepcopy(item['params'])})
+        return node('indicator', [alias], {'output': item['outputs'][0], 'version': item['version']})
+    rsi, volatility = indicator('rsi', 'RSI'), indicator('volatility', 'ROLLING_VOLATILITY')
+    rule['buy'] = node('and', [rule['buy'],
+        node('between', [rsi, node('const', params={'value': 40}), node('const', params={'value': 70})]),
+        node('lt', [volatility, node('const', params={'value': .6})])])
+    volume = node('field', ['volume'])
+    rule['market_filter'] = node('gt', [volume, node('ref', [deepcopy(volume)], {'periods': 1})])
+    rule['hypothesis'] = '均线趋势、RSI区间与波动率组合，加同股量能确认的配置示例，效果未验证'
+    rule['exits'].update(stop_loss_pct=.08, take_profit_pct=.2, trailing_activate_pct=.1, trailing_pct=.05)
+    return rule
+
+
+def full_universe_capabilities_v1(rules=None):
+    """声明新路径覆盖，验收只认其独立来源凭证，不继承旧发布包。"""
+    rules = rule_capabilities() if rules is None else rules
+    sources = ('research_universe_v1.py', 'tdx_research_adapter_v1.py',
+        'universe_data_provider_v1.py', 'universe_account_inputs_v1.py',
+        'board_execution_policy_v1.py', 'universe_signal_scan_v1.py',
+        'universe_account_backend_v1.py', 'universe_dividend_accounting_v1.py', 'universe_rule_exit_v1.py',
+        'universe_submission_v1.py', 'universe_status_v1.py', 'universe_scan_service_v1.py')
+    supported = ['indicator_rules', 'multi_indicator_rules', 'full_range_scan', 'public_signal_scan',
+                 'shared_account', 'cost_stop', 'take_profit', 'trailing_stop',
+                 'cash_dividend', 'suspension_recovery', 'account_audit']
+    return {'version': 'FULL_UNIVERSE_RESEARCH_CAPABILITIES_V1',
+        'submission_version': 'FULL_UNIVERSE_SUBMISSION_V1',
+        'deployment_version': 'FULL_UNIVERSE_DEPLOYMENT_V1',
+        'scan_version': 'UNIVERSE_PUBLIC_SIGNAL_SCAN_V1',
+        'signal_scan_resources': {'memory_mib': 2048, 'wall_seconds': 900, 'numerical_threads': 1,
+                                 'scope': 'PREPARE_FREEZE_QUALIFY_AND_SCAN_IN_ONE_WORKER'},
+        'signal_scan_account_budget': 'NOT_CREATED_OR_CONSUMED',
+        'signal_scan_unknown_policy': 'QUALIFICATION_PROCESSED_IS_NOT_CONDITIONS_EVALUATED',
+        'indicator_catalog_sha256': rules['catalog_sha256'],
+        'indicator_count': len(rules['indicators']),
+        'indicator_ids': [item['id'] for item in rules['indicators']],
+        'indicator_data_policy': 'EXPLICIT_REQUIRED_FIELDS_AND_VALID_BAR_WARMUP',
+        'selection_policy': 'ALL_REGISTERED_TARGETS_THEN_STRATEGY_SIGNALS',
+        'cash_policy': 'ONE_SHARED_ACCOUNT_ACROSS_BOARDS',
+        'cash_payment_policy': 'ACTUAL_PAYMENT_DATE_RECEIVABLE_NOT_SPENDABLE',
+        'exit_price_policy': 'RAW_PLUS_ENTITLED_GROSS_CASH_V1',
+        'tax_collection_time': 'SALE_FILL_MODELED_NOT_BROKER_VERIFIED',
+        'market_filter_scope': rules['market_filter_scope'],
+        'engineering_evidence': 'ENGINEERING_NOT_ACCEPTED', 'real_evidence': 'REAL_NOT_ACCEPTED',
+        'strategy_qualified': False,
+        'boards': [{'id': board, 'name': name, 'code_prefix': prefix,
+                    'supported_features': list(supported),
+                    'indicator_catalog_sha256': rules['catalog_sha256'],
+                    'engineering_evidence': 'ENGINEERING_NOT_ACCEPTED', 'real_evidence': 'REAL_NOT_ACCEPTED'}
+                   for board, name, prefix in [('SZ_MAIN', '深圳主板', '00xxxx.SZ'),
+                                              ('SH_MAIN', '上海主板', '60xxxx.SH'),
+                                              ('CHINEXT', '创业板', '30xxxx.SZ')]],
+        'source_hashes': {name: hashlib.sha256(Path(__file__).with_name(name).read_bytes()).hexdigest()
+                         for name in sources},
+        'unsupported': ['atr_stop', 'volatility_rank', 'STAR', 'BSE', 'BROKER_LIVE_TRADING'],
+        'limitations': ['已登记范围不等于完整历史市场；缺退市/历史清单证据仍保留UNKNOWN。',
+            '新入口的能力接线、工程测试、真实全范围验收、策略有效性分别判断。',
+            '非现金公司行动与未知退市结算仍阻断完整账户结论。',
+            '现金分红按原到账日处理，税款成交时扣收仍为有来源的模型时点。']}
 
 
 def published_acceptance(snapshot=None):

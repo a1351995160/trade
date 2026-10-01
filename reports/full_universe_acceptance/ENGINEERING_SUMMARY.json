@@ -1,0 +1,173 @@
+{
+  "version": "FULL_UNIVERSE_ENGINEERING_DELIVERY_V1",
+  "baseline_commit": "157945d446222b89401736b68c529fd7e3693fce",
+  "scope": {
+    "boards": [
+      "SZ_MAIN",
+      "SH_MAIN",
+      "CHINEXT"
+    ],
+    "feature_start": 20220801,
+    "account_start": 20221101,
+    "account_end": 20240731,
+    "historical_targets": 4607,
+    "cache_matched_targets": 4463,
+    "missing_price_sources": 144,
+    "cache_outside_historical_target": 73
+  },
+  "real_public_checks": {
+    "single": {
+      "scan_id": "3cbeb1bc6e2dc3049de8b7cfb83733899f6d0273ce3e3779b6e01dad0069ee7a",
+      "scan_identity": "94af513a313dbdf7c9a60000030246384007cfee7d9dc3e24918de7da551c125",
+      "input_identity": "a49395dd5959d7742cd6abb5246b891a6f11437207e466f4174e16b6c5178718",
+      "status": "SCAN_DATA_GAPS",
+      "target_count": 4607,
+      "processed_target_count": 4607,
+      "signals_evaluated_target_count": 0,
+      "unknown_target_count": 4607,
+      "by_board": {
+        "SZ_MAIN": {
+          "target_count": 1531,
+          "cached_count": 1467,
+          "account_qualified_count": 0,
+          "identity_unknown_count": 84,
+          "identity_conflict_count": 0
+        },
+        "SH_MAIN": {
+          "target_count": 1715,
+          "cached_count": 1661,
+          "account_qualified_count": 0,
+          "identity_unknown_count": 82,
+          "identity_conflict_count": 0
+        },
+        "CHINEXT": {
+          "target_count": 1361,
+          "cached_count": 1335,
+          "account_qualified_count": 0,
+          "identity_unknown_count": 213,
+          "identity_conflict_count": 0
+        }
+      },
+      "global_gaps": [
+        "UNIVERSE_CORPORATE_COVERAGE_MISSING"
+      ],
+      "wall_seconds": 308.699869,
+      "resource": {
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "",
+        "timed_out": false,
+        "launcher_pid": 9500,
+        "resource_platform": "nt",
+        "windows_job_bound": true,
+        "process_limit": 2,
+        "process_limit_enforced": true
+      },
+      "source_bytes_verified_in_worker": true
+    },
+    "multi": {
+      "scan_id": "a91f24dca620bb50eda432e01da300a11973e476300bacc951101a41324fc328",
+      "scan_identity": "7fc9edd9484d05dd2fa95b79b3cd0aa79fbf3e2deea575b9429d2b2a4a09629c",
+      "input_identity": "a49395dd5959d7742cd6abb5246b891a6f11437207e466f4174e16b6c5178718",
+      "status": "SCAN_DATA_GAPS",
+      "target_count": 4607,
+      "processed_target_count": 4607,
+      "signals_evaluated_target_count": 0,
+      "unknown_target_count": 4607,
+      "by_board": {
+        "SZ_MAIN": {
+          "target_count": 1531,
+          "cached_count": 1467,
+          "account_qualified_count": 0,
+          "identity_unknown_count": 84,
+          "identity_conflict_count": 0
+        },
+        "SH_MAIN": {
+          "target_count": 1715,
+          "cached_count": 1661,
+          "account_qualified_count": 0,
+          "identity_unknown_count": 82,
+          "identity_conflict_count": 0
+        },
+        "CHINEXT": {
+          "target_count": 1361,
+          "cached_count": 1335,
+          "account_qualified_count": 0,
+          "identity_unknown_count": 213,
+          "identity_conflict_count": 0
+        }
+      },
+      "global_gaps": [
+        "UNIVERSE_CORPORATE_COVERAGE_MISSING"
+      ],
+      "wall_seconds": 307.749522,
+      "resource": {
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "",
+        "timed_out": false,
+        "launcher_pid": 30880,
+        "resource_platform": "nt",
+        "windows_job_bound": true,
+        "process_limit": 2,
+        "process_limit_enforced": true
+      },
+      "source_bytes_verified_in_worker": true
+    }
+  },
+  "source_files": {
+    "scripts/probe_all_indicator_strategy_v1.py": "70be6c40c57621925c33e44e6b855b832ad6b97f4c38494903fabd08d2d90dc8",
+    "scripts/verify_fixed_strategy_state_v1.py": "d2bd3223709404a0862f60207ed1427e4feb1cdfd3ad25a733285b1551950cb1",
+    "src/chanlun_trader/engine/conditions_v2.py": "8dca21c32e80e1638afccd5341a3d6b2bd1a3191b9a0eeb0584ba9f6be4c4ff8",
+    "src/chanlun_trader/engine/custom_indicators_v2.py": "41935d278f579653f4394da290eba89c81482ede9a7878bd3217aaaaa7cea331",
+    "src/chanlun_trader/engine/daily_exit_v1.py": "e6a6cfe3d2f88983d039d4a651c577333c2874d1b1b1aebc8fb37a5b8c742479",
+    "src/chanlun_trader/engine/daily_exit_v2.py": "d47f86ba7462281914a7b36f07a026b7bcf641dc56e0649b64fbc747b29a5aad",
+    "src/chanlun_trader/engine/indicator_registry_v2.py": "0eb71b9616d6af25bdfeddeaa582187e3799aff38e77d68ecda0168896d328e0",
+    "src/chanlun_trader/engine/indicators_v2.py": "26bd38a7fc869a9eb7c8121c37af918f902cd80b11eeecd1549eb128fc0ffebe",
+    "src/chanlun_trader/engine/individual_dividend_accounting_v1.py": "90ab925dee89ba3b5a4862fe6c98092ac03c24c7299aa6131902d86841afaa47",
+    "src/chanlun_trader/presentation.py": "c81e91ce4a6bb38df57bf12bed6f7bc9805977760aad3b6e7f439902ea54bdf0",
+    "src/chanlun_trader/research/guard.py": "69f357dbf85db004bf0d5f0131fd0b16d96daf866e0ded7e409faf3042fff8c2",
+    "src/chanlun_trader/research_factory/board_execution_policy_v1.py": "2b8643450f69f092b7303a00ed89fdf2cb4b5a4c128de678461fbd8bd5431a74",
+    "src/chanlun_trader/research_factory/causal_dividend_features_v1.py": "7e4345de56663f9ac907d859843e2a999a148a53a5e79e5e992980ee72be5883",
+    "src/chanlun_trader/research_factory/common.py": "0f68c492ad05e3b8c76adb16d54c8bc18f0d5243fc954634e43f946b0523f911",
+    "src/chanlun_trader/research_factory/exploration_governance.py": "b961e09592f7047e14532f178d1bf6599021fdfe800e37ea241b5365c4e9dc77",
+    "src/chanlun_trader/research_factory/mutation_boundary.py": "1f587ae1faa5abcefbdf87f7ca500359352100b17d2c6eebb3b3909987aac9e0",
+    "src/chanlun_trader/research_factory/research_rule_strategy_v2.py": "ffe52dc2b333ea6dc0ac8fe3ee635119a21a48b669760ff7ee3a64d40eb4d09a",
+    "src/chanlun_trader/research_factory/research_rule_strategy_v3.py": "5d998eb18ecba96e223f5c48ff74cb5b0f1180c202481413e68d76b2b512fc11",
+    "src/chanlun_trader/research_factory/research_universe_v1.py": "50a2e8a0ac6f4303838543b52a003d365b092366e668a65954811c88706de600",
+    "src/chanlun_trader/research_factory/strategy_submission_v1.py": "11b40fae5034054839c5eb4f2dfe2edd5617747d74e5bc429ea2da6c8dcbc067",
+    "src/chanlun_trader/research_factory/tdx_research_adapter_v1.py": "59c57dd3607264b996bd792a1101ffba48aa2df5f64c3a22978b324470838d26",
+    "src/chanlun_trader/research_factory/universe_account_inputs_v1.py": "a0861e2b31b9791c372f87e516b260691ea66a48da8ead41be4943ed1cd54416",
+    "src/chanlun_trader/research_factory/universe_data_provider_v1.py": "729bb985aa769e9291e1737bbc79bad3a2054aa84540d4aa5200c57e1658f790",
+    "src/chanlun_trader/research_factory/universe_scan_service_v1.py": "fe8de9fe633f750ffdd3cc4a4c2dba4951717964597fbfff0db9e104f93057c8",
+    "src/chanlun_trader/research_factory/universe_signal_scan_v1.py": "f1644ae5ab9786ee8ca8bfaf21010765a70312a974c70109a72e21ece481a57a",
+    "src/chanlun_trader/research_factory/universe_submission_v1.py": "f06df6973bfcaa3296bde8f66e775df14d936e8bfc8f5d7cbd43fc17e2d0d1e4",
+    "src/chanlun_trader/synthetic_batch_resources.py": "8604209ae09efd56f56cc6123cba36ed6023a39b8d986af530040c5859ea2ae4"
+  },
+  "local_current_new_suite": {
+    "tests": "374",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0",
+    "time": "362.212"
+  },
+  "frontend": {
+    "tests_passed": 21,
+    "build_passed": true
+  },
+  "real_account_acceptance": false,
+  "strategy_qualified": false,
+  "independent_confirmation": false,
+  "real_paper_days": 0,
+  "freeze_rejected": "UNIVERSE_ACCOUNT_INPUT_NOT_READY:SCAN_DATA_GAPS",
+  "account_budget_created": false,
+  "prior_history_reset": false,
+  "plan_status": "active",
+  "remote_ci": "REQUIRED_BEFORE_MERGE",
+  "limitations": [
+    "完整历史证券清单未知",
+    "历史状态原声明为次日开盘可见的模型",
+    "完整公司行动覆盖和官方除权参考价缺证",
+    "合成规模证据不代表多年真实账户或策略有效"
+  ]
+}

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
-    "test": "node --experimental-strip-types --test src/console/presentation.test.ts src/console/lifecycle.test.ts",
+    "test": "node --experimental-strip-types --test src/console/presentation.test.ts src/console/lifecycle.test.ts src/console/universe.test.ts",
     "preview": "vite preview"
   },
   "dependencies": {

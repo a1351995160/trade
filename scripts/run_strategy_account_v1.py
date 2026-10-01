@@ -24,7 +24,9 @@ REPO=Path(__file__).resolve().parents[1]
 if str(REPO/'scripts') not in sys.path:sys.path.insert(0,str(REPO/'scripts'))
 
 
-def sha(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+def sha(path):
+    with Path(path).open('rb') as stream:
+        return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
 def save(path,value):
@@ -81,6 +83,10 @@ def freeze_config(config,root):
     """只导入可信本地插件/Provider，不调用数据loader、不计算绩效。"""
     root=Path(root)
     if root.exists():raise PermissionError('JOB_ROOT_ALREADY_EXISTS_NO_OVERWRITE')
+    if any(item.get('backend_options', {}).get('backend_version') == 'UNIVERSE_ACCOUNT_BACKEND_V1'
+           for item in config['items']):
+        from chanlun_trader.research_factory.universe_submission_v1 import validate_universe_freeze_scopes
+        validate_universe_freeze_scopes(config)
     import subprocess
     commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=REPO,text=True).strip()
     dirty=bool(subprocess.check_output(['git','status','--porcelain'],cwd=REPO,text=True,encoding='utf-8'))
@@ -97,6 +103,11 @@ def freeze_config(config,root):
             *getattr(loader,'source_files',()),*item.get('dependency_files',[])}
         runtime={**item,'benchmark_id':config.get('benchmark_id'),'source_identity':[commit,dirty],
                  'source_hashes':{str(Path(p).resolve()):sha(p) for p in paths}}
+        if item.get('backend_options', {}).get('backend_version') == 'UNIVERSE_ACCOUNT_BACKEND_V1':
+            mode = config.get('benchmark_mode', 'NONE')
+            if mode not in {'NONE', 'CASH_AND_PRICE_REFERENCE'}:
+                raise ValueError('JOB_UNIVERSE_BENCHMARK_MODE_INVALID')
+            runtime['benchmark_mode'] = mode
         plan=prepare(strategy,backend,runtime);plans[name]=plan;items[name]=runtime
         sources.update(runtime['source_hashes']);sources.update(plan['strategy']['source_hashes'])
         sources.update(plan['backend']['source_hashes'])
@@ -107,6 +118,10 @@ def freeze_config(config,root):
         'source_hashes':sources,'benchmark_id':config.get('benchmark_id'),'resources':{'worker_seconds':900,'memory_mib':2048,
             'total_seconds':min(4500,900*len(plans)),'threads':1,'concurrency':1},
         'prepared_at':datetime.now(timezone.utc).isoformat()}
+    if 'benchmark_mode' in config:
+        if config['benchmark_mode'] not in {'NONE', 'CASH_AND_PRICE_REFERENCE'}:
+            raise ValueError('JOB_UNIVERSE_BENCHMARK_MODE_INVALID')
+        job['benchmark_mode'] = config['benchmark_mode']
     save(root/'JOB.json',job)
     for path,digest in sources.items():
         target=root/'source-archive'/(digest+'_'+Path(path).name);target.parent.mkdir(parents=True,exist_ok=True)
@@ -122,6 +137,13 @@ def validate_sources(job):
         raise PermissionError('JOB_RUNTIME_PLAN_CONFLICT')
     if any(item.get('benchmark_id')!=job.get('benchmark_id') for item in job['items'].values()):
         raise PermissionError('JOB_BENCHMARK_CONFLICT')
+    if any(item.get('benchmark_mode') != job.get('benchmark_mode', 'NONE')
+           for name, item in job['items'].items()
+           if job['plans'][name]['backend']['backend'] == 'UNIVERSE_ACCOUNT_BACKEND_V1'):
+        raise PermissionError('JOB_UNIVERSE_BENCHMARK_CONFLICT')
+    if any(plan['backend']['backend'] == 'UNIVERSE_ACCOUNT_BACKEND_V1' for plan in job['plans'].values()):
+        from chanlun_trader.research_factory.universe_submission_v1 import validate_frozen_universe_scopes
+        validate_frozen_universe_scopes(job)
     for path,digest in job['source_hashes'].items():
         if sha(path)!=digest:raise PermissionError('JOB_FROZEN_SOURCE_CHANGED:'+path)
 
@@ -280,6 +302,13 @@ def write_reports(job,index):
         if 'daily_accounts' in result:return [str(row['date']).replace('-', '') for row in result['daily_accounts']]
         return [str(row['timestamp'])[:10].replace('-','') for row in result['daily_account']]
     control=results.get(job.get('benchmark_id'))
+    universe_reference = None
+    if job.get('benchmark_mode') == 'CASH_AND_PRICE_REFERENCE':
+        from chanlun_trader.research_factory.universe_benchmark_v1 import universe_price_reference
+        item = next(iter(job['items'].values()))
+        data = resolve(item['loader'])(**item['loader_kwargs'])
+        options = item['backend_options']
+        universe_reference = universe_price_reference(data['frame'], options['window'], initial_cash=options['initial_cash'])
     for name,result in results.items():
         if sha(index[name]['result'])!=index[name]['sha256'] or read_json(index[name]['settlement'])['result_sha256']!=index[name]['sha256']:
             raise PermissionError('REPORT_SETTLEMENT_CONFLICT')
@@ -293,6 +322,9 @@ def write_reports(job,index):
             report['benchmark']={'status':'AVAILABLE' if comparable else 'NOT_COMPARABLE',
                 'strategy_id':job['benchmark_id'],'metrics':control['report']['metrics'] if comparable else None}
             report['limitations'].append('日期一致不代表实际风险暴露一致；不据此直接宣称alpha。')
+        if universe_reference is not None:
+            report['benchmark'] = universe_reference
+            report['limitations'].extend(universe_reference['limitations'])
         save(root/(name+'_REPORT.json'),report)
         markdown=render_markdown(report);target=root/(name+'_REPORT.md')
         if target.exists():

@@ -82,6 +82,11 @@ def load_frozen_bundle(path, sha256, input_identity):
     if hashlib.sha256(raw).hexdigest() != sha256:
         raise ValueError('SUBMISSION_SNAPSHOT_CHANGED')
     value = json.loads(raw)
+    if value.get('snapshot_version') == 'UNIVERSE_FROZEN_INPUT_V1':
+        from .universe_submission_v1 import restore_universe_bundle
+        if value['input_identity'] != input_identity:
+            raise ValueError('SUBMISSION_INPUT_IDENTITY_CONFLICT')
+        return restore_universe_bundle(value, source)
     bundle = value['bundle']
     for key in ('daily','turn','states'):
         bundle[key] = _restore_frame(bundle[key], value.get('frame_schemas', {}).get(key))
@@ -107,6 +112,9 @@ class StrategySubmissionV1:
         self.capabilities = capabilities_snapshot or (lambda: capabilities(data_catalog=self.provider.catalog()))
 
     def preview(self, request):
+        if isinstance(request, dict) and request.get('version') == 'FULL_UNIVERSE_SUBMISSION_V1':
+            from .universe_submission_v1 import preview_universe
+            return preview_universe(self, request)
         if not isinstance(request, dict) or set(request) != REQUEST_FIELDS:
             raise ValueError('SUBMISSION_REQUEST_FIELDS_INVALID')
         request = deepcopy(request)
@@ -185,20 +193,36 @@ class StrategySubmissionV1:
         immutable(root / 'FREEZE_INTENT.json', {'task_id': task_id, 'preview_identity': preview_identity,
             'objective_id': authority['objective_id'], 'automatic_retry': False})
         try:
-            prepared = self.provider.prepare(normalized['dataset_id'], symbols=normalized['symbols'],
-                feature_start=normalized['feature_start'], account_start=normalized['account_start'],
-                account_end=normalized['account_end'], purpose=normalized['purpose'],
-                required_fields=preview['required_fields'], authorization=authority['data_authorization'])
+            full_universe = normalized.get('version') == 'FULL_UNIVERSE_SUBMISSION_V1'
+            if full_universe:
+                # 数据准备与必要条件计算全部由900秒/2048MiB受限进程完成。
+                # 此处只接收其固定元数据，不在宿主进程再次加载全市场表。
+                scanned = self.scan(request, preview_identity)
+                if scanned.get('coverage', {}).get('account_data_ready') is not True:
+                    raise ValueError('UNIVERSE_ACCOUNT_INPUT_NOT_READY:' + scanned['status'])
+                from .universe_submission_v1 import adopt_frozen_universe_bundle
+                from .universe_scan_service_v1 import validated_scan_snapshot
+                scanned_input = validated_scan_snapshot(self, scanned)
+                prepared, snapshot_path, frame_dependencies = adopt_frozen_universe_bundle(
+                    scanned_input['path'], root, input_identity=scanned['input_identity'],
+                    snapshot_sha256=scanned_input['sha256'])
+            else:
+                prepared = self.provider.prepare(normalized['dataset_id'], symbols=normalized['symbols'],
+                    feature_start=normalized['feature_start'], account_start=normalized['account_start'],
+                    account_end=normalized['account_end'], purpose=normalized['purpose'],
+                    required_fields=preview['required_fields'], authorization=authority['data_authorization'])
         except Exception as exc:
             immutable(root / 'FREEZE_FAILURE.json', {'type': type(exc).__name__, 'message': str(exc),
                 'automatic_retry': False})
             raise
-        snapshot = deepcopy(prepared)
-        snapshot['frame_schemas'] = frozen_frame_schemas(prepared['bundle'])
-        for key in ('daily','turn','states'):
-            snapshot['bundle'][key] = snapshot['bundle'][key].to_dict('records')
-        snapshot_path = root / 'INPUT.json'
-        immutable(snapshot_path, snapshot)
+        if not full_universe:
+            frame_dependencies = []
+            snapshot = deepcopy(prepared)
+            snapshot['frame_schemas'] = frozen_frame_schemas(prepared['bundle'])
+            for key in ('daily','turn','states'):
+                snapshot['bundle'][key] = snapshot['bundle'][key].to_dict('records')
+            snapshot_path = root / 'INPUT.json'
+            immutable(snapshot_path, snapshot)
         digest = hashlib.sha256(snapshot_path.read_bytes()).hexdigest()
         items = []
         for cost in normalized['costs']:
@@ -206,12 +230,19 @@ class StrategySubmissionV1:
                 'factory_kwargs': {'payload': normalized['rule'], 'strategy_id': normalized['strategy_id'] + '_' + cost},
                 'loader': MODULE + ':load_frozen_bundle',
                 'loader_kwargs': {'path': str(snapshot_path), 'sha256': digest, 'input_identity': prepared['input_identity']},
-                'dependency_files': [str(snapshot_path), str(root / 'PREVIEW.json'),
+                'dependency_files': [str(snapshot_path), str(root / 'PREVIEW.json'), *frame_dependencies,
                     str(Path(__file__).with_name('research_capabilities_v1.py')),
                     str(Path(__file__).with_name('research_data_provider_v1.py'))],
                 'backend_options': {'window': prepared['window'], 'costs': cost,
                     'initial_cash': normalized['initial_cash'], 'max_positions': normalized['max_positions'],
                     'max_symbol_exposure_bps': normalized['max_symbol_exposure_bps']}})
+            if full_universe:
+                items[-1]['backend_options'].update(backend_version='UNIVERSE_ACCOUNT_BACKEND_V1',
+                    checkpoint_path=str(root / 'account' / (normalized['strategy_id'] + '_' + cost + '_CHECKPOINT.json')))
+                items[-1]['dependency_files'].extend(str(Path(__file__).with_name(name)) for name in
+                    ('universe_data_provider_v1.py', 'tdx_research_adapter_v1.py', 'research_universe_v1.py',
+                     'universe_submission_v1.py', 'universe_account_inputs_v1.py', 'universe_benchmark_v1.py',
+                     'universe_execution_recovery_v1.py', 'universe_status_v1.py', 'universe_scan_service_v1.py'))
         benchmark_id = None
         if normalized['benchmark'] == 'FULL_POOL_BUY_HOLD':
             from .research_benchmark_v1 import benchmark_payload
@@ -223,6 +254,8 @@ class StrategySubmissionV1:
             items.append(benchmark)
         config = {'objective_id': authority['objective_id'], 'budget_path': str(authority['budget_path']),
                   'input_identity': prepared['input_identity'], 'items': items, 'benchmark_id': benchmark_id}
+        if full_universe:
+            config['benchmark_mode'] = normalized['benchmark']
         immutable(root / 'PREVIEW.json', preview)
         immutable(root / 'CONFIG.json', config)
         from scripts.run_strategy_account_v1 import freeze_config
@@ -233,6 +266,8 @@ class StrategySubmissionV1:
             'benchmark': normalized['benchmark'], 'qualification': prepared['qualification'],
             'job_sha256': hashlib.sha256((root / 'account' / 'JOB.json').read_bytes()).hexdigest(),
             'plan_ids': {name: plan['plan_id'] for name, plan in read_json(root / 'account' / 'JOB.json')['plans'].items()}}
+        if full_universe:
+            receipt['submission_version'] = 'FULL_UNIVERSE_SUBMISSION_V1'
         immutable(root / 'TASK.json', receipt)
         return receipt
 
@@ -357,6 +392,13 @@ class StrategySubmissionV1:
         from .research_evidence_v1 import verify_job_evidence
         task = self._task(task_id)
         path = Path(task['job_path'])
+        metadata = {}
+        if task.get('submission_version') == 'FULL_UNIVERSE_SUBMISSION_V1':
+            from .universe_status_v1 import universe_task_metadata_v1
+            metadata = universe_task_metadata_v1(self, task_id)
+            job = read_json(path)
+            if task['plan_ids'] != {name: plan['plan_id'] for name, plan in job['plans'].items()}:
+                raise ValueError('SUBMISSION_FROZEN_PLAN_CHANGED')
         execute_accounts(path, recover=True)
         job = read_json(path)
         checks = {name: verify_job_evidence(path, name=name) for name in job['plans']}
@@ -367,8 +409,24 @@ class StrategySubmissionV1:
             return {'task_id': task_id, 'status': 'EVIDENCE_BLOCKED', 'verification': evidence,
                     'strategy_qualified': False, 'reports': None}
         reports = report_account_job(path)
-        return {'task_id': task_id, 'status': 'ACCOUNT_VERIFIED', 'verification': evidence,
+        return {**metadata, 'task_id': task_id, 'status': 'ACCOUNT_VERIFIED', 'verification': evidence,
                 'strategy_qualified': False, 'reports': reports}
+
+    def diagnose(self, request, preview_identity):
+        from .universe_status_v1 import diagnose_universe
+        return diagnose_universe(self, request, preview_identity)
+
+    def scan(self, request, preview_identity):
+        from .universe_scan_service_v1 import scan_universe
+        return scan_universe(self, request, preview_identity)
+
+    def resume(self, task_id):
+        from .universe_execution_recovery_v1 import resume_universe_job
+        task = self._task(task_id)
+        if hashlib.sha256(Path(task['job_path']).read_bytes()).hexdigest() != task['job_sha256']:
+            raise ValueError('SUBMISSION_FROZEN_JOB_CHANGED')
+        resume_universe_job(task['job_path'])
+        return self.start(task_id)
 
     def status(self, task_id):
         from scripts.run_strategy_account_v1 import status
@@ -381,7 +439,9 @@ class StrategySubmissionV1:
         evidence = read_json(evidence_path) if evidence_path.exists() else None
         if evidence is not None and evidence.get('job_sha256') != task['job_sha256']:
             raise ValueError('SUBMISSION_VERIFICATION_JOB_CHANGED')
-        return {**state, 'task_id': task_id,
+        from .universe_status_v1 import universe_task_metadata_v1
+        metadata = universe_task_metadata_v1(self, task_id) if task.get('submission_version') == 'FULL_UNIVERSE_SUBMISSION_V1' else {}
+        return {**metadata, **state, 'task_id': task_id,
                 'recorded_verification': evidence, 'freshly_reverified': False,
                 'reports': {name: str(path.parent / (name + '_REPORT.md'))
                             for name in task['plan_ids'] if (path.parent / (name + '_REPORT.md')).exists()},

@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import StrategySubmission from './StrategySubmission.vue'
 import { canCreateBinding, canOperate, dataSummary, lifecycleRequest, lifecycleState, objectStatus, observationDays, qualificationText, sourceText } from '../lifecycle'
 import type { LifecycleRecord, LifecycleView } from '../lifecycle'
+import { universeCoverage, universeRunState } from '../universe'
 
 const view = ref<LifecycleView | null>(null)
 const error = ref('')
@@ -70,7 +71,7 @@ onMounted(refresh)
     <p v-if="!view && !busy">尚未装配生命周期工作区。请使用显式部署配置启动控制台。</p>
     <template v-if="view">
       <div class="evidence-grid">
-        <article><h3>工程能力</h3><p>入口已接通</p><small>具体功能以各业务对象状态为准。</small></article>
+        <article><h3>工程能力</h3><p>查看入口与验收范围</p><small>旧版本通过不能代替新全范围或创业板验收。</small></article>
         <article><h3>测试验证</h3><p>查看交付测试报告</p><small>页面加载成功不能替代测试通过。</small></article>
         <article><h3>真实观察</h3><p>按各账户分别记录</p><small>不合计独立账户，不把合成天数算入。</small></article>
         <article><h3>策略有效性</h3><p>只认原资格服务</p><small>任务完成或回测盈利均不自动授予资格。</small></article>
@@ -81,6 +82,13 @@ onMounted(refresh)
       <article v-for="(record, id) in view.bindings" :key="id" class="object-card">
         <h4>{{ id }} <span>{{ objectStatus(record) }}</span></h4>
         <p v-if="dataSummary(record)">{{ dataSummary(record) }}</p>
+        <section v-if="record.coverage" aria-label="全范围研究覆盖">
+          <p>全范围目标 {{ universeCoverage(record).target }} 只；{{ universeCoverage(record).completeness }}。{{ universeCoverage(record).account }}。</p>
+          <table><thead><tr><th>板块</th><th>目标</th><th>缓存</th><th>账户合格</th></tr></thead><tbody>
+            <tr v-for="board in universeCoverage(record).boards" :key="board.id"><td>{{ board.name }}</td><td>{{ board.target }}</td><td>{{ board.cached }}</td><td>{{ board.qualified }}</td></tr>
+          </tbody></table>
+          <p>{{ universeRunState(record.status) }}。完成扫描、完成账目核对和取得策略资格分别记录。</p>
+        </section>
         <dl><div><dt>来源</dt><dd>{{ sourceText(record) }}</dd></div><div><dt>真实观察</dt><dd>{{ observationDays(record) }}</dd></div>
           <div><dt>资格</dt><dd>{{ qualificationText(record) }}</dd></div></dl>
         <p v-if="record.reason">停因或等待：{{ record.reason }}</p>

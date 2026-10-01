@@ -104,9 +104,19 @@ def test_publication_fails_closed_on_tamper_or_incomplete_evidence(tmp_path, cha
     assert _published_acceptance(tmp_path, core)['status'] == 'NOT_ACCEPTED'
 
 
-def test_checked_in_publication_matches_current_sources():
+def test_checked_in_old_publication_remains_verifiable_but_does_not_cover_new_sources():
     from chanlun_trader.research_factory.research_capabilities_v1 import published_acceptance
+    repo = Path(__file__).resolve().parents[2]
+    receipt = json.loads((repo / 'reports/trusted_workflow_acceptance/PUBLISHED_ACCEPTANCE.json').read_bytes())
+    reference = receipt['cases'][0]['preview']['path']
+    archived_core = json.loads((repo / reference).read_bytes())['capabilities']
+    assert receipt['source_hashes'] == archived_core['source_hashes']
+    archived = _published_acceptance(repo, archived_core)
+    assert archived['status'] == 'PUBLISHED_METADATA_VERIFIED', archived
+    assert archived['case_count'] == 6 and archived['account_count'] == 18
+    assert archived['strategy_qualified'] is False
+    assert receipt['source_hashes'] != capabilities()['source_hashes']
     evidence = published_acceptance()
-    assert evidence['status'] == 'PUBLISHED_METADATA_VERIFIED', evidence
-    assert evidence['case_count'] == 6 and evidence['account_count'] == 18
+    assert evidence['status'] == 'NOT_ACCEPTED', evidence
+    assert evidence['reason'] == 'PUBLICATION_SOURCE_CHANGED'
     assert evidence['strategy_qualified'] is False

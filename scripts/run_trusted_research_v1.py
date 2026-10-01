@@ -19,15 +19,15 @@ def parser():
     cli = argparse.ArgumentParser(description=__doc__)
     commands = cli.add_subparsers(dest='operation', required=True)
     commands.add_parser('publication', help='只读查询固定发布验收包，不加载数据或执行服务')
-    for operation in ('capabilities', 'preview', 'freeze', 'approval', 'approve', 'start', 'status'):
+    for operation in ('capabilities', 'preview', 'diagnose', 'scan', 'freeze', 'approval', 'approve', 'start', 'resume', 'status'):
         command = commands.add_parser(operation)
         command.add_argument('--workspace-root', required=True)
         command.add_argument('--deployment', required=True, help='维护者登记的 JSON 配置')
-        if operation in {'preview', 'freeze'}:
+        if operation in {'preview', 'diagnose', 'scan', 'freeze'}:
             command.add_argument('--request', required=True, help='声明式策略 JSON')
-        if operation in {'approval', 'approve', 'start', 'status'}:
+        if operation in {'approval', 'approve', 'start', 'resume', 'status'}:
             command.add_argument('--task-id', required=True)
-        if operation in {'freeze', 'approve'}:
+        if operation in {'diagnose', 'scan', 'freeze', 'approve'}:
             command.add_argument('--preview-identity', required=True)
     return cli
 
@@ -43,9 +43,9 @@ def main(argv=None):
         service = build_submission_service(args.workspace_root, config)
         if args.operation == 'capabilities':
             result = service.capabilities()
-        elif args.operation in {'preview', 'freeze'}:
+        elif args.operation in {'preview', 'diagnose', 'scan', 'freeze'}:
             request = json.loads(Path(args.request).read_text(encoding='utf-8-sig'))
-            result = service.preview(request) if args.operation == 'preview' else service.freeze(request, args.preview_identity)
+            result = service.preview(request) if args.operation == 'preview' else getattr(service, args.operation)(request, args.preview_identity)
         elif args.operation == 'approval':
             result = service.approval_preview(args.task_id)
         elif args.operation == 'approve':

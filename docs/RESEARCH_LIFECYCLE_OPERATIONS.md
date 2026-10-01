@@ -67,7 +67,29 @@
 
 ## 公共固定入口与DIAGNOSIS_V3接手
 
-固定规则的无AI入口为 `scripts/run_trusted_research_v1.py`，顺序为 `capabilities → preview → freeze → approval → approve → start → status`；参数示例见[用户说明](AUTONOMOUS_RESEARCH_USER_GUIDE.md)。能力说明用 `python scripts/generate_research_capabilities_v1.py --check` 比对同源生成内容并逐项调用公共preview，未读取行情或授予执行许可。当前S1仍缺B验收，CI预检不能替代真实账户验收。
+固定规则的无AI入口为 `scripts/run_trusted_research_v1.py`，顺序为 `capabilities → preview → freeze → approval → approve → start → status`；参数示例见[用户说明](AUTONOMOUS_RESEARCH_USER_GUIDE.md)。能力说明用 `python scripts/generate_research_capabilities_v1.py --check` 比对同源生成内容，并逐项调用旧请求及全范围请求的公共preview，未读取行情或授予执行许可。旧V3的限定发布凭证与新全范围验收独立，CI预检不能代替真实账户、创业板或全范围验收。
+
+### 全范围部署与接手
+
+采用 `FULL_UNIVERSE_DEPLOYMENT_V1` 的部署选择登记的 TDX 全范围 Provider；模型和页面提交 `FULL_UNIVERSE_SUBMISSION_V1`，只引用登记的 `dataset_id` / `universe_id`，不能提交缩小股票范围或任意源文件路径。旧部署与无版本的指定股票请求继续走原 Provider 与后端，不能静默迁移。完整说明见[全范围研究](FULL_UNIVERSE_RESEARCH.md)。
+
+全范围预览返回三板块目标数量、缓存覆盖和历史清单完整性；冻结保存所有登记来源、窗口、板块制度、规则、资金及账户准备结果。完整性未知、缺状态、缺参考昨收、未知公司行动和退市结算应明确报告等待/阻断，不能把目标数量缩成合格小池来关闭任务。只有信号准备时不能输出账户盈利。
+
+全范围的 `diagnose` 在相同预览身份与既有数据授权内逐目标检查覆盖，返回 `ACCOUNT_INPUTS_READY` 或 `DATA_GAPS`，不执行信号、不创建账户预算。诊断身份含授权与范围；重复调用只读复用已有回执。全范围 `freeze` 采用公共 `scan` 已在受限工作进程保存的冻结输入；主进程通过 `validated_scan_snapshot` 核对扫描回执、INPUT元信息哈希和范围，再采用表文件，不重新 `provider.prepare` 或加载全市场表。真正的账户worker仍重新验证原件与输入。账户 `status` 的覆盖信息来自绑定的 `TASK/PREVIEW/JOB/INPUT` JSON，不打开行情、不调用 `prepare`、不重新核账，也不授予策略资格。
+
+公共 `scan` 保存 `SCAN_INTENT.json` 后，在真正受限的工作进程里完成Provider准备、输入冻结、全目标资格与必要的 V3 条件计算。主进程不先加载全市场行情；内存2048MiB、最多900秒和一个数值线程共同覆盖上述阶段。维护者登记的原元数据哈希与 `REGISTRATION_SNAPSHOT_V1` 副本哈希分开，不改写原来源；工作进程核验原登记文件的路径、stat、原字节SHA及解析内容，再用原文件注册，副本只作内容回执。即使原登记采用不同JSON键顺序或BOM，诊断与扫描输入身份仍一致，不能放宽身份比较来掩盖序列化变化。物理日期守卫、原件哈希及来源身份仍由提供器检查。
+
+扫描记录归属于既有 `objective_id` 和同一规则、日期、全部目标范围。结果逐股保留未知原因；`processed_target_count` 表示资格检查分母，`signals_evaluated_target_count` / `signals_evaluated_session_count` 表示实际条件计算。没有合格目标时不计算指标，`condition_counts=null`；它不是零信号。条件命中不是账户决策，不能据此宣称止损成交、账户收益、独立验证或正式资格。
+
+重复扫描只核对既有意图与回执并读取记录，`recorded_only=true`、`content_reread=false`，不会重新授予扫描机会，也不创建/消费账户预算。源码/登记或文件状态变化拒绝复用；`START`存在但回执未完成时需对账，不删除意图、不重开目录。受限工作进程退出或超时输出 `SCAN_BLOCKED`，完整范围没有凭空变成小股票池。
+
+固定两规则验收用 `scripts/run_full_universe_acceptance_v1.py`。默认只诊断；明确 `--execute` 后仍必须匹配原账户许可，经公共 `preview/diagnose/freeze/approval/approve/start` 执行。单类均线与三类组合规则在任何行情读取前保存，四个正常/压力作业都共用全目标范围和五万元资金口径。报告按身份追加，失败记录保留；发现原冻结只完成一部分时返回恢复需求，不另建任务、重置预算或改规则重试。合成测试通过与真实全范围验收分别报告。
+
+操作方接手沿用同一任务、冻结输入和预算回执。逐日扫描会先汇总全部目标，再竞争同一份账户资金；分片不是独立账户。恢复沿用已保存结果和未完成步骤，已消费预算不能回退。资料缺口与工程异常不归类为策略亏损；合成规模与恢复测试不增加真实观察天数。
+
+新版本公共账户手动恢复入口是 `run_trusted_research_v1.py resume --task-id <原任务>` 和工作台“核对并恢复原全范围账户任务”。查询本身不恢复；按钮只针对 `UNIVERSE_TASK_METADATA_V1` 下的 `UNSETTLED_CHECK_WORKER`。服务必须重新证明原工作进程已退出、原逐日保存记录和输入身份有效、授权仍在期限内，且沿用原预算与原900秒剩余额度；无法证明就拒绝。旧任务不显示这个新版本恢复按钮，信号扫描也不能调用它重新计算。
+
+新全范围能力查询保留 `ENGINEERING_NOT_ACCEPTED` 与 `REAL_NOT_ACCEPTED`，直至本版本的完整证据可核对；旧9源码发布包不能用于新来源、新账户语义或创业板。更换源码时不重写旧凭证为通过，不自动重启正在使用旧版本的任务。
 
 现有有限任务CLI仍为：
 
