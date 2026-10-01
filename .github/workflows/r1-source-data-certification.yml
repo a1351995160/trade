@@ -23,7 +23,7 @@ jobs:
             python: "3.13"
             pythonpath: tests/isolation;src
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    timeout-minutes: 40
     env:
       PYTHONPATH: ${{ matrix.pythonpath }}
       CHANLUN_TEST_ISOLATION: "1"

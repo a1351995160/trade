@@ -671,24 +671,24 @@ def research_submission_approval(task_id: str, request: Request) -> dict:
 def research_submission_action(action: str, request: Request, payload: dict = Body(...)) -> dict:
     _require_local_console_request(request)
     service = _submission_service(request)
-    if action not in {'preview', 'freeze', 'approve', 'start'}:
+    if action not in {'preview', 'diagnose', 'scan', 'freeze', 'approve', 'start', 'resume'}:
         raise HTTPException(status_code=404, detail='SUBMISSION_ACTION_UNKNOWN')
     if action != 'preview' and not request.app.state.execution_policy.trusted_research_allowed:
         raise HTTPException(status_code=403, detail='SUBMISSION_READ_ONLY')
-    expected = {'request'} if action == 'preview' else {'request', 'preview_identity'} if action == 'freeze' else {'task_id', 'preview_identity'} if action == 'approve' else {'task_id'}
+    expected = {'request'} if action == 'preview' else {'request', 'preview_identity'} if action in {'diagnose', 'scan', 'freeze'} else {'task_id', 'preview_identity'} if action == 'approve' else {'task_id'}
     if set(payload) != expected:
         raise HTTPException(status_code=400, detail='SUBMISSION_ACTION_FIELDS')
     try:
         if action == 'preview':
             return service.preview(payload['request'])
-        if action == 'freeze':
-            return service.freeze(payload['request'], payload['preview_identity'])
+        if action in {'diagnose', 'scan', 'freeze'}:
+            return getattr(service, action)(payload['request'], payload['preview_identity'])
         if action == 'approve':
             return service.approve(payload['task_id'], payload['preview_identity'])
-        return service.start(payload['task_id'])
+        return getattr(service, action)(payload['task_id'])
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail={'code': 'SUBMISSION_NOT_AUTHORIZED', 'reason': str(exc)}) from exc
-    except (ValueError, OSError, KeyError, TypeError) as exc:
+    except (ValueError, OSError, KeyError, TypeError, RuntimeError) as exc:
         raise HTTPException(status_code=409, detail={'code': 'SUBMISSION_NOT_READY', 'reason': str(exc)}) from exc
 
 
@@ -1461,7 +1461,7 @@ def create_app(research_root: str | Path | None = None, execution_policy: Execut
                     dry_tick = isinstance(body, dict) and body.get("dry_run") is True
                 except ValueError:
                     pass
-            trusted_path = (path in {'/api/research-submission/preview', '/api/research-submission/freeze', '/api/research-submission/approve', '/api/research-submission/start'} and submission_service is not None
+            trusted_path = (path in {'/api/research-submission/preview', '/api/research-submission/diagnose', '/api/research-submission/scan', '/api/research-submission/freeze', '/api/research-submission/approve', '/api/research-submission/start', '/api/research-submission/resume'} and submission_service is not None
                             or path in {'/api/research-lifecycle/preview', '/api/research-lifecycle/action'} and lifecycle_service is not None)
             if not policy.governance_allowed and not dry_tick and not (policy.trusted_research_allowed and trusted_path):
                 return deny("EXECUTION_POLICY_READ_ONLY")

@@ -14,7 +14,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        suite: [workflow, formal-scope]
+        suite: [workflow, formal-scope, full-universe]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 150
     env:
@@ -89,8 +89,40 @@ jobs:
           tests/research_factory/test_formal_rule_adapter_v2.py
           --basetemp=${{ runner.temp }}/formal-scope-tests
           --junitxml=completion-tests.xml
+      - name: Verify full historical universe and shared account contracts
+        if: matrix.suite == 'full-universe'
+        run: >-
+          python -m pytest -q
+          tests/research_factory/test_research_universe_v1.py
+          tests/research_factory/test_tdx_research_adapter_v1.py
+          tests/research_factory/test_prepare_full_universe_data_v1.py
+          tests/research_factory/test_prepare_full_universe_states_v1.py
+          tests/research_factory/test_universe_account_inputs_v1.py
+          tests/research_factory/test_universe_dividend_accounting_v1.py
+          tests/research_factory/test_board_execution_policy_v1.py
+          tests/research_factory/test_universe_signal_scan_v1.py
+          tests/research_factory/test_chinext_entry_parity_v1.py
+          tests/research_factory/test_universe_account_backend_v1.py
+          tests/research_factory/test_universe_execution_recovery_v1.py
+          tests/research_factory/test_universe_public_recovery_v1.py
+          tests/research_factory/test_universe_frozen_scope_v1.py
+          tests/research_factory/test_universe_frozen_io_v1.py
+          tests/research_factory/test_universe_evidence_v1.py
+          tests/research_factory/test_universe_benchmark_v1.py
+          tests/research_factory/test_universe_submission_v1.py
+          tests/research_factory/test_universe_scan_service_v1.py
+          tests/research_factory/test_universe_capabilities_v1.py
+          tests/research_factory/test_full_universe_acceptance_v1.py
+          tests/research_factory/test_universe_resources_v1.py
+          --basetemp=${{ runner.temp }}/full-universe-tests
+          --junitxml=completion-tests.xml
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: completion-${{ matrix.os }}-${{ matrix.suite }}
           path: completion-tests.xml
+      - uses: actions/upload-artifact@v4
+        if: always() && matrix.suite == 'full-universe'
+        with:
+          name: full-universe-resource-${{ matrix.os }}
+          path: ${{ runner.temp }}/full-universe-tests/**/SCALE_RESOURCE_EVIDENCE.json

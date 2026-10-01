@@ -35,3 +35,6 @@
 # Failure transcripts retain pytest's original diagnostic indentation.
 /reports/trusted-new-critical-tests.xml -whitespace
 /reports/trusted-process-fix-tests.xml -whitespace
+
+# 新板块制度元数据绑定实现字节，Windows/Linux及主目录保持同一原件。
+/src/chanlun_trader/research_factory/board_execution_policy_v1.py text eol=lf

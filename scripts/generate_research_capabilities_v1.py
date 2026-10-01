@@ -16,7 +16,13 @@ from chanlun_trader.research_factory.strategy_submission_v1 import StrategySubmi
 class MetadataOnlyProvider:
     def catalog(self):
         return {'datasets': [{'dataset_id': 'documentation_example', 'symbols': ['000003.SZ', '600004.SH'],
-                             'start': 20230102, 'end': 20231229, 'metadata_hash': 'DOCUMENTATION_METADATA_ONLY'}]}
+                             'start': 20230102, 'end': 20231229, 'metadata_hash': 'DOCUMENTATION_METADATA_ONLY'},
+            {'dataset_id': 'documentation_full_universe', 'universe_id': 'documentation_three_boards',
+             'adapter': 'TDX_FULL_UNIVERSE_V1', 'target_symbols': ['000003.SZ', '300004.SZ', '600004.SH'],
+             'target_count': 3, 'by_board': {board: {'target_count': 1, 'cached_count': 0}
+                for board in ('SZ_MAIN', 'SH_MAIN', 'CHINEXT')},
+             'completeness': 'UNIVERSE_COMPLETENESS_UNKNOWN', 'start': 20230102, 'end': 20231229,
+             'metadata_hash': 'DOCUMENTATION_METADATA_ONLY'}]}
 
     def prepare(self, *args, **kwargs):
         raise AssertionError('DOCUMENTATION_MUST_NOT_READ_MARKET_DATA')
@@ -39,7 +45,17 @@ def check_examples(snapshot):
             preview = service.preview(request)
             if preview['status'] != 'PREVIEW_ONLY_CONTENT_AND_AUTHORIZATION_NOT_CHECKED':
                 raise ValueError('DOCUMENTATION_PREVIEW_BOUNDARY_CHANGED')
-            results[name] = {'status': preview['status'], 'rule_identity': preview['rule_identity']}
+            full_request = {key: value for key, value in request.items() if key != 'symbols'}
+            full_request.update(version='FULL_UNIVERSE_SUBMISSION_V1',
+                dataset_id='documentation_full_universe', universe_id='documentation_three_boards',
+                benchmark='CASH_AND_PRICE_REFERENCE')
+            full_preview = service.preview(full_request)
+            if (full_preview['status'] != preview['status'] or full_preview['coverage']['target_count'] != 3
+                    or full_preview['rule_identity'] != preview['rule_identity']):
+                raise ValueError('DOCUMENTATION_FULL_UNIVERSE_PREVIEW_BOUNDARY_CHANGED')
+            results[name] = {'status': preview['status'], 'rule_identity': preview['rule_identity'],
+                'full_universe': {'status': full_preview['status'], 'target_count': 3,
+                                  'completeness': full_preview['coverage']['completeness']}}
         if list(root.iterdir()):
             raise ValueError('DOCUMENTATION_PREVIEW_CREATED_ARTIFACTS')
     return results

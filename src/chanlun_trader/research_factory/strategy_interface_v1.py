@@ -121,15 +121,22 @@ def validate_decision(value: Decision, requirements: Requirements) -> None:
 
 
 def prepare(strategy: Strategy, backend, runtime=None) -> dict:
-    """无行情、无预算写入的接入检查；不支持的能力在执行前拒绝。"""
+    """不加载行情表、不写预算的接入检查；不支持的能力在执行前拒绝。"""
     if hasattr(strategy,'validate'):strategy.validate()
     if hasattr(backend,'validate_strategy'):backend.validate_strategy(strategy)
     declaration=describe(strategy)
     backend.check(strategy.requirements)
     plan={'strategy':declaration,'backend':backend.describe()}
     if runtime is not None:
+        if (plan['backend']['backend'] == 'UNIVERSE_ACCOUNT_BACKEND_V1'
+                and any(Path(path).suffix == '.parquet' for path in runtime['source_hashes'])):
+            from .universe_submission_v1 import validate_universe_freeze_scopes
+            validate_universe_freeze_scopes({'items': [runtime],
+                'input_identity': runtime['loader_kwargs']['input_identity']})
         for path,digest in runtime['source_hashes'].items():
-            if hashlib.sha256(Path(path).read_bytes()).hexdigest()!=digest:raise PermissionError('RUNTIME_SOURCE_CHANGED')
+            with Path(path).open('rb') as stream:
+                actual = hashlib.file_digest(stream, 'sha256').hexdigest()
+            if actual!=digest:raise PermissionError('RUNTIME_SOURCE_CHANGED')
         plan['runtime']=deepcopy(runtime)
     return {**plan,'plan_id':stable_hash(plan)}
 
@@ -146,6 +153,15 @@ def backend_for(strategy,options=None):
             backend.check(strategy.requirements)
             return backend
         if {'RESEARCH_RULE_STRATEGY_V2', 'RESEARCH_RULE_STRATEGY_V3'} & set(strategy.requirements.capabilities):
+            if options.get('backend_version') == 'UNIVERSE_ACCOUNT_BACKEND_V1':
+                from .universe_account_backend_v1 import UniverseAccountBackendV1
+                if 'window' not in options or set(options) - {'window', 'costs', 'initial_cash',
+                        'max_positions', 'max_symbol_exposure_bps', 'backend_version', 'batch_size', 'checkpoint_path'}:
+                    raise ValueError('UNIVERSE_BACKEND_OPTIONS_INVALID')
+                backend = UniverseAccountBackendV1(**options)
+                backend.validate_strategy(strategy)
+                backend.check(strategy.requirements)
+                return backend
             from .rule_account_backend_v2 import RuleAccountBackendV2
             if 'window' not in options or set(options) - {'window', 'costs', 'initial_cash',
                     'max_positions', 'max_symbol_exposure_bps', 'execution_profile'}:

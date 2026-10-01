@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from ..research.guard import FinalTestAccessViolation
 from .budget import BudgetLedgerMismatchError, SearchBudgetRegistryV1
 from .common import stable_hash
 
@@ -33,7 +34,8 @@ def _json(path):
 
 
 def _sha(path):
-    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    with Path(path).open('rb') as stream:
+        return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
 def _verify_pending_exit(day, lot_id, lot, *, bars, states, fills, orders, strategy_id, all_lots=None, prior_decisions=()):
@@ -292,6 +294,9 @@ def verify_job_evidence(job_path, *, name):
         item = job["items"][name]
         _require(item == plan["runtime"], "RUNTIME_PLAN_CONFLICT")
         _require(item["loader"] == "chanlun_trader.research_factory.strategy_submission_v1:load_frozen_bundle", "OFFLINE_INPUT_LOADER_UNSUPPORTED")
+        if plan['backend']['backend'] == 'UNIVERSE_ACCOUNT_BACKEND_V1':
+            from .universe_submission_v1 import validate_frozen_universe_scopes
+            validate_frozen_universe_scopes(job, include_archives=True)
         receipt = _json(root / "CONFIRMATION.json")
         _require(receipt["receipt_id"] == stable_hash({key: value for key, value in receipt.items() if key != "receipt_id"}), "RECEIPT_HASH_CONFLICT")
         _require(receipt["strategy_plans"] == job["plans"] and receipt["objective_id"] == job["objective_id"]
@@ -344,7 +349,12 @@ def verify_job_evidence(job_path, *, name):
         _require(loaded["input_identity"] == job["input_identity"] and frozen["window"] == plan["backend"]["window"], "FROZEN_INPUT_SCOPE_CONFLICT")
         result = _json(result_path)
         _require(result["strategy_plan"] == plan and result["input_identity"] == job["input_identity"], "RESULT_PLAN_CONFLICT")
-        audit = reconstruct_account(loaded["frame"], frozen["window"], result,
+        reconstruct = reconstruct_account
+        if plan['backend']['backend'] == 'UNIVERSE_ACCOUNT_BACKEND_V1':
+            _require(result.get('execution_description') == plan['backend'], 'RESULT_EXECUTION_POLICY_CONFLICT')
+            from .universe_evidence_v1 import reconstruct_universe_account
+            reconstruct = reconstruct_universe_account
+        audit = reconstruct(loaded["frame"], frozen["window"], result,
             initial_cash=plan["backend"]["initial_cash"], costs=plan["backend"]["costs"], strategy_id=name,
             rule=plan["strategy"]["parameters"].get("candidate_payload"))
         return {"version": VERSION, "status": "PASS", "advance_allowed": True, "reasons": [],
@@ -355,5 +365,5 @@ def verify_job_evidence(job_path, *, name):
                     "independent_validation": "NOT_ASSESSED", "formal_qualification": False}}
     except (FileNotFoundError, KeyError) as exc:
         return {"version": VERSION, "status": "INCOMPLETE", "advance_allowed": False, "reasons": [str(exc)]}
-    except (ValueError, TypeError, PermissionError, OSError, BudgetLedgerMismatchError) as exc:
+    except (ValueError, TypeError, PermissionError, OSError, BudgetLedgerMismatchError, FinalTestAccessViolation) as exc:
         return {"version": VERSION, "status": "FAIL", "advance_allowed": False, "reasons": [str(exc)]}

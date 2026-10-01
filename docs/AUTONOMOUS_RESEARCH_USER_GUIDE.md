@@ -4,7 +4,9 @@
 
 ## 当前公共入口与交付边界
 
-固定规则可以通过公共CLI查询能力、预览、冻结、核对批准并启动账户，不依赖AI在线。S1目前仍缺B真实公共账户验收，下面的入口说明不代表该验收已经完成；当前能力与未验收状态见[自动生成的能力说明](RESEARCH_CAPABILITIES.md)。
+固定规则可以通过公共CLI查询能力、预览、冻结、核对批准并启动账户，不依赖AI在线。旧V3路径的限定发布包可用 `publication` 查询；它覆盖原声明范围，不代表新增全范围与创业板完成。源码或凭证变化时保持未验收。当前能力与新版本各板块验收状态见[自动生成的能力说明](RESEARCH_CAPABILITIES.md)。
+
+新的[全范围入口](FULL_UNIVERSE_RESEARCH.md)扫描登记的深圳主板、上海主板和创业板全部目标股票，再按策略信号选股，所有板块共用同一个资金账户。选全范围目录时无需手填少数股票；数据缺口继续保留在完整覆盖清单。已有缓存数量不能证明历史清单完整或账户数据齐全。
 
 真实连续AI研究默认仍被费用硬上限证据阻断：`BoundedCodexInvokerV1` 尚不能证明供应商token/费用限制，创建自动研究会返回 `DIAGNOSIS_MODEL_HARD_BUDGET_UNVERIFIED`。已有一次真实模型JSON接线证据只证明模型能够提出合法规则，不能据此说默认已经可以无人值守研究。
 
@@ -13,14 +15,24 @@
 ```powershell
 python scripts/run_trusted_research_v1.py capabilities --workspace-root <工作区> --deployment <部署配置.json>
 python scripts/run_trusted_research_v1.py preview --workspace-root <工作区> --deployment <部署配置.json> --request <策略请求.json>
+# 全范围请求先做数据诊断；旧版指定股票请求跳过这一条
+python scripts/run_trusted_research_v1.py diagnose --workspace-root <工作区> --deployment <部署配置.json> --request <策略请求.json> --preview-identity <预览身份>
+# 全范围也可以独立检查全部股票的原始条件；不运行账户、不产生收益
+python scripts/run_trusted_research_v1.py scan --workspace-root <工作区> --deployment <部署配置.json> --request <策略请求.json> --preview-identity <预览身份>
 python scripts/run_trusted_research_v1.py freeze --workspace-root <工作区> --deployment <部署配置.json> --request <策略请求.json> --preview-identity <预览身份>
 python scripts/run_trusted_research_v1.py approval --workspace-root <工作区> --deployment <部署配置.json> --task-id <任务身份>
 python scripts/run_trusted_research_v1.py approve --workspace-root <工作区> --deployment <部署配置.json> --task-id <任务身份> --preview-identity <预览身份>
 python scripts/run_trusted_research_v1.py start --workspace-root <工作区> --deployment <部署配置.json> --task-id <任务身份>
 python scripts/run_trusted_research_v1.py status --workspace-root <工作区> --deployment <部署配置.json> --task-id <任务身份>
+# 仅当新版本原账户任务中断、已有记录可恢复时，手动沿用同一任务
+python scripts/run_trusted_research_v1.py resume --workspace-root <工作区> --deployment <部署配置.json> --task-id <任务身份>
 ```
 
-预览只检查规则与登记元信息，不读取行情、不签发权限。冻结会读取授权内数据并保存原件身份，但不会自行批准账户。批准再次核对已有账户授权中的资金、股票池、日期、成本、计划及有效期。调整这些条件后必须重新预览，不能沿用旧身份。
+预览只检查规则与登记元信息，不读取行情、不签发权限。全范围的数据诊断检查全部目标，显示缺口，不计算策略信号、不创建账户额度；重复查询复用原记录。全范围冻结复用受限信号检查中已保存的输入，核对回执、元信息及规则身份；主进程不重新加载全市场行情，也不会自行批准账户。批准再次核对已有账户授权中的资金、股票池、日期、成本、计划及有效期，真正运行账户时仍复核输入。调整这些条件后必须重新预览，不能沿用旧身份。
+
+信号 `scan` 从登记全部股票开始，先检查资格，再为资料齐全的股票计算原始条件。报告中的“已检查股票数”与“已计算条件股票数”不同；所有条件缺证据时是“未知”，不是“零买入信号”。这一步不模拟账户、止损成交或收益，不授予盈利策略资格。准备和计算共同受900秒、2048MiB与单数值线程约束。重复同一意图只读复用，中断或输入/源码改变保留原记录供核对，不另开免费扫描。
+
+恢复 `resume` 只针对新版本原账户任务；系统会先核对工作进程已经退出、原输入和逐日记录、授权有效期及剩余时间。已结算或证据不足时拒绝，没有自动恢复、新资金或新增研究额度。页面只在查询到这个任务属于新版本且尚未结算时显示手动恢复按钮。
 
 如使用工作台，现有启动器可增加 `--submission-config <部署配置.json>`；需要页面执行动作时由维护者明确启用 `--allow-trusted-research`，默认仍只读。该开关不代替数据或账户授权。长期宿主与接手方式见[运行说明](RESEARCH_LIFECYCLE_OPERATIONS.md)。
 
@@ -55,7 +67,9 @@ AI 可以从原有 51 个技术指标中选择需要的指标，组合独立的�
 
 买卖冲突时优先退出；未知数据不会自动变成买入信号。技术指标使用对应的因果价格视图，模拟成交与账户核算使用实际价格。指标多不代表策略更有效，也不要求新策略同时使用所有指标。原先全 51 指标基线继续保留。
 
-研究账户允许配置多只沪深主板股票，使用一份共享现金和确定的资金分配规则。本次三只股票、504 个交易日的真实历史账户已通过逐日独立核账和重复验证；这不代表全 A 股范围已验证。正式评审目前仍保留原两股票和资金范围。
+旧指定股票入口支持多只沪深主板股票。新全范围入口把创业板纳入同一份共享现金，三个板块使用相同技术指标与组合规则；不同板块的交易制度分别核对。刚上市或字段不足的股票明确显示预热、状态或数据缺口，不用假的行情补齐。过去小池的逐日核账和发布证据不代表全范围已验证；正式评审仍按原方法支持范围，不随股票范围扩大自动取得资格。
+
+成本止损、固定止盈和移动止损设置在 `rule.exits`，会真实影响退出。它们在收盘确认后于随后合法开盘尝试成交，不能保证止损线价格。`market_filter` 当前是同一股票的价格、成交条件，尚不代表大盘指数过滤。波动率指标已在公共目录，跨股票波动率排名和 ATR 止损仍未接通。
 
 ## 在工作台看什么
 
@@ -109,6 +123,6 @@ python scripts/run_ui.py 8765 --research-root <研究数据根目录> --lifecycl
 
 ## 动态字段与预热下限
 
-V3按规则实际引用申报因子字段：未引用换手率 `turn` 时，原件缺少该列保持 `UNKNOWN`，不会补零；账户仍核对每只股票、每个交易日的成交量、交易状态及矩形覆盖。全池买入持有基准也不强制换手率。引用换手率指标时，缺列会在数据冻结阶段拒绝，不能进入账户执行。旧V2及未声明字段依赖的旧数据调用仍要求换手率。
+V3按规则实际引用申报因子字段：未引用换手率 `turn` 时，原件缺少该列保持 `UNKNOWN`，不会补零。引用换手率指标时，缺列会在数据冻结阶段拒绝，不能进入账户执行。旧指定股票账户仍采用原每日矩形覆盖；新全范围版本使用独立日历和有证据的稀疏行情，把未上市、停牌与缺行分开，原持仓继续管理。旧V2及未声明字段依赖的旧数据调用仍要求换手率。
 
-这次只放开了因子字段依赖。历史账户和Paper的执行准备仍要求至少60个预热交易日；即使某个V3规则只需20日均线，也不能据此提交少于60日的账户预热窗口。
+旧历史账户和Paper的原执行准备仍要求至少60个预热交易日。新全范围指标准备按规则实际需要的有效历史bar检查预热；持有期与T+1使用完整交易日历。新的预热规则不会改写旧合同，也不会为IPO补造过去行情。

@@ -1,0 +1,100 @@
+{
+  "phase": "LOCAL_PRE_FINAL_MEMORY_FIX_SYNTHETIC_ONLY",
+  "not_final_source_acceptance": true,
+  "measurements": [
+    {
+      "measurements": {
+        "version": "FULL_UNIVERSE_SCALE_EVIDENCE_V1",
+        "synthetic": true,
+        "target": 4536,
+        "boards": [
+          "SZ_MAIN",
+          "SH_MAIN",
+          "CHINEXT"
+        ],
+        "batch_size": 1,
+        "reverse_input_order": false,
+        "account_sessions": 5,
+        "each_session_processed": [
+          4536,
+          4536,
+          4536,
+          4536,
+          4536
+        ],
+        "result_identity": "571c5bc1018dd7ad045bd922c0afa7377e534a1d8ccbb3768bd6e5f086b65473",
+        "account_reconciled": true,
+        "economic_identity": "a9daf1d7db48ada94aa2f157e18d50ad163fb6988f1750dd9c48277e837cfb4c",
+        "economic_identity_scope": "DAILY_CASH_EQUITY_POSITIONS_FILLS_AND_METRICS_NO_SOURCE_PATHS",
+        "metrics": {
+          "max_drawdown": 0.0007760000000001099,
+          "net_return": -0.0007760000000001099,
+          "total_fees": 10.0,
+          "trade_count": 2
+        },
+        "wall_seconds": 222.8565466,
+        "peak_process_working_set_kib": 582616.0,
+        "resource_platform": "nt",
+        "resource_handshake": true,
+        "real_acceptance": false,
+        "strategy_qualified": false
+      },
+      "resource": {
+        "returncode": 0,
+        "timed_out": false,
+        "launcher_pid": 14892,
+        "resource_platform": "nt",
+        "windows_job_bound": true,
+        "process_limit": 2,
+        "process_limit_enforced": true
+      }
+    },
+    {
+      "measurements": {
+        "version": "FULL_UNIVERSE_SCALE_EVIDENCE_V1",
+        "synthetic": true,
+        "target": 4536,
+        "boards": [
+          "SZ_MAIN",
+          "SH_MAIN",
+          "CHINEXT"
+        ],
+        "batch_size": 128,
+        "reverse_input_order": true,
+        "account_sessions": 5,
+        "each_session_processed": [
+          4536,
+          4536,
+          4536,
+          4536,
+          4536
+        ],
+        "result_identity": "571c5bc1018dd7ad045bd922c0afa7377e534a1d8ccbb3768bd6e5f086b65473",
+        "account_reconciled": true,
+        "economic_identity": "a9daf1d7db48ada94aa2f157e18d50ad163fb6988f1750dd9c48277e837cfb4c",
+        "economic_identity_scope": "DAILY_CASH_EQUITY_POSITIONS_FILLS_AND_METRICS_NO_SOURCE_PATHS",
+        "metrics": {
+          "max_drawdown": 0.0007760000000001099,
+          "net_return": -0.0007760000000001099,
+          "total_fees": 10.0,
+          "trade_count": 2
+        },
+        "wall_seconds": 219.0483519999998,
+        "peak_process_working_set_kib": 683556.0,
+        "resource_platform": "nt",
+        "resource_handshake": true,
+        "real_acceptance": false,
+        "strategy_qualified": false
+      },
+      "resource": {
+        "returncode": 0,
+        "timed_out": false,
+        "launcher_pid": 12940,
+        "resource_platform": "nt",
+        "windows_job_bound": true,
+        "process_limit": 2,
+        "process_limit_enforced": true
+      }
+    }
+  ]
+}

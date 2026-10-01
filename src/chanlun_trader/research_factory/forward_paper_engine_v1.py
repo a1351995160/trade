@@ -30,12 +30,16 @@ class ForwardPaperEngineV1:
         self.strategies = {key: paper_strategy(value['proposal'], strategy_id=key)
                            for key, value in header['strategies'].items()}
         self.rule_states = {}
-        from .rule_exit_adapter_v3 import RuleExitAdapterV3, validate_exit_actions
-        self.rule_exits = {key: RuleExitAdapterV3(key, strategy.exit_rules)
+        from .rule_exit_adapter_v3 import RuleExitAdapterV3
+        adapter_type = RuleExitAdapterV3
+        if header.get('execution_version') == 'UNIVERSE_ACCOUNT_BACKEND_V1':
+            from .universe_rule_exit_v1 import UniverseRuleExitV1
+            adapter_type = UniverseRuleExitV1
+        self.rule_exits = {key: adapter_type(key, strategy.exit_rules)
                            for key, strategy in self.strategies.items()
                            if getattr(strategy, 'exit_rules', None) is not None and strategy.exit_rules.enabled}
         if self.rule_exits:
-            validate_exit_actions(header.get('account_events', []))
+            self._validate_exit_actions(header.get('account_events', []))
         self.store, self.master = MarketDataStore(), SecurityMaster()
         self._load_bars(self.bars)
         from .portfolio_execution_v1 import PortfolioExecutionPolicyV1
@@ -50,13 +54,21 @@ class ForwardPaperEngineV1:
             pit_eligibility_enforced=True, strategy_hash=stable_hash(header['strategies']),
             data_manifest_hash=header['header_id'], calendar_version=stable_hash(header['calendar']))
         calendar = sorted(set(header['calendar']) | {int(row['date']) for row in self.bars})
-        self.engine = BacktestEngineV2(self.store, calendar, config=config,
+        engine_type = BacktestEngineV2
+        if header.get('execution_version') == 'UNIVERSE_ACCOUNT_BACKEND_V1':
+            from .universe_account_backend_v1 import UniverseBacktestEngineV1
+            engine_type = UniverseBacktestEngineV1
+        self.engine = engine_type(self.store, calendar, config=config,
                                       security_master=self.master, seed=0,
                                       source_identity=(header['source_identity'], False))
         self.engine._build()
         if header.get('company_actions') in ('OBSERVED_CASH_DIVIDEND_V1', 'HISTORICAL_CASH_DIVIDEND_V2', 'OBSERVED_FROZEN_CASH_DIVIDEND_V2'):
             from ..engine.individual_dividend_accounting_v1 import IndividualDividendAccountingV1
-            ledger = IndividualDividendAccountingV1(self.policy['initial_cash'],
+            ledger_type = IndividualDividendAccountingV1
+            if header.get('execution_version') == 'UNIVERSE_ACCOUNT_BACKEND_V1':
+                from .universe_dividend_accounting_v1 import UniverseDividendAccountingV1
+                ledger_type = UniverseDividendAccountingV1
+            ledger = ledger_type(self.policy['initial_cash'],
                 header.get('account_events', []), header['header_id'])
             self.engine.ledger = self.engine.broker.ledger = self.engine.risk.ledger = ledger
         self.base_risk_config = deepcopy(self.engine.risk.config)
@@ -65,6 +77,14 @@ class ForwardPaperEngineV1:
             self.observation = {'peak_equity': float(self.policy['initial_cash']),
                 'max_drawdown_bps': 0.0, 'completed_days': 0, 'pending_open_day': None,
                 'buy_blocked': False, 'reason_codes': [], 'review_due': False}
+
+    def _validate_exit_actions(self, events):
+        if self.header.get('execution_version') == 'UNIVERSE_ACCOUNT_BACKEND_V1':
+            if any(event.get('event_type') != 'CASH_DIVIDEND' for event in events):
+                raise ValueError('UNIVERSE_EXIT_CORPORATE_ACTION_UNSUPPORTED')
+        else:
+            from .rule_exit_adapter_v3 import validate_exit_actions
+            validate_exit_actions(events)
 
     def _observe_equity(self):
         if not hasattr(self, 'observation'):
@@ -130,8 +150,7 @@ class ForwardPaperEngineV1:
             input_identity=plan['input_identity'], event_at=ts, admissions=admissions)
         self._accept_actions(snapshot)
         if self.rule_exits:
-            from .rule_exit_adapter_v3 import validate_exit_actions
-            validate_exit_actions(getattr(self.engine.ledger, 'events', []))
+            self._validate_exit_actions(getattr(self.engine.ledger, 'events', []))
         if self.header.get('company_actions') in ('OBSERVED_CASH_DIVIDEND_V1', 'HISTORICAL_CASH_DIVIDEND_V2', 'OBSERVED_FROZEN_CASH_DIVIDEND_V2'):
             self.engine.ledger.on_open(ts)
         # OPEN仅装入实际收到的开盘快照；完整日线直到CLOSE阶段才进入账户。
@@ -177,6 +196,10 @@ class ForwardPaperEngineV1:
             if state['suspended'] or not state['listed'] or state['delisted']:
                 self.skips.append({'intent_id': item['intent_id'], 'reason': 'SECURITY_NOT_TRADABLE'})
                 continue
+            if (side == 'BUY' and self.header.get('execution_version') == 'UNIVERSE_ACCOUNT_BACKEND_V1'
+                    and (state.get('universe_member') is not True or state.get('eligibility_status') != 'ELIGIBLE')):
+                self.skips.append({'intent_id': item['intent_id'], 'reason': 'SECURITY_NOT_ELIGIBLE_AT_OPEN'})
+                continue
             if side == 'BUY':
                 quantity = risk.buy_quantity(strategy_id, symbol, prices[symbol], ts,
                                              target_weight=item['target_weight'])
@@ -208,8 +231,7 @@ class ForwardPaperEngineV1:
         ts = pd.Timestamp(snapshot.get('processed_at', snapshot['received_at']))
         self._accept_actions(snapshot)
         if self.rule_exits:
-            from .rule_exit_adapter_v3 import validate_exit_actions
-            validate_exit_actions(getattr(self.engine.ledger, 'events', []))
+            self._validate_exit_actions(getattr(self.engine.ledger, 'events', []))
         self.bars.extend(deepcopy(snapshot['payload']['bars']))
         self.turn.extend(deepcopy(snapshot['payload']['turn']))
         self._load_bars(self.bars)

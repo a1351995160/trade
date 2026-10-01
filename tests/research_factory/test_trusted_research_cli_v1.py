@@ -10,10 +10,13 @@ from scripts import run_trusted_research_v1 as cli
 @pytest.mark.parametrize('operation,method,tail,expected', [
     ('capabilities', 'capabilities', [], ()),
     ('preview', 'preview', ['--request', 'REQUEST'], ({'strategy_id': 'example'},)),
+    ('diagnose', 'diagnose', ['--request', 'REQUEST', '--preview-identity', 'frozen'], ({'strategy_id': 'example'}, 'frozen')),
+    ('scan', 'scan', ['--request', 'REQUEST', '--preview-identity', 'frozen'], ({'strategy_id': 'example'}, 'frozen')),
     ('freeze', 'freeze', ['--request', 'REQUEST', '--preview-identity', 'frozen'], ({'strategy_id': 'example'}, 'frozen')),
     ('approval', 'approval_preview', ['--task-id', 'task'], ('task',)),
     ('approve', 'approve', ['--task-id', 'task', '--preview-identity', 'approved'], ('task', 'approved')),
     ('start', 'start', ['--task-id', 'task'], ('task',)),
+    ('resume', 'resume', ['--task-id', 'task'], ('task',)),
     ('status', 'status', ['--task-id', 'task'], ('task',)),
 ])
 def test_commands_use_same_public_service(tmp_path, monkeypatch, capsys, operation, method, tail, expected):
