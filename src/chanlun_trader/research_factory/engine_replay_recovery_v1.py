@@ -53,6 +53,11 @@ def economic_state(engine) -> dict:
     for name in ("applied", "payments"):
         if hasattr(ledger, name):
             material[name] = sorted(getattr(ledger, name))
+    if getattr(ledger, 'version', '') == 'UniverseCorporateAccountingV2':
+        for name in ('pending_share_credits', 'bonus_parent_lots', 'share_price_factors',
+                     'cash_price_adjustments', 'dividend_record_factors', 'share_tax_lots',
+                     'share_tax_withheld', 'share_tax_timing', 'last_exit_dates'):
+            material[name] = getattr(ledger, name)
     return material
 
 

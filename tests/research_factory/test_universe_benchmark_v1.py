@@ -7,6 +7,17 @@ from chanlun_trader.research_factory.universe_benchmark_v1 import universe_price
 from universe_test_fixture_v1 import fixture
 
 
+def test_theoretical_basket_keeps_share_and_cash_entitlements_once():
+    from test_universe_evidence_v1 import share_case
+    bundle, window, _, _ = share_case(cash=True)
+    value = universe_price_reference(bundle, window, initial_cash=50000)
+    assert value['status'] == 'AVAILABLE_NONINVESTABLE'
+    # 12元原股变成1.3份新股和0.5元现金，末日总财富仍为12元。
+    assert value['metrics']['net_return'] == pytest.approx(0.)
+    assert value['daily'][-1]['relative_value'] == pytest.approx(1.)
+    assert not value['investable'] and not value['account_reconciled']
+
+
 def test_full_basket_is_not_misrepresented_as_investable_account():
     window, bundle = fixture(prices=[12., 13., 13.])
     value = universe_price_reference(bundle, window, initial_cash=1000)

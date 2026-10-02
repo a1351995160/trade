@@ -388,3 +388,212 @@ def test_known_suspension_retains_mark_and_resume_does_not_borrow_future_volume(
     forged["final_account_checkpoint"]["rule_exit_states"]["universe"]["evaluations"].append({**traces[0], "date": days[62]})
     with pytest.raises(ValueError, match="EXIT_TRACE_OR_TRAILING_CONFLICT"):
         audit(bundle, window, value, forged)
+
+
+def share_case(*, taxable=False, cash=False, max_hold_sessions=99, credit_index=64, tradable_index=65,
+               held_price=12., exits=None):
+    window, bundle = fixture(symbols=["000001.SZ"], days_count=69)
+    days, symbol = window["calendar"], "000001.SZ"
+    tax = {"kind": "BONUS_DEFERRED_INDIVIDUAL_2015_101" if taxable
+           else "CAPITALIZATION_SHARE_PREMIUM_EXEMPT", "source": "synthetic_share_tax_source"}
+    if taxable:
+        tax.update(taxable_cash_per_new_share=1., allocation_policy="CHILD_LOTS_MODELED",
+                   allocation_source="synthetic_model_allocation")
+    shares = {"event_id": "SYNTHETIC_SHARE", "symbol": symbol,
+        "event_type": "BONUS" if taxable else "CAPITALIZATION", "record_date": days[62],
+        "effective_date": days[63], "share_credit_date": days[credit_index],
+        "tradable_date": days[tradable_index], "source": "synthetic", "source_published_at": str(days[60]),
+        "units": "NEW_SHARES_PER_OLD_SHARE", "date_evidence": {
+            "share_credit_date": {"kind": "MODELED", "source": "synthetic_credit_model"},
+            "tradable_date": {"kind": "SOURCE", "source": "synthetic_tradable_source"}},
+        "terms": {"ratio_numerator": 13, "ratio_denominator": 10, "tax_rule": tax}}
+    events = [shares]
+    if cash:
+        events.append({"event_id": "SYNTHETIC_CASH", "symbol": symbol, "event_type": "CASH_DIVIDEND",
+            "record_date": days[62], "effective_date": days[63], "payment_date": days[68],
+            "source": "synthetic", "source_published_at": str(days[60]), "units": "CNY_PER_SHARE",
+            "terms": {"cash_per_share": .5, "tax_rule": {"kind": "DEFERRED_INDIVIDUAL_2015_101",
+                "source": "synthetic_cash_tax_source"}}})
+    bundle["events"] = events
+    bundle["corporate_action_coverage"][0]["event_types"] = ["CASH_DIVIDEND", "BONUS", "CAPITALIZATION"]
+    changed = bundle["daily"].date.ge(days[63])
+    prices = ["open", "high", "low", "close", "prev_close"]
+    bundle["daily"].loc[bundle["daily"].date.ge(days[62]), prices] *= held_price / 12.
+    bundle["daily"].loc[bundle["daily"].date.eq(days[62]), "prev_close"] = 12.
+    bundle["daily"].loc[changed, prices] = (bundle["daily"].loc[changed, prices] - (.5 if cash else 0)) / 1.3
+    value = proposal(exits or {"stop_loss_pct": .03})
+    value["max_hold_sessions"] = max_hold_sessions
+    return case(bundle=bundle, window=window, value=value)
+
+
+def test_share_quantity_cost_credit_and_tradability_are_independently_rebuilt(monkeypatch):
+    bundle, window, value, result = share_case()
+    days = window["calendar"]
+    economic = result["final_account_checkpoint"]["economic"]
+    parent, child = economic["lots"]["lot-000001"], economic["lots"]["lot-000002"]
+    assert (parent["quantity"], child["quantity"]) == (1200, 360)
+    assert parent["cost"] == pytest.approx(14419.4 / 1.3)
+    assert child["cost"] == pytest.approx(14419.4 - 14419.4 / 1.3)
+    assert child["entry_session"] == parent["entry_session"] == days[61]
+    assert child["buy_time"] == parent["buy_time"]
+    assert child["sellable_from_session"] == days[65]
+    assert child["sellable_from"] == (pd.Timestamp(str(days[65]), tz="Asia/Shanghai")
+                                      + pd.Timedelta(hours=9, minutes=30)).isoformat()
+    assert economic["entitlements"]["SYNTHETIC_SHARE"] == {"lot-000001": 1200}
+    effective = next(row for row in economic["action_audit"] if row["phase"] == "EFFECTIVE")
+    credited = next(row for row in economic["action_audit"] if row["phase"] == "SHARE_CREDIT")
+    assert int(pd.Timestamp(effective["timestamp"]).strftime("%Y%m%d")) == days[63]
+    assert int(pd.Timestamp(credited["timestamp"]).strftime("%Y%m%d")) == days[64]
+    assert credited["lots"] == {"lot-000002": 360}
+    assert result["daily_accounts"][-1]["equity"] == pytest.approx(49980.6)
+    from chanlun_trader.research_factory.universe_corporate_accounting_v2 import UniverseCorporateAccountingV2
+    def forbidden(*args, **kwargs):
+        raise AssertionError("AUDITOR_USED_SHARE_LEDGER_AS_ORACLE")
+    monkeypatch.setattr(UniverseCorporateAccountingV2, "on_open", forbidden)
+    monkeypatch.setattr(UniverseCorporateAccountingV2, "on_close", forbidden)
+    monkeypatch.setattr(UniverseCorporateAccountingV2, "apply_fill", forbidden)
+    rebuilt = audit(bundle, window, value, result)
+    assert rebuilt["metrics"]["net_return"] == pytest.approx(-19.4 / 50000)
+    assert rebuilt["dividend_tax"] == 0.
+
+
+def test_same_day_cash_and_shares_keep_registration_and_tax_rights_separate():
+    bundle, window, value, result = share_case(taxable=True, cash=True, max_hold_sessions=2,
+                                            credit_index=66, tradable_index=67)
+    days = window["calendar"]
+    economic = result["final_account_checkpoint"]["economic"]
+    sells = [row for row in result["fills"] if row["side"] == "SELL"]
+    assert [row["quantity"] for row in sells] == [1200, 360]
+    assert [int(pd.Timestamp(row["fill_time"]).strftime("%Y%m%d")) for row in sells] == [days[64], days[67]]
+    assert economic["entitlements"]["SYNTHETIC_CASH"] == 1200
+    assert economic["entitlements"]["SYNTHETIC_SHARE"] == {"lot-000001": 1200}
+    assert economic["dividend_lots"]["SYNTHETIC_CASH"] == {"lot-000001": 0}
+    assert economic["share_tax_lots"]["SYNTHETIC_SHARE"] == {"lot-000002": 0}
+    assert economic["action_income"] == 600.
+    assert economic["share_tax_withheld"] == 72.
+    assert economic["dividend_tax_withheld"] == 192.
+    assert economic["last_exit_dates"] == {"universe:000001.SZ": days[67]}
+    assert [(row["phase"], row["amount"]) for row in economic["action_audit"]
+            if row["phase"] in {"DEFERRED_INDIVIDUAL_TAX", "DEFERRED_SHARE_TAX"}] == [
+                ("DEFERRED_INDIVIDUAL_TAX", 120.), ("DEFERRED_SHARE_TAX", 72.)]
+    share_tax = next(row for row in economic["action_audit"] if row["phase"] == "DEFERRED_SHARE_TAX")
+    assert share_tax["tax_allocation_verified"] is False
+    trace = result["final_account_checkpoint"]["rule_exit_states"]["universe"]["evaluations"]
+    at_effective = [row for row in trace if row["date"] == days[63]]
+    assert len(at_effective) == 2
+    assert all(row["comparison_close"] == pytest.approx(12.) and not row["reasons"] for row in at_effective)
+    assert all(row["share_price_factor"] == 1.3 for row in at_effective)
+    rebuilt = audit(bundle, window, value, result)
+    assert rebuilt["dividend_tax"] == 192.
+    assert rebuilt["receivables"] == {}
+    daily = {row["date"]: row for row in rebuilt["daily_accounts"]}
+    assert daily[days[67]]["cash"] == pytest.approx(49157.8949)
+    assert daily[days[67]]["equity"] == pytest.approx(49757.8949)
+    assert daily[days[68]]["cash"] == pytest.approx(49757.8949)
+
+
+def test_share_effective_open_routes_new_child_of_pending_rule_exit():
+    bundle, window, value, result = share_case(held_price=11.5, credit_index=63, tradable_index=63)
+    sells = [row for row in result["fills"] if row["side"] == "SELL"]
+    assert [(row["lot_id"], row["quantity"]) for row in sells] == [("lot-000001", 1200), ("lot-000002", 360)]
+    assert all(int(pd.Timestamp(row["fill_time"]).strftime("%Y%m%d")) == window["calendar"][63] for row in sells)
+    assert result["final_account_checkpoint"]["economic"]["last_exit_dates"] == {
+        "universe:000001.SZ": window["calendar"][63]}
+    assert audit(bundle, window, value, result)["metrics"]["trade_count"] == len(result["fills"])
+
+
+def test_new_share_lot_inherits_pre_action_trailing_peak_and_exit_timing():
+    bundle, window, value, _ = share_case(held_price=13.5, credit_index=63, tradable_index=63,
+        exits={"trailing_activate_pct": .05, "trailing_pct": .03})
+    days = window["calendar"]
+    prices = ["open", "high", "low", "close"]
+    bundle["daily"].loc[bundle["daily"].date.eq(days[63]), prices] *= 13.2 / 13.5
+    bundle["daily"].loc[bundle["daily"].date.ge(days[64]), prices] *= 13. / 13.5
+    bundle["daily"].loc[bundle["daily"].date.eq(days[64]), "prev_close"] = 13.2 / 1.3
+    bundle["daily"].loc[bundle["daily"].date.ge(days[65]), "prev_close"] = 13. / 1.3
+    bundle, window, value, result = case(bundle=bundle, window=window, value=value)
+    trace = result["final_account_checkpoint"]["rule_exit_states"]["universe"]["evaluations"]
+    at_fall = [row for row in trace if row["date"] == days[64]]
+    assert [(row["lot_id"], row["reasons"]) for row in at_fall] == [
+        ("lot-000001", ["EXIT_TRAILING_STOP"]), ("lot-000002", ["EXIT_TRAILING_STOP"])]
+    sells = [row for row in result["fills"] if row["side"] == "SELL"]
+    assert [(row["lot_id"], row["quantity"]) for row in sells[:2]] == [("lot-000001", 1200), ("lot-000002", 360)]
+    assert all(int(pd.Timestamp(row["fill_time"]).strftime("%Y%m%d")) == days[65] for row in sells[:2])
+    assert audit(bundle, window, value, result)["exit_behavior"] == "VERIFIED"
+
+
+def limited_share_case():
+    bundle, window, value, _ = share_case(held_price=11.5, credit_index=63, tradable_index=63)
+    # 父lot和新增child在同一session各有退出订单，共享前日1500股的10%容量。
+    bundle["daily"].loc[bundle["daily"].date.eq(window["calendar"][62]), "volume"] = 1500.
+    return case(bundle=bundle, window=window, value=value)
+
+
+def test_parent_and_child_orders_share_one_symbol_session_volume_capacity():
+    bundle, window, value, result = limited_share_case()
+    days = window["calendar"]
+    economic = result["final_account_checkpoint"]["economic"]
+    sells = [row for row in result["fills"] if row["side"] == "SELL"]
+    first = [row for row in sells if int(pd.Timestamp(row["fill_time"]).strftime("%Y%m%d")) == days[63]]
+    second = [row for row in sells if int(pd.Timestamp(row["fill_time"]).strftime("%Y%m%d")) == days[64]]
+    assert [(row["lot_id"], row["quantity"]) for row in first] == [("lot-000001", 150)]
+    assert [(row["lot_id"], row["quantity"]) for row in second] == [("lot-000001", 1050), ("lot-000002", 360)]
+    rejected = next(order for order in economic["orders"].values()
+                    if order["lot_id"] == "lot-000002"
+                    and int(pd.Timestamp(order["created_at"]).strftime("%Y%m%d")) == days[63])
+    assert rejected["filled_quantity"] == 0 and rejected["status"] == "REJECTED"
+    assert rejected["metadata"]["broker_rejection_reason"] == "PARTICIPATION_LIMIT"
+    daily = {row["date"]: row for row in audit(bundle, window, value, result)["daily_accounts"]}
+    assert daily[days[63]]["cash"] == pytest.approx(36900.5322)
+    assert daily[days[63]]["positions"][0]["quantity"] == 1410
+    assert daily[days[64]]["cash"] == pytest.approx(49344.8949)
+
+
+def test_extra_child_fill_cannot_reuse_parent_session_volume_capacity():
+    bundle, window, value, result = limited_share_case()
+    forged = deepcopy(result)
+    economic = forged["final_account_checkpoint"]["economic"]
+    day = window["calendar"][63]
+    parent_fill = next(row for row in forged["fills"] if row["side"] == "SELL"
+                       and int(pd.Timestamp(row["fill_time"]).strftime("%Y%m%d")) == day)
+    child_order = next(order for order in economic["orders"].values() if order["lot_id"] == "lot-000002"
+                       and int(pd.Timestamp(order["created_at"]).strftime("%Y%m%d")) == day)
+    extra = {**deepcopy(parent_fill), "trade_id": "tr-forged-capacity", "lot_id": "lot-000002",
+             "order_id": child_order["order_id"]}
+    position = forged["fills"].index(parent_fill) + 1
+    forged["fills"].insert(position, extra)
+    economic["trades"] = deepcopy(forged["fills"])
+    child_order.update(filled_quantity=150, remaining_quantity=210, status="EXPIRED", total_fee=extra["fee"])
+    forged["reconciliation"] = {"passed": True}
+    with pytest.raises(ValueError, match="SYMBOL_SESSION_VOLUME_CAPACITY_EXCEEDED"):
+        audit(bundle, window, value, forged)
+
+
+@pytest.mark.parametrize("mutation,reason", [
+    ("child_sellable", "FINAL_LOTS_CONFLICT"),
+    ("registration", "FINAL_ENTITLEMENTS_CONFLICT"),
+    ("parent_cost", "FINAL_LOTS_CONFLICT"),
+    ("tax_right", "FINAL_SHARE_TAX_LOTS_CONFLICT"),
+    ("credit_date", "FINAL_ACTION_AUDIT_CONFLICT"),
+    ("price_factor", "FINAL_SHARE_PRICE_FACTORS_CONFLICT"),
+])
+def test_share_self_reported_pass_cannot_hide_forged_accounting(mutation, reason):
+    bundle, window, value, result = share_case(taxable=True)
+    forged = deepcopy(result)
+    economic = forged["final_account_checkpoint"]["economic"]
+    if mutation == "child_sellable":
+        economic["lots"]["lot-000002"]["sellable_from"] = economic["lots"]["lot-000001"]["sellable_from"]
+    elif mutation == "registration":
+        economic["entitlements"]["SYNTHETIC_SHARE"]["lot-000001"] = 1560
+    elif mutation == "parent_cost":
+        economic["lots"]["lot-000001"]["cost"] += .01
+    elif mutation == "tax_right":
+        economic["share_tax_lots"]["SYNTHETIC_SHARE"]["lot-000001"] = 1200
+    elif mutation == "credit_date":
+        next(row for row in economic["action_audit"] if row["phase"] == "SHARE_CREDIT")["timestamp"] = str(
+            pd.Timestamp(str(window["calendar"][63]), tz="Asia/Shanghai") + pd.Timedelta(hours=9, minutes=30))
+    else:
+        economic["share_price_factors"]["lot-000002"] = 1.
+    forged["reconciliation"] = {"passed": True}
+    with pytest.raises(ValueError, match=reason):
+        audit(bundle, window, value, forged)

@@ -2825,3 +2825,26 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 
 ### Notes
 - 此修复不修改交易规则、账户算法、数据原件或研究门槛。回滚仅revert本次路径修复提交；发布仍等待当前提交远端CI完整通过，不跳过质量门槛。
+
+
+## 2026-10-02 - Task: 接通送转股份并核验分红及日期差异
+
+### What was done
+- 新增 `universe_corporate_accounting_v2.py`、`corporate_action_price_v2.py`；接通全范围股份账户、因果价格、成本和移动退出、恢复状态与独立算术核账。旧现金V1路径保持原语义。
+- 更新 `forward_paper_engine_v1.py`、`universe_account_backend_v1.py`、`universe_account_inputs_v1.py`、`universe_rule_exit_v1.py`、`universe_evidence_v1.py`、`engine_replay_recovery_v1.py`、`universe_signal_scan_v1.py`、`universe_scan_service_v1.py`、`universe_submission_v1.py`；修复原股/新股同日订单重复使用成交量额度及新增股后的真实平仓冷却。
+- 新增 `scripts/prepare_universe_actions_v2.py`、`scripts/resolve_universe_action_dates_v1.py`，按原件/派生文本/引文绑定声明物化股份及独立分红项目，日期收据只读重算；旧原件和旧冻结目录保留。
+- 更新 `universe_benchmark_v1.py` 以保持理论股份+现金财富；更新 `research_capabilities_v1.py` 和生成的能力说明，说明股份条款、价格与账户覆盖分别判断。
+- 维护 `docs/CORPORATE_ACTIONS_V2.md` 及三个全范围说明的版本入口；新增/更新对应测试，Windows/Linux full-universe CI加入四个新测试文件。
+- 真实原件准备保留4,607只目标、7,074项事件：4,531只价格覆盖、4,026只账户公司行动条款覆盖；576条日期差异中546条有有限解释，30条未知。598项股份事件仍缺税源/到账证据，覆盖515只股票；48条现金数值未知保持缺口。
+- 官方公告核实000028.SZ的股本溢价转增、到账/上市日期，以及601966.SH年度0.286与季度0.091合并分红。账户现金0.377、差异化除息参考0.37444分别保存。
+
+### Testing
+- 新公司行动、价格、准备与日期收据42项通过；能力/输入/旧发布包及基准133项通过；独立核账47项通过；股份冻结日期守卫6项通过。
+- 完整全范围组运行926.89秒：657 passed、1 skipped（Windows无符号链接权限），1 failed为旧测试仍断言“送股一律不支持”。现已改为精确断言“股份条款未知仍阻断”，并包含在133项通过的后续回归中；没有降低拒绝要求。
+- ce-code-review对抗审查原反例发现的重复容量已修复并复验，末审无P1/P2；连续二次转增、部分持仓与恢复/篡改反例已核验。
+- 真实000028固定工程账户BASE/STRESS：600→780股、红利480元、卖出现金分红补税96元、转增税0。登记前和除权后两次中断恢复与连续结果一致；最终只读作业索引核验及全池扫描结果另存 `reports/corporate_actions_completion_v1/`，以最终回执为准。
+
+### Notes
+- 公告语义是来源绑定审核声明，非自动法律/文档语义认证；历史状态可见时点、成本及送股税分配仍有明确模型说明。没有策略盈利资格或Paper资格声明。
+- 全池价格/公司行动条款覆盖不等于整池账户通过。碎股、登记后权益变化、配股及未知退市结算仍明确阻断，目标名单及旧研究预算未缩小/重置。
+- 本次从main f0b5bde创建隔离分支 `codex/corporate-actions-completion`；PR远端验收和主目录同步由后续交付回执记录。回滚采用本次提交的git revert并切回旧登记清单；保留新旧冻结输入、原件与已消费工程预算，不能原地改写历史。

@@ -328,20 +328,21 @@ class UniverseAccountInputsV1:
         return result, bound_sources
 
     def _price_reference_gaps(self) -> set[tuple[str, int]]:
-        """现金事件必须解释 raw 参考价跳变；不以缓存 shift 填补官方昨收。"""
+        """现金与送转条款必须解释原价参考跳变；不补造官方昨收。"""
+        from .corporate_action_price_v2 import expected_reference_v2
         result = set()
         for symbol, rows in self.daily.groupby("symbol", sort=False):
             actions = [e for e in self.events if e.get("symbol") == symbol
-                       and e.get("event_type") == "CASH_DIVIDEND"]
+                       and e.get("event_type") in {"CASH_DIVIDEND", "BONUS", "CAPITALIZATION"}]
             previous = None
             for row in rows.itertuples(index=False):
                 if previous is not None and hasattr(row, "prev_close"):
                     try:
                         ref = float(row.prev_close)
                         before = float(previous.close)
-                        cash = sum(float(e["terms"]["cash_per_share"]) for e in actions
-                                   if int(previous.date) < _day(e["effective_date"]) <= int(row.date))
-                        if math.isfinite(ref) and math.isfinite(before) and abs(ref - (before - cash)) > .011:
+                        own = [e for e in actions if int(previous.date) < _day(e["effective_date"]) <= int(row.date)]
+                        expected = expected_reference_v2(before, own)
+                        if math.isfinite(ref) and math.isfinite(before) and abs(ref - expected) > .011:
                             result.add((symbol, int(row.date)))
                     except (KeyError, TypeError, ValueError, AttributeError):
                         result.add((symbol, int(row.date)))
@@ -356,6 +357,23 @@ class UniverseAccountInputsV1:
                     or event.get("symbol") not in self.symbols):
                 raise ValueError("UNIVERSE_ACTION_ID_OR_SYMBOL_INVALID")
             seen.add(event["event_id"])
+            if event.get("event_type") in {"BONUS", "CAPITALIZATION"}:
+                try:
+                    from .corporate_action_price_v2 import grouped_price_actions_v2
+                    record, effective = (_day(event[k]) for k in ("record_date", "effective_date"))
+                    published = _day(str(event["source_published_at"])[:10])
+                    if (not record < effective or published > record
+                            or not self._registered_source(event.get('source'))
+                            or (self.calendar[0] <= record <= self.calendar[-1] and record not in self.calendar)
+                            or (self.calendar[0] <= effective <= self.calendar[-1] and effective not in self.calendar)):
+                        raise ValueError()
+                    grouped_price_actions_v2([event])
+                    if self.stage == 'ACCOUNT':
+                        from .universe_corporate_accounting_v2 import UniverseCorporateAccountingV2
+                        UniverseCorporateAccountingV2(0, [event], 'INPUT_VALIDATION')
+                except (KeyError, TypeError, ValueError):
+                    self._global_gaps.append('UNIVERSE_SHARE_ACTION_TERMS_UNKNOWN:' + event['event_id'])
+                continue
             if event.get("event_type") != "CASH_DIVIDEND":
                 self._global_gaps.append("UNIVERSE_UNSUPPORTED_ACTION:" + event["event_id"])
                 continue
@@ -392,13 +410,20 @@ class UniverseAccountInputsV1:
                 start, end = _day(row["start"]), _day(row["end"])
                 if start > end:
                     raise ValueError()
-                result.append({**deepcopy(row), "symbols": frozenset(symbols),
+                qualified = row['complete']
+                if row.get('coverage_version') == 'CASH_AND_SHARES_V2' and self.stage == 'ACCOUNT':
+                    if type(row.get('account_complete')) is not bool:
+                        raise ValueError()
+                    qualified = row['account_complete']
+                result.append({**deepcopy(row), 'complete': qualified, "symbols": frozenset(symbols),
                                "start": start, "end": end})
             except (KeyError, TypeError, ValueError):
                 self._global_gaps.append("UNIVERSE_CORPORATE_COVERAGE_INVALID")
         # 部分扫描只按明确的逐证券缺口继续；总标志与全完整证明矛盾时仍阻断。
         if (self.stage == "SCAN" and self.bundle.get("corporate_actions_complete") is not True
-                and not any(not row["complete"] for row in result)):
+                and not any(not row["complete"] for row in result)
+                and not any(row.get('coverage_version') == 'CASH_AND_SHARES_V2'
+                            and row.get('account_complete') is False for row in result)):
             self._global_gaps.append("UNIVERSE_CORPORATE_ACTIONS_INCOMPLETE")
         return result
 

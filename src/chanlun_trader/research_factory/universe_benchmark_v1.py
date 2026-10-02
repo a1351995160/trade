@@ -32,7 +32,7 @@ def universe_price_reference(bundle, window, *, initial_cash):
                            or ['PRICE_REFERENCE_EMPTY_INITIAL_BASKET']}
     weight = 1. / len(members)
     quantity, marks, cash = {}, {}, {s: weight for s in members}
-    entitlements, paid = {}, set()
+    entitlements, paid, credited = {}, set(), set()
     daily, stale = [], []
     initial_lot_cost = sum(float(inputs.bar(s, days[first])['open']) * 100
                            for s in members if inputs.bar(s, days[first]) is not None)
@@ -64,6 +64,13 @@ def universe_price_reference(bundle, window, *, initial_cash):
             key = event['event_id']
             if day == event['record_date']:
                 entitlements[key] = quantity.get(symbol, 0.)
+            if event['event_type'] in {'BONUS', 'CAPITALIZATION'}:
+                if key in entitlements and key not in credited and day >= event['effective_date']:
+                    terms = event['terms']
+                    ratio = terms['ratio_numerator'] / terms['ratio_denominator']
+                    quantity[symbol] = quantity.get(symbol, 0.) + entitlements[key] * (ratio - 1)
+                    credited.add(key)
+                continue
             if key in entitlements and key not in paid and day >= event['payment_date']:
                 cash[symbol] += entitlements.get(key, 0.) * event['terms']['cash_per_share']
                 paid.add(key)
