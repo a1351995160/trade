@@ -57,7 +57,7 @@ def _source_files(strategy) -> dict:
         "universe_scan_service_v1.py", "universe_submission_v1.py", "universe_data_provider_v1.py",
         "tdx_research_adapter_v1.py", "research_universe_v1.py", "universe_account_inputs_v1.py",
         "board_execution_policy_v1.py",
-        "universe_signal_scan_v1.py", "causal_dividend_features_v1.py", "common.py",
+        "universe_signal_scan_v1.py", "causal_dividend_features_v1.py", "corporate_action_price_v2.py", "common.py",
         "exploration_governance.py", "mutation_boundary.py", "strategy_submission_v1.py"))
     files.update(REPO / "src" / "chanlun_trader" / name for name in (
         "synthetic_batch_resources.py", "presentation.py", "research/guard.py"))

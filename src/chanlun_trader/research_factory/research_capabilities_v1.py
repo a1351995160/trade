@@ -148,10 +148,11 @@ def full_universe_capabilities_v1(rules=None):
         'universe_data_provider_v1.py', 'universe_account_inputs_v1.py',
         'board_execution_policy_v1.py', 'universe_signal_scan_v1.py',
         'universe_account_backend_v1.py', 'universe_dividend_accounting_v1.py', 'universe_rule_exit_v1.py',
+        'universe_corporate_accounting_v2.py', 'corporate_action_price_v2.py', 'causal_dividend_features_v1.py',
         'universe_submission_v1.py', 'universe_status_v1.py', 'universe_scan_service_v1.py')
     supported = ['indicator_rules', 'multi_indicator_rules', 'full_range_scan', 'public_signal_scan',
                  'shared_account', 'cost_stop', 'take_profit', 'trailing_stop',
-                 'cash_dividend', 'suspension_recovery', 'account_audit']
+                 'cash_dividend', 'qualified_share_actions', 'suspension_recovery', 'account_audit']
     return {'version': 'FULL_UNIVERSE_RESEARCH_CAPABILITIES_V1',
         'submission_version': 'FULL_UNIVERSE_SUBMISSION_V1',
         'deployment_version': 'FULL_UNIVERSE_DEPLOYMENT_V1',
@@ -170,6 +171,12 @@ def full_universe_capabilities_v1(rules=None):
         'cash_policy': 'ONE_SHARED_ACCOUNT_ACROSS_BOARDS',
         'cash_payment_policy': 'ACTUAL_PAYMENT_DATE_RECEIVABLE_NOT_SPENDABLE',
         'exit_price_policy': 'RAW_PLUS_ENTITLED_GROSS_CASH_V1',
+        'share_action_account_version': 'UNIVERSE_CORPORATE_ACCOUNTING_V2',
+        'share_exit_price_policy': 'RAW_IN_ORIGINAL_SHARE_UNITS_PLUS_ENTITLED_CASH_V2',
+        'corporate_action_coverage_policy': 'PRICE_COVERAGE_AND_ACCOUNT_TERMS_SEPARATE',
+        'share_action_requirements': ['EXPLICIT_RATIO_AND_SOURCE', 'SHARE_CREDIT_AND_TRADABLE_DATE_EVIDENCE',
+                                     'EXPLICIT_TAX_RULE_AND_SOURCE', 'INTEGER_ENTITLEMENTS'],
+        'share_tax_allocation': 'BONUS_CHILD_LOTS_MODELED_NOT_CSDC_VERIFIED',
         'tax_collection_time': 'SALE_FILL_MODELED_NOT_BROKER_VERIFIED',
         'market_filter_scope': rules['market_filter_scope'],
         'engineering_evidence': 'ENGINEERING_NOT_ACCEPTED', 'real_evidence': 'REAL_NOT_ACCEPTED',
@@ -186,7 +193,7 @@ def full_universe_capabilities_v1(rules=None):
         'unsupported': ['atr_stop', 'volatility_rank', 'STAR', 'BSE', 'BROKER_LIVE_TRADING'],
         'limitations': ['已登记范围不等于完整历史市场；缺退市/历史清单证据仍保留UNKNOWN。',
             '新入口的能力接线、工程测试、真实全范围验收、策略有效性分别判断。',
-            '非现金公司行动与未知退市结算仍阻断完整账户结论。',
+            '送转需完整条款；碎股、登记后持仓权益变化、配股及未知退市结算仍阻断完整账户结论。',
             '现金分红按原到账日处理，税款成交时扣收仍为有来源的模型时点。']}
 
 

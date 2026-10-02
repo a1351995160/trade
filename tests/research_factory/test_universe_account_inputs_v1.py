@@ -634,7 +634,7 @@ def test_cash_dividend_keeps_delayed_payment_and_explains_raw_reference():
     assert prepared.bar("300001.SZ", DAYS[3])["prev_close"] == 9.5
 
 
-def test_unexplained_ex_reference_and_non_cash_actions_are_blocking():
+def test_unexplained_ex_reference_and_share_actions_without_terms_are_blocking():
     bundle, window = valid_universe_bundle_v1()
     bundle["daily"].loc[bundle["daily"].symbol.eq("300001.SZ")
         & bundle["daily"].date.eq(DAYS[2]), "prev_close"] = 8.
@@ -643,7 +643,7 @@ def test_unexplained_ex_reference_and_non_cash_actions_are_blocking():
     bundle, window = valid_universe_bundle_v1()
     bundle["events"] = [{"event_id": "BONUS_UNKNOWN", "symbol": "300001.SZ",
                          "event_type": "BONUS", "effective_date": DAYS[2]}]
-    with pytest.raises(ValueError, match="UNSUPPORTED_ACTION:BONUS_UNKNOWN"):
+    with pytest.raises(ValueError, match="UNIVERSE_SHARE_ACTION_TERMS_UNKNOWN:BONUS_UNKNOWN"):
         prepare_universe_account_inputs_v1(bundle, window)
 
 

@@ -60,7 +60,7 @@ def _validate_frozen_item_scope(item, input_identity, window, *, source_hashes=N
         raise ValueError('UNIVERSE_FROZEN_SCOPE_CONFLICT')
     guard.check_range(window['feature_start'], window['account_end'], 'frozen universe window')
     for event in value['bundle'].get('events', []):
-        for key in ('effective_date', 'record_date', 'payment_date'):
+        for key in ('effective_date', 'record_date', 'payment_date', 'share_credit_date', 'tradable_date'):
             if event.get(key) is not None:
                 guard.check_range(event[key], event[key], 'frozen universe event')
     if set(value.get('frames', {})) != {'daily', 'turn', 'states'}:

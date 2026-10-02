@@ -13,8 +13,13 @@ class UniverseRuleExitV1:
         self.strategy_id = strategy_id
         self.evaluator = DailyExitEvaluatorV2(strategy_id, 'UNIVERSE_EXIT_V1', rules)
         self.trace = []
+        self.price_policy = PRICE_POLICY
 
     def evaluate(self, ledger, store, calendar, day):
+        corporate = getattr(ledger, 'version', '') == 'UniverseCorporateAccountingV2'
+        if corporate:
+            from .universe_corporate_accounting_v2 import PRICE_POLICY as corporate_price_policy
+            self.price_policy = corporate_price_policy
         indices = {int(d): i for i, d in enumerate(calendar)}
         result = []
         for lot in sorted(ledger.lots.values(), key=lambda item: item.lot_id):
@@ -25,14 +30,24 @@ class UniverseRuleExitV1:
                 continue
             if not math.isfinite(float(raw['close'])) or raw['close'] <= 0:
                 raise ValueError('UNIVERSE_EXIT_RAW_CLOSE_INVALID')
+            if corporate and lot.lot_id not in self.evaluator._v1.trailing:
+                parent = ledger.bonus_parent_lots.get(lot.lot_id)
+                if parent in self.evaluator._v1.trailing:
+                    self.evaluator._v1.trailing[lot.lot_id] = deepcopy(self.evaluator._v1.trailing[parent])
             entitled, event_ids = 0., []
-            for event in ledger.events:
-                if event['symbol'] == lot.symbol and event['effective_date'] <= day:
-                    rights = ledger.dividend_lots.get(event['event_id'], {}).get(lot.lot_id, 0)
-                    if rights:
-                        entitled += float(event['terms']['cash_per_share'])
-                        event_ids.append(event['event_id'])
-            adjusted = {**raw, 'close': float(raw['close']) + entitled}
+            factor = 1.
+            if corporate:
+                factor = ledger.share_price_factors.get(lot.lot_id, 1.)
+                benefits = ledger.cash_price_adjustments.get(lot.lot_id, {})
+                entitled, event_ids = sum(benefits.values()), list(benefits)
+            else:
+                for event in ledger.events:
+                    if event['symbol'] == lot.symbol and event['effective_date'] <= day:
+                        rights = ledger.dividend_lots.get(event['event_id'], {}).get(lot.lot_id, 0)
+                        if rights:
+                            entitled += float(event['terms']['cash_per_share'])
+                            event_ids.append(event['event_id'])
+            adjusted = {**raw, 'close': float(raw['close']) * factor + entitled}
             class PriceView:
                 def get_daily_bar(self, symbol, session, price_mode='raw'):
                     if symbol != lot.symbol or session != day or price_mode != 'raw':
@@ -40,15 +55,18 @@ class UniverseRuleExitV1:
                     return adjusted
             before = len(self.evaluator.evaluations)
             exits = self.evaluator.evaluate([lot], day, indices[day], PriceView(), session_index_of=indices)
-            self.trace.append({'date': day, 'symbol': lot.symbol, 'lot_id': lot.lot_id,
+            row = {'date': day, 'symbol': lot.symbol, 'lot_id': lot.lot_id,
                 'entry_price': lot.entry_price, 'raw_close': float(raw['close']),
                 'comparison_close': adjusted['close'], 'entitled_gross_cash_per_share': entitled,
-                'event_ids': event_ids, 'price_policy': PRICE_POLICY,
+                'event_ids': event_ids, 'price_policy': self.price_policy,
                 'evaluations': deepcopy(self.evaluator.evaluations[before:]),
-                'reasons': [item.reason_code for item in exits]})
+                'reasons': [item.reason_code for item in exits]}
+            if corporate:
+                row['share_price_factor'] = factor
+            self.trace.append(row)
             result.extend(exits)
         return result
 
     def state(self):
-        return {'price_policy': PRICE_POLICY, 'trailing': {key: asdict(value) for key, value in
+        return {'price_policy': self.price_policy, 'trailing': {key: asdict(value) for key, value in
             sorted(self.evaluator._v1.trailing.items())}, 'evaluations': deepcopy(self.trace)}

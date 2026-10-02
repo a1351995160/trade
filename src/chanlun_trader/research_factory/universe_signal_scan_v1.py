@@ -4,7 +4,7 @@ import math
 
 import pandas as pd
 
-from .causal_dividend_features_v1 import causal_hfq_bars
+from .causal_dividend_features_v1 import causal_hfq_bars, causal_hfq_bars_v2
 from .common import stable_hash
 from .research_rule_strategy_v2 import _field_references, evaluate_condition
 from .strategy_interface_v1 import Decision, TargetWeight
@@ -45,7 +45,9 @@ class UniverseSignalScanV1:
                 actions = tuple(e for e in inputs.bundle['events'] if e['symbol'] == symbol
                                 and int(raw.date.min()) < e['effective_date'] <= int(raw.date.max()))
                 try:
-                    bars, price_trace = causal_hfq_bars(raw, actions)
+                    price_transform = (causal_hfq_bars_v2 if any(e.get('price_version') == 'CASH_AND_SHARES_V2'
+                        or e['event_type'] in {'BONUS', 'CAPITALIZATION'} for e in actions) else causal_hfq_bars)
+                    bars, price_trace = price_transform(raw, actions)
                 except ValueError as error:
                     # 公共纯信号扫描保留该证券未知；账户默认仍要求严格的除息价格证据。
                     if not allow_data_gaps or str(error) != 'CAUSAL_PRICE_EX_DATE_MISSING':

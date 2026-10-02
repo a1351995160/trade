@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections import defaultdict
 from copy import deepcopy
 from decimal import Decimal, ROUND_HALF_UP
+from fractions import Fraction
 import math
 
 import pandas as pd
@@ -19,6 +20,7 @@ from .common import stable_hash
 VERSION = "UNIVERSE_EVIDENCE_V1"
 _BACKEND = "UNIVERSE_ACCOUNT_BACKEND_V1"
 _PRICE_POLICY = "RAW_PLUS_ENTITLED_GROSS_CASH_V1"
+_SHARE_PRICE_POLICY = "RAW_IN_ORIGINAL_SHARE_UNITS_PLUS_ENTITLED_CASH_V2"
 _TAX_POLICY = "SALE_FILL_MODELED_2015_101"
 _PRIORITY = ("EXIT_FIXED_COST_STOP", "EXIT_TRAILING_STOP", "EXIT_FIXED_TAKE_PROFIT")
 
@@ -144,7 +146,7 @@ def _opening_permission(inputs, symbol, day, side, *, modeled_price=None):
 def _condition_frames(strategy, inputs):
     """单独遍历股票重建条件与准备身份；明确复用指标/DSL，禁止调用扫描器。"""
     from ..engine.conditions_v2 import ConditionContext
-    from .causal_dividend_features_v1 import causal_hfq_bars
+    from .causal_dividend_features_v1 import causal_hfq_bars, causal_hfq_bars_v2
     from .research_rule_strategy_v2 import _field_references, evaluate_condition
     turns = {str(s): frame.set_index("date") for s, frame in inputs.turn.groupby("symbol", sort=False)}
     groups = {str(s): frame for s, frame in inputs.daily.groupby("symbol", sort=False)}
@@ -160,7 +162,10 @@ def _condition_frames(strategy, inputs):
         raw["adjustflag"] = "3"
         actions = tuple(e for e in inputs.events if e["symbol"] == symbol
                         and int(raw.date.min()) < e["effective_date"] <= int(raw.date.max()))
-        bars, price_trace = causal_hfq_bars(raw, actions)
+        price_transform = (causal_hfq_bars_v2 if any(e.get("price_version") == "CASH_AND_SHARES_V2"
+                           or e["event_type"] in {"BONUS", "CAPITALIZATION"} for e in actions)
+                           else causal_hfq_bars)
+        bars, price_trace = price_transform(raw, actions)
         bars = bars.set_index("date")
         own_turn = turns.get(symbol)
         vendor = own_turn["turn"].reindex(bars.index) if own_turn is not None and "turn" in own_turn else None
@@ -205,12 +210,23 @@ class _Reconstruction:
         self.entitlements, self.rights, self.receivables = {}, {}, {}
         self.applied, self.paid, self.action_audit = set(), set(), []
         self.events = [e for e in inputs.events if e["record_date"] >= inputs.window["account_start"]]
+        self.share_events = any(e["event_type"] in {"BONUS", "CAPITALIZATION"} for e in self.events)
+        self.pending_share_credits, self.bonus_parent_lots = {}, {}
+        self.share_price_factors, self.cash_price_adjustments = {}, {}
+        self.dividend_record_factors, self.share_tax_lots = {}, {}
+        self.share_tax = 0.
+        self.price_policy = _SHARE_PRICE_POLICY if self.share_events else _PRICE_POLICY
+        self.new_share_lots, self.no_permitted_quantity_ids = set(), []
         self.tax = self.income = self.fees = self.turnover = self.realized = 0.
         self.rule_states, self.trailing, self.exit_rows = {}, {}, []
         self.trade_count = 0
 
     def quantity(self, symbol):
         return sum(lot["remaining_quantity"] for lot in self.lots.values() if lot["symbol"] == symbol)
+
+    def sellable(self, lot, day):
+        # 送转lot继承原入场时点，但可卖日由股份来源单独约束，不能套用原股T+1。
+        return lot["remaining_quantity"] > 0 and _time(lot["sellable_from"]) <= _stamp(day)
 
     def equity(self):
         _require(all(symbol in self.prices for symbol in self.positions if self.quantity(symbol)), "HOLDING_MARK_MISSING")
@@ -239,23 +255,111 @@ class _Reconstruction:
 
     def open_actions(self, day):
         stamp = str(_stamp(day))
-        for event in self.events:
+        self.new_share_lots = set()
+        # 同日现金和股份都基于登记份额；先形成现金应收，再扩展股份数量。
+        ordered = (sorted(self.events, key=lambda e: (e["effective_date"],
+                    e["event_type"] != "CASH_DIVIDEND", e["event_id"])) if self.share_events else self.events)
+        for event in ordered:
             key = event["event_id"]
             if event["effective_date"] <= day and key not in self.applied:
                 _require(event["effective_date"] == day and key in self.entitlements, "ACTION_HISTORY_MISSING")
-                quantity = self.entitlements[key]
-                if quantity:
-                    amount = quantity * _number(event["terms"]["cash_per_share"])
-                    self.receivables[key] = amount
-                    self.income += amount
+                held = self.quantity(event["symbol"])
+                if event["event_type"] == "CASH_DIVIDEND":
+                    quantity = self.entitlements[key]
+                    if quantity:
+                        cash_per_share = _number(event["terms"]["cash_per_share"])
+                        amount = quantity * cash_per_share
+                        self.receivables[key] = amount
+                        self.income += amount
+                        if self.share_events:
+                            for lot_id, factor in self.dividend_record_factors[key].items():
+                                self.cash_price_adjustments.setdefault(lot_id, {})[key] = cash_per_share * factor
+                else:
+                    self.share_action(event, day)
                 self.applied.add(key)
                 self.action_audit.append({"event_id": key, "phase": "EFFECTIVE", "timestamp": stamp,
-                                          "held_quantity": self.quantity(event["symbol"])})
-            if key in self.receivables and event["payment_date"] <= day:
+                                          "held_quantity": held})
+            if key in self.receivables and event.get("payment_date", day + 1) <= day:
                 amount = self.receivables.pop(key)
                 self.cash += amount
                 self.paid.add(key)
                 self.action_audit.append({"event_id": key, "phase": "PAYMENT", "amount": amount, "timestamp": stamp})
+        for key, credit in list(self.pending_share_credits.items()):
+            if credit["credit_date"] <= day:
+                self.action_audit.append({"event_id": key, "phase": "SHARE_CREDIT",
+                                          "lots": deepcopy(credit["lots"]), "timestamp": stamp})
+                del self.pending_share_credits[key]
+
+    def share_action(self, event, day):
+        """直接用有理数重建登记股份与剩余成本，不调用生产股份账本。"""
+        terms, key = event["terms"], event["event_id"]
+        numerator, denominator = terms["ratio_numerator"], terms["ratio_denominator"]
+        _require(type(numerator) is int and type(denominator) is int
+                 and numerator > denominator > 0 and event["units"] == "NEW_SHARES_PER_OLD_SHARE",
+                 "SHARE_TERMS_INVALID")
+        ratio = Fraction(numerator, denominator)
+        _require(day <= event["share_credit_date"] <= event["tradable_date"], "SHARE_DATES_CONFLICT")
+        for field in ("share_credit_date", "tradable_date"):
+            evidence = event["date_evidence"][field]
+            _require(evidence["kind"] in {"SOURCE", "MODELED"} and bool(evidence["source"])
+                     and evidence["source"] != "UNKNOWN", "SHARE_DATE_EVIDENCE_REQUIRED")
+        tax_rule = terms["tax_rule"]
+        _require(bool(tax_rule["source"]) and tax_rule["source"] != "UNKNOWN", "SHARE_TAX_SOURCE_REQUIRED")
+        exempt = tax_rule["kind"] == "CAPITALIZATION_SHARE_PREMIUM_EXEMPT"
+        _require(exempt or tax_rule["kind"] == "BONUS_DEFERRED_INDIVIDUAL_2015_101", "SHARE_TAX_RULE_UNKNOWN")
+        _require(not exempt or event["event_type"] == "CAPITALIZATION", "SHARE_TAX_EXEMPT_ACTION_CONFLICT")
+        if not exempt:
+            _require(_number(tax_rule["taxable_cash_per_new_share"]) > 0
+                     and tax_rule["allocation_policy"] == "CHILD_LOTS_MODELED"
+                     and bool(tax_rule["allocation_source"]) and tax_rule["allocation_source"] != "UNKNOWN",
+                     "SHARE_TAX_ALLOCATION_REQUIRED")
+        _require(not any(self.lots[lot_id]["symbol"] == event["symbol"]
+                         for credit in self.pending_share_credits.values() for lot_id in credit["lots"]),
+                 "OVERLAPPING_UNCREDITED_SHARE_ACTION")
+        own = {lot_id: lot["remaining_quantity"] for lot_id, lot in self.lots.items()
+               if lot["symbol"] == event["symbol"] and lot["remaining_quantity"]}
+        _require(own == self.entitlements[key], "SHARE_ENTITLEMENT_CHANGED_OR_MISSING")
+        changes = []
+        for lot_id, quantity in own.items():
+            extra = quantity * (ratio - 1)
+            _require(extra.denominator == 1 and extra > 0, "FRACTIONAL_SHARES_UNSUPPORTED")
+            changes.append((lot_id, int(extra)))
+        credited = {}
+        for lot_id, extra in changes:
+            lot = self.lots[lot_id]
+            original_basis = lot["cost"] / lot["quantity"]
+            original_remaining_cost = original_basis * lot["remaining_quantity"]
+            child_id = f"lot-{len(self.lots) + 1:06d}"
+            sellable = max(_time(lot["sellable_from"]), _stamp(event["tradable_date"]))
+            sellable_day = int(sellable.strftime("%Y%m%d"))
+            child = {**lot, "lot_id": child_id, "quantity": extra, "remaining_quantity": extra,
+                     "cost": original_remaining_cost * (1 - 1 / float(ratio)),
+                     "sellable_from": sellable.isoformat(),
+                     "sellable_from_session": sellable_day,
+                     "sellable_from_session_index": (self.inputs.session_index(sellable_day)
+                          if sellable_day in self.inputs.calendar else None), "_starts_position": False}
+            lot["cost"] /= float(ratio)
+            self.lots[child_id] = child
+            self.new_share_lots.add(child_id)
+            self.bonus_parent_lots[child_id] = lot_id
+            credited[child_id] = extra
+            factor = self.share_price_factors.get(lot_id, 1.) * float(ratio)
+            self.share_price_factors[lot_id] = self.share_price_factors[child_id] = factor
+            self.cash_price_adjustments[child_id] = deepcopy(self.cash_price_adjustments.get(lot_id, {}))
+            if not exempt:
+                self.share_tax_lots.setdefault(key, {})[child_id] = extra
+            _same(lot["cost"] * lot["remaining_quantity"] / lot["quantity"] + child["cost"],
+                  original_remaining_cost, "SHARE_REMAINING_COST_CONFLICT")
+        if credited:
+            self.pending_share_credits[key] = {"credit_date": event["share_credit_date"], "lots": credited}
+            position = self.positions[event["symbol"]]
+            active = [lot for lot in self.lots.values()
+                      if lot["position_id"] == position["position_id"] and lot["remaining_quantity"]]
+            position["quantity"] = sum(lot["remaining_quantity"] for lot in active)
+            basis = sum(lot["cost"] * lot["remaining_quantity"] / lot["quantity"] for lot in active)
+            position["average_cost"] = basis / position["quantity"]
+        if event["symbol"] in self.prices:
+            self.prices[event["symbol"]] /= float(ratio)
 
     def mark(self, day, *, opening=False):
         for symbol, position in self.positions.items():
@@ -278,7 +382,13 @@ class _Reconstruction:
             _require(key not in self.entitlements, "DUPLICATE_ENTITLEMENT")
             own = {key: lot["remaining_quantity"] for key, lot in self.lots.items()
                    if lot["symbol"] == event["symbol"] and lot["remaining_quantity"]}
-            self.entitlements[key], self.rights[key] = sum(own.values()), own
+            if event["event_type"] == "CASH_DIVIDEND":
+                self.entitlements[key], self.rights[key] = sum(own.values()), own
+                if self.share_events:
+                    self.dividend_record_factors[key] = {lot_id: self.share_price_factors.get(lot_id, 1.)
+                                                        for lot_id in own}
+            else:
+                self.entitlements[key] = own
             self.action_audit.append({"event_id": key, "phase": "RECORD_CLOSE",
                                       "quantity": sum(own.values()), "timestamp": str(
                                           _stamp(day, close=True) + pd.Timedelta(minutes=30))})
@@ -329,7 +439,7 @@ class _Reconstruction:
             position = self.positions[symbol]
             candidates = [(key, lot) for key, lot in self.lots.items() if lot["symbol"] == symbol
                 and lot["position_id"] == position["position_id"] and lot["remaining_quantity"]
-                and lot["entry_session_index"] < session]
+                and self.sellable(lot, day)]
             candidates.sort(key=lambda item: _time(item[1]["buy_time"]))
             if trade.get("lot_id") is not None:
                 candidates = [(key, lot) for key, lot in candidates if key == trade["lot_id"]]
@@ -350,22 +460,32 @@ class _Reconstruction:
             self.cash += gross - fee
             for event in self.events:
                 key = event["event_id"]
-                if event["symbol"] != symbol or key not in self.rights:
+                share = event["event_type"] in {"BONUS", "CAPITALIZATION"}
+                rights = self.share_tax_lots.get(key) if share else self.rights.get(key)
+                if event["symbol"] != symbol or rights is None:
                     continue
+                tax_rule = event["terms"]["tax_rule"]
+                basis = tax_rule["taxable_cash_per_new_share"] if share else event["terms"]["cash_per_share"]
                 for lot_id, amount in sold.items():
-                    taxed = min(amount, self.rights[key].get(lot_id, 0))
+                    taxed = min(amount, rights.get(lot_id, 0))
                     if not taxed:
                         continue
                     rate = _tax_rate(self.lots[lot_id]["buy_time"], stamp)
-                    tax = round(taxed * _number(event["terms"]["cash_per_share"]) * rate, 4)
-                    self.rights[key][lot_id] -= taxed
+                    tax = round(taxed * _number(basis) * rate, 4)
+                    rights[lot_id] -= taxed
                     self.tax += tax
                     self.cash -= tax
-                    self.action_audit.append({"event_id": key, "phase": "DEFERRED_INDIVIDUAL_TAX",
+                    row = {"event_id": key, "phase": "DEFERRED_SHARE_TAX" if share else "DEFERRED_INDIVIDUAL_TAX",
                         "lot_id": lot_id, "quantity": taxed, "rate": rate, "amount": tax,
-                        "timestamp": str(stamp), "policy": _TAX_POLICY, "source": event["terms"]["tax_rule"]["source"],
-                        "payment_date": event["payment_date"], "dividend_paid": key in self.paid,
-                        "broker_collection_time_verified": False})
+                        "timestamp": str(stamp), "policy": _TAX_POLICY, "source": tax_rule["source"]}
+                    if share:
+                        self.share_tax += tax
+                        row.update(allocation_policy=tax_rule["allocation_policy"],
+                                   allocation_source=tax_rule["allocation_source"], tax_allocation_verified=False)
+                    else:
+                        row.update(payment_date=event["payment_date"], dividend_paid=key in self.paid,
+                                   broker_collection_time_verified=False)
+                    self.action_audit.append(row)
             if not self.quantity(symbol):
                 self.last_exit[symbol] = session
                 position["unrealized_pnl"] = 0.
@@ -399,13 +519,22 @@ class _Reconstruction:
             security, raw = self.inputs.state(lot["symbol"], day), self.inputs.bar(lot["symbol"], day)
             if raw is None or security["suspension_status"] != "TRADING":
                 continue
+            parent_id = self.bonus_parent_lots.get(key)
+            if key not in self.trailing and parent_id in self.trailing:
+                self.trailing[key] = deepcopy(self.trailing[parent_id])
             gross, ids = 0., []
-            for event in self.events:
-                if (event["symbol"] == lot["symbol"] and event["effective_date"] <= day
-                        and self.rights.get(event["event_id"], {}).get(key, 0)):
-                    gross += _number(event["terms"]["cash_per_share"])
-                    ids.append(event["event_id"])
-            close, anchor = _number(raw["close"]) + gross, lot["entry_price"]
+            if self.share_events:
+                adjustments = self.cash_price_adjustments.get(key, {})
+                gross, ids = sum(adjustments.values()), list(adjustments)
+            else:
+                for event in self.events:
+                    if (event["event_type"] == "CASH_DIVIDEND" and event["symbol"] == lot["symbol"]
+                            and event["effective_date"] <= day
+                            and self.rights.get(event["event_id"], {}).get(key, 0)):
+                        gross += _number(event["terms"]["cash_per_share"])
+                        ids.append(event["event_id"])
+            factor = self.share_price_factors.get(key, 1.)
+            close, anchor = _number(raw["close"]) * factor + gross, lot["entry_price"]
             evaluations, reasons = [], []
             if lot["exit_state"] in {"EXIT_DUE", "SELL_PENDING", "PARTIALLY_FILLED"}:
                 reasons = [lot["exit_reason"] or "EXIT_PENDING_RETRY"]
@@ -433,10 +562,13 @@ class _Reconstruction:
                     evaluation.update(state="EXIT_DUE", triggered=hits, primary_reason=primary)
                     reasons = [primary]
                 evaluations.append(evaluation)
-            self.exit_rows.append({"date": day, "symbol": lot["symbol"], "lot_id": key,
+            trace = {"date": day, "symbol": lot["symbol"], "lot_id": key,
                 "entry_price": anchor, "raw_close": _number(raw["close"]), "comparison_close": close,
-                "entitled_gross_cash_per_share": gross, "event_ids": ids, "price_policy": _PRICE_POLICY,
-                "evaluations": evaluations, "reasons": reasons})
+                "entitled_gross_cash_per_share": gross, "event_ids": ids, "price_policy": self.price_policy,
+                "evaluations": evaluations, "reasons": reasons}
+            if self.share_events:
+                trace["share_price_factor"] = factor
+            self.exit_rows.append(trace)
             if reasons:
                 due[lot["symbol"]].append(key)
         return due
@@ -498,8 +630,14 @@ def _policy(result, inputs, strategy, initial_cash, costs):
              and portfolio["overlap"] == "SEPARATE_STRATEGY_LOTS", "POLICY_LIMITS_INVALID")
     _require(_time(portfolio["valid_until"]) > _stamp(inputs.calendar[-1], close=True), "POLICY_EXPIRED")
     _require(result["board_policy_identity"] == inputs.bundle["board_policy_identity"] == board_policy_identity(), "BOARD_POLICY_IDENTITY_CONFLICT")
-    _require(result["exit_price_policy"] == _PRICE_POLICY, "EXIT_PRICE_POLICY_CONFLICT")
+    share_events = any(e["event_type"] in {"BONUS", "CAPITALIZATION"}
+                       and e["record_date"] >= inputs.window["account_start"] for e in inputs.events)
+    expected_price_policy = _SHARE_PRICE_POLICY if share_events else _PRICE_POLICY
+    _require(result["exit_price_policy"] == expected_price_policy, "EXIT_PRICE_POLICY_CONFLICT")
     description = result["execution_description"]
+    if share_events:
+        _require(description.get("supported_exit_price_policies") == [_PRICE_POLICY, _SHARE_PRICE_POLICY],
+                 "EXIT_PRICE_POLICY_CAPABILITY_CONFLICT")
     _require(description["backend"] == _BACKEND and description["window"] == inputs.window
              and description["costs"] == costs and description["initial_cash"] == initial_cash
              and description["max_positions"] == portfolio["max_positions"]
@@ -579,8 +717,30 @@ def _execute_day(account, day, plan, orders, fills, portfolio, previous_equity, 
     all_orders, pending = [], []
     consumed = set()
     eligibility_skip_ids = []
+    session_filled = defaultdict(int)
+    if account.share_events:
+        supplied = defaultdict(int)
+        for trade in fills:
+            _require(type(trade["quantity"]) is int and trade["quantity"] > 0, "FILL_QUANTITY_INVALID")
+            supplied[trade["symbol"]] += trade["quantity"]
+        previous_day = account.inputs.calendar[account.inputs.session_index(day) - 1]
+        for symbol, quantity in supplied.items():
+            prior = account.inputs.bar(symbol, previous_day)
+            capacity = int(_number(prior["volume"]) * .10) if prior is not None else 0
+            _require(quantity <= capacity, "SYMBOL_SESSION_VOLUME_CAPACITY_EXCEEDED")
     for intent in plan["intents"]:
-        expanded = [dict(intent, _lot_id=key) for key in intent["exit_lot_ids"]] if "exit_lot_ids" in intent else [intent]
+        if "exit_lot_ids" in intent:
+            expanded = []
+            for key in intent["exit_lot_ids"]:
+                expanded.append(dict(intent, _lot_id=key))
+                for child_id, parent_id in account.bonus_parent_lots.items():
+                    if (parent_id == key and child_id in account.new_share_lots
+                            and child_id not in intent["exit_lot_ids"]
+                            and account.lots[child_id]["remaining_quantity"]
+                            and account.lots[child_id]["exit_state"] in {"EXIT_DUE", "SELL_PENDING", "PARTIALLY_FILLED"}):
+                        expanded.append(dict(intent, _lot_id=child_id))
+        else:
+            expanded = [intent]
         for item in expanded:
             symbol, side = item["symbol"], item["side"]
             state = account.inputs.state(symbol, day)
@@ -600,7 +760,7 @@ def _execute_day(account, day, plan, orders, fills, portfolio, previous_equity, 
                 continue
             if side == "SELL":
                 eligible = [lot for lot in account.lots.values() if lot["symbol"] == symbol
-                    and lot["remaining_quantity"] and lot["entry_session_index"] < account.inputs.session_index(day)
+                    and account.sellable(lot, day)
                     and ("_lot_id" not in item or lot["lot_id"] == item["_lot_id"])]
                 quantity = sum(lot["remaining_quantity"] for lot in eligible)
             else:
@@ -613,6 +773,10 @@ def _execute_day(account, day, plan, orders, fills, portfolio, previous_equity, 
                     quantity -= 100
             if not quantity:
                 _require(not matching, "ORDER_WITHOUT_PERMITTED_QUANTITY")
+                if account.share_events:
+                    _tree(skips.get(intent_id, []), [{"intent_id": intent_id, "reason": "NO_PERMITTED_QUANTITY"}],
+                          "SHARE_LOCKED_OR_ZERO_QUANTITY_SKIP_CONFLICT")
+                    account.no_permitted_quantity_ids.append(intent_id)
                 continue
             _require(len(matching) == 1, "MISSING_OR_DUPLICATE_ORDER")
             order = matching[0]
@@ -638,7 +802,10 @@ def _execute_day(account, day, plan, orders, fills, portfolio, previous_equity, 
         price = round(_number(raw["open"]) * (1 + (1 if side == "BUY" else -1) * account.costs["slippage_bps"]), 4)
         if allowed:
             allowed, _ = _opening_permission(account.inputs, symbol, day, side, modeled_price=price)
-        quantity = min(original, int(_number(prior["volume"]) * .10)) if allowed else 0
+        capacity = int(_number(prior["volume"]) * .10) if allowed else 0
+        if account.share_events:
+            capacity = max(0, capacity - session_filled[symbol])
+        quantity = min(original, capacity) if allowed else 0
         final_order_quantity = original
         if side == "BUY" and quantity:
             quantity = quantity // 100 * 100
@@ -666,12 +833,14 @@ def _execute_day(account, day, plan, orders, fills, portfolio, previous_equity, 
                      and matching[0]["side"] == side, "FILL_CAPACITY_OR_SCOPE_CONFLICT")
             if side == "SELL":
                 eligible = [key for key, lot in account.lots.items() if lot["symbol"] == symbol
-                    and lot["remaining_quantity"] and lot["entry_session_index"] < account.inputs.session_index(day)
+                    and account.sellable(lot, day)
                     and (order.get("lot_id") is None or key == order["lot_id"])]
                 expected_lot = order.get("lot_id") or (eligible[0] if len(eligible) == 1 else None)
                 _require(matching[0].get("lot_id") == expected_lot, "SELL_FIFO_LOT_ID_CONFLICT")
             account.fill(matching[0], day)
             fills_used.append(matching[0])
+            if account.share_events:
+                session_filled[symbol] += quantity
             if side == "BUY":
                 gross += quantity * price
                 spent += quantity * price + _fee(side, quantity, price, account.costs)
@@ -771,6 +940,9 @@ def reconstruct_universe_account(bundle, window, result, *, initial_cash, costs,
     _require(sorted(skip["intent_id"] for skip in skip_rows
                     if skip["reason"] == "SECURITY_NOT_ELIGIBLE_AT_OPEN")
              == sorted(expected_eligibility_skip_ids), "UNEXPECTED_ENTRY_ELIGIBILITY_SKIP")
+    if account.share_events:
+        _require(sorted(skip["intent_id"] for skip in skip_rows if skip["reason"] == "NO_PERMITTED_QUANTITY")
+                 == sorted(account.no_permitted_quantity_ids), "UNEXPECTED_ZERO_QUANTITY_SKIP")
     _same(economic["cash"], account.cash, "FINAL_CASH_CONFLICT")
     _same(economic["reserved_cash"], 0., "FINAL_RESERVED_CASH_CONFLICT")
     _same(checkpoint["equity"], daily[-1]["equity"], "FINAL_EQUITY_CONFLICT")
@@ -784,11 +956,20 @@ def reconstruct_universe_account(bundle, window, result, *, initial_cash, costs,
     _tree(economic["action_audit"], account.action_audit, "FINAL_ACTION_AUDIT_CONFLICT")
     _same(economic["action_income"], account.income, "FINAL_DIVIDEND_INCOME_CONFLICT")
     _same(economic["dividend_tax_withheld"], account.tax, "FINAL_DIVIDEND_TAX_CONFLICT")
+    if account.share_events:
+        for field in ("pending_share_credits", "bonus_parent_lots", "share_price_factors",
+                      "cash_price_adjustments", "dividend_record_factors", "share_tax_lots"):
+            _tree(economic[field], getattr(account, field), "FINAL_" + field.upper() + "_CONFLICT")
+        _same(economic["share_tax_withheld"], account.share_tax, "FINAL_SHARE_TAX_CONFLICT")
+        _tree(economic["share_tax_timing"], {"policy": _TAX_POLICY, "tax_allocation_verified": False,
+              "allocation_policy": "CHILD_LOTS_MODELED"}, "FINAL_SHARE_TAX_TIMING_CONFLICT")
+        _tree(economic["last_exit_dates"], {strategy_id + ":" + symbol: inputs.calendar[index]
+              for symbol, index in account.last_exit.items()}, "FINAL_LAST_EXIT_DATES_CONFLICT")
     _tree(economic["ledger_counters"], [sum(bool(lot["_starts_position"]) for lot in account.lots.values()),
         len(account.lots), len(fills)], "FINAL_LEDGER_COUNTERS_CONFLICT")
     _tree(checkpoint["rule_states"], {strategy_id + ":" + s: v for s, v in account.rule_states.items()}, "FINAL_RULE_STATES_CONFLICT")
     if strategy.exit_rules.enabled:
-        _tree(checkpoint["rule_exit_states"], {strategy_id: {"price_policy": _PRICE_POLICY,
+        _tree(checkpoint["rule_exit_states"], {strategy_id: {"price_policy": account.price_policy,
             "trailing": account.trailing, "evaluations": account.exit_rows}}, "EXIT_TRACE_OR_TRAILING_CONFLICT")
     else:
         _require(not checkpoint.get("rule_exit_states"), "UNCONFIGURED_EXIT_TRACE")
@@ -796,7 +977,7 @@ def reconstruct_universe_account(bundle, window, result, *, initial_cash, costs,
                "total_fees": account.fees, "trade_count": len(fills)}
     _tree(result["metrics"], metrics, "METRICS_CONFLICT")
     inputs.assert_unchanged()
-    return {"version": VERSION, "daily_accounts": daily, "metrics": metrics, "dividend_tax": account.tax,
+    evidence = {"version": VERSION, "daily_accounts": daily, "metrics": metrics, "dividend_tax": account.tax,
         "exit_behavior": "VERIFIED" if strategy.exit_rules.enabled else "NOT_CONFIGURED", "exit_rows": account.exit_rows,
         "scanner_identity": scanner_identity, "board_policy_identity": result["board_policy_identity"],
         "input_identity": inputs.input_identity, "receivables": account.receivables,
@@ -811,3 +992,9 @@ def reconstruct_universe_account(bundle, window, result, *, initial_cash, costs,
                        "窗口最后一天新买入的下一真实交易日不在输入中；该日不进行窗口外卖出。",
                        "历史盈利和独立核账不等于统计可靠、独立样本通过或Paper资格。"],
         "strategy_qualified": False, "independent_confirmation_eligible": False}
+    if account.share_events:
+        evidence.update(share_tax=account.share_tax, pending_share_credits=deepcopy(account.pending_share_credits),
+                        tax_allocation_verified=False)
+        evidence["method_scopes"]["share_entitlements_cost_credit_tradability_tax"] = "INDEPENDENT_RATIONAL_AND_FIFO_ARITHMETIC"
+        evidence["unverified"].append("送股税款按有来源的CHILD_LOTS_MODELED分摊；未认证中国结算实际税权分配。")
+    return evidence

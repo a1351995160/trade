@@ -62,12 +62,15 @@ class ForwardPaperEngineV1:
                                       security_master=self.master, seed=0,
                                       source_identity=(header['source_identity'], False))
         self.engine._build()
-        if header.get('company_actions') in ('OBSERVED_CASH_DIVIDEND_V1', 'HISTORICAL_CASH_DIVIDEND_V2', 'OBSERVED_FROZEN_CASH_DIVIDEND_V2'):
+        if header.get('company_actions') in ('OBSERVED_CASH_DIVIDEND_V1', 'HISTORICAL_CASH_DIVIDEND_V2', 'OBSERVED_FROZEN_CASH_DIVIDEND_V2', 'HISTORICAL_CORPORATE_ACTION_V2'):
             from ..engine.individual_dividend_accounting_v1 import IndividualDividendAccountingV1
             ledger_type = IndividualDividendAccountingV1
             if header.get('execution_version') == 'UNIVERSE_ACCOUNT_BACKEND_V1':
                 from .universe_dividend_accounting_v1 import UniverseDividendAccountingV1
                 ledger_type = UniverseDividendAccountingV1
+                if header.get('company_actions') == 'HISTORICAL_CORPORATE_ACTION_V2':
+                    from .universe_corporate_accounting_v2 import UniverseCorporateAccountingV2
+                    ledger_type = UniverseCorporateAccountingV2
             ledger = ledger_type(self.policy['initial_cash'],
                 header.get('account_events', []), header['header_id'])
             self.engine.ledger = self.engine.broker.ledger = self.engine.risk.ledger = ledger
@@ -80,7 +83,10 @@ class ForwardPaperEngineV1:
 
     def _validate_exit_actions(self, events):
         if self.header.get('execution_version') == 'UNIVERSE_ACCOUNT_BACKEND_V1':
-            if any(event.get('event_type') != 'CASH_DIVIDEND' for event in events):
+            allowed = {'CASH_DIVIDEND'}
+            if self.header.get('company_actions') == 'HISTORICAL_CORPORATE_ACTION_V2':
+                allowed |= {'BONUS', 'CAPITALIZATION'}
+            if any(event.get('event_type') not in allowed for event in events):
                 raise ValueError('UNIVERSE_EXIT_CORPORATE_ACTION_UNSUPPORTED')
         else:
             from .rule_exit_adapter_v3 import validate_exit_actions
@@ -139,7 +145,7 @@ class ForwardPaperEngineV1:
             day = int(snapshot['market_date'])
             self.actions = tuple(self.header['warmup'].get('corporate_actions', [])) + tuple(
                 event for event in self.engine.ledger.events if event['effective_date'] <= day)
-        elif self.header.get('company_actions') in ('HISTORICAL_CASH_DIVIDEND_V2', 'OBSERVED_FROZEN_CASH_DIVIDEND_V2'):
+        elif self.header.get('company_actions') in ('HISTORICAL_CASH_DIVIDEND_V2', 'OBSERVED_FROZEN_CASH_DIVIDEND_V2', 'HISTORICAL_CORPORATE_ACTION_V2'):
             self.actions = tuple(event for event in self.header.get('feature_events', [])
                                  if event['effective_date'] <= snapshot['market_date'])
 
@@ -151,7 +157,8 @@ class ForwardPaperEngineV1:
         self._accept_actions(snapshot)
         if self.rule_exits:
             self._validate_exit_actions(getattr(self.engine.ledger, 'events', []))
-        if self.header.get('company_actions') in ('OBSERVED_CASH_DIVIDEND_V1', 'HISTORICAL_CASH_DIVIDEND_V2', 'OBSERVED_FROZEN_CASH_DIVIDEND_V2'):
+        prior_lot_ids = set(self.engine.ledger.lots)
+        if self.header.get('company_actions') in ('OBSERVED_CASH_DIVIDEND_V1', 'HISTORICAL_CASH_DIVIDEND_V2', 'OBSERVED_FROZEN_CASH_DIVIDEND_V2', 'HISTORICAL_CORPORATE_ACTION_V2'):
             self.engine.ledger.on_open(ts)
         # OPEN仅装入实际收到的开盘快照；完整日线直到CLOSE阶段才进入账户。
         self._load_bars(self.bars + snapshot['payload']['bars'])
@@ -188,6 +195,14 @@ class ForwardPaperEngineV1:
                         raise ValueError('RULE_EXIT_PENDING_LOT_REQUIRED')
                     execution_intents.append({**intent, '_lot_id': lot_id,
                         'intent_id': intent['intent_id'] + ':' + lot_id})
+                    if self.header.get('company_actions') == 'HISTORICAL_CORPORATE_ACTION_V2':
+                        for child_id, parent_id in self.engine.ledger.bonus_parent_lots.items():
+                            if parent_id != lot_id or child_id in prior_lot_ids or child_id in intent['exit_lot_ids']:
+                                continue
+                            child = self.engine.ledger.lots[child_id]
+                            if child.remaining_quantity and child.exit_state in ('EXIT_DUE', 'SELL_PENDING', 'PARTIALLY_FILLED'):
+                                execution_intents.append({**intent, '_lot_id': child_id,
+                                    'intent_id': intent['intent_id'] + ':' + child_id})
             else:
                 execution_intents.append(intent)
         for item in execution_intents:
@@ -207,6 +222,8 @@ class ForwardPaperEngineV1:
             else:
                 quantity = (self.engine.ledger.sellable_lot_quantity(item['_lot_id'], ts)
                             if '_lot_id' in item else self.engine.ledger.position_qty(strategy_id, symbol))
+                if '_lot_id' not in item and self.header.get('company_actions') == 'HISTORICAL_CORPORATE_ACTION_V2':
+                    quantity = self.engine.ledger.sellable_quantity(strategy_id, symbol, ts)
                 position = self.engine.ledger.get_position(strategy_id, symbol)
                 position_id = position.position_id if position else None
             if quantity <= 0:
@@ -238,7 +255,7 @@ class ForwardPaperEngineV1:
         self._load_states(snapshot)
         # 未在开盘成交的余单到期；不在收到收盘日线时再次用开盘价成交。
         self.engine.broker.process_orders(EventKind.SESSION_CLOSE, ts)
-        if self.header.get('company_actions') in ('OBSERVED_CASH_DIVIDEND_V1', 'HISTORICAL_CASH_DIVIDEND_V2', 'OBSERVED_FROZEN_CASH_DIVIDEND_V2'):
+        if self.header.get('company_actions') in ('OBSERVED_CASH_DIVIDEND_V1', 'HISTORICAL_CASH_DIVIDEND_V2', 'OBSERVED_FROZEN_CASH_DIVIDEND_V2', 'HISTORICAL_CORPORATE_ACTION_V2'):
             self.engine.ledger.on_close(ts)
         self.engine._mark_to_market(ts, EventKind.AFTER_CLOSE)
         self._observe_equity()
@@ -361,11 +378,16 @@ def ledger_rule_account(ledger, strategy_id, symbol, calendar, day):
             if lot.strategy_id == strategy_id and lot.symbol == symbol and lot.remaining_quantity]
     entry = min((days.index(int(lot.buy_time.strftime('%Y%m%d'))) for lot in lots), default=None)
     held, last_exit = 0, None
-    for trade in ledger.trades:
-        if trade.strategy_id == strategy_id and trade.symbol == symbol:
-            held += trade.quantity if trade.side == Side.BUY else -trade.quantity
-            if held == 0 and trade.side == Side.SELL:
-                last_exit = days.index(int(trade.fill_time.strftime('%Y%m%d')))
+    if getattr(ledger, 'version', '') == 'UniverseCorporateAccountingV2':
+        exit_day = ledger.last_exit_dates.get(strategy_id + ':' + symbol)
+        if exit_day is not None:
+            last_exit = days.index(exit_day)
+    else:
+        for trade in ledger.trades:
+            if trade.strategy_id == strategy_id and trade.symbol == symbol:
+                held += trade.quantity if trade.side == Side.BUY else -trade.quantity
+                if held == 0 and trade.side == Side.SELL:
+                    last_exit = days.index(int(trade.fill_time.strftime('%Y%m%d')))
     stamp = pd.Timestamp(str(day), tz='Asia/Shanghai') + pd.Timedelta(hours=15, minutes=30)
     return {'quantity': int(quantity),
             'sellable_quantity': int(ledger.sellable_quantity(strategy_id, symbol, stamp)),

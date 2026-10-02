@@ -1,5 +1,6 @@
 """源哈希和离线归档哈希之前也必须执行封存物理范围检查。"""
 import json
+import hashlib
 from pathlib import Path
 
 import pandas as pd
@@ -9,6 +10,27 @@ from chanlun_trader.research.guard import FinalTestAccessViolation
 from chanlun_trader.research_factory.research_evidence_v1 import verify_job_evidence
 from scripts.run_strategy_account_v1 import freeze_config, validate_sources
 from test_universe_submission_v1 import public_universe_case
+
+
+@pytest.mark.parametrize('field', ['share_credit_date', 'tradable_date'])
+def test_share_future_dates_are_rejected_before_quote_read(tmp_path, monkeypatch, field):
+    from chanlun_trader.research_factory.universe_submission_v1 import _validate_frozen_item_scope
+    service, request, _, _ = public_universe_case(tmp_path)
+    task = service.freeze(request, service.preview(request)['preview_identity'])
+    job = json.loads(Path(task['job_path']).read_text(encoding='utf-8'))
+    name = next(iter(job['plans']))
+    item = job['items'][name]
+    path = Path(item['loader_kwargs']['path'])
+    snapshot = json.loads(path.read_text(encoding='utf-8'))
+    snapshot['bundle']['events'].append({field: 20250801})
+    raw = json.dumps(snapshot).encode()
+    path.write_bytes(raw)
+    item['loader_kwargs']['sha256'] = hashlib.sha256(raw).hexdigest()
+    def forbidden(*args, **kwargs):
+        pytest.fail('封存股份日期被拒绝前不应读取行情')
+    monkeypatch.setattr(pd, 'read_parquet', forbidden)
+    with pytest.raises(FinalTestAccessViolation):
+        _validate_frozen_item_scope(item, job['input_identity'], job['plans'][name]['backend']['window'])
 
 
 @pytest.mark.parametrize('archive', [False, True])

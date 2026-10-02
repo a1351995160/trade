@@ -28,10 +28,49 @@ class UniverseBacktestEngineV1(BacktestEngineV2):
         for lot in self.ledger.lots.values():
             next_day = self.calendar.next_day(lot.entry_session)
             if next_day is not None:
-                lot.sellable_from = _stamp(next_day, 9, 30)
+                if getattr(self.ledger, 'version', '') == 'UniverseCorporateAccountingV2':
+                    lot.sellable_from = max(lot.sellable_from, _stamp(next_day, 9, 30))
+                    day = int(lot.sellable_from.strftime('%Y%m%d'))
+                    lot.sellable_from_session = day
+                    try:
+                        lot.sellable_from_session_index = self.calendar.date_index(day)
+                    except KeyError:
+                        if day <= self.calendar.trading_days[-1]:
+                            self.ledger._reject('SELLABLE_DATE_NOT_IN_CALENDAR')
+                        lot.sellable_from_session_index = None
+                else:
+                    lot.sellable_from = _stamp(next_day, 9, 30)
+
+
+class _SharedParticipationFillV2:
+    """撮合仍由原模型决定；同证券当日各订单共享已知成交量额度。"""
+    def __init__(self, original, consumed):
+        self.original, self.consumed = original, consumed
+
+    def try_fill(self, order, ts, bar):
+        price, quantity, reason = self.original.try_fill(order, ts, bar)
+        if quantity <= 0:
+            return price, quantity, reason
+        limit = int(float(bar['volume']) * self.original.max_participation_rate)
+        quantity = min(quantity, max(0, limit - self.consumed))
+        return (price, quantity, reason) if quantity else (None, 0, 'PARTICIPATION_LIMIT')
 
 
 class UniverseBrokerV1(BrokerSimulator):
+    def _session_consumed(self, symbol, ts):
+        day = date_key(ts)
+        if getattr(self, '_participation_session', None) != day:
+            self._participation_session, self._participation_used = day, {}
+            # ledger checkpoint保留实际成交；重建broker时也不能重新获得同日额度。
+            for fill in reversed(self.ledger.executed_fills):
+                fill_day = date_key(pd.Timestamp(fill['fill_time']))
+                if fill_day < day:
+                    break
+                if fill_day == day:
+                    self._participation_used[fill['symbol']] = (
+                        self._participation_used.get(fill['symbol'], 0) + fill['quantity'])
+        return self._participation_used.get(symbol, 0)
+
     def _bar_for_order(self, order, ts, ev_kind):
         day = date_key(ts)
         bar = self.store.get_daily_bar(order.symbol, day, price_mode='raw')
@@ -55,7 +94,19 @@ class UniverseBrokerV1(BrokerSimulator):
                 modeled = round(self.slippage.apply('BUY' if order.side == Side.BUY else 'SELL', bar['open']), 4)
                 if (up is not None and modeled > up) or (down is not None and modeled < down):
                     return self._reject_or_expire(order, ts, 'MODELED_FILL_PRICE_OUTSIDE_DAILY_LIMIT')
-        return super()._try_fill_order(order, ts, ev_kind)
+        shared = (getattr(self.ledger, 'version', '') == 'UniverseCorporateAccountingV2'
+                  and ev_kind == EventKind.SESSION_OPEN)
+        if not shared:
+            return super()._try_fill_order(order, ts, ev_kind)
+        consumed, filled = self._session_consumed(order.symbol, ts), order.filled_quantity
+        original = self.fill_model
+        self.fill_model = _SharedParticipationFillV2(original, consumed)
+        try:
+            result = super()._try_fill_order(order, ts, ev_kind)
+        finally:
+            self.fill_model = original
+        self._participation_used[order.symbol] = consumed + order.filled_quantity - filled
+        return result
 
 
 class UniversePaperEngineV1(ForwardPaperEngineV1):
@@ -179,9 +230,11 @@ class UniverseAccountBackendV1:
 
     def describe(self):
         from .board_execution_policy_v1 import board_policy_identity
+        from .universe_corporate_accounting_v2 import PRICE_POLICY as corporate_price_policy
         folder = Path(__file__).parent
         paths = [folder / name for name in ('universe_account_backend_v1.py', 'universe_signal_scan_v1.py',
             'universe_account_inputs_v1.py', 'universe_rule_exit_v1.py', 'universe_dividend_accounting_v1.py',
+            'universe_corporate_accounting_v2.py', 'corporate_action_price_v2.py', 'causal_dividend_features_v1.py',
             'universe_evidence_v1.py', 'board_execution_policy_v1.py', 'forward_paper_engine_v1.py',
             'portfolio_execution_v1.py', 'engine_replay_recovery_v1.py', 'strategy_interface_v1.py')]
         paths += list((folder.parent / 'engine').glob('*.py'))
@@ -189,6 +242,7 @@ class UniverseAccountBackendV1:
             'initial_cash': self.initial_cash, 'max_positions': self.max_positions,
             'max_symbol_exposure_bps': self.max_symbol_exposure_bps, 'checkpoint_path': self.checkpoint_path,
             'board_policy_identity': board_policy_identity(), 'exit_price_policy': PRICE_POLICY,
+            'supported_exit_price_policies': [PRICE_POLICY, corporate_price_policy],
             'allocation': 'SELL_THEN_PRIORITY_STRATEGY_SYMBOL', 'liquidity': 'PREVIOUS_EXCHANGE_SESSION',
             'profile': 'HISTORICAL_MODELED', 'strategy_qualified': False,
             'independent_confirmation_eligible': False,
@@ -224,7 +278,9 @@ class UniverseAccountBackendV1:
         header = {'execution_version': VERSION, 'policy': policy, 'warmup': {'bars': recent, 'turn': [], 'corporate_actions': []},
             'calendar': days, 'strategies': {strategy.strategy_id: {'proposal': strategy.payload}},
             'source_identity': stable_hash(self.describe()), 'header_id': identity, 'costs': self.costs,
-            'company_actions': 'HISTORICAL_CASH_DIVIDEND_V2',
+            'company_actions': ('HISTORICAL_CORPORATE_ACTION_V2'
+                if any(e['event_type'] != 'CASH_DIVIDEND' and e['record_date'] >= account_days[0]
+                       for e in bundle['events']) else 'HISTORICAL_CASH_DIVIDEND_V2'),
             'account_events': [e for e in bundle['events'] if e['record_date'] >= account_days[0]],
             'feature_events': bundle['events']}
         paper = UniversePaperEngineV1(header, inputs, scanner)
@@ -303,7 +359,8 @@ class UniverseAccountBackendV1:
             'execution_version': VERSION, 'input_identity': identity, 'execution_identity': execution_identity,
             'execution_description': self.describe(),
             'account_policy': policy, 'board_policy_identity': bundle['board_policy_identity'],
-            'exit_price_policy': PRICE_POLICY,
+            'exit_price_policy': (self.describe()['supported_exit_price_policies'][1]
+                if header['company_actions'] == 'HISTORICAL_CORPORATE_ACTION_V2' else PRICE_POLICY),
             'scanner_identity': scanner.identity, 'scan_preparation': scanner.preparation, 'scan_days': paper.scan_days,
             'coverage': inputs.coverage, 'fills': state['economic']['trades'], 'decisions': all_decisions,
             'daily_accounts': daily_accounts, 'final_account_checkpoint': state,
