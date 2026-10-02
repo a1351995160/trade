@@ -35,6 +35,8 @@
 
 正式补证声明绑定公告原件哈希、派生文本哈希、来源URL、发布日期和引文。引文须存在于绑定文本中；声明标为 `SOURCE_BOUND_REVIEWED_DECLARATION`、`automatic_document_semantics_verified=false`。这些是审核后的条款输入，系统不声称自动理解PDF或完成法律认定。
 
+补证按字段登记。例如公告只证明股份到账日，原 BaoStock 原件另有新股上市日，准备器分别保留两项来源。未提供的日期和 `UNKNOWN` 日期不覆盖已有资料；`MODELED` 日期不覆盖已有 `SOURCE` 日期。声称有日期证据却缺日期值或来源时仍拒绝物化。只有税务来源的补证不能替代到账证明，也不能单独获得账户资格。每个事件的 `terms_resolution_applied_fields` 记录实际更新的字段，原声明和原件身份一并保留。
+
 ## 日期差异的复验
 
 `resolve_universe_action_dates_v1.py` 将每个疑似差异分类，绑定原始复权响应、交易日历、原价及输入来源。`verify_action_date_resolution_receipt_v1` 只读重算条件；哈希一致本身不够。源码、输入、来源或比较条件变化均拒绝旧收据。
@@ -79,3 +81,5 @@ python scripts/prepare_universe_actions_v2.py --manifest <原登记清单> --sou
 真实公告还可能揭示实现缺口。例如回购股份不参与转增时，股东实际获配比例与全公司除权参考价的折算比例不同；重整增加的总股本也可能完全不分给原股东。现有股份价格路径未分别表达前一种两套比例，特殊重整价格仍需专门映射。这些事件继续阻断，不能把总股本变化率直接用于账户增股，也不能靠放宽数值容差解除。
 
 本轮结果和后续补证边界见 [定点公司行动补证说明](TARGETED_ACTION_EVIDENCE_V1.md)。
+
+2026-10-02 的后续本地公告审核、定点补采和全部 4,607 只登记证券复验见 [全池公告审核结果](SHARE_ANNOUNCEMENT_AUDIT_V3.md)。找到公告不等于其内容证明了所有条款；检查完成也不等于资料完整或策略有效。

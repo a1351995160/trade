@@ -248,11 +248,25 @@ def prepare_universe_actions_v2(*, manifest, source_catalog, action_gaps,
                         if resolution:
                             if source['sha256'] != resolution['source_response_sha256']:
                                 raise ValueError('SHARE_TERMS_RESPONSE_IDENTITY_CONFLICT')
-                            event.update({k: deepcopy(resolution[k]) for k in
-                                          ('share_credit_date', 'tradable_date', 'date_evidence')})
-                            event['terms']['tax_rule'] = deepcopy(resolution['tax_rule'])
+                            applied_fields = []
+                            for field in ('share_credit_date', 'tradable_date'):
+                                evidence = resolution.get('date_evidence', {}).get(field, {})
+                                if evidence.get('kind') not in {'SOURCE', 'MODELED'}:
+                                    continue
+                                if (resolution.get(field) is None or not evidence.get('source')):
+                                    raise ValueError('SHARE_TERMS_PROVEN_DATE_REQUIRED')
+                                if (event['date_evidence'][field]['kind'] == 'SOURCE'
+                                        and evidence['kind'] == 'MODELED'):
+                                    continue
+                                event[field] = deepcopy(resolution[field])
+                                event['date_evidence'][field] = deepcopy(evidence)
+                                applied_fields.append(field)
+                            if resolution['tax_rule'].get('kind') != 'UNKNOWN':
+                                event['terms']['tax_rule'] = deepcopy(resolution['tax_rule'])
+                                applied_fields.append('tax_rule')
                             event['terms_document'] = deepcopy(resolution['document'])
                             event['terms_resolution'] = deepcopy(resolution)
+                            event['terms_resolution_applied_fields'] = applied_fields
                             event['terms_interpretation'] = 'SOURCE_BOUND_REVIEWED_DECLARATION'
                             event['automatic_document_semantics_verified'] = False
                         own.append(event)
