@@ -116,3 +116,76 @@ def test_same_date_cash_with_different_payment_dates_is_not_blindly_summed(tmp_p
     result = prepare_v2(manifest, acquisition)
     assert result['price_covered_symbol_count'] == 1
     assert load(manifest,'EVENTS.json') == []
+
+
+def numeric_preparation(tmp_path, *, with_receipt=True, baostock=None, inherited_gaps=None):
+    from tests.research_factory.test_resolve_universe_numeric_terms_v1 import numeric_fixture, resolve
+    from tests.research_factory.test_universe_actions_v1 import write
+    inputs = numeric_fixture(tmp_path, baostock=baostock)
+    _, receipt, value = resolve(inputs)
+    manifest = inputs['manifest']
+    old_gaps = manifest.parent / 'actions/ACTION_GAPS.json'
+    if inherited_gaps:
+        write(old_gaps, json.loads(old_gaps.read_text(encoding='utf-8')) + inherited_gaps)
+    result = prepare_universe_actions_v2(manifest=manifest,
+        source_catalog=inputs['source_catalog'], action_gaps=old_gaps,
+        output_dir=manifest.parent / 'actions_v2', numeric_terms=receipt if with_receipt else None)
+    return result, manifest, value
+
+
+def test_bound_blank_cash_shares_resolve_price_only_and_preserve_zero_origin(tmp_path):
+    old_gap = {'symbol': '000001.SZ', 'effective_date': 20230105, 'year': 2023,
+               'kind': 'CORPORATE_ACTION', 'reason': 'ACTION_NUMERIC_TERM_UNKNOWN', 'status': 'UNKNOWN'}
+    result, manifest, _ = numeric_preparation(tmp_path, inherited_gaps=[old_gap])
+    assert result['resolved_blank_cash_event_count'] == 1
+    assert result['price_covered_symbol_count'] == 2
+    assert result['account_terms_covered_symbol_count'] == 1
+    assert load(manifest, 'PRICE_GAPS.json') == []
+    event, = load(manifest, 'EVENTS.json')
+    assert event['event_type'] == 'CAPITALIZATION'
+    assert event['original_row']['dividCashPsBeforeTax'] == ''
+    assert event['original_row']['dividPayDate'] == ''
+    assert event['terms']['tax_rule']['kind'] == 'UNKNOWN'
+    assert event['share_credit_date'] is None
+    zero = event['zero_cash_evidence']
+    assert zero['cash_per_share'] == 0 and zero['tdx_row']['hongli_panqianliutong'] == 0
+    assert zero['tdx_event']['event_type'] == 'BONUS'
+    assert zero['account_terms_qualified'] is False
+    assert load(manifest, 'ACCOUNT_TERMS_GAPS.json')[0]['status'] == 'UNKNOWN'
+    catalog = load(manifest, 'SOURCE_CATALOG.json')
+    assert catalog['numeric_terms'] == zero['receipt']
+
+
+def test_blank_cash_without_receipt_still_rejected(tmp_path):
+    result, manifest, _ = numeric_preparation(tmp_path, with_receipt=False)
+    assert result['resolved_blank_cash_event_count'] == 0
+    assert result['price_covered_symbol_count'] == 1
+    assert load(manifest, 'EVENTS.json') == []
+    assert load(manifest, 'PRICE_GAPS.json')[0]['reason'] == 'ACTION_NUMERIC_TERM_UNKNOWN'
+
+
+def test_resolution_does_not_remove_generic_or_other_date_numeric_gaps(tmp_path):
+    inherited = [
+        {'symbol': '000001.SZ', 'year': 2023, 'kind': 'CORPORATE_ACTION',
+         'reason': 'ACTION_NUMERIC_TERM_UNKNOWN', 'status': 'UNKNOWN'},
+        {'symbol': '000001.SZ', 'effective_date': 20230106, 'year': 2023,
+         'kind': 'CORPORATE_ACTION', 'reason': 'ACTION_NUMERIC_TERM_UNKNOWN', 'status': 'UNKNOWN'},
+        {'symbol': '000001.SZ', 'effective_date': 20230105, 'year': 2023,
+         'kind': 'CORPORATE_ACTION', 'reason': 'SOURCE_EVIDENCE_INCOMPLETE', 'status': 'UNKNOWN'}]
+    result, manifest, _ = numeric_preparation(tmp_path, inherited_gaps=inherited)
+    assert result['resolved_blank_cash_event_count'] == 1
+    assert load(manifest, 'PRICE_GAPS.json') == inherited
+    assert result['price_covered_symbol_count'] == 1
+
+
+def test_verified_zero_does_not_clear_gap_when_share_rebuild_fails(tmp_path):
+    old_gap = {'symbol': '000001.SZ', 'effective_date': 20230105, 'year': 2023,
+               'kind': 'CORPORATE_ACTION', 'reason': 'ACTION_NUMERIC_TERM_UNKNOWN', 'status': 'UNKNOWN'}
+    result, manifest, value = numeric_preparation(tmp_path, inherited_gaps=[old_gap],
+        baostock=action(dividCashPsBeforeTax='', dividPayDate='', dividReserveToStockPs='.3',
+                        dividStockMarketDate='2023-01-09', dividRegistDate=''))
+    assert value['resolutions'][0]['status'] == 'VERIFIED_ZERO_CASH_PURE_SHARE_ACTION'
+    assert result['resolved_blank_cash_event_count'] == 0
+    assert load(manifest, 'EVENTS.json') == []
+    assert old_gap in load(manifest, 'PRICE_GAPS.json')
+    assert any(g['reason'] == 'SHARE_ACTION_DATES_UNKNOWN' for g in load(manifest, 'PRICE_GAPS.json'))

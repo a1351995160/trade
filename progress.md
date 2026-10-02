@@ -2848,3 +2848,26 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 - 公告语义是来源绑定审核声明，非自动法律/文档语义认证；历史状态可见时点、成本及送股税分配仍有明确模型说明。没有策略盈利资格或Paper资格声明。
 - 全池价格/公司行动条款覆盖不等于整池账户通过。碎股、登记后权益变化、配股及未知退市结算仍明确阻断，目标名单及旧研究预算未缩小/重置。
 - 本次从main f0b5bde创建隔离分支 `codex/corporate-actions-completion`；PR远端验收和主目录同步由后续交付回执记录。回滚采用本次提交的git revert并切回旧登记清单；保留新旧冻结输入、原件与已消费工程预算，不能原地改写历史。
+
+## 2026-10-02 - Task: 按数值、日期、账户条款顺序执行定点补证
+
+### What was done
+- 新增 scripts/resolve_universe_numeric_terms_v1.py，复验既有物理限窗通达信包、原BaoStock行与数值；48项中47项形成来源绑定零现金回执，301019.SZ/20240711比例问题保留。可选送转率空白仅沿用既有SHARE_RATE_POLICY，现金空白仍需独立证据。
+- scripts/prepare_universe_actions_v2.py 新增 --numeric-terms 消费重算回执，原件空值保留；新增 scripts/classify_universe_action_evidence_v1.py 对30项分类，25项有同日TDX记录，9项涉及特殊重整，30项均未被自动清除。
+- 新增 scripts/fetch_universe_action_announcements_v1.py，要求冻结完整发行人orgId、精确原件SHA及公告窗口；保留PDF/TXT/请求/哈希和UNREVIEWED状态。修复同义实施公告漏选、文本落盘后崩溃恢复，以及缺orgId成功空响应误报缺公告。
+- 已查询676项冻结目标（645账户条款、30日期、1数值冲突），先取得651个目标/666份PDF。旧标题漏选14项只在新版本重采；HTTP 504失败原样保留并单目标重试。最终聚合数量以 reports/targeted_action_evidence_v2/FINAL_EVIDENCE_INDEX.json 为准；2份图片PDF无可提取文本单列。
+- 实际全文及独立来源审查后接通001298/20240529、002738/20230531、300586/20230426、300700/20230404四项完整股份条款；000039/20220818只接通有明文的到账/交易日期，税源仍UNKNOWN。没有批量把下载成功升级为条款审核通过。
+- 最终准备清单 manifest_actions_targeted_v3.json：4,607只目标保留、7,121事件、47项空现金解决；价格资料登记覆盖4,578只、公司行动账户条款覆盖4,028只。日期缺口30、数值缺口1、账户条款缺口641（640通常未知、1明确税源未知）。这不是整池账户或策略验收。
+- 维护 docs/CORPORATE_ACTIONS_V2.md、docs/TARGETED_ACTION_EVIDENCE_V1.md、Windows/Linux full-universe CI及四个测试文件；.gitattributes只固定三个新增算法LF字节，其他源码编码不变。旧回执、失败、旧算法精确快照和原件保留，研究资料不上传。
+
+### Testing
+- 修改前相关基线34项通过；全范围回归800 passed、2 skipped（Windows符号链接权限及当时环境无pypdf），耗时924.89秒。后续全部定向最终修复227 passed（14.68秒），通过sys.path末尾追加已有bundled依赖，实际pypdf提取及中断恢复测试执行，未安装依赖或用跳过冒充通过。
+- 真实numeric_terms_v3重算47 VERIFIED/1 UNKNOWN；原件SHA、行身份、TDX现金/配股/股份比率及算法版本绑定复验。最终准备manifest SHA c0ae28009efc9ae43d37049e3194bee602d8c88024ff7be1385caae0cef77a28。
+- 676项旧采集的完整只读resume通过，未重复请求；修改标题算法前精确快照SHA 061c36dc1e32115b399dd69c10facfc6f79d14731974d151d814fc2856621e75 与旧READ_PLAN一致，旧结果不能用新算法原地改写。
+- 四项已审股份条款构造时单独验证通过；000039因SHARE_TAX_SOURCE_UNKNOWN仍如预期阻断。未运行账户或创建预算，碎股分配拒绝保持。能力说明及公共示例generate_research_capabilities_v1.py --check MATCHED；git diff --check通过。
+- ce-code-review两项独立评审发现可选空股份率、orgId、文本恢复问题，均已修复并定向复验；额外真实批次发现的标题等价问题已复验。远端发布验收另存本地 RELEASE_RECEIPT.json，不以本地测试代替CI。
+
+### Notes
+- 301019公告证明参与分派股东实际比率与全公司除权折算比率不同；当前股份价格路径未分别映射，六位小数及float32差异不靠放宽容差通过。000796重整新股不分给原股东，特殊参考价和账户分配不可按普通转增处理。
+- 尚未在限窗定位的公告、图片待读、条款缺失及未审核分别保留；下载不是账户资格。原4,607只名单、已有研究次数/预算、原件和失败不删除；其他历史状态、退市结算及完整账户链路仍需验收。
+- 本次在隔离分支codex/targeted-action-evidence-v2从main bb377ab推进，主目录未提交研究保持。回滚用本次发布提交的git revert并切回manifest_actions_complete_v1.json或旧登记版本；冻结身份绑定原工作区绝对路径，工作区保留用于重放。
