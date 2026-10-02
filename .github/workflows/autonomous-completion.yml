@@ -105,6 +105,9 @@ jobs:
           tests/research_factory/test_prepare_universe_collection_continuation_v1.py
           tests/research_factory/test_universe_actions_v1.py
           tests/research_factory/test_prepare_universe_actions_v2.py
+          tests/research_factory/test_resolve_universe_numeric_terms_v1.py
+          tests/research_factory/test_classify_universe_action_evidence_v1.py
+          tests/research_factory/test_fetch_universe_action_announcements_v1.py
           tests/research_factory/test_resolve_universe_action_dates_v1.py
           tests/research_factory/test_corporate_action_price_v2.py
           tests/research_factory/test_universe_corporate_accounting_v2.py

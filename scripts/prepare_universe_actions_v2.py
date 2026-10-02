@@ -44,7 +44,10 @@ def _share_event(symbol, row, source):
         'historical_available_at_verified': False, 'price_version': 'CASH_AND_SHARES_V2'}
 
 
-def _cash_component(symbol, row, source):
+def _cash_component(symbol, row, source, zero_cash_evidence=None):
+    if row['dividCashPsBeforeTax'] == '' and zero_cash_evidence is not None:
+        # 仅消费复验器按原件 SHA 和完整原始行匹配的明确零证据。
+        return None
     value = _number(row['dividCashPsBeforeTax'])
     if value == 0:
         return None
@@ -145,7 +148,7 @@ def _missing_share_information(event):
 
 def prepare_universe_actions_v2(*, manifest, source_catalog, action_gaps,
         output_dir, manifest_name='manifest_actions_v2.json', action_resolutions=None, share_terms=None,
-        feature_start=None, account_end=None, cash_components=None):
+        feature_start=None, account_end=None, cash_components=None, numeric_terms=None):
     manifest_path = Path(manifest).absolute()
     original = _load(manifest_path)
     scope = original.get('universe_scope', original)
@@ -163,6 +166,16 @@ def prepare_universe_actions_v2(*, manifest, source_catalog, action_gaps,
     catalog, old_gaps = _load(old_catalog_path), _load(old_gaps_path)
     qualifications = _qualifications(share_terms)
     cash_resolutions = _cash_resolutions(cash_components)
+    numeric_resolutions = {}
+    numeric_receipt_binding = None
+    if numeric_terms:
+        from scripts.resolve_universe_numeric_terms_v1 import (
+            numeric_row_identity, verify_numeric_terms_resolution_receipt_v1,
+        )
+        numeric_resolutions = verify_numeric_terms_resolution_receipt_v1(
+            numeric_terms, source_catalog=old_catalog_path, manifest=manifest_path)
+        numeric_receipt_binding = {'path': str(Path(numeric_terms).absolute()),
+                                   'sha256': _sha(Path(numeric_terms))}
     accepted = set()
     receipt = None
     if action_resolutions:
@@ -197,7 +210,7 @@ def prepare_universe_actions_v2(*, manifest, source_catalog, action_gaps,
         'UNSUPPORTED_NONCASH_CORPORATE_ACTION', 'DUPLICATE_ACTION_TERMS_CONFLICT'}
         and not (g['reason'] == 'ADJUST_AND_ACTION_DATES_CONFLICT'
                  and (g['symbol'], g['effective_date']) in accepted)]
-    events, merged_components = [], []
+    events, merged_components, rebuilt_numeric_dates = [], [], set()
     for symbol in targets:
         by_day = defaultdict(dict)
         for row, source in rows_by_symbol[symbol]:
@@ -206,16 +219,30 @@ def prepare_universe_actions_v2(*, manifest, source_catalog, action_gaps,
             by_day[_day(row['dividOperateDate'])].setdefault(identity, (row, source))
         for day, unique in sorted(by_day.items()):
             components = list(unique.values())
-            own, share_count = [], 0
+            own, share_count, resolved_blank_cash = [], 0, False
             try:
                 for row, source in components:
                     rates = [_number(0 if row[k] == '' else row[k]) for k in
                              ('dividStocksPs', 'dividReserveToStockPs')]
-                    cash = _cash_component(symbol, row, source)
+                    numeric = numeric_resolutions.get(numeric_row_identity(symbol, row, source)) \
+                        if numeric_terms else None
+                    cash = _cash_component(symbol, row, source, numeric)
                     if cash:
                         own.append(cash)
                     if any(rates) or row['dividStockMarketDate']:
                         event = _share_event(symbol, row, source)
+                        if numeric:
+                            resolved_blank_cash = True
+                            event['original_row'] = deepcopy(row)
+                            event['zero_cash_evidence'] = {
+                                'kind': 'SOURCE_BOUND_TDX_EXPLICIT_ZERO',
+                                'receipt': deepcopy(numeric_receipt_binding),
+                                'cash_per_share': 0,
+                                'tdx_row': deepcopy(numeric['tdx_row']),
+                                'tdx_event': deepcopy(numeric['tdx_event']),
+                                'tdx_capital_status_rows': deepcopy(numeric['tdx_capital_status_rows']),
+                                'account_terms_qualified': False,
+                            }
                         share_count += 1
                         resolution = qualifications.get((symbol, day))
                         if resolution:
@@ -273,9 +300,15 @@ def prepare_universe_actions_v2(*, manifest, source_catalog, action_gaps,
                     for e in own:
                         e['price_version'] = 'CASH_AND_SHARES_V2'
                 events.extend(own)
+                if resolved_blank_cash:
+                    rebuilt_numeric_dates.add((symbol, day))
             except (ValueError, KeyError, TypeError) as exc:
                 gaps.append({'symbol': symbol, 'year': day // 10000, 'effective_date': day,
                     'kind': 'CORPORATE_ACTION', 'reason': str(exc), 'status': 'UNKNOWN'})
+    # 只在完整同日事件本次成功重建后解除该日期的旧数值缺口。
+    # 无日期的泛化缺口、别的日期/原因和任何失败重建均保持。
+    gaps = [g for g in gaps if not (g['reason'] == 'ACTION_NUMERIC_TERM_UNKNOWN'
+        and (g['symbol'], g.get('effective_date')) in rebuilt_numeric_dates)]
     events.sort(key=lambda e: (e['symbol'], e['effective_date'], e['event_id']))
     price_coverage, account_gaps = [], []
     for symbol in targets:
@@ -316,7 +349,8 @@ def prepare_universe_actions_v2(*, manifest, source_catalog, action_gaps,
         'date_resolution': {'path': str(Path(action_resolutions).absolute()), 'sha256': _sha(Path(action_resolutions))}
                             if action_resolutions else None,
         'share_terms': {'path': str(Path(share_terms).absolute()), 'sha256': _sha(Path(share_terms))} if share_terms else None,
-        'cash_components': {'path': str(Path(cash_components).absolute()), 'sha256': _sha(Path(cash_components))} if cash_components else None})
+        'cash_components': {'path': str(Path(cash_components).absolute()), 'sha256': _sha(Path(cash_components))} if cash_components else None,
+        'numeric_terms': numeric_receipt_binding})
     new['corporate_actions_complete'] = all(r['account_complete'] for r in price_coverage)
     new['corporate_action_preparation'] = {'version': VERSION, 'historical_availability': 'MODELED',
         'price_covered': sum(r['complete'] for r in price_coverage),
@@ -326,6 +360,7 @@ def prepare_universe_actions_v2(*, manifest, source_catalog, action_gaps,
     _write(destination, new)
     summary = {'version': VERSION, 'target_count': len(targets), 'event_count': len(events),
         'merged_cash_group_count': len(merged_components),
+        'resolved_blank_cash_event_count': len(rebuilt_numeric_dates),
         'price_covered_symbol_count': sum(r['complete'] for r in price_coverage),
         'account_terms_covered_symbol_count': sum(r['account_complete'] for r in price_coverage),
         'price_gap_reason_counts': dict(Counter(g['reason'] for g in gaps)),
@@ -344,6 +379,7 @@ def main():
     parser.add_argument('--action-resolutions')
     parser.add_argument('--share-terms')
     parser.add_argument('--cash-components')
+    parser.add_argument('--numeric-terms')
     parser.add_argument('--feature-start', type=int)
     parser.add_argument('--account-end', type=int)
     print(json.dumps(prepare_universe_actions_v2(**vars(parser.parse_args())), ensure_ascii=False, indent=2))
