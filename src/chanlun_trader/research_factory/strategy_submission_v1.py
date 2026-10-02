@@ -240,7 +240,7 @@ class StrategySubmissionV1:
                 items[-1]['backend_options'].update(backend_version='UNIVERSE_ACCOUNT_BACKEND_V1',
                     checkpoint_path=str(root / 'account' / (normalized['strategy_id'] + '_' + cost + '_CHECKPOINT.json')))
                 items[-1]['dependency_files'].extend(str(Path(__file__).with_name(name)) for name in
-                    ('universe_data_provider_v1.py', 'tdx_research_adapter_v1.py', 'research_universe_v1.py',
+                    ('universe_data_provider_v1.py', 'baostock_universe_adapter_v1.py', 'tdx_research_adapter_v1.py', 'research_universe_v1.py',
                      'universe_submission_v1.py', 'universe_account_inputs_v1.py', 'universe_benchmark_v1.py',
                      'universe_execution_recovery_v1.py', 'universe_status_v1.py', 'universe_scan_service_v1.py'))
         benchmark_id = None

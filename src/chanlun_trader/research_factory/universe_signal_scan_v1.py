@@ -14,12 +14,15 @@ VERSION = 'UNIVERSE_SIGNAL_SCAN_V1'
 
 
 class UniverseSignalScanV1:
-    def __init__(self, strategy, inputs, *, batch_size=128, progress=None):
+    def __init__(self, strategy, inputs, *, batch_size=128, progress=None, allow_data_gaps=False):
         if type(batch_size) is not int or batch_size < 1:
             raise ValueError('UNIVERSE_BATCH_SIZE_INVALID')
+        if type(allow_data_gaps) is not bool:
+            raise ValueError('UNIVERSE_SCAN_DATA_GAP_MODE_INVALID')
         self.strategy, self.inputs = strategy, inputs
         self.conditions = {}
         self.preparation = []
+        self._preparation_gaps = {}
         self.progress = progress or (lambda record: None)
         symbols = sorted(inputs.window['symbols'])
         grouped = {str(key): frame.sort_values('date') for key, frame in inputs.bundle['daily'].groupby('symbol', sort=False)}
@@ -41,7 +44,16 @@ class UniverseSignalScanV1:
                 raw['adjustflag'] = '3'
                 actions = tuple(e for e in inputs.bundle['events'] if e['symbol'] == symbol
                                 and int(raw.date.min()) < e['effective_date'] <= int(raw.date.max()))
-                bars, price_trace = causal_hfq_bars(raw, actions)
+                try:
+                    bars, price_trace = causal_hfq_bars(raw, actions)
+                except ValueError as error:
+                    # 公共纯信号扫描保留该证券未知；账户默认仍要求严格的除息价格证据。
+                    if not allow_data_gaps or str(error) != 'CAUSAL_PRICE_EX_DATE_MISSING':
+                        raise
+                    self.conditions[symbol] = pd.DataFrame(columns=['buy', 'sell', 'market_filter', 'ready'])
+                    self._preparation_gaps[symbol] = str(error)
+                    self.preparation.append({'symbol': symbol, 'status': 'UNKNOWN', 'reason': str(error)})
+                    continue
                 bars = bars.set_index('date')
                 vendor = turns.get(symbol)
                 turn = vendor['turn'].reindex(bars.index) if vendor is not None and 'turn' in vendor else None
@@ -72,7 +84,7 @@ class UniverseSignalScanV1:
         frame = self.conditions[symbol]
         if day not in frame.index:
             return {'buy': None, 'sell': None, 'market_filter': None, 'ready': False,
-                    'reason': 'NO_COMPLETED_BAR'}
+                    'reason': self._preparation_gaps.get(symbol, 'NO_COMPLETED_BAR')}
         row = frame.loc[day]
         return {**{key: None if pd.isna(row[key]) else bool(row[key])
                    for key in ('buy', 'sell', 'market_filter')},

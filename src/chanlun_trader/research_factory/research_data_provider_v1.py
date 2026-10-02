@@ -156,10 +156,14 @@ class ResearchDataProviderV1:
         return {'window': window, 'bundle': bundle, 'qualification': qualification,
                 'input_identity': identity}
 
-def _baostock_bundle(data_root, *, symbols, feature_start, account_start, account_end, response, file_hash, required_fields=('turn',)):
+def _baostock_bundle(data_root, *, symbols, feature_start, account_start, account_end,
+                     response, file_hash, required_fields=('turn',),
+                     symbol_pattern=r'(00\d{4}\.SZ|60\d{4}\.SH)',
+                     include_warmup_states=False, dividend_year_type='report',
+                     preserve_partial_turn=False):
     """先固定真实日历，再验原始响应与公司行动，不访问策略表现。"""
     if (not isinstance(symbols, (list, tuple)) or not symbols or len(symbols) != len(set(symbols))
-            or any(not isinstance(s, str) or not re.fullmatch(r'(00\d{4}\.SZ|60\d{4}\.SH)', s) for s in symbols)):
+            or any(not isinstance(s, str) or not re.fullmatch(symbol_pattern, s) for s in symbols)):
         raise ValueError('HISTORICAL_MAIN_BOARD_SYMBOLS_INVALID')
     symbols = sorted(symbols)
     raw_calendar, calendar = response(data_root / 'TRADE_DATES.json', 'query_trade_dates')
@@ -216,7 +220,8 @@ def _baostock_bundle(data_root, *, symbols, feature_start, account_start, accoun
         turn = frame[['symbol', 'date', 'volume'] + (['turn'] if 'turn' in frame else [])].copy()
         turn['tradestatus'] = 1
         turns.append(turn)
-        for row in frame.loc[frame.date >= account_start].to_dict('records'):
+        state_start = feature_start if include_warmup_states else account_start
+        for row in frame.loc[frame.date >= state_start].to_dict('records'):
             states.append(dict(symbol=symbol, trade_date=row['date'], listed=True, delisted=False,
                 universe_member=True, eligibility_status='INELIGIBLE' if row['isST'] == '1' else 'ELIGIBLE',
                 st_status='ST' if row['isST'] == '1' else 'NORMAL', suspension_status='TRADING',
@@ -224,7 +229,7 @@ def _baostock_bundle(data_root, *, symbols, feature_start, account_start, accoun
         for year in range(feature_start // 10000, account_end // 10000 + 1):
             name = f'DIVIDEND_{symbol}_{year}.json'
             raw, actions = response(data_root / name, 'query_dividend_data')
-            if raw['request'] != dict(code=code, year=str(year), yearType='report'):
+            if raw['request'] != dict(code=code, year=str(year), yearType=dividend_year_type):
                 raise ValueError('HISTORICAL_ACTION_REQUEST_CHANGED')
             sources[name] = file_hash(data_root / name)
             for row in actions.to_dict('records'):
@@ -243,7 +248,7 @@ def _baostock_bundle(data_root, *, symbols, feature_start, account_start, accoun
                 events.append(dict(event_id=f'{symbol}:{effective}:CASH', symbol=symbol,
                     event_type='CASH_DIVIDEND', record_date=record, effective_date=effective,
                     payment_date=effective, units='CNY_PER_SHARE',
-                    source=f'BaoStock:query_dividend_data:{code}:{year}:report:sha256:{sources[name]}',
+                    source=f'BaoStock:query_dividend_data:{code}:{year}:{dividend_year_type}:sha256:{sources[name]}',
                     source_published_at=row['dividPlanDate'],
                     terms={'cash_per_share': cash_per_share,
                            'tax_rule': {'kind': 'DEFERRED_INDIVIDUAL_2015_101', 'source': TAX_SOURCE}}))
@@ -269,8 +274,8 @@ def _baostock_bundle(data_root, *, symbols, feature_start, account_start, accoun
                 raise ValueError(f'HISTORICAL_UNEXPLAINED_PRICE_REFERENCE:{symbol}:{current["date"]}')
             if action:
                 action_checks.append({'event_id': action['event_id'], 'reference_delta': delta})
-    # 因子无法覆盖全池时整体保持UNKNOWN，避免concat将缺列变为伪造的NaN数值字段。
-    if any('turn' not in frame for frame in turns):
+    # 旧调用保持全池 UNKNOWN；新入口显式保留已知值，由逐股资格检查拒绝缺值。
+    if not preserve_partial_turn and any('turn' not in frame for frame in turns):
         turns = [frame.drop(columns=['turn'], errors='ignore') for frame in turns]
     bundle = dict(profile='HISTORICAL_MODELED', daily=pd.concat(frames, ignore_index=True),
         turn=pd.concat(turns, ignore_index=True), states=pd.DataFrame(states), events=events,

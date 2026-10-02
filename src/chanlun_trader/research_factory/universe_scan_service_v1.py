@@ -217,7 +217,10 @@ def _evaluate_conditions(strategy, inputs) -> dict:
                       "turn": bundle["turn"].loc[bundle["turn"].symbol.isin(qualified)]}
         # 内部计算视图保留完整 window；没有创建缩小范围的 Provider 或授权。
         scanner = UniverseSignalScanV1(strategy, SimpleNamespace(
-            bundle=bundle, window=inputs.window, input_identity=inputs.input_identity))
+            bundle=bundle, window=inputs.window, input_identity=inputs.input_identity), allow_data_gaps=True)
+        for preparation in scanner.preparation:
+            if preparation.get('reason'):
+                reasons[preparation['symbol']].add(preparation['reason'])
     account_days = [d for d in inputs.calendar if d >= inputs.window["account_start"]]
     rows, total_evaluated = [], 0
     for symbol in targets:
@@ -250,7 +253,8 @@ def _evaluate_conditions(strategy, inputs) -> dict:
         "signals_evaluated_session_count": total_evaluated,
         "unknown_target_count": sum(row["unknown_sessions"] > 0 for row in rows),
         "strategy_signals_scanned": total_evaluated > 0, "per_symbol": rows,
-        "internal_computation_symbols": qualified,
+        "internal_computation_symbols": [row['symbol'] for row in scanner.preparation
+            if row['status'] == 'COMPUTED'] if scanner is not None else [],
         "scanner_identity": scanner.identity if scanner is not None else None}
 
 
