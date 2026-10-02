@@ -9,6 +9,26 @@ const dataset = { dataset_id: 'whole', adapter: 'TDX_FULL_UNIVERSE_V1', universe
     CHINEXT: { target_count: 1377, cached_count: 1377, identity_unknown_count: 0 },
   } }
 
+test('qualified mode still checks the registered whole pool and cannot retain stale custom symbols', () => {
+  const request = submissionRequest({ dataset_id: 'whole', symbols: ['000001.SZ'] }, dataset, '000001.SZ', 'DATA_QUALIFIED')
+  assert.equal(request.version, 'FULL_UNIVERSE_SUBMISSION_V2')
+  assert.equal(request.account_scope, 'DATA_QUALIFIED')
+  assert.equal('symbols' in request, false)
+  const legacy = submissionRequest(request, { dataset_id: 'old' }, '600000.SH', 'DATA_QUALIFIED')
+  assert.equal('account_scope' in legacy, false)
+  assert.equal('version' in legacy, false)
+})
+
+test('qualified freeze requires its matching preview and affirmative scope check', () => {
+  const record = { status: 'QUALIFIED_SCOPE_READY', qualified_account_ready: true, scope: { preview_identity: 'bound' }, coverage: { account_data_ready: false } }
+  assert.equal(universeDiagnosisAllowsFreeze(record, 'bound'), true)
+  assert.equal(universeDiagnosisAllowsFreeze(record, 'different'), false)
+  assert.equal(universeDiagnosisAllowsFreeze({ ...record, qualified_account_ready: false }, 'bound'), false)
+  assert.equal(universeDiagnosisAllowsFreeze({ ...record, status: 'QUALIFIED_SCOPE_BLOCKED' }, 'bound'), false)
+  assert.match(universeRunState('DATA_QUALIFIED'), /是否买入由策略决定/)
+  assert.match(universeRunState('EXCLUDED'), /本次账户范围排除/)
+})
+
 test('full universe form sends a registered reference and never the typed eight-stock subset', () => {
   const request = submissionRequest({ strategy_id: 'RULE', dataset_id: 'whole', initial_cash: 50000,
     authorization_ref: 'FROZEN_AUTHORITY', symbols: ['000001.SZ'] }, dataset,

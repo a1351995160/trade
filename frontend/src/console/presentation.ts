@@ -248,6 +248,26 @@ export function timingLabel(code: unknown): string {
 export function displayReason(code: unknown): DisplayItem {
   const value = String(code || '').trim().toUpperCase()
   const item = reasonLabels[value]
+  const qualifiedReasons: Record<string, string> = {
+    UNIVERSE_SHARE_ACTION_TERMS_UNKNOWN: '送转到账、可交易日期或税务条款不足',
+    UNIVERSE_CASH_ACTION_TERMS_UNKNOWN: '现金分红日期或支付条款不足',
+    UNIVERSE_CORPORATE_ACTION_GROUP_UNSUPPORTED: '同日多项公司行动缺少可同时执行的明确组合条款',
+    UNIVERSE_CORPORATE_ACTION_GROUP_VALIDATION_UNKNOWN: '公司行动组合检查未确认，整池保持阻断',
+    UNIVERSE_CORPORATE_COVERAGE_GAP: '公司行动资料没有完整账户覆盖证明',
+    UNIVERSE_CORPORATE_ACTIONS_INCOMPLETE: '全池公司行动资料尚未齐全',
+    UNIVERSE_UNEXPLAINED_PRICE_REFERENCE: '除息参考价格变化无法解释',
+    UNIVERSE_STATE_UNKNOWN: '证券状态无法确认', UNIVERSE_STATE_MISSING: '缺证券状态记录',
+    UNIVERSE_STATE_NOT_YET_AVAILABLE: '状态在模拟决定时尚不可见',
+    UNIVERSE_STATE_LIFECYCLE_CONFLICT: '证券状态与上市退市日期矛盾',
+    UNIVERSE_DELISTING_SETTLEMENT_UNSUPPORTED: '没有可靠的退市账户结算支持',
+    UNIVERSE_SUSPENSION_ACTIVITY_CONFLICT: '停牌状态与成交记录冲突',
+    UNIVERSE_RAW_FIELD_INVALID: '所需行情字段缺失或无效', UNIVERSE_TRADING_BAR_MISSING: '正常交易日缺行情',
+    UNIVERSE_REQUIRED_TURN_MISSING: '缺少策略需要的换手率', UNIVERSE_UNSUPPORTED_ACTION: '账户尚不支持该公司行动',
+    UNIVERSE_QUALIFIED_SCOPE_EMPTY: '没有股票通过本次账户资料检查',
+    UNIVERSE_LISTING_DATE_UNVERIFIED: '上市日期缺少来源证明', UNIVERSE_WARMUP_INSUFFICIENT: '指标历史预热不足',
+  }
+  const qualified = qualifiedReasons[value.split(':', 1)[0]!]
+  if (qualified) return { code: value, label: qualified, description: qualified, known: true }
   return { code: value, label: item?.title || '当前原因无法确认', description: item?.description || '当前字段暂无可靠的中文解释，请查看技术信息。', known: Boolean(item) }
 }
 

@@ -126,6 +126,8 @@ jobs:
           tests/research_factory/test_universe_evidence_v1.py
           tests/research_factory/test_universe_benchmark_v1.py
           tests/research_factory/test_universe_submission_v1.py
+          tests/research_factory/test_universe_qualified_scope_v1.py
+          tests/research_factory/test_universe_qualified_submission_v2.py
           tests/research_factory/test_universe_scan_service_v1.py
           tests/research_factory/test_universe_capabilities_v1.py
           tests/research_factory/test_full_universe_acceptance_v1.py

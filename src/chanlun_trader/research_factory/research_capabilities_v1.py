@@ -79,6 +79,9 @@ def render_markdown(snapshot=None):
               "历史长度不足或缺少所需字段时显示预热/数据缺口；不能填零、默认无信号或改称已完整扫描。",
               "交易制度按板块与生效日期执行，指标计算能力一致不代表各板块收益相同。",
               "", "全范围提交使用 `FULL_UNIVERSE_SUBMISSION_V1` 和登记的 `universe_id`，不手填缩小股票名单。",
+              "`FULL_UNIVERSE_SUBMISSION_V2` 加 `account_scope=DATA_QUALIFIED`：先检查全池，再冻结全部资料合格股票并公布完整排除清单，最后由策略信号选股。",
+              "范围依据数据资格确定，不依据收益、是否成交或信号次数；正常和压力成本共用同一范围。共同来源错误或没有合格股票仍阻断。",
+              "补齐后生成新的范围证据，不改旧冻结记录；回顾性资料范围不等于当年完整可投资市场。",
               "公共 `scan` 在既有数据授权内固定规则并检查全目标；prepare、冻结、资格与条件计算同处受限进程（900秒/2048MiB/数值线程1）。",
               "完成资格检查的股票数和实际计算过条件的股票数分别报告；缺来源、当时状态或公司行动证据时保持UNKNOWN，不是零信号。",
               "信号检查不创建账户预算，不计算实际成交或收益；重复同一意图只读复用，已中断意图需对账，不能重开免费扫描。",
@@ -149,12 +152,18 @@ def full_universe_capabilities_v1(rules=None):
         'board_execution_policy_v1.py', 'universe_signal_scan_v1.py',
         'universe_account_backend_v1.py', 'universe_dividend_accounting_v1.py', 'universe_rule_exit_v1.py',
         'universe_corporate_accounting_v2.py', 'corporate_action_price_v2.py', 'causal_dividend_features_v1.py',
-        'universe_submission_v1.py', 'universe_status_v1.py', 'universe_scan_service_v1.py')
+        'universe_submission_v1.py', 'universe_status_v1.py', 'universe_scan_service_v1.py', 'universe_qualified_scope_v1.py')
     supported = ['indicator_rules', 'multi_indicator_rules', 'full_range_scan', 'public_signal_scan',
                  'shared_account', 'cost_stop', 'take_profit', 'trailing_stop',
-                 'cash_dividend', 'qualified_share_actions', 'suspension_recovery', 'account_audit']
+                 'cash_dividend', 'qualified_share_actions', 'suspension_recovery', 'account_audit',
+                 'qualified_scope_account', 'published_exclusions', 'full_pool_completion']
     return {'version': 'FULL_UNIVERSE_RESEARCH_CAPABILITIES_V1',
         'submission_version': 'FULL_UNIVERSE_SUBMISSION_V1',
+        'submission_versions': ['FULL_UNIVERSE_SUBMISSION_V1', 'FULL_UNIVERSE_SUBMISSION_V2'],
+        'qualified_scope': {'version': 'UNIVERSE_QUALIFIED_SCOPE_V1', 'account_scope': 'DATA_QUALIFIED',
+            'selection': 'ALL_ACCOUNT_DATA_QUALIFIED_SYMBOLS', 'manual_symbols': False,
+            'uses_strategy_results': False, 'global_unknown': 'BLOCK', 'repair': 'NEW_IMMUTABLE_SCOPE',
+            'historical_investability': 'NOT_PROVEN'},
         'deployment_version': 'FULL_UNIVERSE_DEPLOYMENT_V1',
         'data_adapters': ['TDX_FULL_UNIVERSE_V1', 'BAOSTOCK_FULL_UNIVERSE_V1'],
         'supplement_policy': 'REGISTERED_ORIGINALS_FIRST_THEN_SYMBOL_YEAR_FIELD_GAPS',

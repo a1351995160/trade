@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { isFullUniverseDataset, submissionRequest, universeCoverage, universeDiagnosisAllowsFreeze, universeRunState, universeScanSummary, universeTaskAllowsResume } from '../universe'
 import type { UniverseDataset } from '../universe'
+import { displayReason } from '../presentation'
 interface Publication { status: string; feature_ids: string[]; case_count?: number; account_count?: number; initial_cash?: number; reason?: string; evidence_fingerprint?: string }
 const publication = ref<Publication | null>(null)
 const publishedFor = (id: string) => !fullUniverse.value && publication.value?.status === 'PUBLISHED_METADATA_VERIFIED' && publication.value.feature_ids.includes(id)
@@ -15,6 +16,9 @@ const approval = ref<Record<string, unknown> | null>(null)
 const preview = ref<Record<string, unknown> | null>(null), result = ref<Record<string, unknown> | null>(null)
 const diagnosis = ref<Record<string, unknown> | null>(null)
 const signalScan = ref<Record<string, unknown> | null>(null)
+const accountScope = ref('FULL_REQUIRED')
+const qualificationScope = computed(() => (result.value?.qualification_scope ?? diagnosis.value?.qualification_scope) as
+  { target_symbols: string[]; qualified_symbols: string[]; blocking_global_gaps: string[]; excluded: {symbol: string; reasons: string[]}[] } | undefined)
 const selectedDataset = computed(() => datasets.value.find(item => item.dataset_id === dataset.value))
 const fullUniverse = computed(() => isFullUniverseDataset(selectedDataset.value))
 const selectedCoverage = computed(() => universeCoverage((selectedDataset.value ?? {}) as unknown as Record<string, unknown>))
@@ -38,7 +42,7 @@ async function prepare() {
     const revision = draftRevision
     submitted = submissionRequest({ strategy_id: 'submitted_strategy', rule: JSON.parse(definition.value), dataset_id: dataset.value, initial_cash: money.value,
       feature_start: preheat.value, account_start: start.value, account_end: end.value, max_positions: positions.value, max_symbol_exposure_bps: Math.floor(10000 / positions.value),
-      costs: ['BASE', 'STRESS'], purpose: 'EXPLORATORY', authorization_ref: authority.value }, selectedDataset.value, symbols.value)
+      costs: ['BASE', 'STRESS'], purpose: 'EXPLORATORY', authorization_ref: authority.value }, selectedDataset.value, symbols.value, accountScope.value)
     const reviewed = await api('/preview', { request: submitted })
     if (revision === draftRevision) preview.value = reviewed
   })
@@ -66,7 +70,7 @@ onMounted(() => action(async () => {
   datasets.value = data.capabilities.data.datasets ?? []
   fullScope.value = data.capabilities.full_universe ?? null
 }))
-watch([dataset, definition, symbols, money, positions, authority, preheat, start, end], () => {
+watch([dataset, definition, symbols, money, positions, authority, preheat, start, end, accountScope], () => {
   draftRevision += 1
   preview.value = null; diagnosis.value = null; signalScan.value = null; approval.value = null; submitted = null
 }, { flush: 'sync' })
@@ -96,6 +100,7 @@ watch([dataset, definition, symbols, money, positions, authority, preheat, start
     <fieldset><legend>2. 填写资金和股票范围</legend>
       <label>数据目录<select v-model="dataset" required><option value="">请选择</option><option v-for="item in datasets" :key="item.dataset_id" :value="item.dataset_id">{{ item.dataset_id }}{{ isFullUniverseDataset(item) ? ' · 全范围扫描' : ' · 指定股票' }}</option></select></label>
       <section v-if="fullUniverse" aria-label="全范围股票覆盖">
+        <label>账户数据范围<select v-model="accountScope"><option value="FULL_REQUIRED">严格全池：全部股票资料齐全才回测</option><option value="DATA_QUALIFIED">检查全池：回测全部合格股票并公布排除清单</option></select></label>
         <p>扫描登记清单全部 {{ selectedCoverage.target }} 只，再由策略信号选股。这里无需手填股票代码，所有板块共用下面的一份资金。</p>
         <p>{{ selectedCoverage.completeness }}；{{ selectedCoverage.account }}。找到缓存文件不代表该股票可完整回测。</p>
         <table><thead><tr><th>板块</th><th>目标股票</th><th>找到缓存</th><th>账户数据合格</th><th>板块身份未知</th></tr></thead><tbody>
@@ -111,7 +116,7 @@ watch([dataset, definition, symbols, money, positions, authority, preheat, start
   <section v-if="preview"><h3>3. 核对并冻结</h3><p>冻结保存本次规则和输入，修改需新任务；不会自行授予执行权限。</p><pre>{{ JSON.stringify(preview, null, 2) }}</pre>
     <template v-if="fullUniverse">
       <button :disabled="busy || !enabled" @click="diagnose">核对全范围数据（不运行账户）</button>
-      <button :disabled="busy || !enabled" @click="scan">检查全部股票信号（不运行账户）</button>
+      <button v-if="accountScope === 'FULL_REQUIRED'" :disabled="busy || !enabled" @click="scan">检查全部股票信号（不运行账户）</button>
       <p>信号检查先固定规则与全部范围，在已有数据权限内逐股核对。缺证据的股票保持未知；原始条件不是实际买卖，也不计算止损成交、收益或策略资格。</p>
       <p v-if="diagnosis">{{ universeRunState(diagnosis.status) }}。目标 {{ actualCoverage.target }} 只；{{ actualCoverage.account }}。这一步尚无账户收益。</p>
       <ul v-if="diagnosis && actualCoverage.gaps.length"><li v-for="gap in actualCoverage.gaps.slice(0, 10)" :key="gap">{{ gap }}</li></ul>
@@ -128,6 +133,14 @@ watch([dataset, definition, symbols, money, positions, authority, preheat, start
       </section>
     </template>
     <button :disabled="busy || !enabled || (fullUniverse && !diagnosticReady)" @click="freeze">冻结这份预览</button>
+  </section>
+  <section v-if="qualificationScope" aria-label="全池资格与排除清单">
+    <h3>全池检查、合格范围和排除清单</h3>
+    <p>检查 {{ qualificationScope.target_symbols.length }} 只；逐股初检通过 {{ qualificationScope.qualified_symbols.length }} 只；可执行合格 {{ qualificationScope.blocking_global_gaps.length ? 0 : qualificationScope.qualified_symbols.length }} 只；逐股排除 {{ qualificationScope.excluded.length }} 只。资料资格先于收益确定，合格不表示已经买入或策略有效。</p>
+    <p v-if="qualificationScope.blocking_global_gaps.length">共同缺口仍影响整池：{{ qualificationScope.blocking_global_gaps.join('；') }}</p>
+    <p>范围按整个评价区间资料可用性回顾确定，不能当作已证明当年可投资的完整市场。全池仍可补齐后重新检查，旧记录保留。</p>
+    <details><summary>查看全部排除股票与原因</summary><table><thead><tr><th>股票</th><th>排除原因</th></tr></thead><tbody><tr v-for="row in qualificationScope.excluded" :key="row.symbol"><td>{{ row.symbol }}</td><td>{{ row.reasons.map(reason => displayReason(reason).label).join('；') }}</td></tr></tbody></table></details>
+    <details><summary>查看完整登记、合格名单和检查证据</summary><pre>{{ JSON.stringify(qualificationScope, null, 2) }}</pre></details>
   </section>
   <section v-if="approval"><h3>批准已冻结计划</h3><p>下列规则、资金、日期与计划身份必须在已有授权范围内。批准不会授予策略有效性资格。</p><pre>{{ JSON.stringify(approval, null, 2) }}</pre><button :disabled="busy || !enabled" @click="approve">批准这份固定计划</button></section>
   <section><h3>4. 查看任务</h3><label>任务编号<input v-model="taskId" /></label><button :disabled="busy || !taskId" @click="refresh">查询进度</button><button :disabled="busy || !taskId || !enabled" @click="inspectApproval">核对批准范围</button><button :disabled="busy || !taskId || !enabled" @click="run">启动已授权任务</button>

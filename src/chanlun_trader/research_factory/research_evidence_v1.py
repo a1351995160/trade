@@ -293,7 +293,10 @@ def verify_job_evidence(job_path, *, name):
         _require(plan["plan_id"] == stable_hash({key: value for key, value in plan.items() if key != "plan_id"}), "PLAN_HASH_CONFLICT")
         item = job["items"][name]
         _require(item == plan["runtime"], "RUNTIME_PLAN_CONFLICT")
-        _require(item["loader"] == "chanlun_trader.research_factory.strategy_submission_v1:load_frozen_bundle", "OFFLINE_INPUT_LOADER_UNSUPPORTED")
+        qualified_loader = item['loader'] == 'chanlun_trader.research_factory.strategy_submission_v1:load_frozen_qualified_bundle'
+        _require(qualified_loader or item["loader"] == "chanlun_trader.research_factory.strategy_submission_v1:load_frozen_bundle", "OFFLINE_INPUT_LOADER_UNSUPPORTED")
+        _require(not qualified_loader or plan['backend']['backend'] == 'UNIVERSE_ACCOUNT_BACKEND_V1',
+                 'OFFLINE_QUALIFIED_BACKEND_REQUIRED')
         if plan['backend']['backend'] == 'UNIVERSE_ACCOUNT_BACKEND_V1':
             from .universe_submission_v1 import validate_frozen_universe_scopes
             validate_frozen_universe_scopes(job, include_archives=True)
@@ -343,8 +346,11 @@ def verify_job_evidence(job_path, *, name):
         index = _json(root / "RESULTS_INDEX.json")["items"][name]
         _require(Path(index["result"]).resolve() == result_path and Path(index["settlement"]).resolve() == root / (name + "_SETTLEMENT.json")
                  and index["sha256"] == digest == settlement["result_sha256"], "RESULT_HASH_BINDING_CONFLICT")
-        from .strategy_submission_v1 import load_frozen_bundle
-        loaded = load_frozen_bundle(**item["loader_kwargs"])
+        from .strategy_submission_v1 import load_frozen_bundle, load_frozen_qualified_bundle
+        loaded = (load_frozen_qualified_bundle if qualified_loader else load_frozen_bundle)(**item["loader_kwargs"])
+        if qualified_loader and source['origin'] != 'CAMPAIGN_V1':
+            _require(source.get('qualified_scope_identity') == loaded['frame']['qualified_scope']['scope_identity'],
+                     'QUALIFIED_SCOPE_APPROVAL_CONFLICT')
         frozen = _json(item["loader_kwargs"]["path"])
         _require(loaded["input_identity"] == job["input_identity"] and frozen["window"] == plan["backend"]["window"], "FROZEN_INPUT_SCOPE_CONFLICT")
         result = _json(result_path)

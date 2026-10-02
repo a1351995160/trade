@@ -229,6 +229,30 @@ def reason_display(value: Any) -> ReasonDisplay:
     code = _canonical(value)
     if code in REASON_DISPLAY_NAMES:
         return REASON_DISPLAY_NAMES[code]
+    universe_reasons = {
+        'UNIVERSE_SHARE_ACTION_TERMS_UNKNOWN': ('送转账户条款不足', '送转股份到账、可交易日期或税务条款缺少完整证据。'),
+        'UNIVERSE_CASH_ACTION_TERMS_UNKNOWN': ('分红账户条款不足', '现金分红的日期或支付条款无法完整确认。'),
+        'UNIVERSE_CORPORATE_COVERAGE_GAP': ('公司行动覆盖不足', '本股票在评价区间的分红送转资料没有完整账户覆盖证明。'),
+        'UNIVERSE_CORPORATE_ACTIONS_INCOMPLETE': ('整池公司行动不完整', '原全池公司行动资料尚未全部齐全，需要逐股检查和补齐。'),
+        'UNIVERSE_UNEXPLAINED_PRICE_REFERENCE': ('除息参考价格冲突', '当日交易参考价变化无法由已确认公司行动解释。'),
+        'UNIVERSE_STATE_UNKNOWN': ('证券状态无法确认', '本股票的上市、停牌或风险状态缺少可用证据。'),
+        'UNIVERSE_STATE_NOT_YET_AVAILABLE': ('状态当时尚不可见', '证券状态资料在模拟决定时尚未到声明的可见时间。'),
+        'UNIVERSE_STATE_MISSING': ('缺证券状态记录', '模拟日期缺少所需的证券状态记录。'),
+        'UNIVERSE_STATE_LIFECYCLE_CONFLICT': ('证券状态前后矛盾', '上市退市等证券状态与日期记录互相矛盾。'),
+        'UNIVERSE_DELISTING_SETTLEMENT_UNSUPPORTED': ('退市结算没有支持', '现有资料或模型无法可靠核算该股票退市后的账户结算。'),
+        'UNIVERSE_SUSPENSION_ACTIVITY_CONFLICT': ('停牌状态与成交冲突', '停牌声明与实际成交记录不能相互核对。'),
+        'UNIVERSE_RAW_FIELD_INVALID': ('缺少合法行情字段', '本规则或账户必需的原始行情字段缺失或无效。'),
+        'UNIVERSE_TRADING_BAR_MISSING': ('正常交易日缺行情', '声明为正常交易的日期缺少对应行情。'),
+        'UNIVERSE_REQUIRED_TURN_MISSING': ('缺所需换手率', '策略需要换手率，但相关股票缺少可核验字段。'),
+        'UNIVERSE_UNSUPPORTED_ACTION': ('账户不支持该公司行动', '该公司行动尚未有可靠的账户处理路径。'),
+        'UNIVERSE_QUALIFIED_SCOPE_EMPTY': ('没有合格股票', '本次完整检查没有任何股票通过账户资料要求。'),
+        'UNIVERSE_CORPORATE_ACTION_GROUP_UNSUPPORTED': ('组合公司行动条款冲突', '同日多项公司行动缺少可同时执行的明确组合条款。'),
+        'UNIVERSE_CORPORATE_ACTION_GROUP_VALIDATION_UNKNOWN': ('组合条款检查未确认', '公司行动组合遇到未确认的账户检查问题，整池保持阻断。'),
+        'UNIVERSE_LISTING_DATE_UNVERIFIED': ('上市日期未确认', '上市日期缺少登记的来源证明。'),
+        'UNIVERSE_WARMUP_INSUFFICIENT': ('指标预热不足', '该股票的过去有效行情不足以计算规则所需指标。'),
+    }
+    if code.split(':', 1)[0] in universe_reasons:
+        return ReasonDisplay(*universe_reasons[code.split(':', 1)[0]])
     if not code:
         return ReasonDisplay("未提供原因", "没有提供可供用户判断的 Reason Code。")
     return ReasonDisplay("未知原因", f"尚未配置该 Reason Code 的中文解释：{code}。")
