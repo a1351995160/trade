@@ -287,11 +287,21 @@ def _input_for_task(task):
 
 
 def _results(task):
-    job = read_json(task["job_path"])
-    root = Path(job["root"])
-    index = read_json(root / "RESULTS_INDEX.json")["items"]
+    job_path = Path(task["job_path"]).absolute()
+    if job_path.resolve() != job_path:
+        raise ValueError("PARITY_RESULT_PATH_INVALID_OR_REDIRECTED")
+    job = read_json(job_path)
+    root = job_path.parent
+    if Path(job["root"]) != root:
+        raise ValueError("PARITY_RESULT_ROOT_CONFLICT")
+    index_path = root / "RESULTS_INDEX.json"
+    if index_path.resolve() != index_path:
+        raise ValueError("PARITY_RESULT_PATH_INVALID_OR_REDIRECTED")
+    index = read_json(index_path)["items"]
     result = {}
     for name, plan in job["plans"].items():
+        if re.fullmatch(r"[A-Za-z0-9_-]{1,128}", name) is None:
+            raise ValueError("PARITY_RESULT_NAME_INVALID")
         from chanlun_trader.research_factory.formal_account_backend_v1 import normalized_costs
         matches = [cost for cost in ("BASE", "STRESS") if plan["backend"]["costs"] == normalized_costs(cost)]
         if len(matches) != 1:
@@ -300,11 +310,14 @@ def _results(task):
         if cost in result or cost not in {"BASE", "STRESS"}:
             raise ValueError("PARITY_EXACT_TWO_COST_SCENARIOS_REQUIRED")
         item = index[name]
-        path = Path(item["result"])
+        path = root / (name + "_RESULT.json")
+        settlement_path = root / (name + "_SETTLEMENT.json")
+        if (Path(item["result"]) != path or Path(item["settlement"]) != settlement_path
+                or path.resolve() != path or settlement_path.resolve() != settlement_path):
+            raise ValueError("PARITY_RESULT_PATH_INVALID_OR_REDIRECTED")
         raw = path.read_bytes()
-        settlement = read_json(item["settlement"])
-        if (path != root / (name + "_RESULT.json")
-                or hashlib.sha256(raw).hexdigest() != item["sha256"]
+        settlement = read_json(settlement_path)
+        if (hashlib.sha256(raw).hexdigest() != item["sha256"]
                 or settlement["result_sha256"] != item["sha256"]):
             raise ValueError("PARITY_RESULT_SETTLEMENT_CONFLICT")
         result[cost] = json.loads(raw)

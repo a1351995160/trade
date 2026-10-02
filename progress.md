@@ -2814,3 +2814,14 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 ### Notes
 - 本次复用和采集不授予策略资格、独立验证或Paper资格，不重置174次历史候选及研究预算。现金分红可选送转字段仅沿用已验证旧解析中空字符串视为0的厂商口径，实际非现金事件、来源冲突、缺条款保持缺口。历史证券名单完整性、单位来源及非现金/退市处理的原证据边界仍保留，真实U8仍active。
 - 新说明集中在docs/BAOSTOCK_UNIVERSE_BRIDGE.md及FULL_UNIVERSE_DELIVERY.md。原件、失败、冻结作业和预算均不上传公开仓库。回滚源码可revert本次提交或退回a64b946；停用新登记清单可继续使用原BaoStock入口。冻结作业绑定绝对路径，保留工作区原件；主目录同步仅合入本次文件并保留原未提交研究及progress插入记录。
+## 2026-10-02 - Task: 发布前修复账户对照工具的文件读取边界
+
+### What was done
+- 远端SonarCloud指出run_baostock_universe_parity_v1.py先读取索引中的结果路径再核对目录。现以JOB父目录和安全作业名派生INDEX/RESULT/SETTLEMENT路径，在读正文前拒绝目录冲突、越界和符号链接重定向，原三方哈希和成本核验不变。
+
+### Testing
+- parity定向47项通过（2.81秒），包含恶意result/settlement/root/name及INDEX/RESULT/SETTLEMENT重定向的读取前拒绝；独立只读审查无剩余路径边界问题。
+- 实际旧新账户只读复核PARITY_VERIFIED：BASE/STRESS各122个交易日、8笔成交，逐日决策及账户经济结果零差异；VERIFIED_PARITY_fdffdd5babbb35339720701ef95a9f4d1506ea7f654b92ea13f5eb516b223b4b.json保留原MISMATCH，预算哈希未变，未重跑账户或消耗新预算。
+
+### Notes
+- 此修复不修改交易规则、账户算法、数据原件或研究门槛。回滚仅revert本次路径修复提交；发布仍等待当前提交远端CI完整通过，不跳过质量门槛。

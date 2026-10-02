@@ -241,6 +241,51 @@ def test_result_loader_uses_registered_cost_model_and_three_way_hash(tmp_path):
         parity._results({"job_path": str(tmp_path / "JOB.json")})
 
 
+@pytest.mark.parametrize("mutation", ["result", "settlement", "root", "name", "index_redirect", "result_redirect", "settlement_redirect"])
+def test_result_loader_rejects_unbound_paths_before_reading_content(tmp_path, monkeypatch, mutation):
+    from chanlun_trader.research_factory.formal_account_backend_v1 import normalized_costs
+    account = tmp_path / "account"
+    account.mkdir()
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    forbidden = outside / "private.json"
+    forbidden.write_text("{}", encoding="utf-8")
+    name = "../outside/private" if mutation == "name" else "FIXED_BASE"
+    item = {"result": str(account / (name + "_RESULT.json")),
+            "settlement": str(account / (name + "_SETTLEMENT.json")), "sha256": "a" * 64}
+    if mutation in {"result", "settlement"}:
+        item[mutation] = str(forbidden)
+    job = {"root": str(outside if mutation == "root" else account),
+           "plans": {name: {"backend": {"costs": normalized_costs("BASE")}}}}
+    job_path = account / "JOB.json"
+    job_path.write_text(json.dumps(job), encoding="utf-8")
+    (account / "RESULTS_INDEX.json").write_text(json.dumps({"items": {name: item}}), encoding="utf-8")
+    original_open, original_resolve, reads = Path.open, Path.resolve, []
+
+    redirected_paths = {"index_redirect": account / "RESULTS_INDEX.json",
+                        "result_redirect": account / (name + "_RESULT.json"),
+                        "settlement_redirect": account / (name + "_SETTLEMENT.json")}
+
+    def redirected_index(path, *args, **kwargs):
+        if path == redirected_paths.get(mutation):
+            return forbidden
+        return original_resolve(path, *args, **kwargs)
+
+    def observed_open(path, *args, **kwargs):
+        mode = args[0] if args else kwargs.get("mode", "r")
+        if "r" in mode:
+            reads.append(path)
+            assert not path.is_relative_to(outside), "必须先拒绝越界路径，再读取内容"
+            assert path != redirected_paths.get(mutation), "重定向文件必须在读取前拒绝"
+        return original_open(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "resolve", redirected_index)
+    monkeypatch.setattr(Path, "open", observed_open)
+    with pytest.raises(ValueError, match="PARITY_RESULT_(PATH|ROOT|NAME)"):
+        parity._results({"job_path": str(job_path)})
+    assert reads and not any(path.is_relative_to(outside) for path in reads)
+
+
 def _tax_audit_pair():
     from chanlun_trader.research_factory.universe_dividend_accounting_v1 import TAX_TIMING_POLICY, TAX_TIMING_SOURCE
     old, new = _result(), _result("NEW")
