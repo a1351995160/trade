@@ -672,6 +672,65 @@ def test_complete_boolean_without_registered_event_coverage_is_not_evidence():
         prepare_universe_account_inputs_v1(bundle, window)
 
 
+def test_partial_action_coverage_keeps_own_intervals_boundaries_and_false_proofs():
+    bundle, window = valid_universe_bundle_v1()
+    bundle["turn"]["date"] = pd.Series(dtype="float64")
+    bundle["corporate_actions_complete"] = False
+    bundle["corporate_action_coverage"] = [
+        {"symbols": SYMBOLS, "start": DAYS[0], "end": DAYS[-1],
+            "complete": False, "source": "ACTIONS"},
+        {"symbols": ["000001.SZ", "300001.SZ"], "start": DAYS[0], "end": DAYS[2],
+            "complete": True, "source": "ACTIONS"},
+        {"symbol": "000001.SZ", "start": DAYS[2], "end": DAYS[3],
+            "complete": True, "source": "ACTIONS"},
+        {"symbol": "300001.SZ", "start": DAYS[-1], "end": DAYS[-1],
+            "complete": True, "source": "ACTIONS"}]
+    original = canonical_json(bundle["corporate_action_coverage"])
+    prepared = prepare_universe_account_inputs_v1(bundle, window, stage="SCAN")
+    gaps = {gap["symbol"]: gap for gap in prepared.coverage["gaps"]
+            if gap["reason"] == "UNIVERSE_CORPORATE_COVERAGE_GAP"}
+    assert {symbol: gap["count"] for symbol, gap in gaps.items()} == {
+        "000001.SZ": 1, "300001.SZ": 1, "600000.SH": 5}
+    assert gaps["000001.SZ"]["first_date"] == gaps["000001.SZ"]["last_date"] == DAYS[-1]
+    assert gaps["300001.SZ"]["first_date"] == gaps["300001.SZ"]["last_date"] == DAYS[3]
+    assert gaps["600000.SH"]["first_date"] == DAYS[0]
+    assert gaps["600000.SH"]["last_date"] == DAYS[-1]
+    assert prepared.coverage["target_symbol_count"] == 3
+    assert prepared.coverage["calendar_session_count"] == 5
+    assert prepared.coverage["bar_count"] == 15
+    assert prepared.coverage["global_gaps"] == []
+    assert prepared.coverage["account_data_ready"] is False
+    assert prepared.coverage["historical_availability"] == "MODELED"
+    assert prepared.coverage["independent_confirmation_eligible"] is False
+    assert all(prepared.scan_status(symbol, DAYS[2])["signal_ready"] for symbol in SYMBOLS)
+    assert canonical_json(bundle["corporate_action_coverage"]) == original
+    assert canonical_json(prepared.bundle["corporate_action_coverage"]) == original
+    expected_bundle = {**bundle, "listing_dates": {symbol: 20180102 for symbol in SYMBOLS},
+        "listing_date_sources": {symbol: ["STATES"] for symbol in SYMBOLS}}
+    assert prepared.input_identity == universe_input_identity_v1(expected_bundle, window)
+    with pytest.raises(ValueError, match="CORPORATE_ACTIONS_INCOMPLETE"):
+        prepare_universe_account_inputs_v1(bundle, window, stage="ACCOUNT")
+
+
+@pytest.mark.parametrize("failure", ["unregistered_source", "incomplete_global_flag"])
+def test_indexed_complete_proofs_do_not_remove_global_validation_failures(failure):
+    bundle, window = valid_universe_bundle_v1()
+    if failure == "unregistered_source":
+        bundle["corporate_action_coverage"] = [bundle["corporate_action_coverage"],
+            {"symbols": SYMBOLS, "start": DAYS[0], "end": DAYS[-1],
+                "complete": True, "source": "UNREGISTERED"}]
+        reason = "UNIVERSE_CORPORATE_COVERAGE_INVALID"
+    else:
+        bundle["corporate_actions_complete"] = False
+        reason = "UNIVERSE_CORPORATE_ACTIONS_INCOMPLETE"
+    prepared = prepare_universe_account_inputs_v1(bundle, window, stage="SCAN")
+    assert prepared.coverage["gaps"] == []
+    assert reason in prepared.coverage["global_gaps"]
+    assert prepared.coverage["account_data_ready"] is False
+    assert prepared.coverage["target_symbol_count"] == 3
+    assert all(board["account_qualified_count"] == 0 for board in prepared.coverage["by_board"].values())
+
+
 def test_source_board_listing_and_price_mutations_change_identity():
     bundle, window = valid_universe_bundle_v1()
     prepared = prepare_universe_account_inputs_v1(bundle, window)

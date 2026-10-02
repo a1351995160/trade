@@ -112,7 +112,8 @@ def preview_universe(service, request):
     ResearchDataAccessGuard().check_range(request['feature_start'], request['account_end'])
     datasets = {item['dataset_id']: item for item in service.provider.catalog()['datasets']}
     data = datasets.get(request['dataset_id'])
-    if data is None or data.get('adapter') != 'TDX_FULL_UNIVERSE_V1' or data.get('universe_id') != request['universe_id']:
+    from .universe_data_provider_v1 import PROVIDER_ADAPTERS
+    if data is None or data.get('adapter') not in PROVIDER_ADAPTERS or data.get('universe_id') != request['universe_id']:
         raise ValueError('UNIVERSE_SUBMISSION_DATASET_NOT_REGISTERED')
     symbols = sorted(data['target_symbols'])
     if not symbols or len(set(symbols)) != len(symbols):

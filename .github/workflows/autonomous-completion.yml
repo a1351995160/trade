@@ -96,6 +96,14 @@ jobs:
           tests/research_factory/test_research_universe_v1.py
           tests/research_factory/test_tdx_research_adapter_v1.py
           tests/research_factory/test_prepare_full_universe_data_v1.py
+          tests/research_factory/test_baostock_universe_adapter_v1.py
+          tests/research_factory/test_baostock_universe_parity_v1.py
+          tests/research_factory/test_prepare_baostock_universe_data_v1.py
+          tests/research_factory/test_prepare_missing_tdx_cache_v1.py
+          tests/research_factory/test_universe_supplements_v1.py
+          tests/research_factory/test_collect_universe_gaps_v1.py
+          tests/research_factory/test_prepare_universe_collection_continuation_v1.py
+          tests/research_factory/test_universe_actions_v1.py
           tests/research_factory/test_prepare_full_universe_states_v1.py
           tests/research_factory/test_universe_account_inputs_v1.py
           tests/research_factory/test_universe_dividend_accounting_v1.py

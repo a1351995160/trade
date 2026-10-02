@@ -17,6 +17,8 @@ from .tdx_research_adapter_v1 import DAILY_FIELDS, TdxResearchAdapterV1, merge_d
 
 
 PROVIDER_VERSION = 'TDX_FULL_UNIVERSE_V1'
+BAOSTOCK_PROVIDER_VERSION = 'BAOSTOCK_FULL_UNIVERSE_V1'
+PROVIDER_ADAPTERS = {PROVIDER_VERSION, BAOSTOCK_PROVIDER_VERSION}
 _KINDS = {'DAILY', 'REFERENCE_PRICES', 'STATES', 'EVENTS', 'CORPORATE_ACTION_COVERAGE',
           'CALENDAR', 'SOURCE_QUALIFICATION'}
 _FORBIDDEN = ('label', 'return', 'factor_table')
@@ -63,7 +65,8 @@ class UniverseDataProviderV1:
             raise ValueError('DATA_MANIFEST_PATH_INVALID_OR_REDIRECTED')
         raw = metadata.read_bytes()
         manifest = json.loads(raw.decode('utf-8-sig'))
-        if manifest.get('adapter') != PROVIDER_VERSION:
+        adapter = manifest.get('adapter')
+        if adapter not in PROVIDER_ADAPTERS:
             raise ValueError('DATA_ADAPTER_UNSUPPORTED')
         files, master = manifest.get('files'), manifest.get('master')
         if (not isinstance(files, dict) or not files or not isinstance(master, dict)
@@ -76,8 +79,11 @@ class UniverseDataProviderV1:
             self._path(self.roots[root_id], name)
             if any(word in name.lower() for word in _FORBIDDEN):
                 raise ValueError('DATA_OUTCOME_SOURCE_FORBIDDEN')
-            if (not isinstance(item, dict) or item.get('kind') not in _KINDS
-                    or item.get('format') not in {'PARQUET', 'JSON', 'TDX_DAY_WINDOW'}
+            kinds = _KINDS | ({'ADJUST'} if adapter == BAOSTOCK_PROVIDER_VERSION else set())
+            formats = ({'BAOSTOCK_RESPONSE_JSON'} if adapter == BAOSTOCK_PROVIDER_VERSION
+                       else {'PARQUET', 'JSON', 'TDX_DAY_WINDOW'})
+            if (not isinstance(item, dict) or item.get('kind') not in kinds
+                    or item.get('format') not in formats
                     or not re.fullmatch(r'[0-9a-f]{64}', item.get('sha256', ''))
                     or not item.get('source_id')
                     or _day(item.get('start')) is None or _day(item.get('end')) is None
@@ -112,7 +118,7 @@ class UniverseDataProviderV1:
                 'target_count': snapshot['target_count'], 'by_board': snapshot['by_board'],
                 'completeness': snapshot['completeness'], 'universe_identity': universe.universe_identity,
                 'universe_scope': deepcopy(manifest.get('universe_scope')),
-                'start': manifest['start'], 'end': manifest['end'], 'adapter': PROVIDER_VERSION,
+                'start': manifest['start'], 'end': manifest['end'], 'adapter': manifest['adapter'],
                 'metadata_hash': digest, 'historical_independence': 'UNKNOWN',
                 'independent_confirmation_eligible': False, 'data_qualification': 'CONTENT_NOT_VALIDATED',
                 'limitations': ['历史清单、状态、公司行动与单位需要分别核验；登记不代表账户可执行。']})
@@ -186,6 +192,11 @@ class UniverseDataProviderV1:
                 raise ValueError('DATA_WHOLE_SOURCE_NOT_AUTHORIZED')
             if metadata['format'] == 'PARQUET':
                 self._check_parquet_range(self._path(root, name), metadata, guard)
+        if manifest['adapter'] == BAOSTOCK_PROVIDER_VERSION:
+            return self._prepare_baostock(root, manifest, manifest_hash, universe,
+                dataset_id=dataset_id, start=start, account=account, end=end,
+                authorization=authorization, required_fields=required_fields,
+                stage=stage, warmup_bars=warmup_bars)
         for name, metadata in manifest['files'].items():
             value = self._read(root, name, metadata, dataset_id, authorization)
             digest = metadata['sha256']
@@ -363,6 +374,46 @@ class UniverseDataProviderV1:
             'input_identity': inputs.input_identity, 'source_hashes': hashes, 'window': window})
         prepared = {'window': window, 'bundle': prepared_bundle, 'qualification': qualification,
                     'input_identity': inputs.input_identity}
+        return prepared, inputs
+
+    def _prepare_baostock(self, root, manifest, manifest_hash, universe, *,
+                         dataset_id, start, account, end, authorization,
+                         required_fields, stage, warmup_bars):
+        """原厂响应独立核验后进入共同账户契约；保留历史可见性模型。"""
+        from .baostock_universe_adapter_v1 import prepare_baostock_universe_v1
+        from .universe_account_inputs_v1 import prepare_universe_account_inputs_v1
+        result = prepare_baostock_universe_v1(root, manifest,
+            symbols=universe.target_symbols, feature_start=start,
+            account_start=account, account_end=end,
+            required_fields=required_fields if stage == 'ACCOUNT' else (),
+            authorization=authorization, access_recorder=self.record,
+            dataset_id=dataset_id)
+        window, bundle = result['window'], result['bundle']
+        bundle['source_hashes']['registered_manifest'] = manifest_hash
+        bundle.update(universe_identity=universe.universe_identity,
+            source_identity=identity({'manifest_hash': manifest_hash,
+                                      'source_hashes': bundle['source_hashes']}),
+            board_policy_identity=manifest.get('board_policy_identity'),
+            universe_snapshot=universe.snapshot(), calendar_source='TRADE_DATES.json',
+            price_basis={'execution': 'RAW'}, historical_availability='MODELED')
+        for key in ('listing_dates', 'listing_date_sources', 'board_policy_evidence'):
+            if key in manifest:
+                bundle[key] = deepcopy(manifest[key])
+        inputs = prepare_universe_account_inputs_v1(bundle, window, stage=stage,
+            required_fields=required_fields, warmup_bars=warmup_bars)
+        qualification = {'purpose': 'EXPLORATORY', 'account_data_ready': inputs.coverage['account_data_ready'],
+            'data_stage': stage, 'historical_availability': 'MODELED',
+            'historical_independence': 'UNKNOWN', 'independent_confirmation_eligible': False,
+            'strategy_qualified': False, 'manifest_hash': manifest_hash,
+            'source_hashes': inputs.source_hashes, 'coverage': inputs.coverage,
+            'checks': result['checks'], 'universe_completeness': universe.snapshot()['completeness'],
+            'price_basis': {'execution': 'RAW', 'indicators': 'CAUSAL_CASH_ACTION_TRANSFORM'},
+            'limitations': ['BaoStock原件复用不授予历史独立性；证券状态可见时间仍为模型假设。']}
+        prepared = {'window': window, 'bundle': inputs.bundle, 'qualification': qualification,
+                    'input_identity': inputs.input_identity}
+        self.record({'event': 'DATA_BUNDLE_PREPARED', 'dataset_id': dataset_id,
+            'authorization_id': authorization['authorization_id'], 'purpose': 'EXPLORATORY',
+            'input_identity': inputs.input_identity, 'source_hashes': inputs.source_hashes, 'window': window})
         return prepared, inputs
 
     @staticmethod

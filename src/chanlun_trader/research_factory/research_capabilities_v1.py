@@ -144,7 +144,7 @@ def multi_indicator_example(rules):
 def full_universe_capabilities_v1(rules=None):
     """声明新路径覆盖，验收只认其独立来源凭证，不继承旧发布包。"""
     rules = rule_capabilities() if rules is None else rules
-    sources = ('research_universe_v1.py', 'tdx_research_adapter_v1.py',
+    sources = ('research_universe_v1.py', 'tdx_research_adapter_v1.py', 'baostock_universe_adapter_v1.py',
         'universe_data_provider_v1.py', 'universe_account_inputs_v1.py',
         'board_execution_policy_v1.py', 'universe_signal_scan_v1.py',
         'universe_account_backend_v1.py', 'universe_dividend_accounting_v1.py', 'universe_rule_exit_v1.py',
@@ -155,6 +155,8 @@ def full_universe_capabilities_v1(rules=None):
     return {'version': 'FULL_UNIVERSE_RESEARCH_CAPABILITIES_V1',
         'submission_version': 'FULL_UNIVERSE_SUBMISSION_V1',
         'deployment_version': 'FULL_UNIVERSE_DEPLOYMENT_V1',
+        'data_adapters': ['TDX_FULL_UNIVERSE_V1', 'BAOSTOCK_FULL_UNIVERSE_V1'],
+        'supplement_policy': 'REGISTERED_ORIGINALS_FIRST_THEN_SYMBOL_YEAR_FIELD_GAPS',
         'scan_version': 'UNIVERSE_PUBLIC_SIGNAL_SCAN_V1',
         'signal_scan_resources': {'memory_mib': 2048, 'wall_seconds': 900, 'numerical_threads': 1,
                                  'scope': 'PREPARE_FREEZE_QUALIFY_AND_SCAN_IN_ONE_WORKER'},

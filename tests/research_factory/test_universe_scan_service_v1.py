@@ -15,6 +15,7 @@ from chanlun_trader.research_factory.universe_signal_scan_v1 import UniverseSign
 from test_chinext_entry_parity_v1 import indicator_proposal
 from test_universe_submission_v1 import public_universe_case
 from universe_test_fixture_v1 import fixture, proposal
+from test_universe_signal_scan_v1 import halted_ex_date_case
 
 
 def call_scan(service, request):
@@ -138,6 +139,78 @@ def test_all_unknown_skips_indicator_computation_without_losing_target_scope(mon
     assert value["processed_target_count"] == value["unknown_target_count"] == 3
     assert value["signals_evaluated_target_count"] == 0
     assert all(row["condition_counts"] is None for row in value["per_symbol"])
+
+
+def test_explicit_partial_action_coverage_scans_known_stocks_and_keeps_unknown_denominator():
+    window, bundle = fixture()
+    coverage = bundle["corporate_action_coverage"][0]
+    bundle["corporate_actions_complete"] = False
+    bundle["corporate_action_coverage"] = [
+        {**coverage, "symbols": [symbol], "complete": symbol != "300001.SZ"}
+        for symbol in window["symbols"]]
+    inputs = UniverseAccountInputsV1(bundle, window, stage="SCAN")
+    rule = ResearchRuleStrategyV3(proposal(), strategy_id="PARTIAL_ACTION_PROOF")
+    value = scan._evaluate_conditions(rule, inputs)
+    assert value["processed_target_count"] == 3
+    assert value["signals_evaluated_target_count"] == 2
+    assert value["unknown_target_count"] == 1
+    unknown = next(row for row in value["per_symbol"] if row["symbol"] == "300001.SZ")
+    assert unknown["condition_counts"] is None
+    assert not inputs.coverage["account_data_ready"]
+    with pytest.raises(ValueError, match="CORPORATE_ACTIONS_INCOMPLETE"):
+        UniverseAccountInputsV1(bundle, window, stage="ACCOUNT")
+
+
+def test_halted_cash_ex_date_is_specific_unknown_while_healthy_targets_are_evaluated():
+    window, bundle = halted_ex_date_case()
+    inputs = UniverseAccountInputsV1(bundle, window, stage="SCAN")
+    rule = ResearchRuleStrategyV3(proposal(), strategy_id="HALTED_DIVIDEND_SCAN")
+    value = scan._evaluate_conditions(rule, inputs)
+    assert value["processed_target_count"] == len(window["symbols"]) == 3
+    assert value["qualification_checked"] is True
+    assert value["signals_evaluated_target_count"] == 2
+    assert value["unknown_target_count"] == 1
+    assert value["internal_computation_symbols"] == ["300001.SZ", "600000.SH"]
+    rows = {row["symbol"]: row for row in value["per_symbol"]}
+    unknown = rows["000001.SZ"]
+    assert unknown["status"] == "UNKNOWN"
+    assert unknown["reasons"] == ["CAUSAL_PRICE_EX_DATE_MISSING"]
+    assert unknown["evaluated_sessions"] == 0 and unknown["unknown_sessions"] == 20
+    assert unknown["condition_counts"] is None and unknown["entry_eligible_sessions"] is None
+    base_window, base_bundle = fixture()
+    base = scan._evaluate_conditions(rule, UniverseAccountInputsV1(base_bundle, base_window, stage="SCAN"))
+    for healthy in base["per_symbol"]:
+        if healthy["symbol"] != "000001.SZ":
+            assert rows[healthy["symbol"]] == healthy
+    assert value["signals_evaluated_session_count"] == 40
+    assert inputs.bundle["events"] == bundle["events"]
+    assert inputs.bar("000001.SZ", window["calendar"][65]) is None
+    inputs.assert_unchanged()
+
+
+def test_public_scan_does_not_turn_other_feature_failures_into_zero_condition_counts(monkeypatch):
+    window, bundle = halted_ex_date_case()
+    inputs = UniverseAccountInputsV1(bundle, window, stage="SCAN")
+    rule = ResearchRuleStrategyV3(proposal(), strategy_id="STRICT_FEATURE_FAILURE")
+    def fail(*args, **kwargs):
+        raise ValueError("DATA_DEPENDENCY_NOT_MET")
+    monkeypatch.setattr(rule, "build_feature_matrix", fail)
+    with pytest.raises(ValueError, match="^DATA_DEPENDENCY_NOT_MET$"):
+        scan._evaluate_conditions(rule, inputs)
+
+
+def test_partial_action_coverage_is_frozen_in_input_identity():
+    window, bundle = fixture()
+    bundle["corporate_actions_complete"] = False
+    coverage = bundle["corporate_action_coverage"][0]
+    bundle["corporate_action_coverage"] = [
+        {**coverage, "symbols": [symbol], "complete": symbol != "300001.SZ"}
+        for symbol in window["symbols"]]
+    inputs = UniverseAccountInputsV1(bundle, window, stage="SCAN")
+    original = inputs.input_identity
+    bundle["corporate_action_coverage"][0]["complete"] = False
+    changed = UniverseAccountInputsV1(bundle, window, stage="SCAN")
+    assert original != changed.input_identity
 
 
 def test_same_window_next_open_modeled_states_are_unknown_at_previous_decision(tmp_path, monkeypatch):

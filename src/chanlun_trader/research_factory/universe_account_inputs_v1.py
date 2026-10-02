@@ -244,6 +244,13 @@ class UniverseAccountInputsV1:
             self._global_gaps.append("UNIVERSE_RAW_PRICE_BASIS_UNVERIFIED")
         self._validate_events()
         self._coverage_rows = self._action_coverage_rows()
+        # 证明已校验后按证券索引；缺资料的证券不能逐日遍历整个股票池。
+        self._action_coverage_by_symbol: dict[str, list[tuple[int, int]]] = {}
+        for proof in self._coverage_rows:
+            if proof["complete"]:
+                for symbol in proof["symbols"]:
+                    self._action_coverage_by_symbol.setdefault(symbol, []).append(
+                        (proof["start"], proof["end"]))
         valid_bars = (self.daily[["symbol", "date"]].loc[self.daily.volume.gt(0)]
                       if 'volume' in self.daily else self.daily.iloc[:0][["symbol", "date"]])
         self._bar_dates = {symbol: tuple(group.date) for symbol, group in
@@ -372,14 +379,14 @@ class UniverseAccountInputsV1:
         if not isinstance(value, (list, tuple)) or not value:
             self._global_gaps.append("UNIVERSE_CORPORATE_COVERAGE_MISSING")
             return []
-        if self.bundle.get("corporate_actions_complete") is not True:
+        if self.bundle.get("corporate_actions_complete") is not True and self.stage == "ACCOUNT":
             self._global_gaps.append("UNIVERSE_CORPORATE_ACTIONS_INCOMPLETE")
         result = []
         for row in value:
             try:
                 symbols = row.get("symbols", [row.get("symbol")])
                 if (not isinstance(symbols, (list, tuple)) or not symbols
-                        or not set(symbols) <= set(self.symbols) or row.get("complete") is not True
+                        or not set(symbols) <= self._symbol_set or type(row.get("complete")) is not bool
                         or not self._registered_source(row.get("source"))):
                     raise ValueError()
                 start, end = _day(row["start"]), _day(row["end"])
@@ -389,6 +396,10 @@ class UniverseAccountInputsV1:
                                "start": start, "end": end})
             except (KeyError, TypeError, ValueError):
                 self._global_gaps.append("UNIVERSE_CORPORATE_COVERAGE_INVALID")
+        # 部分扫描只按明确的逐证券缺口继续；总标志与全完整证明矛盾时仍阻断。
+        if (self.stage == "SCAN" and self.bundle.get("corporate_actions_complete") is not True
+                and not any(not row["complete"] for row in result)):
+            self._global_gaps.append("UNIVERSE_CORPORATE_ACTIONS_INCOMPLETE")
         return result
 
     def session_index(self, day: int) -> int:
@@ -592,8 +603,8 @@ class UniverseAccountInputsV1:
                 if account_day and state["state_known"] and state["delisted"]:
                     reasons.append("UNIVERSE_DELISTING_SETTLEMENT_UNSUPPORTED")
                 if state["state_known"] and state["listed"] and not state["delisted"]:
-                    if not any(symbol in r["symbols"] and r["start"] <= day <= r["end"]
-                               for r in self._coverage_rows):
+                    if not any(start <= day <= end for start, end in
+                               self._action_coverage_by_symbol.get(symbol, ())):
                         reasons.append("UNIVERSE_CORPORATE_COVERAGE_GAP")
                     if account_day and state["suspension_status"] == "TRADING" and row is not None:
                         reasons.extend(self._bar_gaps(row, account_day=True))
@@ -624,7 +635,8 @@ class UniverseAccountInputsV1:
             "calendar_session_count": len(self.calendar), "bar_count": len(self.daily),
             "global_gaps": sorted(set(self._global_gaps)),
             "gaps": [gaps[k] for k in sorted(gaps)], "per_symbol": per_symbol, "by_board": by_board,
-            "account_data_ready": not gaps and not self._global_gaps,
+            "account_data_ready": (not gaps and not self._global_gaps
+                                   and self.bundle.get("corporate_actions_complete") is True),
             "historical_availability": self.historical_availability,
             "historical_independence": "UNKNOWN", "independent_confirmation_eligible": False,
             "strategy_qualified": False}
@@ -632,7 +644,8 @@ class UniverseAccountInputsV1:
     def require_account_ready(self):
         if not self.coverage["account_data_ready"]:
             first = (self.coverage["global_gaps"] or
-                     [g["reason"] for g in self.coverage["gaps"]])[0]
+                     [g["reason"] for g in self.coverage["gaps"]] or
+                     ["UNIVERSE_CORPORATE_ACTIONS_INCOMPLETE"])[0]
             raise ValueError("UNIVERSE_ACCOUNT_INPUT_NOT_READY:" + first)
         return self
 
