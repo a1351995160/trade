@@ -41,5 +41,6 @@
 
 # 定点补证回执绑定新增采集及复验算法字节，不随平台换行改变。
 /scripts/resolve_universe_numeric_terms_v1.py text eol=lf
+/scripts/prepare_universe_actions_v2.py text eol=lf
 /scripts/classify_universe_action_evidence_v1.py text eol=lf
 /scripts/fetch_universe_action_announcements_v1.py text eol=lf
