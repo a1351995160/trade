@@ -2,6 +2,7 @@
 from copy import deepcopy
 import hashlib
 import json
+import math
 from pathlib import Path
 import time
 
@@ -27,6 +28,41 @@ class SegmentBoundary(RuntimeError):
 
 
 class UniversePaperEngineV2(UniversePaperEngineV1):
+    def _accept_actions(self, snapshot):
+        super()._accept_actions(snapshot)
+        day = int(snapshot['market_date'])
+        self._pending_suspended_price_actions = [event for event in self.engine.ledger.events
+            if event['effective_date'] == day and event['event_id'] not in self.engine.ledger.applied]
+
+    def _load_states(self, snapshot):
+        super()._load_states(snapshot)
+        from .corporate_action_price_v2 import grouped_price_actions_v2
+        ledger, day = self.engine.ledger, int(snapshot['market_date'])
+        for action in grouped_price_actions_v2(getattr(self, '_pending_suspended_price_actions', ())):
+            symbol = action['symbol']
+            state = self.inputs.state(symbol, day)
+            if state['suspension_status'] != 'SUSPENDED' or not ledger.total_quantity(symbol) or not action['cash_per_share']:
+                continue
+            if not state['state_known'] or not state['listed'] or state['delisted']:
+                raise ValueError('UNIVERSE_SUSPENDED_CASH_MARK_STATE_UNVERIFIED')
+            # 股份账本已在 on_open 调整数量及 mark；现金也必须转为除权后的股单位。
+            before = ledger.last_price.get(symbol)
+            if before is None or not math.isfinite(before) or before <= 0:
+                raise ValueError('UNIVERSE_SUSPENDED_CASH_MARK_MISSING')
+            after = before - action['cash_per_share'] / action['share_ratio']
+            if not math.isfinite(after) or after <= 0:
+                raise ValueError('UNIVERSE_SUSPENDED_CASH_MARK_INVALID')
+            ts = pd.Timestamp(snapshot.get('processed_at', snapshot['received_at']))
+            ledger.mark_to_market(symbol, after, ts)
+            ledger.action_audit.append({'event_id': sorted(event['event_id'] for event in getattr(self, '_pending_suspended_price_actions', ())
+                    if event['event_id'] in action['event_ids'] and event['event_type'] == 'CASH_DIVIDEND')[0],
+                'event_ids': action['event_ids'], 'symbol': symbol,
+                'phase': 'SUSPENDED_CASH_MARK', 'timestamp': str(ts),
+                'before_cash_mark': before, 'after_cash_mark': after,
+                'price_cash_per_share': action['cash_per_share'], 'share_ratio': action['share_ratio'],
+                'price_policy': 'MODELED_SUSPENDED_EX_REFERENCE_V3'})
+        self._pending_suspended_price_actions = []
+
     def decisions(self, states):
         day = int(states[0]['date'])
         calendar = tuple(self.inputs.window['calendar'])
@@ -127,7 +163,8 @@ class UniverseAccountBackendV2(UniverseAccountBackendV1):
         for name in paths:
             path = Path(__file__).with_name(name).resolve()
             description['source_hashes'][str(path)] = hashlib.sha256(path.read_bytes()).hexdigest()
-        description.update(backend=VERSION, execution_profile=deepcopy(self.execution_profile),
+        description.update(backend=VERSION, feature_price_policy='CAUSAL_SUSPENDED_CASH_AND_SHARES_V3',
+            suspended_cash_mark_policy='MODELED_SUSPENDED_EX_REFERENCE_V3', execution_profile=deepcopy(self.execution_profile),
             result_schema='UNIVERSE_SHARDED_RESULT_V2', state_schema='UNIVERSE_EXECUTION_STATE_V2',
             allocation='SELL_THEN_PRIORITY_STRATEGY_FROZEN_SCORE_SYMBOL')
         return description

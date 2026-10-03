@@ -238,6 +238,8 @@ def long_horizon_capabilities_v1():
         'score_operators': ['const', 'field', 'indicator', 'ref', 'add', 'sub', 'mul', 'div'],
         'score_directions': ['ASCENDING', 'DESCENDING'], 'tie_breaker': 'SYMBOL_ASCENDING',
         'signal_horizons': [5, 10, 20], 'continuous_reference': 'MAINTAINER_ENGINEERING_ONLY',
+        'feature_price_policy': 'CAUSAL_SUSPENDED_CASH_AND_SHARES_V3',
+        'suspended_cash_mark_policy': 'MODELED_SUSPENDED_EX_REFERENCE_V3',
         'formal_method': 'UNSUPPORTED', 'strategy_qualified': False,
         'engineering_evidence': 'ENGINEERING_NOT_ACCEPTED', 'real_evidence': 'REAL_NOT_ACCEPTED',
         'source_hashes': {name: hashlib.sha256(Path(__file__).with_name(name).read_bytes()).hexdigest() for name in names}}

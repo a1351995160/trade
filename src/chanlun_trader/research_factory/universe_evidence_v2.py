@@ -84,7 +84,7 @@ class _ConditionTable:
     """单证券公式重算，自己的只读数值表；不读取执行器的缓存。"""
     def __init__(self, strategy, inputs, root, identity):
         from ..engine.conditions_v2 import ConditionContext
-        from .causal_dividend_features_v1 import causal_hfq_bars, causal_hfq_bars_v2
+        from .causal_dividend_features_v1 import causal_hfq_bars_v3
         from .research_rule_strategy_v2 import _field_references, evaluate_condition
         root.mkdir(parents=True, exist_ok=True)
         self.symbols = {symbol: index for index, symbol in enumerate(inputs.symbols)}
@@ -112,17 +112,16 @@ class _ConditionTable:
                              for name in _field_references(expression)}
             self.preparation = []
             for symbol in inputs.symbols:
-                raw = inputs.daily.iloc[daily_groups.get(symbol, [])]
-                raw = raw.loc[raw.volume.gt(0)].sort_values('date').copy()
+                price_raw = inputs.daily.iloc[daily_groups.get(symbol, [])].sort_values('date').copy()
+                raw = price_raw.loc[price_raw.volume.gt(0)]
                 if raw.empty:
                     self.preparation.append({'symbol': symbol, 'status': 'NO_VALID_BARS'})
                     continue
-                raw['adjustflag'] = '3'
+                price_raw['adjustflag'] = '3'
                 events = tuple(event for event in event_groups[symbol]
                     if int(raw.date.min()) < event['effective_date'] <= int(raw.date.max()))
-                transform = causal_hfq_bars_v2 if any(event.get('price_version') == 'CASH_AND_SHARES_V2'
-                    or event['event_type'] in {'BONUS', 'CAPITALIZATION'} for event in events) else causal_hfq_bars
-                bars, trace = transform(raw, events)
+                bars, trace = causal_hfq_bars_v3(price_raw, events, inputs.calendar, inputs.state,
+                    calendar_source=inputs.bundle.get('calendar_source'), source_hashes=inputs.source_hashes)
                 bars = bars.set_index('date')
                 turns = inputs.turn.iloc[turn_groups.get(symbol, [])].set_index('date')
                 vendor = turns['turn'].reindex(bars.index) if 'turn' in turns else None
@@ -179,6 +178,33 @@ class _ConditionTable:
 
 class _ReconstructionV2(_Reconstruction):
     version = VERSION
+
+    def open_actions(self, day):
+        from .corporate_action_price_v2 import grouped_price_actions_v2
+        newly_effective = [event for event in self.events
+            if event['effective_date'] == day and event['event_id'] not in self.applied]
+        super().open_actions(day)
+        for action in grouped_price_actions_v2(newly_effective):
+            symbol = action['symbol']
+            state = self.inputs.state(symbol, day)
+            if state['suspension_status'] != 'SUSPENDED' or not self.quantity(symbol) or not action['cash_per_share']:
+                continue
+            _require(state['state_known'] and state['listed'] and not state['delisted'],
+                'SUSPENDED_CASH_MARK_STATE_UNVERIFIED')
+            _require(symbol in self.prices, 'SUSPENDED_CASH_MARK_MISSING')
+            before = _number(self.prices[symbol])
+            after = before - action['cash_per_share'] / action['share_ratio']
+            _require(before > 0 and math.isfinite(after) and after > 0, 'SUSPENDED_CASH_MARK_INVALID')
+            self.prices[symbol] = after
+            position = self.positions[symbol]
+            position['unrealized_pnl'] = (after-position['average_cost'])*position['quantity']
+            self.action_audit.append({'event_id': sorted(event['event_id'] for event in newly_effective
+                    if event['event_id'] in action['event_ids'] and event['event_type'] == 'CASH_DIVIDEND')[0],
+                'event_ids': action['event_ids'], 'symbol': symbol,
+                'phase': 'SUSPENDED_CASH_MARK', 'timestamp': str(_stamp(day)),
+                'before_cash_mark': before, 'after_cash_mark': after,
+                'price_cash_per_share': action['cash_per_share'], 'share_ratio': action['share_ratio'],
+                'price_policy': 'MODELED_SUSPENDED_EX_REFERENCE_V3'})
 
     def quantity(self, symbol):
         if getattr(self, '_indexed_lots_count', -1) != len(self.lots):
@@ -397,7 +423,8 @@ def _reconstruct(bundle, window, result, *, initial_cash, costs, strategy_id,
              'UNSUPPORTED_QUALIFICATION')
     policy, portfolio = _policy(result, inputs, strategy, initial_cash, costs, backend=BACKEND)
     own_source = {name: hashlib.sha256(Path(__file__).with_name(name).read_bytes()).hexdigest()
-                  for name in ('universe_evidence_v1.py', 'universe_evidence_v2.py')}
+                  for name in ('universe_evidence_v1.py', 'universe_evidence_v2.py',
+                               'causal_dividend_features_v1.py', 'corporate_action_price_v2.py')}
     identity = stable_hash({'version': VERSION, 'input_identity': inputs.input_identity,
         'execution_identity': result['execution_identity'], 'rule_identity': strategy.rule_identity,
         'artifacts': result['artifacts'], 'final_account_checkpoint': result['final_account_checkpoint'],

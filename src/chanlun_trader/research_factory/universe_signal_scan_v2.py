@@ -71,7 +71,7 @@ class UniverseSignalScanV2:
                 bundle['turn'] = inputs.bundle['turn'].iloc[turns.get(symbol, [])]
                 proxy = SimpleNamespace(bundle=bundle, input_identity=inputs.input_identity,
                                         window={**inputs.window, 'symbols': [symbol]})
-                scanner = UniverseSignalScanV1(strategy, proxy, batch_size=batch_size)
+                scanner = UniverseSignalScanV1(strategy, proxy, batch_size=batch_size, _price_context=inputs)
                 frame = scanner.conditions[symbol]
                 for day, row in frame.iterrows():
                     if int(day) in self.day_index:

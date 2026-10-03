@@ -104,6 +104,9 @@ jobs:
           tests/research_factory/test_portfolio_allocation_explanation_v1.py
           tests/research_factory/test_universe_signal_funnel_v1.py
           tests/research_factory/test_universe_evidence_v2.py
+          tests/research_factory/test_universe_sparse_causal_price_v3.py
+          tests/research_factory/test_universe_suspended_cash_valuation_v2.py
+          tests/research_factory/test_universe_suspended_cash_allocation_v2.py
           tests/research_factory/test_universe_owned_inputs_v1.py
           tests/research_factory/test_universe_research_report_v2.py
           tests/research_factory/test_universe_report_continuation_v1.py

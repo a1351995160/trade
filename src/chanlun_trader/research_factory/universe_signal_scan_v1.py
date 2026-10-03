@@ -4,7 +4,7 @@ import math
 
 import pandas as pd
 
-from .causal_dividend_features_v1 import causal_hfq_bars, causal_hfq_bars_v2
+from .causal_dividend_features_v1 import causal_hfq_bars, causal_hfq_bars_v2, causal_hfq_bars_v3
 from .common import stable_hash
 from .research_rule_strategy_v2 import _field_references, evaluate_condition
 from .strategy_interface_v1 import Decision, TargetWeight
@@ -14,7 +14,8 @@ VERSION = 'UNIVERSE_SIGNAL_SCAN_V1'
 
 
 class UniverseSignalScanV1:
-    def __init__(self, strategy, inputs, *, batch_size=128, progress=None, allow_data_gaps=False):
+    def __init__(self, strategy, inputs, *, batch_size=128, progress=None, allow_data_gaps=False,
+                 _price_context=None):
         if type(batch_size) is not int or batch_size < 1:
             raise ValueError('UNIVERSE_BATCH_SIZE_INVALID')
         if type(allow_data_gaps) is not bool:
@@ -35,6 +36,7 @@ class UniverseSignalScanV1:
                     self.preparation.append({'symbol': symbol, 'status': 'NO_VALID_BARS'})
                     continue
                 raw = raw.copy()
+                price_raw = raw if _price_context is not None else None
                 # 零活动停牌记录不进入指标 bar 轴；账户仍保留每个交易 session。
                 raw = raw.loc[raw.volume.gt(0)]
                 if raw.empty:
@@ -47,7 +49,14 @@ class UniverseSignalScanV1:
                 try:
                     price_transform = (causal_hfq_bars_v2 if any(e.get('price_version') == 'CASH_AND_SHARES_V2'
                         or e['event_type'] in {'BONUS', 'CAPITALIZATION'} for e in actions) else causal_hfq_bars)
-                    bars, price_trace = price_transform(raw, actions)
+                    if _price_context is None:
+                        bars, price_trace = price_transform(raw, actions)
+                    else:
+                        price_raw['adjustflag'] = '3'
+                        bars, price_trace = causal_hfq_bars_v3(price_raw, actions,
+                            _price_context.calendar, _price_context.state,
+                            calendar_source=_price_context.bundle.get('calendar_source'),
+                            source_hashes=_price_context.source_hashes)
                 except ValueError as error:
                     # 公共纯信号扫描保留该证券未知；账户默认仍要求严格的除息价格证据。
                     if not allow_data_gaps or str(error) != 'CAUSAL_PRICE_EX_DATE_MISSING':
