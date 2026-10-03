@@ -67,7 +67,8 @@ def _project(bundle, window, symbols):
         frame = bundle[key]
         positions = np.flatnonzero(frame.symbol.isin(selected).to_numpy())
         child[key] = pd.DataFrame(
-            {name: series.array.take(positions) for name, series in frame.items()}, copy=False)
+            {name: pd.Series(series.array.take(positions), dtype=series.dtype, copy=False)
+             for name, series in frame.items()}, copy=False)
     child["events"] = [deepcopy(event) for event in bundle["events"] if event["symbol"] in selected]
     for key in _SYMBOL_MAPS:
         if key in child and child[key] is not None:

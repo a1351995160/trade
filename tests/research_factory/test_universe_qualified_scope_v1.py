@@ -109,9 +109,26 @@ def test_projected_child_buffers_and_public_inputs_remain_mutation_isolated(stri
     assert parent["bundle"]["states"].st_status.iloc[0] == "NORMAL"
 
 
-def test_column_projection_preserves_the_previous_frozen_identity_and_receipt(monkeypatch):
+@pytest.mark.parametrize("extra_type", [None, "object_timestamp", "object_tz_timestamp", "object_bool",
+                                        "object_nested", "nullable_float", "string", "categorical"])
+def test_column_projection_preserves_the_previous_frozen_identity_and_receipt(monkeypatch, extra_type):
     from chanlun_trader.research_factory import universe_qualified_scope_v1 as scope
     parent = partial_parent()
+    if extra_type is not None:
+        cases = {
+            "object_timestamp": ([pd.Timestamp("2024-01-01"), None], object),
+            "object_tz_timestamp": ([pd.Timestamp("2024-01-01", tz="Asia/Shanghai"), None], object),
+            "object_bool": ([True, None], object),
+            "object_nested": ([{"a": [1]}, None], object),
+            "nullable_float": ([1., pd.NA], "Float64"),
+            "string": (["a", None], "string"),
+            "categorical": (["a", None], pd.CategoricalDtype(["a", "b"])),
+        }
+        values, dtype = cases[extra_type]
+        length = len(parent["bundle"]["daily"])
+        parent["bundle"]["daily"]["extra"] = pd.Series(
+            (values * length)[:length], dtype=dtype)
+        parent["input_identity"] = universe_input_identity_v1(parent["bundle"], parent["window"])
     expected = qualify_universe_bundle(parent)
     project = scope._project
 
