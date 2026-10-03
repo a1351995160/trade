@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { isFullUniverseDataset, submissionRequest, universeCoverage, universeDiagnosisAllowsFreeze, universeRunState, universeScanSummary, universeTaskAllowsResume } from './universe.ts'
+import { isFullUniverseDataset, submissionRequest, universeCoverage, universeDiagnosisAllowsFreeze, universeRunState, universeTaskState, universeScanSummary, universeTaskAllowsResume, universeTaskAllowsPause, universeLongProgress } from './universe.ts'
 
 const dataset = { dataset_id: 'whole', adapter: 'TDX_FULL_UNIVERSE_V1', universe_id: 'historical_main_and_chinext',
   target_count: 4536, completeness: 'UNIVERSE_COMPLETENESS_UNKNOWN', by_board: {
@@ -125,4 +125,83 @@ test('manual resume appears only for the selected new-version unsettled account 
   assert.equal(universeTaskAllowsResume({ ...task, version: 'STRATEGY_SUBMISSION_V1' }, 'new-task'), false)
   assert.equal(universeTaskAllowsResume({ ...task, items: { BASE: { state: 'COMPLETED' } } }, 'new-task'), false)
   assert.equal(universeTaskAllowsResume(null, 'new-task'), false)
+})
+
+test('explicit long version binds registered descriptor and observations without narrowing whole scope', () => {
+  const profile = { profile_id: 'LONG_HORIZON_SEGMENTED_V1', account_sessions: 252,
+    registry_hash: 'registered', profile_hash: 'frozen', worker_seconds: 900 }
+  const request = submissionRequest({ account_start: '2023-07-20', account_end: '2024-07-31',
+    symbols: ['000001.SZ'], rule: { version: 'RESEARCH_RULE_STRATEGY_V4' } }, dataset,
+  '000001.SZ', 'FULL_REQUIRED', profile)
+  assert.equal(request.version, 'FULL_UNIVERSE_SUBMISSION_V3')
+  assert.equal(request.account_scope, 'DATA_QUALIFIED')
+  assert.equal('symbols' in request, false)
+  assert.deepEqual(request.execution_profile, profile)
+  assert.deepEqual(request.observation_plan, { version: 'SIGNAL_OBSERVATION_PLAN_V1', horizons: [5, 10, 20],
+    entry: 'NEXT_EXCHANGE_SESSION_RAW_OPEN', exit: 'HORIZON_SESSION_RAW_CLOSE',
+    price_policy: 'FRACTIONAL_ONE_SHARE_ENTITLED_ECONOMIC_VALUE_V1',
+    comparator: 'QUALIFIED_SCOPE_EQUAL_WEIGHT_SAME_ENTRY_HORIZON', start: 20230720, end: 20240731 })
+  const legacy = submissionRequest(request, { dataset_id: 'old' }, '600000.SH')
+  assert.equal('execution_profile' in legacy, false)
+  assert.equal('observation_plan' in legacy, false)
+  assert.equal('version' in legacy, false)
+})
+
+test('new pause and resume buttons respect selected task and actual persisted execution state', () => {
+  const task = { task_id: 'long', version: 'UNIVERSE_TASK_METADATA_V1',
+    execution_profile: { profile_id: 'LONG_HORIZON_SEGMENTED_V1' },
+    items: { BASE: { state: 'RUNNING' } } }
+  assert.equal(universeTaskAllowsPause(task, 'long'), true)
+  assert.equal(universeTaskAllowsPause(task, 'another'), false)
+  assert.equal(universeTaskAllowsResume(task, 'long'), false)
+  for (const state of ['PAUSED', 'READY_TO_CONTINUE', 'RESUME_REQUIRED']) {
+    const paused = { ...task, items: { BASE: { state } } }
+    assert.equal(universeTaskAllowsResume(paused, 'long'), true)
+    assert.equal(universeTaskAllowsPause(paused, 'long'), false)
+  }
+  assert.equal(universeTaskAllowsResume({ ...task, items: { BASE: { state: 'FAILED' } } }, 'long'), false)
+  assert.equal(universeTaskAllowsPause({ ...task, execution_profile: {} }, 'long'), false)
+  const report = { ...task, stage: 'REPORT', items: { BASE: { state: 'COMPLETED' } },
+    compute_stages: { REPORT: { state: 'RUNNING' } } }
+  assert.equal(universeTaskAllowsPause(report, 'long'), true)
+  assert.equal(universeTaskAllowsResume(report, 'long'), false)
+  assert.equal(universeTaskAllowsResume({ ...report, paused: true }, 'long'), true)
+  assert.equal(universeTaskAllowsResume({ ...report,
+    compute_stages: { REPORT: { state: 'RESUME_REQUIRED' } } }, 'long'), true)
+  for (const state of ['COMPLETED', 'FAILED']) {
+    const terminal = { ...report, paused: true, compute_stages: { REPORT: { state } } }
+    assert.equal(universeTaskAllowsPause(terminal, 'long'), false)
+    assert.equal(universeTaskAllowsResume(terminal, 'long'), false)
+  }
+})
+
+test('long progress keeps account sessions and runtime charges distinct and never fills absent evidence with zero', () => {
+  const view = universeLongProgress({ execution_profile: { account_sessions: 504, worker_seconds: 900, memory_mib: 2048 },
+    items: { BASE: { state: 'PAUSED', phase: 'ACCOUNT', processed_sessions: 120, account_sessions: 504,
+      last_day: 20230103, charged_seconds: 850.25, remaining_seconds: 27949.75 }, STRESS: { state: 'NOT_STARTED' } } })!
+  assert.equal(view.sessionBound, '504')
+  assert.equal(view.rows[0]!.processed, '120')
+  assert.equal(view.rows[0]!.chargedSeconds, '850.3')
+  assert.equal(view.rows[1]!.processed, '未知')
+  assert.equal(view.rows[1]!.chargedSeconds, '未知')
+  assert.match(view.rows[0]!.state, /安全边界暂停/)
+  assert.equal(universeLongProgress(null), null)
+  const reports = universeLongProgress({ stage: 'REPORT',
+    execution_profile: { account_sessions: 504 },
+    compute_stages: { VERIFICATION: { state: 'COMPLETED', charged_seconds: 25, remaining_seconds: 30 },
+      REPORT: { state: 'READY_TO_CONTINUE', charged_seconds: 899.5, remaining_seconds: 2800 } } })!
+  assert.equal(reports.stage, '双报告')
+  assert.equal(reports.stages[1]!.name, '双报告')
+  assert.match(reports.stages[1]!.state, /原用途可继续/)
+  assert.equal(reports.stages[1]!.chargedSeconds, '899.5')
+  assert.equal(reports.stages[1]!.remainingSeconds, '2800.0')
+})
+
+test('legacy completed purposes are displayed without inventing verification or strategy qualification', () => {
+  const old = { total: 2, items: { BASE: { state: 'COMPLETED' }, STRESS: { state: 'COMPLETED' } } }
+  assert.match(universeTaskState(old), /全部账户用途已完成/)
+  assert.match(universeTaskState(old), /分别查看证据/)
+  assert.equal(universeTaskState({ ...old, total: 3 }), '尚未提供状态')
+  assert.equal(universeTaskState({ ...old, status: 'REPORT_RUNNING' }), '正在生成账户与信号两份报告')
+  assert.equal(universeTaskState({ ...old, items: { BASE: { state: 'FAILED' } } }), '尚未提供状态')
 })

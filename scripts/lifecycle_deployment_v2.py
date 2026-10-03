@@ -64,7 +64,8 @@ def build_submission_service(workspace_root, config):
             raise PermissionError('SUBMISSION_REGISTERED_AUTHORITY_CHANGED')
         value = json.loads(raw)
         required = {'objective_id','budget_path','data_authorization','source','expires_at'}
-        if not required <= set(value) or set(value) - required - {'account_authorization'}:
+        if not required <= set(value) or set(value) - required - {
+                'account_authorization','execution_profiles','compute_authorization','engineering_authorization'}:
             raise PermissionError('SUBMISSION_AUTHORITY_FIELDS_INVALID')
         source = value['source']
         if (source.get('origin') != 'USER_EXPLICIT_CURRENT_TASK' or not source.get('statement')):

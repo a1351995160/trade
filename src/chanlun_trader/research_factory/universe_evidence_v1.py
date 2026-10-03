@@ -619,13 +619,13 @@ class _Reconstruction:
         return records, rows
 
 
-def _policy(result, inputs, strategy, initial_cash, costs):
+def _policy(result, inputs, strategy, initial_cash, costs, *, backend=_BACKEND):
     from .board_execution_policy_v1 import board_policy_identity
     policy = result["account_policy"]
     _same(policy["initial_cash"], initial_cash, "INITIAL_CASH_CONFLICT")
     _require(policy["symbols"] == list(inputs.symbols), "POLICY_SYMBOLS_CONFLICT")
     portfolio = {"overlap": "SEPARATE_STRATEGY_LOTS", "lot_size": 100, **policy["portfolio"]}
-    _require(portfolio["policy_id"] == _BACKEND and portfolio["purpose"] == "ENGINEERING_OBSERVATION", "POLICY_PURPOSE_CONFLICT")
+    _require(portfolio["policy_id"] == backend and portfolio["purpose"] == "ENGINEERING_OBSERVATION", "POLICY_PURPOSE_CONFLICT")
     _require(portfolio["members"] == [{"strategy_id": strategy.strategy_id,
         "rule_identity": strategy.rule_identity, "weight_bps": 10000, "priority": 0}], "POLICY_MEMBERS_CONFLICT")
     _require(type(portfolio["max_positions"]) is int and 1 <= portfolio["max_positions"] <= len(inputs.symbols)
@@ -642,7 +642,7 @@ def _policy(result, inputs, strategy, initial_cash, costs):
     if share_events:
         _require(description.get("supported_exit_price_policies") == [_PRICE_POLICY, _SHARE_PRICE_POLICY],
                  "EXIT_PRICE_POLICY_CAPABILITY_CONFLICT")
-    _require(description["backend"] == _BACKEND and description["window"] == inputs.window
+    _require(description["backend"] == backend and description["window"] == inputs.window
              and description["costs"] == costs and description["initial_cash"] == initial_cash
              and description["max_positions"] == portfolio["max_positions"]
              and description["max_symbol_exposure_bps"] == portfolio["max_symbol_exposure_bps"]
@@ -655,6 +655,8 @@ def _policy(result, inputs, strategy, initial_cash, costs):
 
 
 def _plan(plan, previous_day, day, decisions, account, portfolio, inputs):
+    if getattr(account, 'version', None) == 'UNIVERSE_EVIDENCE_V2':
+        return account.validate_plan(plan, previous_day, day, decisions, portfolio)
     _require(plan["plan_id"] == "PORTFOLIO_PAPER_" + stable_hash({k: v for k, v in plan.items() if k != "plan_id"}), "PLAN_HASH_CONFLICT")
     _require(plan["input_identity"] == inputs.input_identity and plan["next_session"] == day
              and _time(plan["decision_at"]) == _stamp(previous_day, close=True) + pd.Timedelta(minutes=30), "PLAN_SCOPE_CONFLICT")
@@ -691,10 +693,11 @@ def _plan(plan, previous_day, day, decisions, account, portfolio, inputs):
     _tree(plan["excluded"], excluded, "PLAN_EXCLUSIONS_CONFLICT")
 
 
-def _buy_limits(account, portfolio, symbol, price, pending, opening_cash, opening_equity, spent, gross, target):
+def _buy_limits(account, portfolio, symbol, price, pending, opening_cash, opening_equity, spent, gross, target,
+                *, allow_position_limit=False):
     active = {s for s in account.positions if account.quantity(s)}
     pending_buy = [order for order in pending if order["side"] == "BUY"]
-    if symbol not in active | {order["symbol"] for order in pending_buy} and len(active | {o["symbol"] for o in pending_buy}) >= portfolio["max_positions"]:
+    if not allow_position_limit and symbol not in active | {order["symbol"] for order in pending_buy} and len(active | {o["symbol"] for o in pending_buy}) >= portfolio["max_positions"]:
         return None
     if any(o["side"] == "SELL" and o["symbol"] == symbol for o in pending):
         return None
@@ -729,6 +732,7 @@ def _execute_day(account, day, plan, orders, fills, portfolio, previous_equity, 
     consumed = set()
     eligibility_skip_ids = []
     session_filled = defaultdict(int)
+    versioned = getattr(account, 'version', None) == 'UNIVERSE_EVIDENCE_V2'
     if account.share_events:
         supplied = defaultdict(int)
         for trade in fills:
@@ -759,14 +763,19 @@ def _execute_day(account, day, plan, orders, fills, portfolio, previous_equity, 
             matching = [order for order in orders if order["intent_id"] == intent_id]
             if state["suspension_status"] != "TRADING" or not state["listed"] or state["delisted"]:
                 _require(not matching, "ORDER_WHILE_SUSPENDED")
+                if versioned:
+                    account.validate_skip(item, intent_id, plan, "SECURITY_NOT_TRADABLE", skips)
                 continue
             if side == "BUY" and (state["universe_member"] is not True or state["eligibility_status"] != "ELIGIBLE"):
                 _require(not matching, "BUY_ORDER_WHILE_NOT_ELIGIBLE_AT_OPEN")
                 _require(not any(trade["symbol"] == symbol and trade["side"] == "BUY" for trade in fills),
                          "BUY_FILL_WHILE_NOT_ELIGIBLE_AT_OPEN")
                 matching_skips = skips.get(intent_id, [])
-                _require(matching_skips == [{"intent_id": intent_id, "reason": "SECURITY_NOT_ELIGIBLE_AT_OPEN"}],
-                         "ENTRY_ELIGIBILITY_SKIP_CONFLICT")
+                if versioned:
+                    account.validate_skip(item, intent_id, plan, "SECURITY_NOT_ELIGIBLE_AT_OPEN", skips)
+                else:
+                    _require(matching_skips == [{"intent_id": intent_id, "reason": "SECURITY_NOT_ELIGIBLE_AT_OPEN"}],
+                             "ENTRY_ELIGIBILITY_SKIP_CONFLICT")
                 eligibility_skip_ids.append(intent_id)
                 continue
             if side == "SELL":
@@ -778,19 +787,30 @@ def _execute_day(account, day, plan, orders, fills, portfolio, previous_equity, 
                 raw = account.inputs.bar(symbol, day)
                 _require(raw is not None, "BUY_BAR_MISSING")
                 price = _number(raw["open"]) * (1 + account.costs["slippage_bps"])
-                limits = _buy_limits(account, portfolio, symbol, price, pending, opening_cash, opening_equity, 0., 0., item["target_weight"])
-                quantity = int(min(limits.values()) / price / 100) * 100 if limits else 0
-                while quantity and quantity * price + _fee(side, quantity, price, account.costs) > min(limits["cash"], limits["strategy"]) + 1e-9:
-                    quantity -= 100
+                if versioned:
+                    allocation = account.validate_allocation(item, intent_id, plan, price, pending,
+                        opening_cash, opening_equity, portfolio)
+                    quantity = allocation['allocated_quantity']
+                else:
+                    limits = _buy_limits(account, portfolio, symbol, price, pending, opening_cash, opening_equity, 0., 0., item["target_weight"])
+                    quantity = int(min(limits.values()) / price / 100) * 100 if limits else 0
+                    while quantity and quantity * price + _fee(side, quantity, price, account.costs) > min(limits["cash"], limits["strategy"]) + 1e-9:
+                        quantity -= 100
             if not quantity:
                 _require(not matching, "ORDER_WITHOUT_PERMITTED_QUANTITY")
-                if account.share_events:
+                if versioned:
+                    account.validate_skip(item, intent_id, plan, allocation['primary_reason'] if side == 'BUY'
+                                          else 'T1_OR_LOT_NOT_SELLABLE', skips)
+                elif account.share_events:
                     _tree(skips.get(intent_id, []), [{"intent_id": intent_id, "reason": "NO_PERMITTED_QUANTITY"}],
                           "SHARE_LOCKED_OR_ZERO_QUANTITY_SKIP_CONFLICT")
                     account.no_permitted_quantity_ids.append(intent_id)
                 continue
             _require(len(matching) == 1, "MISSING_OR_DUPLICATE_ORDER")
             order = matching[0]
+            if versioned:
+                account.validate_order_metadata(order, item, intent_id, plan,
+                    allocation['requested_quantity'] if side == 'BUY' else quantity, quantity)
             _require(order["order_id"] not in consumed and order["strategy_id"] == account.strategy.strategy_id
                      and order["symbol"] == symbol and order["side"] == side
                      and order.get("lot_id") == item.get("_lot_id") and order["time_in_force"] == "DAY"
@@ -807,22 +827,29 @@ def _execute_day(account, day, plan, orders, fills, portfolio, previous_equity, 
     fills_used = []
     for modeled in all_orders:
         order, symbol, side, original = modeled["order"], modeled["symbol"], modeled["side"], modeled["remaining"]
-        allowed, _ = _opening_permission(account.inputs, symbol, day, side)
+        allowed, opening_reason = _opening_permission(account.inputs, symbol, day, side)
         raw = account.inputs.bar(symbol, day)
         prior = account.inputs.bar(symbol, account.inputs.calendar[account.inputs.session_index(day) - 1])
         price = round(_number(raw["open"]) * (1 + (1 if side == "BUY" else -1) * account.costs["slippage_bps"]), 4)
         if allowed:
-            allowed, _ = _opening_permission(account.inputs, symbol, day, side, modeled_price=price)
+            allowed, opening_reason = _opening_permission(account.inputs, symbol, day, side, modeled_price=price)
         capacity = int(_number(prior["volume"]) * .10) if allowed else 0
         if account.share_events:
             capacity = max(0, capacity - session_filled[symbol])
         quantity = min(original, capacity) if allowed else 0
+        rejection_reason = None if quantity else (opening_reason if not allowed else 'PARTICIPATION_LIMIT')
+        if rejection_reason == 'SECURITY_NOT_ELIGIBLE':
+            rejection_reason = 'ST_NOT_ELIGIBLE'
         final_order_quantity = original
         if side == "BUY" and quantity:
             quantity = quantity // 100 * 100
+            if not quantity:
+                rejection_reason = 'LOT_SIZE_ROUND_ZERO'
             if quantity:
                 quantity = min(quantity, int(min(account.cash, account.equity()) / price / 100) * 100)
                 final_order_quantity = quantity
+                if not quantity:
+                    rejection_reason = 'SIZING_ZERO_AT_FILL'
             limits = _buy_limits(account, portfolio, symbol, price, [p for p in pending if p is not modeled],
                 opening_cash, opening_equity, spent, gross, modeled["intent"]["target_weight"])
             cost = quantity * price + _fee("BUY", quantity, price, account.costs)
@@ -831,7 +858,11 @@ def _execute_day(account, day, plan, orders, fills, portfolio, previous_equity, 
                     or quantity * price > min(limits["symbol"], limits["target"], limits["turnover"]) + 1e-9
                     or active_count >= portfolio["max_positions"]
                     or quantity * price > previous_equity * portfolio["max_symbol_exposure_bps"] / 10000 + 1e-9):
+                if quantity:
+                    rejection_reason = 'PORTFOLIO_CASH_FEE_EXPOSURE_OR_TURNOVER_LIMIT'
                 quantity = 0
+        if versioned:
+            account.validate_broker_reason(order, rejection_reason, quantity)
         matching = [trade for trade in fills if trade["order_id"] == order["order_id"]]
         _require(len(matching) == (1 if quantity else 0), "ORDER_FILL_MISSING_OR_UNEXPECTED")
         _require(order["quantity"] == final_order_quantity and order["filled_quantity"] == quantity
@@ -860,8 +891,73 @@ def _execute_day(account, day, plan, orders, fills, portfolio, previous_equity, 
     return eligibility_skip_ids
 
 
-def reconstruct_universe_account(bundle, window, result, *, initial_cash, costs, strategy_id, rule):
+def _final_account_audit(account, days, checkpoint, economic, fills, result, daily, drawdown,
+                         strategy, inputs, initial_cash, scanner_identity):
+    strategy_id = strategy.strategy_id
+    _same(economic["cash"], account.cash, "FINAL_CASH_CONFLICT")
+    _same(economic["reserved_cash"], 0., "FINAL_RESERVED_CASH_CONFLICT")
+    _same(checkpoint["equity"], daily[-1]["equity"], "FINAL_EQUITY_CONFLICT")
+    _tree(economic["lots"], account.public_lots(), "FINAL_LOTS_CONFLICT")
+    _tree(economic["positions"], {strategy_id + ":" + s: p for s, p in account.positions.items()}, "FINAL_POSITIONS_CONFLICT")
+    _tree(economic["entitlements"], account.entitlements, "FINAL_ENTITLEMENTS_CONFLICT")
+    _tree(economic["dividend_lots"], account.rights, "FINAL_DIVIDEND_RIGHTS_CONFLICT")
+    _tree(economic["receivables"], account.receivables, "FINAL_RECEIVABLES_CONFLICT")
+    _tree(economic["applied"], sorted(account.applied), "FINAL_APPLIED_ACTIONS_CONFLICT")
+    _tree(economic["payments"], sorted(account.paid), "FINAL_PAYMENTS_CONFLICT")
+    _tree(economic["action_audit"], account.action_audit, "FINAL_ACTION_AUDIT_CONFLICT")
+    _same(economic["action_income"], account.income, "FINAL_DIVIDEND_INCOME_CONFLICT")
+    _same(economic["dividend_tax_withheld"], account.tax, "FINAL_DIVIDEND_TAX_CONFLICT")
+    if account.share_events:
+        for field in ("pending_share_credits", "bonus_parent_lots", "share_price_factors",
+                      "cash_price_adjustments", "dividend_record_factors", "share_tax_lots"):
+            _tree(economic[field], getattr(account, field), "FINAL_" + field.upper() + "_CONFLICT")
+        _same(economic["share_tax_withheld"], account.share_tax, "FINAL_SHARE_TAX_CONFLICT")
+        _tree(economic["share_tax_timing"], {"policy": _TAX_POLICY, "tax_allocation_verified": False,
+              "allocation_policy": "CHILD_LOTS_MODELED"}, "FINAL_SHARE_TAX_TIMING_CONFLICT")
+        _tree(economic["last_exit_dates"], {strategy_id + ":" + symbol: inputs.calendar[index]
+              for symbol, index in account.last_exit.items()}, "FINAL_LAST_EXIT_DATES_CONFLICT")
+    _tree(economic["ledger_counters"], [sum(bool(lot["_starts_position"]) for lot in account.lots.values()),
+        len(account.lots), len(fills)], "FINAL_LEDGER_COUNTERS_CONFLICT")
+    _tree(checkpoint["rule_states"], {strategy_id + ":" + s: v for s, v in account.rule_states.items()}, "FINAL_RULE_STATES_CONFLICT")
+    if strategy.exit_rules.enabled:
+        _tree(checkpoint["rule_exit_states"], {strategy_id: {"price_policy": account.price_policy,
+            "trailing": account.trailing, "evaluations": account.exit_rows}}, "EXIT_TRACE_OR_TRAILING_CONFLICT")
+    else:
+        _require(not checkpoint.get("rule_exit_states"), "UNCONFIGURED_EXIT_TRACE")
+    metrics = {"net_return": daily[-1]["equity"] / initial_cash - 1, "max_drawdown": drawdown,
+               "total_fees": account.fees, "trade_count": len(fills)}
+    _tree(result["metrics"], metrics, "METRICS_CONFLICT")
+    inputs.assert_unchanged()
+    evidence = {"version": getattr(account, "version", VERSION), "daily_accounts": daily, "metrics": metrics, "dividend_tax": account.tax,
+        "exit_behavior": "VERIFIED" if strategy.exit_rules.enabled else "NOT_CONFIGURED", "exit_rows": account.exit_rows,
+        "scanner_identity": scanner_identity, "board_policy_identity": result["board_policy_identity"],
+        "input_identity": inputs.input_identity, "receivables": account.receivables,
+        "method_scopes": {"cash_fifo_tax_receivables": "INDEPENDENT_ARITHMETIC",
+            "opening_price_board_and_quantity": "INDEPENDENT_DECIMAL_AND_CAPACITY_ARITHMETIC",
+            "signals": "RECOMPUTED_WITH_SHARED_INDICATOR_AND_DSL_FORMULAS",
+            "full_universe_scan": "EXACT_SYMBOL_SET_EACH_ACCOUNT_SESSION",
+            "risk_exits": "INDEPENDENT_CLOSE_ENTITLEMENT_AND_NEXT_OPEN_RECONSTRUCTION"},
+        "unverified": ["历史状态可见时间与成本仍为模型；未验证券商实际扣款时刻。",
+                       "没有开盘队列、盘口、盘中临停证据；涨跌停线开盘保守不成交。",
+                       "指标公式和DSL实现复用；这不是对公式本身的独立数学证明。",
+                       "窗口最后一天新买入的下一真实交易日不在输入中；该日不进行窗口外卖出。",
+                       "历史盈利和独立核账不等于统计可靠、独立样本通过或Paper资格。"],
+        "strategy_qualified": False, "independent_confirmation_eligible": False}
+    if account.share_events:
+        evidence.update(share_tax=account.share_tax, pending_share_credits=deepcopy(account.pending_share_credits),
+                        tax_allocation_verified=False)
+        evidence["method_scopes"]["share_entitlements_cost_credit_tradability_tax"] = "INDEPENDENT_RATIONAL_AND_FIFO_ARITHMETIC"
+        evidence["unverified"].append("送股税款按有来源的CHILD_LOTS_MODELED分摊；未认证中国结算实际税权分配。")
+    return evidence
+
+def reconstruct_universe_account(bundle, window, result, *, initial_cash, costs, strategy_id, rule,
+                                 audit_checkpoint_path=None, segment_seconds=None):
     """独立可重跑核验；失败直接拒绝，不以结果自报 reconciliation 为证据。"""
+    if result.get('execution_version') == 'UNIVERSE_ACCOUNT_BACKEND_V2':
+        from .universe_evidence_v2 import reconstruct_universe_account_v2
+        return reconstruct_universe_account_v2(bundle, window, result, initial_cash=initial_cash,
+            costs=costs, strategy_id=strategy_id, rule=rule, audit_checkpoint_path=audit_checkpoint_path,
+            segment_seconds=segment_seconds)
     from .formal_account_backend_v1 import normalized_costs
     from .research_rule_strategy_v3 import ResearchRuleStrategyV3
     from .universe_account_inputs_v1 import prepare_universe_account_inputs_v1
@@ -954,58 +1050,5 @@ def reconstruct_universe_account(bundle, window, result, *, initial_cash, costs,
     if account.share_events:
         _require(sorted(skip["intent_id"] for skip in skip_rows if skip["reason"] == "NO_PERMITTED_QUANTITY")
                  == sorted(account.no_permitted_quantity_ids), "UNEXPECTED_ZERO_QUANTITY_SKIP")
-    _same(economic["cash"], account.cash, "FINAL_CASH_CONFLICT")
-    _same(economic["reserved_cash"], 0., "FINAL_RESERVED_CASH_CONFLICT")
-    _same(checkpoint["equity"], daily[-1]["equity"], "FINAL_EQUITY_CONFLICT")
-    _tree(economic["lots"], account.public_lots(), "FINAL_LOTS_CONFLICT")
-    _tree(economic["positions"], {strategy_id + ":" + s: p for s, p in account.positions.items()}, "FINAL_POSITIONS_CONFLICT")
-    _tree(economic["entitlements"], account.entitlements, "FINAL_ENTITLEMENTS_CONFLICT")
-    _tree(economic["dividend_lots"], account.rights, "FINAL_DIVIDEND_RIGHTS_CONFLICT")
-    _tree(economic["receivables"], account.receivables, "FINAL_RECEIVABLES_CONFLICT")
-    _tree(economic["applied"], sorted(account.applied), "FINAL_APPLIED_ACTIONS_CONFLICT")
-    _tree(economic["payments"], sorted(account.paid), "FINAL_PAYMENTS_CONFLICT")
-    _tree(economic["action_audit"], account.action_audit, "FINAL_ACTION_AUDIT_CONFLICT")
-    _same(economic["action_income"], account.income, "FINAL_DIVIDEND_INCOME_CONFLICT")
-    _same(economic["dividend_tax_withheld"], account.tax, "FINAL_DIVIDEND_TAX_CONFLICT")
-    if account.share_events:
-        for field in ("pending_share_credits", "bonus_parent_lots", "share_price_factors",
-                      "cash_price_adjustments", "dividend_record_factors", "share_tax_lots"):
-            _tree(economic[field], getattr(account, field), "FINAL_" + field.upper() + "_CONFLICT")
-        _same(economic["share_tax_withheld"], account.share_tax, "FINAL_SHARE_TAX_CONFLICT")
-        _tree(economic["share_tax_timing"], {"policy": _TAX_POLICY, "tax_allocation_verified": False,
-              "allocation_policy": "CHILD_LOTS_MODELED"}, "FINAL_SHARE_TAX_TIMING_CONFLICT")
-        _tree(economic["last_exit_dates"], {strategy_id + ":" + symbol: inputs.calendar[index]
-              for symbol, index in account.last_exit.items()}, "FINAL_LAST_EXIT_DATES_CONFLICT")
-    _tree(economic["ledger_counters"], [sum(bool(lot["_starts_position"]) for lot in account.lots.values()),
-        len(account.lots), len(fills)], "FINAL_LEDGER_COUNTERS_CONFLICT")
-    _tree(checkpoint["rule_states"], {strategy_id + ":" + s: v for s, v in account.rule_states.items()}, "FINAL_RULE_STATES_CONFLICT")
-    if strategy.exit_rules.enabled:
-        _tree(checkpoint["rule_exit_states"], {strategy_id: {"price_policy": account.price_policy,
-            "trailing": account.trailing, "evaluations": account.exit_rows}}, "EXIT_TRACE_OR_TRAILING_CONFLICT")
-    else:
-        _require(not checkpoint.get("rule_exit_states"), "UNCONFIGURED_EXIT_TRACE")
-    metrics = {"net_return": daily[-1]["equity"] / initial_cash - 1, "max_drawdown": drawdown,
-               "total_fees": account.fees, "trade_count": len(fills)}
-    _tree(result["metrics"], metrics, "METRICS_CONFLICT")
-    inputs.assert_unchanged()
-    evidence = {"version": VERSION, "daily_accounts": daily, "metrics": metrics, "dividend_tax": account.tax,
-        "exit_behavior": "VERIFIED" if strategy.exit_rules.enabled else "NOT_CONFIGURED", "exit_rows": account.exit_rows,
-        "scanner_identity": scanner_identity, "board_policy_identity": result["board_policy_identity"],
-        "input_identity": inputs.input_identity, "receivables": account.receivables,
-        "method_scopes": {"cash_fifo_tax_receivables": "INDEPENDENT_ARITHMETIC",
-            "opening_price_board_and_quantity": "INDEPENDENT_DECIMAL_AND_CAPACITY_ARITHMETIC",
-            "signals": "RECOMPUTED_WITH_SHARED_INDICATOR_AND_DSL_FORMULAS",
-            "full_universe_scan": "EXACT_SYMBOL_SET_EACH_ACCOUNT_SESSION",
-            "risk_exits": "INDEPENDENT_CLOSE_ENTITLEMENT_AND_NEXT_OPEN_RECONSTRUCTION"},
-        "unverified": ["历史状态可见时间与成本仍为模型；未验证券商实际扣款时刻。",
-                       "没有开盘队列、盘口、盘中临停证据；涨跌停线开盘保守不成交。",
-                       "指标公式和DSL实现复用；这不是对公式本身的独立数学证明。",
-                       "窗口最后一天新买入的下一真实交易日不在输入中；该日不进行窗口外卖出。",
-                       "历史盈利和独立核账不等于统计可靠、独立样本通过或Paper资格。"],
-        "strategy_qualified": False, "independent_confirmation_eligible": False}
-    if account.share_events:
-        evidence.update(share_tax=account.share_tax, pending_share_credits=deepcopy(account.pending_share_credits),
-                        tax_allocation_verified=False)
-        evidence["method_scopes"]["share_entitlements_cost_credit_tradability_tax"] = "INDEPENDENT_RATIONAL_AND_FIFO_ARITHMETIC"
-        evidence["unverified"].append("送股税款按有来源的CHILD_LOTS_MODELED分摊；未认证中国结算实际税权分配。")
-    return evidence
+    return _final_account_audit(account, days, checkpoint, economic, fills, result, daily, drawdown,
+        strategy, inputs, initial_cash, scanner_identity)

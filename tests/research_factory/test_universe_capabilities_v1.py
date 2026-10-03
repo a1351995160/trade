@@ -28,8 +28,24 @@ def test_new_path_has_separate_unaccepted_engineering_real_and_strategy_states()
     assert scope['real_evidence'] == 'REAL_NOT_ACCEPTED'
     assert scope['strategy_qualified'] is False
     assert all(item['real_evidence'] == 'REAL_NOT_ACCEPTED' for item in scope['boards'])
-    assert {'atr_stop', 'volatility_rank', 'STAR', 'BSE'} <= set(scope['unsupported'])
+    assert {'atr_stop', 'STAR', 'BSE'} <= set(scope['unsupported'])
+    assert 'volatility_rank' not in scope['unsupported']
     assert all(len(digest) == 64 for digest in scope['source_hashes'].values())
+
+
+def test_long_horizon_scoring_is_explicit_and_does_not_inherit_qualification():
+    from chanlun_trader.research_factory.research_rule_strategy_v4 import ResearchRuleStrategyV4
+    snapshot = capabilities()
+    rule = snapshot['examples']['multi_indicator_ranked']
+    strategy = ResearchRuleStrategyV4(rule, strategy_id='DOCUMENTATION_RANKED')
+    assert len(strategy.references) >= 3
+    assert rule['selection']['score']['args'] == ['volatility']
+    scope = snapshot['long_horizon']
+    assert [item['account_sessions'] for item in scope['profiles']] == [252, 504]
+    assert [item['total_seconds'] for item in scope['profiles']] == [14400, 28800]
+    assert all(item['worker_seconds'] == 900 and item['memory_mib'] == 2048 for item in scope['profiles'])
+    assert scope['formal_method'] == 'UNSUPPORTED' and scope['strategy_qualified'] is False
+    assert scope['real_evidence'] == 'REAL_NOT_ACCEPTED'
 
 
 def test_cached_market_size_does_not_become_qualified_or_complete_by_display():

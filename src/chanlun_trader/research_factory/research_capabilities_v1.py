@@ -25,8 +25,12 @@ def capabilities(*, data_catalog=None):
              "public_entry": True, "evidence": "NOT_ACCEPTED"},
             {"id": "atr_stop", "name": "按ATR波幅退出", "engine": True,
              "public_entry": False, "evidence": "NOT_ACCEPTED"},
-            {"id": "volatility_rank", "name": "跨股票按波动率排名选股", "engine": False,
-             "public_entry": False, "evidence": "UNSUPPORTED"},
+            {"id": "volatility_rank", "name": "按波动率等评分挑选买入顺序（V4 长期入口）", "engine": True,
+             "public_entry": True, "evidence": "NOT_ACCEPTED"},
+            {"id": "long_horizon_account", "name": "全池长期账户、分段续跑与独立核账", "engine": True,
+             "public_entry": True, "evidence": "NOT_ACCEPTED"},
+            {"id": "signal_account_dual_report", "name": "信号表现与实际账户分开报告", "engine": True,
+             "public_entry": True, "evidence": "NOT_ACCEPTED"},
         ],
         "data": deepcopy(data_catalog) if data_catalog is not None else {"status": "UNKNOWN"},
         "qualification": "EXPLORATORY_ONLY",
@@ -47,7 +51,15 @@ def capabilities(*, data_catalog=None):
     with_exits['exits'].update(stop_loss_pct=.08, take_profit_pct=.2, trailing_activate_pct=.1, trailing_pct=.05)
     result['examples'] = {'ma_cross': baseline, 'ma_cross_with_exits': with_exits}
     result['examples']['multi_indicator'] = multi_indicator_example(rules)
+    ranked = deepcopy(result['examples']['multi_indicator'])
+    ranked['version'] = 'RESEARCH_RULE_STRATEGY_V4'
+    volatility = next(item for item in rules['indicators'] if item['id'] == 'ROLLING_VOLATILITY')
+    ranked['selection'] = {'score': {'op': 'indicator', 'args': ['volatility'],
+                                   'params': {'output': volatility['outputs'][0], 'version': volatility['version']}},
+                           'direction': 'ASCENDING', 'tie_breaker': 'SYMBOL_ASCENDING'}
+    result['examples']['multi_indicator_ranked'] = ranked
     result['full_universe'] = full_universe_capabilities_v1(rules)
+    result['long_horizon'] = long_horizon_capabilities_v1()
     result['acceptance'] = {'s1': 'EXTERNAL_PUBLICATION',
                             'meaning': '发布验收单独查询已有凭证；无有效发布凭证时保持未验收，入口可用不代表验收完成。'}
     result["fingerprint"] = stable_hash(result)
@@ -82,6 +94,12 @@ def render_markdown(snapshot=None):
               "`FULL_UNIVERSE_SUBMISSION_V2` 加 `account_scope=DATA_QUALIFIED`：先检查全池，再冻结全部资料合格股票并公布完整排除清单，最后由策略信号选股。",
               "范围依据数据资格确定，不依据收益、是否成交或信号次数；正常和压力成本共用同一范围。共同来源错误或没有合格股票仍阻断。",
               "补齐后生成新的范围证据，不改旧冻结记录；回顾性资料范围不等于当年完整可投资市场。",
+              "`FULL_UNIVERSE_SUBMISSION_V3` 使用新长期执行规格，规则 V4 可事先声明评分与买入顺序；旧规则和旧任务保持原行为。",
+              "评分只使用当日已知价格或指标；收盘冻结排序，次日开盘按同一顺序分配共享资金。资料或评分未知不算信号失败。",
+              "长期任务每段最多900秒、2048MiB、数值线程1；252账户日累计最多4小时，504账户日累计最多8小时。准备、核验、报告各自登记同类资源并单独列明累计耗时。",
+              "账户日是观察长度，不是持有期限；每笔持仓仍由卖出信号、已声明止盈止损及最大持有期决定。",
+              "分段从已提交完整收盘恢复，不再次消耗账户试验；中断不会重置累计额度或授权到期时间。",
+              "同一报告分别列出所有条件机会与实际成交、资金/槽位/整手等拦截原因；5/10/20日信号观察是理论经济值，不冒充真实账户收益。",
               "公共 `scan` 在既有数据授权内固定规则并检查全目标；prepare、冻结、资格与条件计算同处受限进程（900秒/2048MiB/数值线程1）。",
               "完成资格检查的股票数和实际计算过条件的股票数分别报告；缺来源、当时状态或公司行动证据时保持UNKNOWN，不是零信号。",
               "信号检查不创建账户预算，不计算实际成交或收益；重复同一意图只读复用，已中断意图需对账，不能重开免费扫描。",
@@ -156,10 +174,11 @@ def full_universe_capabilities_v1(rules=None):
     supported = ['indicator_rules', 'multi_indicator_rules', 'full_range_scan', 'public_signal_scan',
                  'shared_account', 'cost_stop', 'take_profit', 'trailing_stop',
                  'cash_dividend', 'qualified_share_actions', 'suspension_recovery', 'account_audit',
-                 'qualified_scope_account', 'published_exclusions', 'full_pool_completion']
+                 'qualified_scope_account', 'published_exclusions', 'full_pool_completion',
+                 'long_horizon_account', 'frozen_score_selection', 'signal_account_dual_report']
     return {'version': 'FULL_UNIVERSE_RESEARCH_CAPABILITIES_V1',
         'submission_version': 'FULL_UNIVERSE_SUBMISSION_V1',
-        'submission_versions': ['FULL_UNIVERSE_SUBMISSION_V1', 'FULL_UNIVERSE_SUBMISSION_V2'],
+        'submission_versions': ['FULL_UNIVERSE_SUBMISSION_V1', 'FULL_UNIVERSE_SUBMISSION_V2', 'FULL_UNIVERSE_SUBMISSION_V3'],
         'qualified_scope': {'version': 'UNIVERSE_QUALIFIED_SCOPE_V1', 'account_scope': 'DATA_QUALIFIED',
             'selection': 'ALL_ACCOUNT_DATA_QUALIFIED_SYMBOLS', 'manual_symbols': False,
             'uses_strategy_results': False, 'global_unknown': 'BLOCK', 'repair': 'NEW_IMMUTABLE_SCOPE',
@@ -199,11 +218,31 @@ def full_universe_capabilities_v1(rules=None):
                                               ('CHINEXT', '创业板', '30xxxx.SZ')]],
         'source_hashes': {name: hashlib.sha256(Path(__file__).with_name(name).read_bytes()).hexdigest()
                          for name in sources},
-        'unsupported': ['atr_stop', 'volatility_rank', 'STAR', 'BSE', 'BROKER_LIVE_TRADING'],
+        'unsupported': ['atr_stop', 'STAR', 'BSE', 'BROKER_LIVE_TRADING'],
         'limitations': ['已登记范围不等于完整历史市场；缺退市/历史清单证据仍保留UNKNOWN。',
             '新入口的能力接线、工程测试、真实全范围验收、策略有效性分别判断。',
             '送转需完整条款；碎股、登记后持仓权益变化、配股及未知退市结算仍阻断完整账户结论。',
             '现金分红按原到账日处理，税款成交时扣收仍为有来源的模型时点。']}
+
+
+def long_horizon_capabilities_v1():
+    from .universe_execution_profile_v1 import execution_profile, SEGMENTED_PROFILE
+    names = ('research_rule_strategy_v4.py', 'universe_selection_v1.py', 'universe_execution_profile_v1.py',
+        'universe_compute_governance_v1.py', 'universe_account_backend_v2.py', 'universe_execution_state_v2.py',
+        'universe_execution_artifacts_v1.py', 'universe_signal_scan_v2.py', 'universe_evidence_v2.py',
+        'universe_signal_funnel_v1.py', 'universe_research_report_v2.py')
+    return {'version': 'LONG_HORIZON_RESEARCH_CAPABILITIES_V1',
+        'submission_version': 'FULL_UNIVERSE_SUBMISSION_V3', 'rule_versions': ['RESEARCH_RULE_STRATEGY_V3', 'RESEARCH_RULE_STRATEGY_V4'],
+        'backend': 'UNIVERSE_ACCOUNT_BACKEND_V2',
+        'profiles': [execution_profile(SEGMENTED_PROFILE, count) for count in (252, 504)],
+        'score_operators': ['const', 'field', 'indicator', 'ref', 'add', 'sub', 'mul', 'div'],
+        'score_directions': ['ASCENDING', 'DESCENDING'], 'tie_breaker': 'SYMBOL_ASCENDING',
+        'signal_horizons': [5, 10, 20], 'continuous_reference': 'MAINTAINER_ENGINEERING_ONLY',
+        'feature_price_policy': 'CAUSAL_SUSPENDED_CASH_AND_SHARES_V3',
+        'suspended_cash_mark_policy': 'MODELED_SUSPENDED_EX_REFERENCE_V3',
+        'formal_method': 'UNSUPPORTED', 'strategy_qualified': False,
+        'engineering_evidence': 'ENGINEERING_NOT_ACCEPTED', 'real_evidence': 'REAL_NOT_ACCEPTED',
+        'source_hashes': {name: hashlib.sha256(Path(__file__).with_name(name).read_bytes()).hexdigest() for name in names}}
 
 
 def published_acceptance(snapshot=None):
@@ -328,4 +367,11 @@ def _published_acceptance(repo, core):
 def capabilities_display(*, data_catalog=None):
     """仅展示端使用；返回的core可继续显示，publication绝不进入提交身份。"""
     core = capabilities(data_catalog=data_catalog)
-    return {'core': core, 'publication': published_acceptance(core)}
+    return {'core': core, 'publication': published_acceptance(core),
+            'long_horizon_publication': published_long_horizon_acceptance(core)}
+
+
+def published_long_horizon_acceptance(snapshot=None):
+    """新长期实测凭证单独读取；不改变冻结能力目录或沿用旧版本凭证。"""
+    from .long_horizon_acceptance_publication_v1 import published_long_horizon_acceptance as read_publication
+    return read_publication(Path(__file__).resolve().parents[3], capabilities() if snapshot is None else snapshot)

@@ -18,14 +18,16 @@ from .research_data_provider_v1 import day
 
 VERSION = 'FULL_UNIVERSE_SUBMISSION_V1'
 QUALIFIED_VERSION = 'FULL_UNIVERSE_SUBMISSION_V2'
-SUBMISSION_VERSIONS = {VERSION, QUALIFIED_VERSION}
+LONG_HORIZON_VERSION = 'FULL_UNIVERSE_SUBMISSION_V3'
+SUBMISSION_VERSIONS = {VERSION, QUALIFIED_VERSION, LONG_HORIZON_VERSION}
+QUALIFIED_VERSIONS = {QUALIFIED_VERSION, LONG_HORIZON_VERSION}
 
 
 def validate_universe_freeze_scopes(config):
     """首次冻结依赖哈希和归档之前，检查已生成大表的物理日期范围。"""
     for item in config['items']:
         options = item.get('backend_options', {})
-        if options.get('backend_version') == 'UNIVERSE_ACCOUNT_BACKEND_V1':
+        if options.get('backend_version') in {'UNIVERSE_ACCOUNT_BACKEND_V1','UNIVERSE_ACCOUNT_BACKEND_V2'}:
             _validate_frozen_item_scope(item, config['input_identity'], options['window'])
 
 
@@ -33,7 +35,7 @@ def validate_frozen_universe_scopes(job, *, include_archives=False):
     """在公共 runner 或离线审查哈希行情字节之前，先验证物理日期边界。"""
     checked = set()
     for name, plan in job['plans'].items():
-        if plan['backend']['backend'] != 'UNIVERSE_ACCOUNT_BACKEND_V1':
+        if plan['backend']['backend'] not in {'UNIVERSE_ACCOUNT_BACKEND_V1','UNIVERSE_ACCOUNT_BACKEND_V2'}:
             continue
         _validate_frozen_item_scope(job['items'][name], job['input_identity'], plan['backend']['window'],
             source_hashes=job['source_hashes'], archive_root=Path(job['root']) if include_archives else None,
@@ -105,16 +107,25 @@ def _validate_frozen_item_scope(item, input_identity, window, *, source_hashes=N
 def preview_universe(service, request):
     from .strategy_submission_v1 import REQUEST_FIELDS, public_rule_factory
     fields = (REQUEST_FIELDS - {'symbols'}) | {'version', 'universe_id'}
-    if isinstance(request, dict) and request.get('version') == QUALIFIED_VERSION:
+    if isinstance(request, dict) and request.get('version') in QUALIFIED_VERSIONS:
         fields.add('account_scope')
+    if isinstance(request,dict) and request.get('version') == LONG_HORIZON_VERSION:
+        fields.update({'execution_profile','observation_plan'})
     if not isinstance(request, dict) or set(request) != fields or request['version'] not in SUBMISSION_VERSIONS:
         raise ValueError('UNIVERSE_SUBMISSION_REQUEST_FIELDS_INVALID')
-    if request['version'] == QUALIFIED_VERSION and request['account_scope'] != 'DATA_QUALIFIED':
+    if request['version'] in QUALIFIED_VERSIONS and request['account_scope'] != 'DATA_QUALIFIED':
         raise ValueError('UNIVERSE_QUALIFIED_POLICY_REQUIRED')
     request = deepcopy(request)
     if (not isinstance(request['dataset_id'], str) or not re.fullmatch(r'[A-Za-z0-9_-]+', request['dataset_id'])
             or not isinstance(request['universe_id'], str) or not request['universe_id']):
         raise ValueError('UNIVERSE_SUBMISSION_REFERENCE_INVALID')
+    if request['version'] != LONG_HORIZON_VERSION and request['rule'].get('version') != 'RESEARCH_RULE_STRATEGY_V3':
+        raise ValueError('UNIVERSE_LEGACY_RULE_VERSION_REQUIRED')
+    if request['version'] == LONG_HORIZON_VERSION:
+        from .universe_execution_profile_v1 import validate_execution_profile, SEGMENTED_PROFILE
+        profile=validate_execution_profile(request['execution_profile'])
+        if profile['profile_id'] != SEGMENTED_PROFILE or profile['purpose'] != 'RESEARCH_ACCOUNT':
+            raise PermissionError('UNIVERSE_PUBLIC_RESEARCH_PROFILE_REQUIRED')
     strategy = public_rule_factory(request['rule'], request['strategy_id'])
     for cost in ('BASE', 'STRESS'):
         public_rule_factory(request['rule'], request['strategy_id'] + '_' + cost)
@@ -131,6 +142,10 @@ def preview_universe(service, request):
     if not request['feature_start'] < request['account_start'] < request['account_end']:
         raise ValueError('SUBMISSION_WINDOW_INVALID')
     ResearchDataAccessGuard().check_range(request['feature_start'], request['account_end'])
+    if request['version'] == LONG_HORIZON_VERSION:
+        from .universe_research_report_v2 import default_observation_plan
+        if request['observation_plan'] != default_observation_plan(request):
+            raise ValueError('UNIVERSE_OBSERVATION_PLAN_INVALID')
     datasets = {item['dataset_id']: item for item in service.provider.catalog()['datasets']}
     data = datasets.get(request['dataset_id'])
     from .universe_data_provider_v1 import PROVIDER_ADAPTERS
@@ -155,20 +170,33 @@ def preview_universe(service, request):
         'limitations': ['全部登记目标共用一个账户；本预览不读取行情或授予运行权限。',
             '现金基准和期初等权价格对照分别报告，价格对照不可投资且不参与资格升级。',
             '旧发布验收不覆盖本版本；清单、各板块及真实数据需要各自验收。']}
-    if request['version'] == QUALIFIED_VERSION:
+    if request['version'] in QUALIFIED_VERSIONS:
         value['limitations'].extend(['先检查全部登记股票，按资料资格冻结全部合格股票及逐股排除原因，再按策略信号选股。',
             '范围依据完整评价区间的资料可用性回顾确定，不能称为已证明当时可投资的完整市场。'])
+    if request['version'] == LONG_HORIZON_VERSION:
+        value['execution_profile']=deepcopy(request['execution_profile'])
+        value['observation_plan']=deepcopy(request['observation_plan'])
+        value['limitations'].extend(['账户交易日含空仓日，持有期由买卖及退出规则决定。',
+            '分段沿用同一次用途和连续账户；累计资源不能因换段、暂停或恢复而清零。',
+            '信号和实际账户使用不同分母；描述性结果不授予正式资格。'])
     return {**value, 'preview_identity': stable_hash(value)}
 
 
 def _schema_in_columns(frame):
-    """完整列推断沿用 Arrow，临时数组使用局部系统池并逐列释放。"""
+    """纯文本对象列只推断类型；其他列保留 Arrow 完整 dtype 语义。"""
     fields = []
     pool = pa.system_memory_pool()
     for name, series in frame.items():
-        array = pa.array(series, from_pandas=True, memory_pool=pool)
-        fields.append(pa.field(str(name), array.type))
-        del array
+        # 完整扫描对象列，不能只看第一批；混合值仍由原转换严格检查。
+        if (pd.api.types.is_object_dtype(series.dtype)
+                and pd.api.types.infer_dtype(series.to_numpy(copy=False), skipna=True)
+                    in {'string', 'bytes'}):
+            data_type = pa.infer_type(series.to_numpy(copy=False), from_pandas=True)
+        else:
+            array = pa.array(series, from_pandas=True, memory_pool=pool)
+            data_type = array.type
+            del array
+        fields.append(pa.field(str(name), data_type))
     schema = pa.schema(fields)
     # 完整列类型与原 pandas dtype 构成相同元数据；零行不展开长来源值。
     metadata = pa.Table.from_pandas(frame.iloc[:0], schema=schema,
@@ -177,16 +205,19 @@ def _schema_in_columns(frame):
 
 
 def _write_frame_in_batches(frame, path):
-    """按完整列推断类型，逐批写入；不同时展开全部来源长字符串。"""
+    """完整类型与原元数据不变；每批 Arrow 缓冲使用局部系统池。"""
     schema = _schema_in_columns(frame)
+    pool = pa.system_memory_pool()
     with pq.ParquetWriter(path, schema) as writer:
-        if frame.empty:
-            writer.write_table(pa.Table.from_pandas(frame, schema=schema, preserve_index=False))
-        for start in range(0, len(frame), 8192):
-            table = pa.Table.from_pandas(frame.iloc[start:start + 8192],
-                                       schema=schema, preserve_index=False)
+        # 空表也写入同一 schema，不能丢掉 pandas dtype 元数据。
+        for start in range(0, max(1, len(frame)), 8192):
+            batch = frame.iloc[start:start + 8192]
+            arrays = [pa.array(series, type=schema.field(i).type, from_pandas=True,
+                               safe=True, memory_pool=pool)
+                      for i, (_, series) in enumerate(batch.items())]
+            table = pa.Table.from_arrays(arrays, schema=schema)
             writer.write_table(table)
-            del table
+            del table, arrays
 
 
 def freeze_universe_bundle(prepared, root):

@@ -10,7 +10,9 @@
 | 从持仓最高收盘价回落退出 | 有 | 已接通 | NOT_ACCEPTED |
 | 全股票池买入持有基准 | 有 | 已接通 | NOT_ACCEPTED |
 | 按ATR波幅退出 | 有 | 未接通 | NOT_ACCEPTED |
-| 跨股票按波动率排名选股 | 不支持 | 未接通 | UNSUPPORTED |
+| 按波动率等评分挑选买入顺序（V4 长期入口） | 有 | 已接通 | NOT_ACCEPTED |
+| 全池长期账户、分段续跑与独立核账 | 有 | 已接通 | NOT_ACCEPTED |
+| 信号表现与实际账户分开报告 | 有 | 已接通 | NOT_ACCEPTED |
 
 ## 全范围研究与三个板块
 
@@ -31,6 +33,12 @@
 `FULL_UNIVERSE_SUBMISSION_V2` 加 `account_scope=DATA_QUALIFIED`：先检查全池，再冻结全部资料合格股票并公布完整排除清单，最后由策略信号选股。
 范围依据数据资格确定，不依据收益、是否成交或信号次数；正常和压力成本共用同一范围。共同来源错误或没有合格股票仍阻断。
 补齐后生成新的范围证据，不改旧冻结记录；回顾性资料范围不等于当年完整可投资市场。
+`FULL_UNIVERSE_SUBMISSION_V3` 使用新长期执行规格，规则 V4 可事先声明评分与买入顺序；旧规则和旧任务保持原行为。
+评分只使用当日已知价格或指标；收盘冻结排序，次日开盘按同一顺序分配共享资金。资料或评分未知不算信号失败。
+长期任务每段最多900秒、2048MiB、数值线程1；252账户日累计最多4小时，504账户日累计最多8小时。准备、核验、报告各自登记同类资源并单独列明累计耗时。
+账户日是观察长度，不是持有期限；每笔持仓仍由卖出信号、已声明止盈止损及最大持有期决定。
+分段从已提交完整收盘恢复，不再次消耗账户试验；中断不会重置累计额度或授权到期时间。
+同一报告分别列出所有条件机会与实际成交、资金/槽位/整手等拦截原因；5/10/20日信号观察是理论经济值，不冒充真实账户收益。
 公共 `scan` 在既有数据授权内固定规则并检查全目标；prepare、冻结、资格与条件计算同处受限进程（900秒/2048MiB/数值线程1）。
 完成资格检查的股票数和实际计算过条件的股票数分别报告；缺来源、当时状态或公司行动证据时保持UNKNOWN，不是零信号。
 信号检查不创建账户预算，不计算实际成交或收益；重复同一意图只读复用，已中断意图需对账，不能重开免费扫描。
@@ -448,6 +456,220 @@
     "take_profit_pct": 0.2,
     "trailing_activate_pct": 0.1,
     "trailing_pct": 0.05
+  }
+}
+```
+
+### multi_indicator_ranked
+
+```json
+{
+  "version": "RESEARCH_RULE_STRATEGY_V4",
+  "hypothesis": "均线趋势、RSI区间与波动率组合，加同股量能确认的配置示例，效果未验证",
+  "change_reason": "公共能力示例",
+  "buy": {
+    "op": "and",
+    "args": [
+      {
+        "op": "cross_up",
+        "args": [
+          {
+            "op": "indicator",
+            "args": [
+              "fast"
+            ],
+            "params": {
+              "output": "ma",
+              "version": "MA_ARITHMETIC_V1"
+            }
+          },
+          {
+            "op": "indicator",
+            "args": [
+              "slow"
+            ],
+            "params": {
+              "output": "ma",
+              "version": "MA_ARITHMETIC_V1"
+            }
+          }
+        ],
+        "params": {}
+      },
+      {
+        "op": "between",
+        "args": [
+          {
+            "op": "indicator",
+            "args": [
+              "rsi"
+            ],
+            "params": {
+              "output": "rsi",
+              "version": "RSI_V1"
+            }
+          },
+          {
+            "op": "const",
+            "args": [],
+            "params": {
+              "value": 40
+            }
+          },
+          {
+            "op": "const",
+            "args": [],
+            "params": {
+              "value": 70
+            }
+          }
+        ],
+        "params": {}
+      },
+      {
+        "op": "lt",
+        "args": [
+          {
+            "op": "indicator",
+            "args": [
+              "volatility"
+            ],
+            "params": {
+              "output": "volatility",
+              "version": "ROLLING_VOLATILITY_V1"
+            }
+          },
+          {
+            "op": "const",
+            "args": [],
+            "params": {
+              "value": 0.6
+            }
+          }
+        ],
+        "params": {}
+      }
+    ],
+    "params": {}
+  },
+  "sell": {
+    "op": "cross_down",
+    "args": [
+      {
+        "op": "indicator",
+        "args": [
+          "fast"
+        ],
+        "params": {
+          "output": "ma",
+          "version": "MA_ARITHMETIC_V1"
+        }
+      },
+      {
+        "op": "indicator",
+        "args": [
+          "slow"
+        ],
+        "params": {
+          "output": "ma",
+          "version": "MA_ARITHMETIC_V1"
+        }
+      }
+    ],
+    "params": {}
+  },
+  "market_filter": {
+    "op": "gt",
+    "args": [
+      {
+        "op": "field",
+        "args": [
+          "volume"
+        ],
+        "params": {}
+      },
+      {
+        "op": "ref",
+        "args": [
+          {
+            "op": "field",
+            "args": [
+              "volume"
+            ],
+            "params": {}
+          }
+        ],
+        "params": {
+          "periods": 1
+        }
+      }
+    ],
+    "params": {}
+  },
+  "min_hold_sessions": 5,
+  "max_hold_sessions": 40,
+  "cooldown_sessions": 5,
+  "target_weight": 0.5,
+  "indicator_instances": [
+    {
+      "instance_id": "fast",
+      "id": "MA",
+      "version": "MA_ARITHMETIC_V1",
+      "params": {
+        "window": 10,
+        "price": "close"
+      }
+    },
+    {
+      "instance_id": "slow",
+      "id": "MA",
+      "version": "MA_ARITHMETIC_V1",
+      "params": {
+        "window": 20,
+        "price": "close"
+      }
+    },
+    {
+      "instance_id": "rsi",
+      "id": "RSI",
+      "version": "RSI_V1",
+      "params": {
+        "window": 14,
+        "price": "close"
+      }
+    },
+    {
+      "instance_id": "volatility",
+      "id": "ROLLING_VOLATILITY",
+      "version": "ROLLING_VOLATILITY_V1",
+      "params": {
+        "window": 20,
+        "price": "close",
+        "annualize": 0,
+        "ddof": 1
+      }
+    }
+  ],
+  "exits": {
+    "execution_mode": "CLOSE_CONFIRM_NEXT_SESSION_OPEN",
+    "stop_loss_pct": 0.08,
+    "take_profit_pct": 0.2,
+    "trailing_activate_pct": 0.1,
+    "trailing_pct": 0.05
+  },
+  "selection": {
+    "score": {
+      "op": "indicator",
+      "args": [
+        "volatility"
+      ],
+      "params": {
+        "output": "volatility",
+        "version": "ROLLING_VOLATILITY_V1"
+      }
+    },
+    "direction": "ASCENDING",
+    "tie_breaker": "SYMBOL_ASCENDING"
   }
 }
 ```

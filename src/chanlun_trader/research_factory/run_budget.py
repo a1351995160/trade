@@ -4,6 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 import json
+import math
 import os
 from typing import Any, Iterable, Mapping
 
@@ -590,6 +591,54 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
                 operation.update(item)
                 operation['status'] = {'CAMPAIGN_OPERATION_STARTED': 'RUNNING', 'CAMPAIGN_OPERATION_UNKNOWN': 'UNKNOWN',
                                        'CAMPAIGN_OPERATION_SETTLED': item.get('outcome')}[kind]
+            elif kind=='CAMPAIGN_OPERATION_RESOURCE_OVERRUN_SETTLED':
+                operation=operations.get(item['operation_id']);segments=operation.get('segments',[]) if operation else []
+                actual=item.get('actual',{})
+                if (operation is None or operation['status'] not in ('RUNNING','UNKNOWN')
+                        or operation.get('execution_profile') is None or operation.get('active_segment') is not None
+                        or not segments or segments[-1].get('outcome')!='FAILED'
+                        or segments[-1].get('basis')!='MEASURED_FAILED_RESOURCE_BOUND_VIOLATION'
+                        or item.get('outcome')!='FAILED' or not item.get('evidence_identity')
+                        or set(actual)!=set(self.resource_names)
+                        or any(type(value) is not int or value<0 for value in actual.values())
+                        or actual['wall_seconds']!=max(1,math.ceil(operation['active_wall_seconds']))
+                        or any(actual[name]!=operation['upper_bounds'][name] for name in actual if name!='wall_seconds')
+                        or item.get('resource_overrun')!={name:max(0,actual[name]-operation['upper_bounds'][name]) for name in actual}
+                        or not any(item['resource_overrun'].values())):
+                    raise BudgetLedgerMismatchError('CAMPAIGN_RESOURCE_OVERRUN_PROOF_INVALID')
+                operation.update(item);operation['status']='FAILED'
+            elif kind == 'CAMPAIGN_EXECUTION_SEGMENT_DISPATCHED':
+                operation=operations.get(item['operation_id'])
+                if (operation is None or operation['status'] != 'RUNNING'
+                        or operation.get('execution_profile') is None or operation.get('active_segment') is not None):
+                    raise BudgetLedgerMismatchError('CAMPAIGN_EXECUTION_SEGMENT_EVENT_ORDER')
+                from .universe_execution_profile_v1 import validate_execution_profile
+                profile=validate_execution_profile(operation['execution_profile'])
+                segments=operation.setdefault('segments',[])
+                charged=operation.get('active_wall_seconds',0)
+                upper=item.get('upper_bound_seconds')
+                if (type(item.get('segment_number')) is not int or item['segment_number'] != len(segments)+1
+                        or item.get('profile_hash') != profile['profile_hash']
+                        or type(upper) not in (int,float) or not 0 < upper <= profile['worker_seconds']
+                        or upper > profile['total_seconds']-charged
+                        or (segments and segments[-1].get('outcome') in ('COMPLETED','FAILED'))):
+                    raise BudgetLedgerMismatchError('CAMPAIGN_EXECUTION_SEGMENT_IDENTITY_CONFLICT')
+                segment=dict(item); segments.append(segment); operation['active_segment']=segment
+            elif kind == 'CAMPAIGN_EXECUTION_SEGMENT_CHARGED':
+                operation=operations.get(item['operation_id'])
+                active=operation.get('active_segment') if operation else None
+                if (operation is None or operation['status'] not in ('RUNNING','UNKNOWN') or active is None
+                        or active['segment_number'] != item.get('segment_number')):
+                    raise BudgetLedgerMismatchError('CAMPAIGN_EXECUTION_SEGMENT_EVENT_ORDER')
+                from .universe_execution_profile_v1 import segment_charge
+                seconds,basis=segment_charge(item.get('measured_seconds'),active['upper_bound_seconds'],
+                                             item.get('evidence_identity'),outcome=item.get('outcome'))
+                if (item.get('seconds') != seconds or item.get('basis') != basis
+                        or item.get('outcome') not in ('CONTINUE','PAUSED','COMPLETED','FAILED')):
+                    raise BudgetLedgerMismatchError('CAMPAIGN_EXECUTION_SEGMENT_CHARGE_CONFLICT')
+                active.update(item)
+                operation['active_wall_seconds']=operation.get('active_wall_seconds',0)+seconds
+                operation['active_segment']=None
         if authorization is None:
             return {'authorization': None, 'operations': {}, 'stages': {}, 'paused': False}
         used = {name: 0 for name in self.resource_names}
@@ -600,10 +649,20 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
             for name, amount in operation.get('actual' if settled else 'upper_bounds', {}).items():
                 destination[name] += amount
         remaining = {name: authorization['resource_limits'][name] - used[name] - reserved[name] for name in used}
-        if min(remaining.values()) < 0:
+        violations=[op for op in operations.values() if op.get('resource_overrun')]
+        if min(remaining.values()) < 0 and not violations:
             raise BudgetLedgerMismatchError('CAMPAIGN_RESOURCE_USAGE_EXCEEDS_LIMIT')
-        return {'authorization': authorization, 'operations': operations, 'stages': stages, 'paused': paused,
+        result={'authorization': authorization, 'operations': operations, 'stages': stages, 'paused': paused,
                 'used': used, 'reserved': reserved, 'remaining': remaining}
+        if violations:
+            # 精确披露债务；冻结授权不变，后续派发一直暂停。
+            result.update(paused=True,resource_overrun={name:max(0,-remaining[name]) for name in remaining},
+                resource_violation=True)
+        if any(operation.get('execution_profile') is not None for operation in operations.values()):
+            # 计算进度包含在原用途整份预留中，不再次从 remaining 扣除。
+            result['active_wall_seconds']=sum(operation.get('active_wall_seconds',0) for operation in operations.values()
+                                              if operation['status'] not in ('COMPLETED','FAILED'))
+        return result
 
     def campaign_event(self, kind, payload):
         if not kind.startswith('CAMPAIGN_'):

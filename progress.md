@@ -2948,3 +2948,83 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 - 修改文件：src/chanlun_trader/research_factory/universe_evidence_v1.py（费用顺序和失败重建证据）；universe_account_backend_v1.py（源码绑定和期末失败证据）；tests/research_factory/test_universe_account_identity_v1.py（22项回归）；docs/QUALIFIED_UNIVERSE_RESEARCH.md（核验及重验证说明）；.github/workflows/autonomous-completion.yml（加入本回归）；progress.md（本两项任务追加）。本次发布资料仅在本机release_v1保存，不推送市场数据/账户原件。
 - 之前未提交的研究资料和历史progress内容保持原字节；索引日志仅包含已提交历史与本次两个任务，不把其他待提交研究记录混入修复。发布后在原主目录同步main，不创建额外开发目录。
 - 可回滚到d7634c6，合并后对本PR的合并提交执行git revert -m 1 <merge_sha>（提交方式以发布回执为准）；保留全部账户/失败/授权/预算档案，不退款CONSUMED或修改冻结任务。账户核验通过不代表策略获正式资格，Paper仍0。
+
+## 2026-10-03 - Task: 执行全池长期研究计划与真实规模验收（进行中）
+
+### What was done
+- 按用户指定 ce-work 执行 docs/plans/2026-10-03-001-feat-long-horizon-universe-research-plan.md；在隔离分支 codex/long-horizon-universe-research 开发，基线 786de0d307b770b6ac8f9a99e4349a588ed90ca1。主目录中其他 AI 的修改、研究记录和活跃任务保持原样。
+- 新增 FULL_UNIVERSE_SUBMISSION_V3、RESEARCH_RULE_STRATEGY_V4 与 UNIVERSE_ACCOUNT_BACKEND_V2：全登记检查、全合格扫描、固定评分、分段累计资源、完整状态恢复、独立核账、数量原因漏斗、账户与信号双报告；准备/核验/报告各自受治理，不以账户超时放宽其他阶段。
+- 公共 CLI/API/工作台展示资源、评分、状态及暂停恢复；更新能力目录和中文使用说明。新增原生 BaoStock RAW 接入及长期准备程序，不伪造旧格式来源，不改写旧正式数据资格。
+- 为实际 U8 冻结全部 4607 只登记证券的 9214 个原件请求，采集目录为主目录 data/long_horizon_universe_v1。252/504 账户及对照将保存在主目录 reports/long_horizon_universe_acceptance_v1；目前采集仍进行，未声称真实 504 验收完成。
+
+### Testing
+- 专项已通过：评分与旧策略兼容 53 项；新数据/日期相关 66 项；账户与报告/漏斗相关 136 项，最终报告续跑 58 项；公共新入口/治理专项 83 项。前端 27 项、构建、工作台/API 24 项通过，真实只读浏览器验收证据保存在上述主目录 ui/。
+- 中断资源门新增 6 项，区分实际测量与保守上界收费；与特征分片 4 项合计 10 项通过。完整测试及独立审查正在执行，发现的失败与缺陷需修正后再次核对，不能据专项通过替代全计划验收。
+- 实际 252/504 全池六账户验收、远端 Windows/Linux CI、推送合并及主目录同步尚未完成；最终状态将追加真实证据。
+
+### Notes
+- 修改涉及 research_factory 的新版本后端/规则/状态/报告及治理接线、公共脚本、webapp、工作台、专项测试、CI 与 docs；不增加 ATR 止损、市场指数上下文、分钟/实盘或正式统计资格。
+- 历史状态可见时间仍标 MODELED；全窗口 DATA_QUALIFIED 不是完整历史可投资市场证明。信号观察不是实际账户收益，工程验收允许策略亏损，不领取正式资格或 Paper 天数。
+- 回滚点为 786de0d；未合并时仅恢复本分支自有代码，合并后对本 PR 合并提交执行 git revert。保留授权、预算、失败与原始数据/账户证据，不退款 CONSUMED，不删除其他 AI 文件。交付后仅归档本次开发工作区。
+
+## 2026-10-03 - Task: 修正真实全池验收的重复核验和 Windows 临时目录兼容
+
+### What was done
+- 保留真实 U8 的前两次准备失败及第三次账户启动失败；第三次完整检查 4607 只，252 日范围合格 3669、排除 938。账户未提交任何交易日便在 2048.75 MiB 失败，原 START 已消费，未退款、未重开原失败用途。
+- strategy_submission_v1.py 提前释放两份 JSON 和重复父快照；完整父资格重算及正式子包三表物理/类型/逻辑校验不变。universe_qualified_scope_v1.py 与 universe_account_inputs_v1.py 只在同进程、同对象、同区间和同要求下复用刚严格认证的子输入，复用前仍核对身份、回执和未变更性；公共构造器仍完整认证。
+- universe_evidence_v2.py 仅规范化系统自建临时目录的实际根；显式传入路径的重定向检查保留。新增严格复用与路径反例，加入 Linux/Windows long-horizon 矩阵；npm ci 禁止自动生命周期脚本，并通过现有界面测试与构建。
+- 源码冻结到主目录 reports/long_horizon_universe_acceptance_v1/source_archive_v5，重新登记 u8_v4 工程配置；同策略、同资金、同日期和全登记分母。旧失败与已收费证据由 ENGINEERING_ATTEMPT_HISTORY.json 绑定，六账户真实验收已启动，尚未声明完成。
+
+### Testing
+- 严格资格、所有权与篡改拒绝：66 个唯一用例通过；另两个公共账户/恢复集成通过。独立审计临时目录 16 项通过，包含私有别名可用而显式重定向仍拒绝。前端 27 项与正式构建通过；能力目录 --check 为 MATCHED。
+- 受限真实诊断第一次：完整父派生及子还原 552.0626463 秒，重复后端严格准备 188.7693893 秒，总 741.088725 秒，峰值 1959.5703125 MiB。第二次：560.2402322 秒与 8.2370193 秒，总 568.5711978 秒，峰值 1962.3984375 MiB。两次均为只读诊断，退出码 0、上限 900 秒/2048 MiB/单数值线程，未启动账户、未改变原预算；原件保存在主目录 qualified_loader_diagnostic_v1/v2。
+- 新增静态正确性复审无可确认缺陷；真实六账户、504 日三处暂停、连续逐日对照、完整公共核验及当前提交远端 CI 仍待实际证据。
+
+### Notes
+- 此处复用的是同进程刚认证的行情及资格输入，不复用交易或独立核账答案，不把已用历史称为独立验证，不授予策略资格或 Paper 天数。跨进程仍重算完整父资格。
+- 39268aa 的 Windows long-horizon 13 项失败均为默认临时路径提前拒绝；修复后的远端结果不得由本地通过替代。外部安全扫描的路径/CLI 告警另按真实调用边界逐项审阅，不删除保护或关闭扫描，不预先声明其状态已转为通过。
+- 回滚点仍为 786de0d；合并后 git revert 对应合并提交。保留全部原始数据、源码归档、失败、授权、预算及已消费记录；不清理其他 AI 的主目录改动。
+
+## 2026-10-04 - Task: 对齐真实资格投影与只读发布身份
+
+### What was done
+- long_horizon_acceptance_publication_v1.py 修正裸投影身份与含资格回执的最终身份被错误要求相等的问题；两者必须是合法不同 SHA，完整子窗口必须等于父窗口仅替换合格证券。冻结 INPUT/JOB、准备输出精确采用、独立 PASS 与源码门禁保持。
+- 修正合成发布夹具并加入真实三板块 production qualifier 与身份/窗口篡改回归。发布器不读取行情或重算账户；当前真实账户 JOB 不绑定发布器，其执行源码闭包未被该补丁改变。
+
+### Testing
+- tests/research_factory/test_long_horizon_publication_v1.py：38 passed in 36.55s，XML 与 JOB 来源核对回执保留在主目录 reports/long_horizon_universe_acceptance_v1/publication_scope_review。
+- 独立只读正确性审阅无可确认缺陷；git diff --check 通过。最新49f3f6b的 Windows/Linux long-horizon 与 full-universe CI 已通过，Windows workflow/formal 仍运行，外部 SonarCloud 状态未声明通过。
+
+### Notes
+- 真实 u8_v4 已完成252日全池资格检查，但首个账户在已知停牌的除息日价格准备失败：610.6213124秒、1977.72265625 MiB，未提交首个交易日。原 START 仍已消费且 FAILED，不退款、不重开；新版停牌因果价格接口正在另行修复，六账户验收尚未完成。
+- 回滚点仍为786de0d；只回滚本任务两文件补丁，不删除原始账户、资格、授权、计费与失败证据。
+
+## 2026-10-04 - Task: 修复长期全池停牌除息价格与账户估值
+### What was done
+- 真实 U8 第四次工程验证的第一账户在首个账户日以前因 CAUSAL_PRICE_EX_DATE_MISSING 失败；已消费用途及实际 610.6213124 秒完整保留，不重开失败任务。全合格池取证定位四只证券的来源明确停牌区段，并保留真实日历、状态及分红原件哈希。
+- 新长期扫描和独立核验使用 CAUSAL_SUSPENDED_CASH_AND_SHARES_V3：按真实停牌缺口、条款及官方复牌昨收衔接价格，不补造行情。V1/V2 旧价格函数和旧任务不变。新账户及独立核账各自修正停牌现金除息估值，并显式登记 MODELED_SUSPENDED_EX_REFERENCE_V3；未来复牌价格不用于提前估值。
+- 增加价格、现金与送转、连续事件、恢复、开盘资金分配及双报告回归；同步公共能力和中文使用说明，并纳入长期 CI。
+### Testing
+- 修复前账户估值两个回归失败；修复后四组分别 85 passed/39.38s、38 passed/37.89s、3 passed/7.84s、10 passed/7.38s。组间有重叠，不能合并称为独立总数。额外对抗审阅 findings=[]；提示的集成覆盖缺口已补测。
+- generate_research_capabilities_v1.py --check 返回 MATCHED；固定多指标规则身份 c7634f41…仍一致。
+- 有界真实诊断已遍历 3669 合格证券，最终诊断计数断言失败：价格规则标签被误当为停牌案例。590.5079429 秒、1967.98828125 MiB、零账户启动的原失败记录保留，修正诊断口径后以独立新目录重做；本条不宣称真实 U8 完成。
+### Notes
+- 账户停牌估值仍为 MODELED，不升级历史可见性、策略资格或 Paper。所有旧失败用途、原始资料、股票分母、日期及费用边界保留。
+- 真实证据位于主目录 reports/long_horizon_universe_acceptance_v1/sparse_cash_review 与 sparse_ex_date_diagnosis；完成下一轮六账户与独立核对之前保持计划 active 和 PR draft。
+- 本次仅新增/修改长期源文件、相关测试、工作流、说明与本记录；可按本次提交 git revert 回滚，不能删除旧失败原件或改写旧账。
+
+## 2026-10-04 - Task: 修复长期共享截止与独立指标分段核验
+
+### What was done
+- 真实 u8_v5 在原900秒登记边界内另乘 .8，严格加载约570秒后账户推进窗口仅约150秒；前四段实测表明252日累计额度存在可预见不足。经公共 pause 安全暂停至20240221，六段4251.2089379秒原消费与状态完整保留，未重开或退款。
+- run_strategy_account_v1.py 以受限 worker 启动时钟和已核验 HANDSHAKE 的890秒硬额统一截止，固定60秒收尾；账户、公共prepare、尾部核账、核验及报告共享剩余时间。独立核验每段最多新增一个成员冷加载；原派发不足最低收尾余量时明确失败，避免空转。旧入口与连续对照账户无合作截止的行为保持。
+- research_evidence_v1.py 仅给新长期受管调用接入可选绝对截止，扣除内部严格读取时间；universe_evidence_v2.py 增加己方逐股特征提交与完整源码/区间/表形状/数值哈希核对，恢复只用自己的已认证前缀，不读取执行器特征或重开计时，不改变最终数学和扫描身份。
+- 新定向回归接入 Windows/Linux long-horizon 矩阵，更新中文运行说明及同源能力文档。重新冻结源码并以同规则、5万元、4607登记分母、原日期和原限额进行六账户工程验证；本条不声称真实U8完成。
+
+### Testing
+- 修复前共享截止回归11失败/2通过，短原额度反例2失败；独立特征分段反例1失败，红绿原件均保留。root整合回归 181 项，失败0、错误0；各专项存在重叠，不合并称独立总数。
+- 具体XML及源码修复摘要保留在主目录 reports/long_horizon_universe_acceptance_v1/shared_deadline_review；真实252/504、连续状态对照、当前提交CI和合并交付尚待完成。
+
+### Notes
+- 不扩大900秒、2048MiB、单线程、4/8小时累计规格，不改策略、窗口、数据资格、成本或账本数学，不把模拟历史可见性升级为真实证据。
+- 旧SRC和暂停用途原样留存，新工程验证需要新SOURCE与授权身份；累计报告包含旧失败、此次暂停和最后验证所有实际耗时。源码修复可按本次提交git revert回滚，原账、授权和CONSUMED记录不得删除或退款。
