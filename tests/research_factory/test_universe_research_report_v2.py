@@ -159,6 +159,7 @@ def test_missing_close_keeps_unknown_label_and_denominator():
     inputs = prepared()
     symbol = inputs.window['symbols'][0]
     observations = _Observations(inputs)
+    observations.prices['close'] = observations.prices['close'].copy()
     observations.prices['close'][0, 65] = float('nan')
     row = observations.observe(symbol, 60, 5)
     assert row['status'] == 'UNKNOWN' and row['return'] is None

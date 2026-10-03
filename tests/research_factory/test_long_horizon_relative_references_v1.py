@@ -17,7 +17,7 @@ def sha(path):
 
 @pytest.mark.parametrize('separator', ['/', '\\'])
 def test_relative_announcement_uses_explicit_main_even_when_current_directory_has_same_path(tmp_path, monkeypatch, separator):
-    main = tmp_path/'main/trade-system-contract-port-v1'
+    main = tmp_path/'main'/preparation.PROJECT_ROOT.name
     cwd = tmp_path/'other/trade-system-contract-port-v1'
     relative = 'reports/share_announcement_audit_v3/bucket_c/supplement_review_v1/COMPLETE_FINAL.json'
     target, decoy = main/relative, cwd/relative
@@ -61,10 +61,10 @@ def test_relative_hash_change_remains_failure_and_original_declaration_is_not_mu
 
 
 def test_absolute_existing_source_and_missing_old_checkout_retained_copy(tmp_path):
-    main = tmp_path/'main/trade-system-contract-port-v1'
+    main = tmp_path/'main'/preparation.PROJECT_ROOT.name
     target = main/'reports/review.json'; target.parent.mkdir(parents=True); target.write_bytes(b'original')
     assert preparation.inherited_path_v1(str(target), sha(target), main, []) == target
-    old = tmp_path/'removed/trade-system-contract-port-v1/reports/review.json'
+    old = tmp_path/'removed'/preparation.PROJECT_ROOT.name/'reports/review.json'
     assert preparation.inherited_path_v1(str(old), sha(target), main, []) == target
 
 

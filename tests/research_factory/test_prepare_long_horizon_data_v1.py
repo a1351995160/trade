@@ -147,11 +147,11 @@ def test_new_date_proof_replays_native_collector_market_identity_and_keeps_unkno
 
 
 def test_moved_documents_require_exact_hash_and_new_declaration_preserves_old(tmp_path):
-    legacy = tmp_path / 'primary/trade-system-contract-port-v1'
+    legacy = tmp_path / 'primary' / preparation.PROJECT_ROOT.name
     actual = legacy / 'reports/notice.txt'
     actual.parent.mkdir(parents=True)
     actual.write_text('既有公告原文', encoding='utf-8')
-    old = tmp_path / 'removed/trade-system-contract-port-v1/reports/notice.txt'
+    old = tmp_path / 'removed' / preparation.PROJECT_ROOT.name / 'reports/notice.txt'
     declaration = {'path': str(old), 'sha256': sha(actual), 'published_date': 20230301}
     before = deepcopy(declaration)
     relocation = []
