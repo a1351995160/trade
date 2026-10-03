@@ -124,6 +124,7 @@ jobs:
           tests/research_factory/test_universe_frozen_scope_v1.py
           tests/research_factory/test_universe_frozen_io_v1.py
           tests/research_factory/test_universe_evidence_v1.py
+          tests/research_factory/test_universe_account_identity_v1.py
           tests/research_factory/test_universe_benchmark_v1.py
           tests/research_factory/test_universe_submission_v1.py
           tests/research_factory/test_universe_qualified_scope_v1.py

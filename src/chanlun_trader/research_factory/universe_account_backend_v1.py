@@ -236,7 +236,8 @@ class UniverseAccountBackendV1:
             'universe_account_inputs_v1.py', 'universe_rule_exit_v1.py', 'universe_dividend_accounting_v1.py',
             'universe_corporate_accounting_v2.py', 'corporate_action_price_v2.py', 'causal_dividend_features_v1.py',
             'universe_evidence_v1.py', 'board_execution_policy_v1.py', 'forward_paper_engine_v1.py',
-            'portfolio_execution_v1.py', 'engine_replay_recovery_v1.py', 'strategy_interface_v1.py')]
+            'portfolio_execution_v1.py', 'engine_replay_recovery_v1.py', 'strategy_interface_v1.py',
+            'daily_plan.py', 'common.py')]
         paths += list((folder.parent / 'engine').glob('*.py'))
         return {'backend': VERSION, 'window': deepcopy(self.window), 'costs': deepcopy(self.costs),
             'initial_cash': self.initial_cash, 'max_positions': self.max_positions,
@@ -371,7 +372,15 @@ class UniverseAccountBackendV1:
             'cost_scenario': 'FULL_ACCOUNT_COST_SCENARIO',
             'limitations': ['历史状态可见时点为模型；开盘流动性仅用前一交易所session，复牌可能延迟成交。',
                             '成本场景可能改变可买数量，不能冒称固定交易路径成本压力。']}
-        audit = reconstruct_universe_account(bundle, self.window, result, initial_cash=self.initial_cash,
-            costs=self.costs, strategy_id=strategy.strategy_id, rule=strategy.payload)
+        try:
+            audit = reconstruct_universe_account(bundle, self.window, result, initial_cash=self.initial_cash,
+                costs=self.costs, strategy_id=strategy.strategy_id, rule=strategy.payload)
+        except ValueError as error:
+            evidence = getattr(error, 'evidence', None)
+            if evidence and evidence.get('account_date'):
+                # 标明这是期末原始账务，不能冒称失败日计划前的账户。
+                evidence['observed_final_date'] = account_days[-1]
+                evidence['observed_final_economic'] = __import__('json').loads(canonical_json(state['economic']))
+            raise
         result['reconciliation'] = {'passed': True, 'days': len(daily_accounts), 'audit_identity': stable_hash(audit)}
         return __import__('json').loads(canonical_json(result))
