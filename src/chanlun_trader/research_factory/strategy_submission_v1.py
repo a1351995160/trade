@@ -103,6 +103,7 @@ def load_frozen_qualified_bundle(path, sha256, input_identity, parent_path, pare
     """从计划绑定的完整父输入重算资格，不能用自报排除名单绕过全池检查。"""
     from .universe_submission_v1 import restore_universe_bundle
     from .universe_qualified_scope_v1 import qualify_universe_bundle
+    from .universe_account_inputs_v1 import _retain_owned_universe_account_inputs_v1
     source, parent = Path(path).absolute(), Path(parent_path).absolute()
     if (source.resolve() != source or parent.resolve() != parent
             or parent != source.parent / 'PARENT' / 'INPUT.json'):
@@ -110,21 +111,39 @@ def load_frozen_qualified_bundle(path, sha256, input_identity, parent_path, pare
     raw, parent_raw = source.read_bytes(), parent.read_bytes()
     if hashlib.sha256(raw).hexdigest() != sha256 or hashlib.sha256(parent_raw).hexdigest() != parent_sha256:
         raise ValueError('SUBMISSION_SNAPSHOT_CHANGED')
-    snapshot, parent_snapshot = json.loads(raw), json.loads(parent_raw)
+    snapshot = json.loads(raw)
+    del raw
+    parent_snapshot = json.loads(parent_raw)
+    del parent_raw
     restored = restore_universe_bundle(parent_snapshot, parent)
     parent_prepared = {**parent_snapshot, 'bundle': restored['frame']}
+    # 恢复已复制 bundle；完整父表资格检查只需 parent_prepared。
+    del parent_snapshot
     receipt = snapshot['bundle'].get('qualified_scope', {})
+    owned_inputs = []
     derived = qualify_universe_bundle(parent_prepared, required_fields=receipt.get('required_fields', ()),
-                                      warmup_bars=receipt.get('warmup_bars', 0))
+        warmup_bars=receipt.get('warmup_bars', 0), _owned_inputs_receiver=owned_inputs.append)
     if (not derived['ready'] or derived['input_identity'] != input_identity
             or snapshot['input_identity'] != input_identity or derived['scope_receipt'] != receipt
-            or derived['window'] != snapshot['window']):
+            or derived['window'] != snapshot['window'] or len(owned_inputs) != 1):
         raise ValueError('UNIVERSE_QUALIFIED_DERIVATION_CONFLICT')
-    # 先释放父表和派生检查视图，避免同时持有两份全市场表。
-    del restored, parent_prepared, derived
+    inputs = owned_inputs.pop()
+    if (inputs.bundle is not derived['bundle'] or inputs.input_identity != input_identity
+            or inputs.window != derived['window']):
+        raise ValueError('UNIVERSE_QUALIFIED_DERIVATION_CONFLICT')
+    # 保留已严格认证的独占子列，先释放完整父表，再恢复正式子包验证物理及逻辑身份。
+    del restored, parent_prepared, derived, owned_inputs
     import gc
     gc.collect()
-    return restore_universe_bundle(snapshot, source)
+    formal = restore_universe_bundle(snapshot, source)
+    if (formal['input_identity'] != inputs.input_identity
+            or formal['frame'].get('qualified_scope') != inputs.bundle['qualified_scope']
+            or snapshot['window'] != inputs.window):
+        raise ValueError('UNIVERSE_QUALIFIED_DERIVATION_CONFLICT')
+    # 正式还原已经核对三表 SHA、类型和完整逻辑身份；使用同身份的已认证独占缓冲。
+    del formal
+    bundle = _retain_owned_universe_account_inputs_v1(inputs)
+    return {'frame': bundle, 'actions': bundle['events'], 'input_identity': inputs.input_identity}
 
 
 class StrategySubmissionV1:

@@ -90,7 +90,8 @@ def _project(bundle, window, symbols):
     return child, child_window
 
 
-def qualify_universe_bundle(prepared, required_fields=(), warmup_bars=0):
+def qualify_universe_bundle(prepared, required_fields=(), warmup_bars=0, *,
+                            _owned_inputs_receiver=None):
     """返回正式 child prepared；共同缺口/空范围返回 ready=False 的完整回执。
 
     结构错误仍抛出工程错误。成功范围恰好等于全部合格证券，不能手选。
@@ -129,6 +130,12 @@ def qualify_universe_bundle(prepared, required_fields=(), warmup_bars=0):
     if child is not None:
         child["qualified_scope"] = deepcopy(receipt)
         input_identity = universe_input_identity_v1(child, child_window)
+        # 原严格构造发生在回执之前；保留的输入必须绑定最终回执身份。
+        inputs.input_identity = input_identity
+        if _owned_inputs_receiver is not None:
+            verify_qualified_scope_bundle(child, child_window,
+                required_fields=sorted(inputs.required_fields), warmup_bars=inputs.warmup_bars)
+            _owned_inputs_receiver(inputs)
     else:
         input_identity = None
     qualification = {**deepcopy(prepared.get("qualification", {})),

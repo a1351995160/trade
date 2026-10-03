@@ -541,4 +541,4 @@ def reconstruct_universe_account_v2(bundle, window, result, *, initial_cash, cos
     if audit_checkpoint_path is not None:
         return run(audit_checkpoint_path)
     with tempfile.TemporaryDirectory(prefix='universe_own_audit_') as directory:
-        return run(Path(directory) / 'AUDIT.json')
+        return run(Path(directory).resolve() / 'AUDIT.json')

@@ -9,6 +9,7 @@ from bisect import bisect_right
 from copy import deepcopy
 import hashlib
 import math
+import os
 import re
 from typing import Any
 
@@ -750,9 +751,55 @@ def prepare_universe_account_inputs_v1(bundle: dict, window: dict, *, stage="ACC
                                   required_fields=required_fields, warmup_bars=warmup_bars)
 
 
+_OWNED_INPUT_OWNER = object()
+
+
+class _OwnedUniverseBundleV1(dict):
+    """仅在当前进程存活的严格输入；凭据不进入字典或冻结 JSON。"""
+
+    __slots__ = ("_owned_inputs",)
+
+    def __init__(self, inputs, owner):
+        if (owner is not _OWNED_INPUT_OWNER or type(inputs) is not UniverseAccountInputsV1
+                or inputs.stage != "ACCOUNT" or inputs._copy_frames is not False
+                or "qualified_scope" not in inputs.bundle):
+            raise ValueError("UNIVERSE_OWNED_INPUT_OWNER_INVALID")
+        super().__init__(inputs.bundle)
+        self._owned_inputs = (owner, os.getpid(), inputs, deepcopy(inputs.window),
+                              inputs.required_fields, inputs.warmup_bars, inputs.input_identity)
+        inputs.bundle = self
+
+
+def _retain_owned_universe_account_inputs_v1(inputs):
+    return _OwnedUniverseBundleV1(inputs, _OWNED_INPUT_OWNER)
+
+
 def _prepare_owned_universe_account_inputs_v1(bundle: dict, window: dict, *,
                                              required_fields=(), warmup_bars=0):
-    """内部投影独占列的所有权转移；保留完整严格 ACCOUNT 校验。"""
+    """内部投影完整严格认证；只复用同进程、同对象、同要求的已认证输入。"""
+    if type(bundle) is _OwnedUniverseBundleV1:
+        owner, process, inputs, retained_window, fields, warmup, identity = bundle._owned_inputs
+        if (owner is not _OWNED_INPUT_OWNER or process != os.getpid()
+                or inputs.bundle is not bundle or inputs.stage != "ACCOUNT"
+                or inputs._copy_frames is not False or inputs.window != retained_window
+                or inputs.required_fields != fields or inputs.warmup_bars != warmup
+                or inputs.input_identity != identity
+                or any(bundle.get(name) is not getattr(inputs, name)
+                       for name in ("daily", "turn", "states"))):
+            raise ValueError("UNIVERSE_OWNED_INPUT_BINDING_INVALID")
+        if (type(warmup_bars) is not int or warmup_bars < 0
+                or not isinstance(required_fields, (list, tuple, set, frozenset))
+                or not set(required_fields) <= set((*_RAW_PRICES, *_RAW_ACTIVITY,
+                                                   "prev_close", "turn"))):
+            raise ValueError("UNIVERSE_REQUIRED_FIELDS_INVALID")
+        if (normalized_universe_window_v1(window) != retained_window
+                or frozenset(required_fields) != fields or warmup_bars != warmup):
+            raise ValueError("UNIVERSE_OWNED_INPUT_REQUIREMENTS_CONFLICT")
+        inputs.assert_unchanged()
+        from .universe_qualified_scope_v1 import verify_qualified_scope_bundle
+        verify_qualified_scope_bundle(bundle, retained_window,
+            required_fields=sorted(fields), warmup_bars=warmup)
+        return inputs.require_account_ready()
     inputs = UniverseAccountInputsV1.__new__(UniverseAccountInputsV1)
     inputs._initialize(bundle, window, stage="ACCOUNT", required_fields=required_fields,
                        warmup_bars=warmup_bars, require_ready=True, copy_frames=False)

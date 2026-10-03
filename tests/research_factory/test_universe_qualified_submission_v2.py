@@ -422,3 +422,95 @@ def test_qualified_public_resume_matches_continuous_result_without_new_budget(tm
         assert restored["frame"]["qualified_scope"] == case["task"]["qualification_scope"]
         assert item["backend_options"]["window"]["symbols"] == QUALIFIED
     recovery.assert_original_consumption(case)
+
+
+
+def test_qualified_loader_releases_raw_and_duplicate_parent_metadata_before_full_qualification(tmp_path, monkeypatch):
+    """大表恢复前释放原始文本，重算全池资格前释放已复制的父 bundle。"""
+    import weakref
+    from chanlun_trader.research_factory import universe_submission_v1 as universe
+    from chanlun_trader.research_factory import universe_qualified_scope_v1 as scope
+    from chanlun_trader.research_factory import universe_account_inputs_v1 as account_inputs
+    from chanlun_trader.research_factory.strategy_submission_v1 import load_frozen_qualified_bundle
+    from types import SimpleNamespace
+    root = tmp_path / 'qualified'
+    (root / 'PARENT').mkdir(parents=True)
+    source, parent = root / 'INPUT.json', root / 'PARENT' / 'INPUT.json'
+    receipt = {'required_fields': ['close'], 'warmup_bars': 20}
+    parent_window = {'symbols': TARGETS}
+    child_window = {'symbols': QUALIFIED}
+    source.write_text(json.dumps({'marker': 'child', 'input_identity': 'qualified',
+        'window': child_window, 'bundle': {'qualified_scope': receipt}}), encoding='utf-8')
+    parent.write_text(json.dumps({'marker': 'parent', 'window': parent_window,
+        'bundle': {'original_source': 'whole-pool-source', 'all_symbols': TARGETS}}), encoding='utf-8')
+    source_sha = hashlib.sha256(source.read_bytes()).hexdigest()
+    parent_sha = hashlib.sha256(parent.read_bytes()).hexdigest()
+    released, parent_bundle_refs, restores = set(), [], []
+
+    class TrackedRaw(bytes):
+        def __new__(cls, value, tag):
+            instance = super().__new__(cls, value)
+            instance.tag = tag
+            return instance
+        def __del__(self):
+            released.add(self.tag)
+
+    class TrackedBundle(dict):
+        pass
+
+    original_read = Path.read_bytes
+    def read_with_lifetime(path):
+        value = original_read(path)
+        return TrackedRaw(value, 'child' if path == source else 'parent')
+    original_loads = json.loads
+    def parsed_with_lifetime(raw_value, *args, **kwargs):
+        value = original_loads(raw_value, *args, **kwargs)
+        if value.get('marker') == 'parent':
+            value['bundle'] = TrackedBundle(value['bundle'])
+            parent_bundle_refs.append(weakref.ref(value['bundle']))
+        return value
+
+    def restore(value, path):
+        assert released == {'child', 'parent'}, '原始JSON字节不得与大表恢复同时存活'
+        restores.append(path)
+        return {'frame': deepcopy(value['bundle']), 'input_identity': value.get('input_identity')}
+
+    def qualify(prepared, *, required_fields, warmup_bars, _owned_inputs_receiver):
+        assert parent_bundle_refs[0]() is None, '不能在资格审查时保留重复父bundle'
+        assert prepared['window'] == parent_window
+        assert prepared['bundle']['all_symbols'] == TARGETS
+        assert prepared['bundle']['original_source'] == 'whole-pool-source'
+        assert required_fields == ['close'] and warmup_bars == 20
+        bundle = {'qualified_scope': receipt, 'events': []}
+        inputs = SimpleNamespace(bundle=bundle, window=child_window, input_identity='qualified')
+        _owned_inputs_receiver(inputs)
+        return {'ready': True, 'input_identity': 'qualified', 'scope_receipt': receipt,
+                'window': child_window, 'bundle': bundle}
+
+    monkeypatch.setattr(account_inputs, '_retain_owned_universe_account_inputs_v1', lambda inputs: inputs.bundle)
+    monkeypatch.setattr(Path, 'read_bytes', read_with_lifetime)
+    monkeypatch.setattr(json, 'loads', parsed_with_lifetime)
+    monkeypatch.setattr(universe, 'restore_universe_bundle', restore)
+    monkeypatch.setattr(scope, 'qualify_universe_bundle', qualify)
+    result = load_frozen_qualified_bundle(str(source), source_sha, 'qualified', str(parent), parent_sha)
+    assert restores == [parent, source]
+    assert result['frame']['qualified_scope'] == receipt
+
+
+@pytest.mark.parametrize('changed', ['child', 'parent'])
+def test_qualified_loader_checks_both_snapshot_hashes_before_parsing(tmp_path, monkeypatch, changed):
+    from chanlun_trader.research_factory.strategy_submission_v1 import load_frozen_qualified_bundle
+    root = tmp_path / 'qualified'
+    (root / 'PARENT').mkdir(parents=True)
+    source, parent = root / 'INPUT.json', root / 'PARENT' / 'INPUT.json'
+    source.write_text('{}', encoding='utf-8')
+    parent.write_text('{}', encoding='utf-8')
+    source_sha = hashlib.sha256(source.read_bytes()).hexdigest()
+    parent_sha = hashlib.sha256(parent.read_bytes()).hexdigest()
+    monkeypatch.setattr(json, 'loads', lambda *args, **kwargs: pytest.fail('哈希失败不得解析或恢复大表'))
+    if changed == 'child':
+        source_sha = '0' * 64
+    else:
+        parent_sha = '0' * 64
+    with pytest.raises(ValueError, match='SUBMISSION_SNAPSHOT_CHANGED'):
+        load_frozen_qualified_bundle(str(source), source_sha, 'qualified', str(parent), parent_sha)

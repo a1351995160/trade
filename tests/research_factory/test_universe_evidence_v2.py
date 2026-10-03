@@ -1,5 +1,6 @@
 """新版真实执行路径的合成核账、独立性与收盘续核验反例。"""
 from copy import deepcopy
+from contextlib import contextmanager
 import json
 
 import pandas as pd
@@ -268,6 +269,25 @@ def test_complete_own_receipt_still_checks_artifact_bytes(tmp_path):
     target.write_bytes(target.read_bytes() + b'changed')
     with pytest.raises(ValueError, match='ARTIFACT_CHANGED'):
         audit(data, audit_checkpoint_path=path)
+
+
+def test_private_temporary_alias_is_normalized_but_explicit_redirect_is_rejected(tmp_path, monkeypatch):
+    from chanlun_trader.research_factory import universe_evidence_v2 as module
+    private = tmp_path / 'private_audit'
+    private.mkdir()
+    alias = private / '..' / private.name
+
+    @contextmanager
+    def private_directory(**options):
+        assert options == {'prefix': 'universe_own_audit_'}
+        yield str(alias)
+
+    monkeypatch.setattr(module.tempfile, 'TemporaryDirectory', private_directory)
+    data = case(tmp_path / 'job', scored=True)
+    assert audit(data)['metrics'] == data[-1]['metrics']
+    assert (private / 'AUDIT.json').is_file()
+    with pytest.raises(ValueError, match='OWN_STATE_PATH_REDIRECTED'):
+        audit(data, audit_checkpoint_path=alias / 'AUDIT.json')
 
 
 def test_score_only_long_warmup_keeps_opportunities_and_names_missing_score(tmp_path):
