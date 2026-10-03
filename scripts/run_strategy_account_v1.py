@@ -325,6 +325,13 @@ def write_reports(job,index):
         if universe_reference is not None:
             report['benchmark'] = universe_reference
             report['limitations'].extend(universe_reference['limitations'])
+        if job.get('items', {}).get(name, {}).get('loader') == 'chanlun_trader.research_factory.strategy_submission_v1:load_frozen_qualified_bundle':
+            scope_path = Path(job['items'][name]['loader_kwargs']['path']).parent / 'QUALIFICATION_SCOPE.json'
+            scope = read_json(scope_path)
+            report['limitations'].extend([
+                f"本次检查登记全池{len(scope['target_symbols'])}只，合格执行{len(scope['qualified_symbols'])}只，排除{len(scope['excluded'])}只。",
+                '这是按整个区间资料可用性回顾确定的合格范围账户结果，不是完整市场账户结果，也不证明历史可投资范围完整。',
+                f"[完整范围和逐股排除证据]({scope_path.as_posix()})；[中文排除清单]({(scope_path.parent / 'EXCLUSIONS.csv').as_posix()})。"])
         save(root/(name+'_REPORT.json'),report)
         markdown=render_markdown(report);target=root/(name+'_REPORT.md')
         if target.exists():

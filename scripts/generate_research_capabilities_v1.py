@@ -50,12 +50,19 @@ def check_examples(snapshot):
                 dataset_id='documentation_full_universe', universe_id='documentation_three_boards',
                 benchmark='CASH_AND_PRICE_REFERENCE')
             full_preview = service.preview(full_request)
+            qualified_request = {**full_request, 'version': 'FULL_UNIVERSE_SUBMISSION_V2', 'account_scope': 'DATA_QUALIFIED'}
+            qualified_preview = service.preview(qualified_request)
             if (full_preview['status'] != preview['status'] or full_preview['coverage']['target_count'] != 3
-                    or full_preview['rule_identity'] != preview['rule_identity']):
+                    or full_preview['rule_identity'] != preview['rule_identity']
+                    or qualified_preview['rule_identity'] != preview['rule_identity']
+                    or qualified_preview['coverage']['target_count'] != 3
+                    or qualified_preview['request']['symbols'] != full_preview['request']['symbols']):
                 raise ValueError('DOCUMENTATION_FULL_UNIVERSE_PREVIEW_BOUNDARY_CHANGED')
             results[name] = {'status': preview['status'], 'rule_identity': preview['rule_identity'],
                 'full_universe': {'status': full_preview['status'], 'target_count': 3,
-                                  'completeness': full_preview['coverage']['completeness']}}
+                                  'completeness': full_preview['coverage']['completeness']},
+                'qualified_universe': {'status': qualified_preview['status'], 'target_count': 3,
+                                      'account_scope': qualified_preview['request']['account_scope']}}
         if list(root.iterdir()):
             raise ValueError('DOCUMENTATION_PREVIEW_CREATED_ARTIFACTS')
     return results

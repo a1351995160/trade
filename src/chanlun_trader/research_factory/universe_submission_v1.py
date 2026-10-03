@@ -17,6 +17,8 @@ from .exploration_governance import immutable
 from .research_data_provider_v1 import day
 
 VERSION = 'FULL_UNIVERSE_SUBMISSION_V1'
+QUALIFIED_VERSION = 'FULL_UNIVERSE_SUBMISSION_V2'
+SUBMISSION_VERSIONS = {VERSION, QUALIFIED_VERSION}
 
 
 def validate_universe_freeze_scopes(config):
@@ -43,7 +45,8 @@ def _validate_frozen_item_scope(item, input_identity, window, *, source_hashes=N
     from .universe_data_provider_v1 import UniverseDataProviderV1
     guard = ResearchDataAccessGuard()
     checked = set() if checked is None else checked
-    if item['loader'] != 'chanlun_trader.research_factory.strategy_submission_v1:load_frozen_bundle':
+    qualified_loader = 'chanlun_trader.research_factory.strategy_submission_v1:load_frozen_qualified_bundle'
+    if item['loader'] not in {'chanlun_trader.research_factory.strategy_submission_v1:load_frozen_bundle', qualified_loader}:
         raise ValueError('UNIVERSE_FROZEN_LOADER_INVALID')
     args = item['loader_kwargs']
     source = Path(args['path']).absolute()
@@ -59,6 +62,20 @@ def _validate_frozen_item_scope(item, input_identity, window, *, source_hashes=N
             or value['input_identity'] != input_identity or value['window'] != window):
         raise ValueError('UNIVERSE_FROZEN_SCOPE_CONFLICT')
     guard.check_range(window['feature_start'], window['account_end'], 'frozen universe window')
+    if item['loader'] == qualified_loader:
+        parent = Path(args['parent_path']).absolute()
+        if parent != source.parent / 'PARENT' / 'INPUT.json' or parent.resolve() != parent or not parent.is_file():
+            raise ValueError('UNIVERSE_QUALIFIED_PARENT_PATH_CONFLICT')
+        parent_value = json.loads(parent.read_bytes())
+        receipt = value['bundle'].get('qualified_scope', {})
+        if (parent_value.get('input_identity') != receipt.get('parent_input_identity')
+                or parent_value.get('window') != receipt.get('parent_window')):
+            raise ValueError('UNIVERSE_QUALIFIED_PARENT_SCOPE_CONFLICT')
+        _validate_frozen_item_scope({'loader': 'chanlun_trader.research_factory.strategy_submission_v1:load_frozen_bundle',
+            'loader_kwargs': {'path': str(parent), 'sha256': args['parent_sha256'],
+                             'input_identity': parent_value['input_identity']}},
+            parent_value['input_identity'], parent_value['window'], source_hashes=source_hashes,
+            archive_root=archive_root, checked=checked)
     for event in value['bundle'].get('events', []):
         for key in ('effective_date', 'record_date', 'payment_date', 'share_credit_date', 'tradable_date'):
             if event.get(key) is not None:
@@ -88,8 +105,12 @@ def _validate_frozen_item_scope(item, input_identity, window, *, source_hashes=N
 def preview_universe(service, request):
     from .strategy_submission_v1 import REQUEST_FIELDS, public_rule_factory
     fields = (REQUEST_FIELDS - {'symbols'}) | {'version', 'universe_id'}
-    if not isinstance(request, dict) or set(request) != fields or request['version'] != VERSION:
+    if isinstance(request, dict) and request.get('version') == QUALIFIED_VERSION:
+        fields.add('account_scope')
+    if not isinstance(request, dict) or set(request) != fields or request['version'] not in SUBMISSION_VERSIONS:
         raise ValueError('UNIVERSE_SUBMISSION_REQUEST_FIELDS_INVALID')
+    if request['version'] == QUALIFIED_VERSION and request['account_scope'] != 'DATA_QUALIFIED':
+        raise ValueError('UNIVERSE_QUALIFIED_POLICY_REQUIRED')
     request = deepcopy(request)
     if (not isinstance(request['dataset_id'], str) or not re.fullmatch(r'[A-Za-z0-9_-]+', request['dataset_id'])
             or not isinstance(request['universe_id'], str) or not request['universe_id']):
@@ -134,6 +155,9 @@ def preview_universe(service, request):
         'limitations': ['全部登记目标共用一个账户；本预览不读取行情或授予运行权限。',
             '现金基准和期初等权价格对照分别报告，价格对照不可投资且不参与资格升级。',
             '旧发布验收不覆盖本版本；清单、各板块及真实数据需要各自验收。']}
+    if request['version'] == QUALIFIED_VERSION:
+        value['limitations'].extend(['先检查全部登记股票，按资料资格冻结全部合格股票及逐股排除原因，再按策略信号选股。',
+            '范围依据完整评价区间的资料可用性回顾确定，不能称为已证明当时可投资的完整市场。'])
     return {**value, 'preview_identity': stable_hash(value)}
 
 

@@ -96,6 +96,34 @@ def load_frozen_bundle(path, sha256, input_identity):
     return {'frame': bundle, 'actions': bundle['events'], 'input_identity': input_identity}
 
 
+def load_frozen_qualified_bundle(path, sha256, input_identity, parent_path, parent_sha256):
+    """从计划绑定的完整父输入重算资格，不能用自报排除名单绕过全池检查。"""
+    from .universe_submission_v1 import restore_universe_bundle
+    from .universe_qualified_scope_v1 import qualify_universe_bundle
+    source, parent = Path(path).absolute(), Path(parent_path).absolute()
+    if (source.resolve() != source or parent.resolve() != parent
+            or parent != source.parent / 'PARENT' / 'INPUT.json'):
+        raise ValueError('UNIVERSE_QUALIFIED_PARENT_PATH_CONFLICT')
+    raw, parent_raw = source.read_bytes(), parent.read_bytes()
+    if hashlib.sha256(raw).hexdigest() != sha256 or hashlib.sha256(parent_raw).hexdigest() != parent_sha256:
+        raise ValueError('SUBMISSION_SNAPSHOT_CHANGED')
+    snapshot, parent_snapshot = json.loads(raw), json.loads(parent_raw)
+    restored = restore_universe_bundle(parent_snapshot, parent)
+    parent_prepared = {**parent_snapshot, 'bundle': restored['frame']}
+    receipt = snapshot['bundle'].get('qualified_scope', {})
+    derived = qualify_universe_bundle(parent_prepared, required_fields=receipt.get('required_fields', ()),
+                                      warmup_bars=receipt.get('warmup_bars', 0))
+    if (not derived['ready'] or derived['input_identity'] != input_identity
+            or snapshot['input_identity'] != input_identity or derived['scope_receipt'] != receipt
+            or derived['window'] != snapshot['window']):
+        raise ValueError('UNIVERSE_QUALIFIED_DERIVATION_CONFLICT')
+    # 先释放父表和派生检查视图，避免同时持有两份全市场表。
+    del restored, parent_prepared, derived
+    import gc
+    gc.collect()
+    return restore_universe_bundle(snapshot, source)
+
+
 class StrategySubmissionV1:
     """resolver 引用现有批准，返回 objective_id/budget_path 及 provider 授权。
 
@@ -112,7 +140,7 @@ class StrategySubmissionV1:
         self.capabilities = capabilities_snapshot or (lambda: capabilities(data_catalog=self.provider.catalog()))
 
     def preview(self, request):
-        if isinstance(request, dict) and request.get('version') == 'FULL_UNIVERSE_SUBMISSION_V1':
+        if isinstance(request, dict) and request.get('version') in {'FULL_UNIVERSE_SUBMISSION_V1', 'FULL_UNIVERSE_SUBMISSION_V2'}:
             from .universe_submission_v1 import preview_universe
             return preview_universe(self, request)
         if not isinstance(request, dict) or set(request) != REQUEST_FIELDS:
@@ -193,19 +221,39 @@ class StrategySubmissionV1:
         immutable(root / 'FREEZE_INTENT.json', {'task_id': task_id, 'preview_identity': preview_identity,
             'objective_id': authority['objective_id'], 'automatic_retry': False})
         try:
-            full_universe = normalized.get('version') == 'FULL_UNIVERSE_SUBMISSION_V1'
+            full_universe = normalized.get('version') in {'FULL_UNIVERSE_SUBMISSION_V1', 'FULL_UNIVERSE_SUBMISSION_V2'}
+            qualified_universe = normalized.get('version') == 'FULL_UNIVERSE_SUBMISSION_V2'
             if full_universe:
                 # 数据准备与必要条件计算全部由900秒/2048MiB受限进程完成。
                 # 此处只接收其固定元数据，不在宿主进程再次加载全市场表。
                 scanned = self.scan(request, preview_identity)
-                if scanned.get('coverage', {}).get('account_data_ready') is not True:
+                if ((qualified_universe and scanned.get('qualified_account_ready') is not True)
+                        or (not qualified_universe and scanned.get('coverage', {}).get('account_data_ready') is not True)):
                     raise ValueError('UNIVERSE_ACCOUNT_INPUT_NOT_READY:' + scanned['status'])
+                if qualified_universe and normalized['max_positions'] > len(scanned['qualification_scope']['qualified_symbols']):
+                    raise ValueError('SUBMISSION_QUALIFIED_POSITION_LIMIT_EXCEEDS_SCOPE')
                 from .universe_submission_v1 import adopt_frozen_universe_bundle
                 from .universe_scan_service_v1 import validated_scan_snapshot
                 scanned_input = validated_scan_snapshot(self, scanned)
+                parent_dependencies = []
+                if qualified_universe:
+                    parent_root = root / 'PARENT'
+                    parent_root.mkdir()
+                    _, parent_path, parent_dependencies = adopt_frozen_universe_bundle(
+                        scanned_input['parent_path'], parent_root,
+                        input_identity=scanned_input['parent_input_identity'],
+                        snapshot_sha256=scanned_input['parent_sha256'])
+                    parent_dependencies.append(str(parent_path))
                 prepared, snapshot_path, frame_dependencies = adopt_frozen_universe_bundle(
                     scanned_input['path'], root, input_identity=scanned['input_identity'],
                     snapshot_sha256=scanned_input['sha256'])
+                if qualified_universe:
+                    immutable(root / 'QUALIFICATION_SCOPE.json', prepared['bundle']['qualified_scope'])
+                    import shutil
+                    for name in ('EXCLUSIONS.csv', 'REPORT_CN.md'):
+                        shutil.copyfile(Path(scanned_input['path']).parent / name, root / name)
+                    parent_dependencies.extend(str(root / name) for name in
+                        ('QUALIFICATION_SCOPE.json', 'EXCLUSIONS.csv', 'REPORT_CN.md'))
             else:
                 prepared = self.provider.prepare(normalized['dataset_id'], symbols=normalized['symbols'],
                     feature_start=normalized['feature_start'], account_start=normalized['account_start'],
@@ -237,6 +285,12 @@ class StrategySubmissionV1:
                     'initial_cash': normalized['initial_cash'], 'max_positions': normalized['max_positions'],
                     'max_symbol_exposure_bps': normalized['max_symbol_exposure_bps']}})
             if full_universe:
+                if qualified_universe:
+                    items[-1]['loader'] = MODULE + ':load_frozen_qualified_bundle'
+                    items[-1]['loader_kwargs'].update(parent_path=str(parent_path),
+                        parent_sha256=hashlib.sha256(parent_path.read_bytes()).hexdigest())
+                    items[-1]['dependency_files'].extend(parent_dependencies)
+                    items[-1]['dependency_files'].append(str(Path(__file__).with_name('universe_qualified_scope_v1.py')))
                 items[-1]['backend_options'].update(backend_version='UNIVERSE_ACCOUNT_BACKEND_V1',
                     checkpoint_path=str(root / 'account' / (normalized['strategy_id'] + '_' + cost + '_CHECKPOINT.json')))
                 items[-1]['dependency_files'].extend(str(Path(__file__).with_name(name)) for name in
@@ -267,7 +321,9 @@ class StrategySubmissionV1:
             'job_sha256': hashlib.sha256((root / 'account' / 'JOB.json').read_bytes()).hexdigest(),
             'plan_ids': {name: plan['plan_id'] for name, plan in read_json(root / 'account' / 'JOB.json')['plans'].items()}}
         if full_universe:
-            receipt['submission_version'] = 'FULL_UNIVERSE_SUBMISSION_V1'
+            receipt['submission_version'] = normalized['version']
+            if qualified_universe:
+                receipt['qualification_scope'] = prepared['bundle']['qualified_scope']
         immutable(root / 'TASK.json', receipt)
         return receipt
 
@@ -297,7 +353,9 @@ class StrategySubmissionV1:
         if (preview['preview_identity'] != task['preview_identity'] or
                 stable_hash({k:v for k,v in preview.items() if k!='preview_identity'}) != task['preview_identity']):
             raise ValueError('SUBMISSION_FROZEN_PREVIEW_CHANGED')
-        return {'task_id':task_id,'preview_identity':task['preview_identity'],'plan_ids':plan_ids,
+        from .universe_status_v1 import universe_task_metadata_v1
+        metadata = universe_task_metadata_v1(self, task_id) if task.get('submission_version') == 'FULL_UNIVERSE_SUBMISSION_V2' else {}
+        return {**metadata, 'task_id':task_id,'preview_identity':task['preview_identity'],'plan_ids':plan_ids,
                 'request':preview['request'],'rule_identity':preview['rule_identity'],
                 'input_identity':task['input_identity'],'job_sha256':task['job_sha256']}
 
@@ -335,6 +393,8 @@ class StrategySubmissionV1:
             raise PermissionError('SUBMISSION_ACCOUNT_OBJECTIVE_OUTSIDE_AUTHORITY')
         source.update(expires_at=authority['expires_at'],approved_plan_ids=summary['plan_ids'],
             authorization_ref=request['authorization_ref'],authorization_identity=stable_hash(authority))
+        if request.get('version') == 'FULL_UNIVERSE_SUBMISSION_V2':
+            source['qualified_scope_identity'] = summary['qualification_scope']['scope_identity']
         inputs = {'input_identity':job['input_identity'],
                   'novelty':{name:{'allowed':True,'plan_id':value,'reason':'EXPLICIT_FROZEN_PUBLIC_PLAN'}
                              for name,value in summary['plan_ids'].items()}}
@@ -393,7 +453,7 @@ class StrategySubmissionV1:
         task = self._task(task_id)
         path = Path(task['job_path'])
         metadata = {}
-        if task.get('submission_version') == 'FULL_UNIVERSE_SUBMISSION_V1':
+        if task.get('submission_version') in {'FULL_UNIVERSE_SUBMISSION_V1', 'FULL_UNIVERSE_SUBMISSION_V2'}:
             from .universe_status_v1 import universe_task_metadata_v1
             metadata = universe_task_metadata_v1(self, task_id)
             job = read_json(path)
@@ -440,7 +500,7 @@ class StrategySubmissionV1:
         if evidence is not None and evidence.get('job_sha256') != task['job_sha256']:
             raise ValueError('SUBMISSION_VERIFICATION_JOB_CHANGED')
         from .universe_status_v1 import universe_task_metadata_v1
-        metadata = universe_task_metadata_v1(self, task_id) if task.get('submission_version') == 'FULL_UNIVERSE_SUBMISSION_V1' else {}
+        metadata = universe_task_metadata_v1(self, task_id) if task.get('submission_version') in {'FULL_UNIVERSE_SUBMISSION_V1', 'FULL_UNIVERSE_SUBMISSION_V2'} else {}
         return {**metadata, **state, 'task_id': task_id,
                 'recorded_verification': evidence, 'freshly_reverified': False,
                 'reports': {name: str(path.parent / (name + '_REPORT.md'))

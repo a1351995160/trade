@@ -56,11 +56,13 @@ def _source_files(strategy) -> dict:
     files.update(folder / name for name in (
         "universe_scan_service_v1.py", "universe_submission_v1.py", "universe_data_provider_v1.py",
         "tdx_research_adapter_v1.py", "research_universe_v1.py", "universe_account_inputs_v1.py",
-        "board_execution_policy_v1.py",
+        "board_execution_policy_v1.py", "universe_qualified_scope_v1.py", "universe_corporate_accounting_v2.py",
+        "universe_dividend_accounting_v1.py",
         "universe_signal_scan_v1.py", "causal_dividend_features_v1.py", "corporate_action_price_v2.py", "common.py",
         "exploration_governance.py", "mutation_boundary.py", "strategy_submission_v1.py"))
     files.update(REPO / "src" / "chanlun_trader" / name for name in (
-        "synthetic_batch_resources.py", "presentation.py", "research/guard.py"))
+        "synthetic_batch_resources.py", "presentation.py", "research/guard.py",
+        "engine/individual_dividend_accounting_v1.py"))
     return {str(_file(path, REPO)): _sha(path) for path in sorted(files)}
 
 
@@ -171,11 +173,13 @@ def _write_result(root: Path, value: dict) -> dict:
     value = {**value, "recorded_at": datetime.now(timezone.utc).isoformat()}
     value["scan_identity"] = stable_hash(value)
     immutable(root / "RESULT.json", value)
-    projection = "NOT_READY" if value["status"] != "CONDITIONS_EVALUATED" else "PASS"
+    projection = "PASS" if value["status"] in {"CONDITIONS_EVALUATED", "QUALIFIED_SCOPE_READY"} else "NOT_READY"
     explanation = {
         "CONDITIONS_EVALUATED": "已完成原始条件检查；是否成交、账户收益和策略资格尚未评定。",
         "SCAN_DATA_GAPS": "已检查完整目标范围，缺证据的条件保持未知，没有计算账户收益。",
         "SCAN_BLOCKED": "受限工作进程未完成资格检查；不能把未检查股票称为无信号。",
+        "QUALIFIED_SCOPE_READY": "已检查全部登记股票，冻结全部资料合格股票；账户回测尚未执行。",
+        "QUALIFIED_SCOPE_BLOCKED": "已完成全池资料检查，但仍存在共同缺口或没有合格股票，账户回测被阻断。",
     }[value["status"]]
     lines = ["# 全范围策略信号检查", "", ZhCNPresentation.status_name(projection), explanation, "",
         f"登记目标：{value['target_count']} 只；完成资格检查：{value['processed_target_count']} 只。",
@@ -187,6 +191,29 @@ def _write_result(root: Path, value: dict) -> dict:
         "历史数据可见性和单位仍沿用来源声明；MODELED 不等于已证明当时可见。",
         "重复提交只读取同一检查记录，不重新计算；原件 stat/源码变化会拒绝复用。",
         "登记元数据副本与原文件分别记录哈希，副本不冒充原文件字节身份。"]
+    if value.get('qualification_scope'):
+        scope = value['qualification_scope']
+        lines = ['# 全池检查与合格范围', '', ZhCNPresentation.status_name(projection), explanation, '',
+            f"登记检查 {len(scope['target_symbols'])} 只，逐股初检通过 {len(scope['qualified_symbols'])} 只，可执行合格 {len(scope['qualified_symbols']) if value.get('qualified_account_ready') else 0} 只，逐股排除 {len(scope['excluded'])} 只。",
+            '资料合格名单在计算收益前确定；合格股票是否买入，仍由策略信号、仓位和资金限制决定。',
+            'QUALIFICATION_SCOPE.json 保存全池、合格和完整排除名单及检查证据；EXCLUSIONS.csv 逐只列出原因。',
+            '全池原始登记与补齐入口保留。补齐后重新检查并生成新范围，旧记录不改写。',
+            '这是按整个评价区间资料可用性确定的回顾性范围，不能等同于当年已可投资的完整市场。',
+            '资料合格不表示策略盈利、统计有效、取得正式资格或完成真实前瞻观察。',
+            '本次检查没有执行账户，也没有创建或消耗账户预算。', '', '## 排除清单', '']
+        lines.extend(f"- {row['symbol']}：" + '；'.join(ZhCNPresentation.reason_explanation(reason)
+            for reason in row['reasons']) for row in scope['excluded'])
+        if scope['blocking_global_gaps']:
+            lines.extend(['', '仍阻断执行的共同问题：'] +
+                [ZhCNPresentation.reason_explanation(reason) for reason in scope['blocking_global_gaps']])
+        immutable(root / 'QUALIFICATION_SCOPE.json', scope)
+        import csv
+        with (root / 'EXCLUSIONS.csv').open('x', encoding='utf-8-sig', newline='') as stream:
+            writer = csv.writer(stream)
+            writer.writerow(['股票', '排除原因', '原因代码'])
+            for row in scope['excluded']:
+                writer.writerow([row['symbol'], '；'.join(ZhCNPresentation.reason_explanation(reason)
+                    for reason in row['reasons']), ';'.join(row['reasons'])])
     if value.get("reason"):
         lines.extend(["", ZhCNPresentation.reason_title(value["reason"]),
                       ZhCNPresentation.reason_explanation(value["reason"])])
@@ -300,17 +327,46 @@ def _worker(root: Path) -> int:
         if sorted(prepared["window"]["symbols"]) != request["symbols"]:
             raise ValueError("UNIVERSE_SCAN_PROVIDER_SHRANK_TARGETS")
         _check_registration(intent["registration"])
-        freeze_universe_bundle(prepared, root)
-        evaluated = _evaluate_conditions(strategy, inputs)
+        qualified = request.get('version') == 'FULL_UNIVERSE_SUBMISSION_V2'
+        if qualified:
+            parent_root = root / 'PARENT'
+            parent_root.mkdir()
+            freeze_universe_bundle(prepared, parent_root)
+            del inputs
+            import gc
+            gc.collect()
+            from chanlun_trader.research_factory.universe_qualified_scope_v1 import qualify_universe_bundle
+            derived = qualify_universe_bundle(prepared, required_fields=strategy.requirements.fields,
+                warmup_bars=strategy.requirements.warmup_sessions)
+            if derived['ready']:
+                freeze_universe_bundle(derived, root)
+            scope = derived['scope_receipt']
+            excluded = {row['symbol']: row for row in scope['excluded']}
+            evaluated = {'processed_target_count': len(request['symbols']), 'qualification_checked': True,
+                'strategy_signals_scanned': False, 'signals_evaluated_target_count': 0,
+                'signals_evaluated_session_count': 0, 'unknown_target_count': len(excluded),
+                'qualified_account_ready': derived['ready'], 'qualification_scope': scope,
+                'qualified_input_identity': derived['input_identity'],
+                'per_symbol': [{'symbol': symbol, 'status': 'EXCLUDED' if symbol in excluded else
+                    'DATA_QUALIFIED' if derived['ready'] else 'ACCOUNT_SCOPE_BLOCKED',
+                    'reasons': excluded.get(symbol, {}).get('reasons', scope['blocking_global_gaps']), 'evaluated_sessions': 0,
+                    'unknown_sessions': None, 'condition_counts': None} for symbol in request['symbols']]}
+            coverage = deepcopy(scope['account_audit']['coverage'])
+            input_identity = derived['input_identity'] or prepared['input_identity']
+        else:
+            freeze_universe_bundle(prepared, root)
+            evaluated = _evaluate_conditions(strategy, inputs)
+            coverage = deepcopy(inputs.coverage)
+            input_identity = inputs.input_identity
         _check_code(intent["source_hashes"])
         _check_registration(intent["registration"])
-        coverage = deepcopy(inputs.coverage)
         coverage["completeness"] = intent["preview"]["data_metadata"]["completeness"]
         _write_result(root, {**_base_result(intent), **evaluated,
-            "status": "SCAN_DATA_GAPS" if evaluated["unknown_target_count"] else "CONDITIONS_EVALUATED",
-            "input_identity": inputs.input_identity, "coverage": coverage,
-            "historical_availability": inputs.historical_availability,
-            "source_hashes": deepcopy(inputs.bundle["source_hashes"]),
+            "status": ('QUALIFIED_SCOPE_READY' if derived['ready'] else 'QUALIFIED_SCOPE_BLOCKED') if qualified else
+                'SCAN_DATA_GAPS' if evaluated['unknown_target_count'] else 'CONDITIONS_EVALUATED',
+            "input_identity": input_identity, "coverage": coverage,
+            "historical_availability": prepared['qualification']['historical_availability'],
+            "source_hashes": deepcopy(prepared['bundle']["source_hashes"]),
             "source_bytes_verified_in_worker": True})
         return 0
     except Exception as error:
@@ -331,14 +387,18 @@ def _receipt(root: Path, intent: dict, resource: dict) -> dict:
         raise ValueError("UNIVERSE_SCAN_RESOURCE_RESULT_CONFLICT")
     artifacts = {str(path): {"sha256": _sha(path), "physical_signature": _signature(path)}
                  for path in (result_path, resource_path, _file(root / "REPORT_CN.md", root))}
-    input_path = root / "INPUT.json"
-    if input_path.exists():
-        input_path = _file(input_path, root)
-        snapshot = read_json(input_path)
-        for info in snapshot["frames"].values():
-            path = _file(Path(info["path"]), root)
-            artifacts[str(path)] = {"sha256": info["sha256"], "physical_signature": _signature(path)}
-        artifacts[str(input_path)] = {"sha256": _sha(input_path), "physical_signature": _signature(input_path)}
+    for name in ('QUALIFICATION_SCOPE.json', 'EXCLUSIONS.csv'):
+        if (root / name).exists():
+            path = _file(root / name, root)
+            artifacts[str(path)] = {'sha256': _sha(path), 'physical_signature': _signature(path)}
+    for input_path in (root / 'INPUT.json', root / 'PARENT' / 'INPUT.json'):
+        if input_path.exists():
+            input_path = _file(input_path, root)
+            snapshot = read_json(input_path)
+            for info in snapshot["frames"].values():
+                path = _file(Path(info["path"]), root)
+                artifacts[str(path)] = {"sha256": info["sha256"], "physical_signature": _signature(path)}
+            artifacts[str(input_path)] = {"sha256": _sha(input_path), "physical_signature": _signature(input_path)}
     value = {"version": VERSION, "intent_identity": intent["intent_identity"],
              "scan_identity": result["scan_identity"], "artifacts": artifacts}
     value["receipt_identity"] = stable_hash(value)
@@ -366,7 +426,7 @@ def _archived(root: Path, intent: dict) -> dict:
 
 def scan_universe(service, request: dict, preview_identity: str) -> dict:
     """受既有数据授权执行一次公共全范围检查，不创建或消费账户预算。"""
-    if not isinstance(request, dict) or request.get("version") != "FULL_UNIVERSE_SUBMISSION_V1":
+    if not isinstance(request, dict) or request.get("version") not in {'FULL_UNIVERSE_SUBMISSION_V1', 'FULL_UNIVERSE_SUBMISSION_V2'}:
         raise ValueError("UNIVERSE_SCAN_REQUEST_REQUIRED")
     preview = service.preview(request)
     if preview["preview_identity"] != preview_identity:
@@ -376,9 +436,13 @@ def scan_universe(service, request: dict, preview_identity: str) -> dict:
     approved = _authorize(authority, normalized)
     from chanlun_trader.research_factory.strategy_submission_v1 import public_rule_factory
     strategy = public_rule_factory(normalized["rule"], normalized["strategy_id"])
-    key = stable_hash({"objective_id": approved["objective_id"], "dataset_id": normalized["dataset_id"],
+    identity_scope = {"objective_id": approved["objective_id"], "dataset_id": normalized["dataset_id"],
         "universe_id": normalized["universe_id"], "rule_identity": strategy.rule_identity,
-        **{name: normalized[name] for name in ("feature_start", "account_start", "account_end")}})
+        **{name: normalized[name] for name in ("feature_start", "account_start", "account_end")}}
+    if normalized['version'] == 'FULL_UNIVERSE_SUBMISSION_V2':
+        # V2只审核资料，不计算信号或绩效；修正资金/持仓请求须有独立预览绑定。
+        identity_scope['qualified_preview_identity'] = preview_identity
+    key = stable_hash(identity_scope)
     root = service.root / "signal-scans" / key
     if service.root.resolve() != service.root or root.resolve() != root:
         raise ValueError("UNIVERSE_SCAN_ROOT_REDIRECTED")
@@ -457,9 +521,24 @@ def validated_scan_snapshot(service, scanned: dict) -> dict:
     if (not reference or reference["sha256"] != _sha(path)
             or snapshot.get("snapshot_version") != "UNIVERSE_FROZEN_INPUT_V1"
             or snapshot.get("input_identity") != archived["input_identity"]
-            or sorted(snapshot.get("window", {}).get("symbols", [])) != intent["preview"]["request"]["symbols"]):
+            or sorted(snapshot.get("window", {}).get("symbols", [])) !=
+                (archived.get('qualification_scope', {}).get('qualified_symbols', [])
+                 if intent['preview']['request']['version'] == 'FULL_UNIVERSE_SUBMISSION_V2'
+                 else intent["preview"]["request"]["symbols"])):
         raise ValueError("UNIVERSE_SCAN_SNAPSHOT_BINDING_CONFLICT")
-    return {"path": str(path), "sha256": reference["sha256"],
+    parent_reference = {}
+    if intent['preview']['request']['version'] == 'FULL_UNIVERSE_SUBMISSION_V2':
+        parent = _file(root / 'PARENT' / 'INPUT.json', root)
+        parent_value = read_json(parent)
+        scope = archived['qualification_scope']
+        if (snapshot['bundle'].get('qualified_scope') != scope
+                or scope['target_symbols'] != intent['preview']['request']['symbols']
+                or parent_value['input_identity'] != scope['parent_input_identity']
+                or parent_value['window'] != scope['parent_window']):
+            raise ValueError('UNIVERSE_QUALIFIED_PARENT_SCOPE_CONFLICT')
+        parent_reference = {'parent_path': str(parent), 'parent_sha256': receipt['artifacts'][str(parent)]['sha256'],
+                            'parent_input_identity': parent_value['input_identity']}
+    return {**parent_reference, "path": str(path), "sha256": reference["sha256"],
             "input_identity": archived["input_identity"], "scan_identity": archived["scan_identity"],
             "metadata_only": True, "receipt_identity": receipt["receipt_identity"]}
 

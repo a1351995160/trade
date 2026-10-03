@@ -16,18 +16,20 @@ export const universeBoards = [
 ]
 
 export function isFullUniverseDataset(dataset: UniverseDataset | undefined): boolean {
-  return dataset?.adapter === 'TDX_FULL_UNIVERSE_V1'
+  return (dataset?.adapter === 'TDX_FULL_UNIVERSE_V1' || dataset?.adapter === 'BAOSTOCK_FULL_UNIVERSE_V1')
     && typeof dataset.universe_id === 'string' && dataset.universe_id.length > 0
 }
 
 export function submissionRequest(base: Record<string, unknown>, dataset: UniverseDataset | undefined,
-  symbols: string): Record<string, unknown> {
+  symbols: string, accountScope = 'FULL_REQUIRED'): Record<string, unknown> {
   const request = { ...base }
   delete request.symbols
   delete request.version
   delete request.universe_id
+  delete request.account_scope
   if (isFullUniverseDataset(dataset)) {
-    request.version = 'FULL_UNIVERSE_SUBMISSION_V1'
+    request.version = accountScope === 'DATA_QUALIFIED' ? 'FULL_UNIVERSE_SUBMISSION_V2' : 'FULL_UNIVERSE_SUBMISSION_V1'
+    if (accountScope === 'DATA_QUALIFIED') request.account_scope = 'DATA_QUALIFIED'
     request.universe_id = dataset!.universe_id
     request.benchmark = 'CASH_AND_PRICE_REFERENCE'
   } else {
@@ -42,8 +44,9 @@ export function universeDiagnosisAllowsFreeze(diagnosis: Record<string, unknown>
   if (!diagnosis || typeof previewIdentity !== 'string' || !previewIdentity) return false
   const scope = diagnosis.scope as Record<string, unknown> | undefined
   const coverage = diagnosis.coverage as Record<string, unknown> | undefined
-  return diagnosis.status === 'ACCOUNT_INPUTS_READY' && scope?.preview_identity === previewIdentity
-    && coverage?.account_data_ready === true
+  return scope?.preview_identity === previewIdentity &&
+    ((diagnosis.status === 'ACCOUNT_INPUTS_READY' && coverage?.account_data_ready === true)
+     || (diagnosis.status === 'QUALIFIED_SCOPE_READY' && diagnosis.qualified_account_ready === true))
 }
 
 function count(value: unknown): string {
@@ -87,6 +90,10 @@ export function universeRunState(value: unknown): string {
     CONDITIONS_EVALUATED: '已计算原始规则条件，未运行交易账户',
     CONDITIONS_EVALUATED_WITH_UNKNOWN_SESSIONS: '已计算部分日期条件，其余日期未知',
     UNKNOWN: '未知，不能判断条件是否命中',
+    QUALIFIED_SCOPE_READY: '全池检查完成，全部资料合格股票可进入账户冻结',
+    QUALIFIED_SCOPE_BLOCKED: '全池检查完成，仍有共同缺口或没有合格股票',
+    DATA_QUALIFIED: '资料合格，是否买入由策略决定', EXCLUDED: '资料不满足，本次账户范围排除',
+    ACCOUNT_SCOPE_BLOCKED: '存在共同缺口，本股票也不能进入账户',
     PARTIAL_COMPLETED: '部分完成，尚未覆盖全部范围',
     ENGINEERING_NOT_ACCEPTED: '尚无新版本完整工程验收证据',
     REAL_NOT_ACCEPTED: '尚无真实全范围验收证据',

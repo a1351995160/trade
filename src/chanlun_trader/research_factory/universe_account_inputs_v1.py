@@ -112,7 +112,7 @@ def universe_input_identity_v1(bundle: dict, window: dict) -> str:
     w = normalized_universe_window_v1(window)
     states = bundle["states"]
     state_date = "trade_date" if "trade_date" in states else "effective_date"
-    return stable_hash({"version": INPUT_VERSION, "window": w,
+    identity = {"version": INPUT_VERSION, "window": w,
         "profile": bundle.get("profile"),
         "frames": {"daily": _frame_identity(bundle["daily"], ["symbol", "date"]),
                    "turn": _frame_identity(bundle.get("turn", pd.DataFrame(
@@ -132,7 +132,11 @@ def universe_input_identity_v1(bundle: dict, window: dict) -> str:
         "calendar_source": bundle.get("calendar_source"),
         "field_sources": bundle.get("field_sources"),
         "historical_availability": bundle.get("historical_availability"),
-        "price_basis": bundle.get("price_basis")})
+        "price_basis": bundle.get("price_basis")}
+    # 原 V1 输入没有派生回执时，保持原冻结身份逐字兼容。
+    if "qualified_scope" in bundle:
+        identity["qualified_scope"] = bundle["qualified_scope"]
+    return stable_hash(identity)
 
 
 class UniverseAccountInputsV1:
@@ -146,6 +150,12 @@ class UniverseAccountInputsV1:
 
     def __init__(self, bundle: dict, window: dict, *, stage: str = "ACCOUNT",
                  required_fields=(), warmup_bars: int = 0):
+        self._initialize(bundle, window, stage=stage, required_fields=required_fields,
+                         warmup_bars=warmup_bars, require_ready=True)
+
+    def _initialize(self, bundle: dict, window: dict, *, stage: str,
+                    required_fields, warmup_bars: int, require_ready: bool,
+                    copy_frames: bool = True):
         if stage == "SIGNAL":
             stage = "SCAN"
         if stage not in {"SCAN", "ACCOUNT"}:
@@ -162,6 +172,8 @@ class UniverseAccountInputsV1:
         self.symbols = tuple(self.window["symbols"])
         self._symbol_set = frozenset(self.symbols)
         self.stage, self.required_fields, self.warmup_bars = stage, frozenset(required_fields), warmup_bars
+        # 公共构造器始终隔离调用方；只读 audit 和内部独占投影可复用列缓冲。
+        self._copy_frames = copy_frames
         self.bundle = dict(bundle)
         self._session_indices = {d: i for i, d in enumerate(self.calendar)}
         self._open_times = {d: pd.Timestamp(str(d), tz='Asia/Shanghai') + pd.Timedelta(hours=9, minutes=30)
@@ -205,9 +217,14 @@ class UniverseAccountInputsV1:
                 if any(left >= right for left, right in zip(
                         group.valid_to.tolist(), group.effective_date.tolist()[1:])):
                     raise ValueError("UNIVERSE_STATE_INTERVAL_OVERLAP")
-        self._daily_index = pd.MultiIndex.from_frame(self.daily[["symbol", "date"]])
-        self._turn_index = self.turn.set_index(["symbol", "date"], drop=False)
-        self._states_index = pd.MultiIndex.from_frame(self.states[["symbol", self._state_date]])
+        self._daily_index = pd.MultiIndex.from_arrays(
+            [self.daily.symbol.array, self.daily.date.array], names=["symbol", "date"])
+        self._turn_index = pd.MultiIndex.from_arrays(
+            [self.turn.symbol.array, self.turn.date.array], names=["symbol", "date"])
+        self._turn_values = _query_values(self.turn["turn"]) if "turn" in self.turn else None
+        self._states_index = pd.MultiIndex.from_arrays(
+            [self.states.symbol.array, self.states[self._state_date].array],
+            names=["symbol", self._state_date])
         self._daily_columns = {name: _query_values(self.daily[name]) for name in self.daily}
         self._state_columns = {name: _query_values(self.states[name]) for name in self.states}
         self._interval_indices = {symbol: tuple(group[self._state_date])
@@ -217,6 +234,7 @@ class UniverseAccountInputsV1:
             raise ValueError("UNIVERSE_ACTION_LIST_INVALID")
         self.events = tuple(deepcopy(bundle["events"]))
         self._global_gaps: list[str] = []
+        self._event_gaps: list[dict] = []
         self.source_qualification = deepcopy(bundle.get('source_qualification'))
         if self.source_qualification is not None:
             if (not isinstance(self.source_qualification, dict)
@@ -243,6 +261,8 @@ class UniverseAccountInputsV1:
                 and ("adjustflag" not in self.daily or not self.daily.adjustflag.astype(str).eq("3").all())):
             self._global_gaps.append("UNIVERSE_RAW_PRICE_BASIS_UNVERIFIED")
         self._validate_events()
+        if self.stage == "ACCOUNT":
+            self._validate_event_groups()
         self._coverage_rows = self._action_coverage_rows()
         # 证明已校验后按证券索引；缺资料的证券不能逐日遍历整个股票池。
         self._action_coverage_by_symbol: dict[str, list[tuple[int, int]]] = {}
@@ -263,7 +283,11 @@ class UniverseAccountInputsV1:
                            listing_date_sources=deepcopy(self.listing_date_sources))
         self.coverage = self._coverage()
         self.input_identity = universe_input_identity_v1(self.bundle, self.window)
-        if stage == "ACCOUNT":
+        if stage == "ACCOUNT" and require_ready:
+            if "qualified_scope" in self.bundle:
+                from .universe_qualified_scope_v1 import verify_qualified_scope_bundle
+                verify_qualified_scope_bundle(self.bundle, self.window,
+                    required_fields=sorted(self.required_fields), warmup_bars=self.warmup_bars)
             self.require_account_ready()
 
     def _frame(self, value, date_col: str, name: str, *, interval=False) -> pd.DataFrame:
@@ -271,10 +295,12 @@ class UniverseAccountInputsV1:
             raise ValueError("UNIVERSE_FRAME_FIELDS_INVALID:" + name)
         # 全表 deep copy 会把分块对象列再合并成一个巨大副本；逐位置复制仍保持列独立。
         frame = value.copy(deep=False)
-        for index in range(len(value.columns)):
-            frame.isetitem(index, value.iloc[:, index].copy(deep=True))
+        if self._copy_frames:
+            for index in range(len(value.columns)):
+                frame.isetitem(index, value.iloc[:, index].copy(deep=True))
         converted = {v: _day(v) for v in frame[date_col].unique()}
-        frame[date_col] = frame[date_col].map(converted)
+        if str(frame[date_col].dtype) != "int64" or any(value != day for value, day in converted.items()):
+            frame[date_col] = frame[date_col].map(converted)
         if (frame.duplicated(["symbol", date_col]).any()
                 or not set(frame.symbol) <= set(self.symbols)):
             raise ValueError("UNIVERSE_FRAME_KEYS_INVALID:" + name)
@@ -372,10 +398,10 @@ class UniverseAccountInputsV1:
                         from .universe_corporate_accounting_v2 import UniverseCorporateAccountingV2
                         UniverseCorporateAccountingV2(0, [event], 'INPUT_VALIDATION')
                 except (KeyError, TypeError, ValueError):
-                    self._global_gaps.append('UNIVERSE_SHARE_ACTION_TERMS_UNKNOWN:' + event['event_id'])
+                    self._event_gap(event, 'UNIVERSE_SHARE_ACTION_TERMS_UNKNOWN')
                 continue
             if event.get("event_type") != "CASH_DIVIDEND":
-                self._global_gaps.append("UNIVERSE_UNSUPPORTED_ACTION:" + event["event_id"])
+                self._event_gap(event, "UNIVERSE_UNSUPPORTED_ACTION")
                 continue
             try:
                 record, effective, payment = (_day(event[k]) for k in
@@ -388,7 +414,44 @@ class UniverseAccountInputsV1:
                     raise ValueError()
                 IndividualDividendAccountingV1(0, [event], "INPUT_VALIDATION")._cash_terms(event)
             except (KeyError, TypeError, ValueError):
-                self._global_gaps.append("UNIVERSE_CASH_ACTION_TERMS_UNKNOWN:" + event["event_id"])
+                self._event_gap(event, "UNIVERSE_CASH_ACTION_TERMS_UNKNOWN")
+
+    def _event_gap(self, event: dict, reason: str):
+        # 归属取自已校验事件，不解析任意 event_id 字符串猜证券。
+        reason = reason + ":" + event["event_id"]
+        self._global_gaps.append(reason)
+        self._event_gaps.append({"scope": "EVENT", "symbol": event["symbol"],
+            "event_id": event["event_id"], "reason": reason,
+            "event_identity": stable_hash(event), "source": event.get("source")})
+
+    def _validate_event_groups(self):
+        """组合价格/账本条款也必须在账户启动前通过，不依赖参考价跨日检测。"""
+        from .corporate_action_price_v2 import grouped_price_actions_v2
+        from .universe_corporate_accounting_v2 import UniverseCorporateAccountingV2
+        known_conflicts = {"CAUSAL_PRICE_SAME_DAY_RECORD_CONFLICT",
+            "CAUSAL_PRICE_SAME_DAY_SHARE_RATIO_CONFLICT",
+            "SAME_DAY_SHARE_ACTIONS_REQUIRE_COMBINED_TERMS"}
+        invalid_symbols = {gap["symbol"] for gap in self._event_gaps}
+        groups: dict[str, list[dict]] = {}
+        # event_id 和 symbol 已在 _validate_events 逐条结构校验；不从 ID 猜归属。
+        for event in self.events:
+            if event["symbol"] not in invalid_symbols:
+                groups.setdefault(event["symbol"], []).append(event)
+        for symbol, events in sorted(groups.items()):
+            try:
+                grouped_price_actions_v2(events)
+                UniverseCorporateAccountingV2(0, events, "INPUT_GROUP_VALIDATION")
+            except (KeyError, TypeError, ValueError) as error:
+                if str(error) not in known_conflicts:
+                    # 新的/无法明确解释的模型失败不得变成任意逐股排除。
+                    self._global_gaps.append("UNIVERSE_CORPORATE_ACTION_GROUP_VALIDATION_UNKNOWN")
+                    continue
+                reason = "UNIVERSE_CORPORATE_ACTION_GROUP_UNSUPPORTED:" + symbol
+                self._global_gaps.append(reason)
+                self._event_gaps.append({"scope": "SYMBOL", "symbol": symbol,
+                    "reason": reason, "detail": str(error),
+                    "event_ids": sorted(event["event_id"] for event in events),
+                    "event_identities": {event["event_id"]: stable_hash(event) for event in events}})
 
     def _action_coverage_rows(self) -> list[dict]:
         value = self.bundle.get("corporate_action_coverage")
@@ -575,7 +638,7 @@ class UniverseAccountInputsV1:
                 if "turn" in self.required_fields:
                     key = (symbol, day)
                     try:
-                        value = float(self._turn_index.loc[key, "turn"])
+                        value = float(self._turn_values[self._turn_index.get_loc(key)])
                         if not math.isfinite(value) or value < 0:
                             raise ValueError()
                     except (KeyError, TypeError, ValueError):
@@ -685,3 +748,39 @@ def prepare_universe_account_inputs_v1(bundle: dict, window: dict, *, stage="ACC
                                        required_fields=(), warmup_bars=0) -> UniverseAccountInputsV1:
     return UniverseAccountInputsV1(bundle, window, stage=stage,
                                   required_fields=required_fields, warmup_bars=warmup_bars)
+
+
+def _prepare_owned_universe_account_inputs_v1(bundle: dict, window: dict, *,
+                                             required_fields=(), warmup_bars=0):
+    """内部投影独占列的所有权转移；保留完整严格 ACCOUNT 校验。"""
+    inputs = UniverseAccountInputsV1.__new__(UniverseAccountInputsV1)
+    inputs._initialize(bundle, window, stage="ACCOUNT", required_fields=required_fields,
+                       warmup_bars=warmup_bars, require_ready=True, copy_frames=False)
+    return inputs
+
+
+def audit_universe_account_inputs_v1(bundle: dict, window: dict, *,
+                                     required_fields=(), warmup_bars=0) -> dict:
+    """运行 ACCOUNT 的数据检查，返回报告；不返回可执行 inputs 或创建账户。
+
+    只省略末尾就绪断言，并只读借用列；报告不保留任何输入表引用。
+    结构错误仍抛出，未知共同缺口仍保留。
+    普通构造器和 prepare 的默认 ACCOUNT 行为不变。
+    """
+    inputs = UniverseAccountInputsV1.__new__(UniverseAccountInputsV1)
+    inputs._initialize(bundle, window, stage="ACCOUNT", required_fields=required_fields,
+                       warmup_bars=warmup_bars, require_ready=False, copy_frames=False)
+    event_reasons = {row["reason"] for row in inputs._event_gaps}
+    typed = [{"scope": "SYMBOL", **deepcopy(row)} for row in inputs.coverage["gaps"]]
+    typed.extend(deepcopy(inputs._event_gaps))
+    typed.extend({"scope": "SCOPE_SUMMARY" if reason == "UNIVERSE_CORPORATE_ACTIONS_INCOMPLETE"
+                  else "COMMON", "reason": reason}
+                 for reason in inputs.coverage["global_gaps"] if reason not in event_reasons)
+    value = {"version": "UNIVERSE_ACCOUNT_INPUT_AUDIT_V1", "stage": "ACCOUNT",
+        "window": deepcopy(inputs.window), "input_identity": inputs.input_identity,
+        "required_fields": sorted(inputs.required_fields), "warmup_bars": inputs.warmup_bars,
+        "coverage": deepcopy(inputs.coverage), "typed_gaps": typed,
+        "account_coverage": [{**deepcopy(row), "symbols": sorted(row["symbols"])}
+                             for row in inputs._coverage_rows],
+        "account_executed": False, "account_authorized": False, "budget_created": False}
+    return {**value, "audit_identity": stable_hash(value)}
