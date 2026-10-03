@@ -104,6 +104,7 @@ jobs:
           tests/research_factory/test_portfolio_allocation_explanation_v1.py
           tests/research_factory/test_universe_signal_funnel_v1.py
           tests/research_factory/test_universe_evidence_v2.py
+          tests/research_factory/test_universe_independent_feature_continuation_v2.py
           tests/research_factory/test_universe_sparse_causal_price_v3.py
           tests/research_factory/test_universe_suspended_cash_valuation_v2.py
           tests/research_factory/test_universe_suspended_cash_allocation_v2.py
@@ -116,6 +117,7 @@ jobs:
           tests/research_factory/test_long_horizon_segment_evidence_v1.py
           tests/research_factory/test_long_horizon_failure_recovery_v1.py
           tests/research_factory/test_long_horizon_resources_v1.py
+          tests/research_factory/test_long_horizon_cooperative_deadline_v1.py
           tests/research_factory/test_long_horizon_compute_cache_v1.py
           tests/research_factory/test_universe_campaign_segment_mirror_v1.py
           tests/research_factory/test_long_horizon_publication_v1.py

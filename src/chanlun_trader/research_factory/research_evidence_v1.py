@@ -5,6 +5,7 @@ import hashlib
 import json
 import math
 from pathlib import Path
+import time
 
 import pandas as pd
 
@@ -373,7 +374,7 @@ def _verify_segment_resources(job, name, aggregate, settlement):
             'conservatively_charged_seconds': upper_bound_seconds}
 
 
-def verify_job_evidence(job_path, *, name, audit_checkpoint_path=None, segment_seconds=None):
+def verify_job_evidence(job_path, *, name, audit_checkpoint_path=None, segment_seconds=None, segment_deadline=None):
     """只读冻结 INPUT 路径；缺证 INCOMPLETE，矛盾 FAIL，全部一致才 PASS。"""
     root = Path(job_path).resolve().parent
     try:
@@ -386,6 +387,17 @@ def verify_job_evidence(job_path, *, name, audit_checkpoint_path=None, segment_s
         qualified_loader = item['loader'] == 'chanlun_trader.research_factory.strategy_submission_v1:load_frozen_qualified_bundle'
         _require(qualified_loader or item["loader"] == "chanlun_trader.research_factory.strategy_submission_v1:load_frozen_bundle", "OFFLINE_INPUT_LOADER_UNSUPPORTED")
         long_universe = plan['backend']['backend'] == 'UNIVERSE_ACCOUNT_BACKEND_V2'
+        if segment_deadline is not None:
+            _require(long_universe and type(segment_deadline) in (int, float) and math.isfinite(segment_deadline),
+                     'LONG_VERIFICATION_DEADLINE_INVALID')
+        def remaining_audit_seconds():
+            if segment_deadline is None:
+                return segment_seconds
+            remaining = segment_deadline - time.monotonic()
+            if remaining <= 0:
+                from .universe_account_backend_v2 import SegmentBoundary
+                raise SegmentBoundary('UNIVERSE_VERIFICATION_COOPERATIVE_DEADLINE')
+            return remaining
         _require(not qualified_loader or plan['backend']['backend'] in {'UNIVERSE_ACCOUNT_BACKEND_V1', 'UNIVERSE_ACCOUNT_BACKEND_V2'},
                  'OFFLINE_QUALIFIED_BACKEND_REQUIRED')
         if plan['backend']['backend'] in {'UNIVERSE_ACCOUNT_BACKEND_V1', 'UNIVERSE_ACCOUNT_BACKEND_V2'}:
@@ -441,6 +453,8 @@ def verify_job_evidence(job_path, *, name, audit_checkpoint_path=None, segment_s
         _require(Path(index["result"]).resolve() == result_path and Path(index["settlement"]).resolve() == root / (name + "_SETTLEMENT.json")
                  and index["sha256"] == digest == settlement["result_sha256"], "RESULT_HASH_BINDING_CONFLICT")
         from .strategy_submission_v1 import load_frozen_bundle, load_frozen_qualified_bundle
+        if segment_deadline is not None:
+            remaining_audit_seconds()
         loaded = (load_frozen_qualified_bundle if qualified_loader else load_frozen_bundle)(**item["loader_kwargs"])
         if qualified_loader and source['origin'] != 'CAMPAIGN_V1':
             _require(source.get('qualified_scope_identity') == loaded['frame']['qualified_scope']['scope_identity'],
@@ -460,7 +474,7 @@ def verify_job_evidence(job_path, *, name, audit_checkpoint_path=None, segment_s
                 result = hydrated_result(result)
                 checkpoint = Path(item['backend_options']['checkpoint_path'])
                 audit_options = {'audit_checkpoint_path': audit_checkpoint_path or checkpoint.parent / (name + '_AUDIT.json'),
-                                 'segment_seconds': segment_seconds}
+                                 'segment_seconds': remaining_audit_seconds()}
         audit = reconstruct(loaded["frame"], frozen["window"], result,
             initial_cash=plan["backend"]["initial_cash"], costs=plan["backend"]["costs"], strategy_id=name,
             rule=plan["strategy"]["parameters"].get("candidate_payload"), **audit_options)

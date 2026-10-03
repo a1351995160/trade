@@ -12,7 +12,10 @@ import sys
 import time
 
 HANDSHAKE=None
+WORKER_STARTED_AT=None
 if __name__=='__main__' and ('--worker' in sys.argv or '--compute' in sys.argv):
+    # 时钟先于限制握手、领域导入和资料加载；这些时间都属于原段。
+    WORKER_STARTED_AT=time.monotonic()
     from chanlun_trader.synthetic_batch_resources import worker_resource_handshake
     HANDSHAKE=worker_resource_handshake()
 
@@ -322,6 +325,29 @@ def long_horizon_worker(path,name,number):
         raise
 
 
+def cooperative_deadline(profile_id,upper_bound,begin):
+    """新分段规格共享 worker 绝对截止，固定留60秒提交与退出；硬上限不变。"""
+    from chanlun_trader.research_factory.universe_execution_profile_v1 import SEGMENTED_PROFILE
+    if profile_id!=SEGMENTED_PROFILE:
+        return begin+upper_bound*.8
+    if WORKER_STARTED_AT is None:
+        raise PermissionError('JOB_LONG_HORIZON_WORKER_CLOCK_REQUIRED')
+    if HANDSHAKE['wall_seconds']<=60:
+        raise PermissionError('JOB_LONG_HORIZON_COOPERATIVE_WINDOW_EXHAUSTED')
+    return WORKER_STARTED_AT+HANDSHAKE['wall_seconds']-60
+
+
+def cooperative_remaining(deadline,profile_id):
+    from chanlun_trader.research_factory.universe_execution_profile_v1 import SEGMENTED_PROFILE
+    remaining=deadline-time.monotonic()
+    if profile_id==SEGMENTED_PROFILE:
+        if remaining<=0:
+            from chanlun_trader.research_factory.universe_account_backend_v2 import SegmentBoundary
+            raise SegmentBoundary('UNIVERSE_WORKER_COOPERATIVE_DEADLINE')
+        return remaining
+    return max(.01,remaining)
+
+
 def _long_horizon_worker(path,name,number):
     from chanlun_trader.research_factory.universe_account_backend_v2 import SegmentBoundary
     job=read_json(path);validate_sources(job);gov=service(job);root=Path(job['root'])
@@ -345,14 +371,24 @@ def _long_horizon_worker(path,name,number):
         'accessed_at':datetime.now(timezone.utc).isoformat()})
     begin=time.monotonic()
     try:
+        deadline=(None if job['resources']['purpose']=='ENGINEERING_CONTINUOUS_REFERENCE'
+            else cooperative_deadline(job['resources']['profile_id'],dispatch['upper_bound_seconds'],begin))
+        if deadline is not None:
+            cooperative_remaining(deadline,job['resources']['profile_id'])
         data=resolve(item['loader'])(**item['loader_kwargs'])
         if data['input_identity'] != job['input_identity']:
             raise PermissionError('LOADED_INPUT_IDENTITY_CONFLICT')
-        # 留出持久化和宿主回执时间；真实900秒上限仍由worker宿主裁决。
-        backend.segment_seconds=(None if job['resources']['purpose']=='ENGINEERING_CONTINUOUS_REFERENCE'
-            else max(.01,dispatch['upper_bound_seconds']*.8-(time.monotonic()-begin)))
+        backend.segment_seconds=(None if deadline is None
+            else cooperative_remaining(deadline,job['resources']['profile_id']))
+        first_active=True
         def active():
-            return {**gov.active_execution(name),'execution_pause_requested':control_state(job)['paused']}
+            nonlocal first_active
+            receipt={**gov.active_execution(name),'execution_pause_requested':control_state(job)['paused']}
+            # 公共 prepare 后的首次 guard 仍在引擎之前；日内 guard 不新增中断点。
+            if first_active and deadline is not None:
+                backend.segment_seconds=cooperative_remaining(deadline,job['resources']['profile_id'])
+            first_active=False
+            return receipt
         output=root/(name+'_RESULT.json')
         if output.exists():
             result=completion_tail_result(job,name,gov.segment_status(name))
@@ -365,7 +401,8 @@ def _long_horizon_worker(path,name,number):
             checkpoint=Path(item['backend_options']['checkpoint_path'])
             audit=reconstruct_universe_account(inputs.bundle,inputs.window,hydrated_result(result),
                 initial_cash=backend.initial_cash,costs=backend.costs,strategy_id=strategy.strategy_id,rule=strategy.payload,
-                audit_checkpoint_path=checkpoint.parent/(strategy.strategy_id+'_AUDIT.json'),segment_seconds=backend.segment_seconds)
+                audit_checkpoint_path=checkpoint.parent/(strategy.strategy_id+'_AUDIT.json'),
+                segment_seconds=(None if deadline is None else cooperative_remaining(deadline,job['resources']['profile_id'])))
             if result.get('reconciliation',{}).get('audit_identity')!=stable_hash(audit):
                 raise PermissionError('JOB_COMPLETION_TAIL_AUDIT_CONFLICT')
         else:
@@ -570,10 +607,12 @@ def _long_horizon_compute_worker(path,stage,number,member=None):
         'compute_identity':meter.binding['compute_identity'],'stage':stage,'member':member,
         'purpose':'AUTHORIZED_POST_ACCOUNT_EVALUATION','input_identity':job['input_identity'],
         'observation_plan':job['observation_plan'],'accessed_at':datetime.now(timezone.utc).isoformat()})
+    profile_id=meter.profile['profile_id']
+    deadline=cooperative_deadline(profile_id,pending['upper_bound_seconds'],begin)
     if stage=='VERIFICATION':
         from chanlun_trader.research_factory.research_evidence_v1 import verify_job_evidence
         from chanlun_trader.research_factory.universe_account_backend_v2 import SegmentBoundary
-        checks={}
+        checks={};verified_one=False
         for name in job['plans']:
             verified=folder/('VERIFIED_'+name+'.json')
             if verified.exists():
@@ -581,15 +620,24 @@ def _long_horizon_compute_worker(path,stage,number,member=None):
                 if row['job_sha256'] != sha(path) or row.get('source_result_sha256') != sha(root/(name+'_RESULT.json')):
                     raise PermissionError('JOB_VERIFICATION_PROGRESS_CHANGED')
                 checks[name]=row['verification'];continue
+            # 每段至多新增一个成员核验；第二次严格冷加载须留给下一受限进程。
+            if verified_one and profile_id=='LONG_HORIZON_SEGMENTED_V1':
+                save(folder/('SEGMENT_'+str(number).zfill(6)+'_STATUS.json'),{'state':'CONTINUE',
+                    'dispatch_id':pending['dispatch_id'],'phase':'INDEPENDENT_VERIFICATION'})
+                return 75
             try:
-                checks[name]=verify_job_evidence(path,name=name,
-                    segment_seconds=max(.01,pending['upper_bound_seconds']*.8-(time.monotonic()-begin)))
+                options={'segment_seconds':cooperative_remaining(deadline,profile_id)}
+                from chanlun_trader.research_factory.universe_execution_profile_v1 import SEGMENTED_PROFILE
+                if profile_id==SEGMENTED_PROFILE:
+                    options['segment_deadline']=deadline
+                checks[name]=verify_job_evidence(path,name=name,**options)
             except SegmentBoundary:
                 save(folder/('SEGMENT_'+str(number).zfill(6)+'_STATUS.json'),{'state':'CONTINUE',
                     'dispatch_id':pending['dispatch_id'],'phase':'INDEPENDENT_VERIFICATION'})
                 return 75
             save(verified,{'job_sha256':sha(path),'source_result_sha256':sha(root/(name+'_RESULT.json')),
                            'verification':checks[name]})
+            verified_one=True
         value={'job_sha256':sha(path),'items':checks,'advance_allowed':all(row.get('advance_allowed') is True for row in checks.values())}
         save(folder/'RESULT.json',value)
         save(folder/('SEGMENT_'+str(number).zfill(6)+'_STATUS.json'),{'state':'COMPLETED',
@@ -605,22 +653,23 @@ def _long_horizon_compute_worker(path,stage,number,member=None):
     from chanlun_trader.research_factory.universe_research_report_v2 import build_research_reports
     from chanlun_trader.research_factory.universe_signal_funnel_v1 import build_signal_funnel_stream_v1,funnel_day_packets_v1
     from chanlun_trader.research_factory.universe_account_backend_v2 import SegmentBoundary
-    item=job['items'][member]; data=resolve(item['loader'])(**item['loader_kwargs'])
-    strategy=resolve(item['factory'])(**item['factory_kwargs'])
-    inputs=_prepare_owned_universe_account_inputs_v1(data['frame'],item['backend_options']['window'],
-        required_fields=strategy.requirements.fields,warmup_bars=strategy.requirements.warmup_sessions)
-    source=root/(member+'_RESULT.json');raw=read_json(source);result=hydrated_result(raw)
-    if verification['items'][member]['result_sha256'] != sha(source):
-        raise PermissionError('JOB_REPORT_VERIFIED_RESULT_CHANGED')
     try:
+        cooperative_remaining(deadline,profile_id)
+        item=job['items'][member]; data=resolve(item['loader'])(**item['loader_kwargs'])
+        strategy=resolve(item['factory'])(**item['factory_kwargs'])
+        inputs=_prepare_owned_universe_account_inputs_v1(data['frame'],item['backend_options']['window'],
+            required_fields=strategy.requirements.fields,warmup_bars=strategy.requirements.warmup_sessions)
+        source=root/(member+'_RESULT.json');raw=read_json(source);result=hydrated_result(raw)
+        if verification['items'][member]['result_sha256'] != sha(source):
+            raise PermissionError('JOB_REPORT_VERIFIED_RESULT_CHANGED')
         dual=build_research_reports(result,inputs,job['observation_plan'],
             report_checkpoint_path=folder/(member+'_OBSERVATION_CHECKPOINT.json'),
-            segment_seconds=max(.01,pending['upper_bound_seconds']*.8-(time.monotonic()-begin)))
+            segment_seconds=cooperative_remaining(deadline,profile_id))
         calendar=inputs.window['calendar'];first=calendar.index(inputs.window['account_start'])
         funnel=build_signal_funnel_stream_v1(rule_identity=strategy.rule_identity,strategy_id=member,calendar=calendar,
             day_packets=funnel_day_packets_v1(raw,calendar),
             report_checkpoint_path=folder/(member+'_FUNNEL_CHECKPOINT.json'),
-            segment_seconds=max(.01,pending['upper_bound_seconds']*.8-(time.monotonic()-begin)),
+            segment_seconds=cooperative_remaining(deadline,profile_id),
             expected_decision_sessions=calendar[first:])
     except SegmentBoundary:
         save(folder/('SEGMENT_'+str(number).zfill(6)+'_STATUS.json'),{'state':'CONTINUE',

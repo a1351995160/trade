@@ -82,10 +82,9 @@ def _verify_prior_artifact_bytes(reader, count):
 
 class _ConditionTable:
     """单证券公式重算，自己的只读数值表；不读取执行器的缓存。"""
-    def __init__(self, strategy, inputs, root, identity):
-        from ..engine.conditions_v2 import ConditionContext
-        from .causal_dividend_features_v1 import causal_hfq_bars_v3
-        from .research_rule_strategy_v2 import _field_references, evaluate_condition
+    def __init__(self, strategy, inputs, root, identity, *, deadline=None):
+        root = Path(root).absolute()
+        _require(root.resolve() == root, 'OWN_FEATURE_PATH_REDIRECTED')
         root.mkdir(parents=True, exist_ok=True)
         self.symbols = {symbol: index for index, symbol in enumerate(inputs.symbols)}
         self.days = {day: index for index, day in enumerate(inputs.calendar)}
@@ -93,75 +92,164 @@ class _ConditionTable:
         if hasattr(strategy, 'selection'):
             columns += ['score', 'score_ready', 'condition_ready']
         manifest_path, array_path = root / 'OWN_FEATURES.json', root / 'OWN_FEATURES.npy'
+        binding_path = root / 'OWN_FEATURE_BINDING.json'
+        _require(array_path.resolve() == array_path, 'OWN_FEATURE_PATH_REDIRECTED')
+        shape = (len(inputs.symbols), len(inputs.calendar), len(columns))
+        binding = {'version': VERSION, 'identity': identity, 'symbols': list(inputs.symbols),
+                   'calendar': list(inputs.calendar), 'columns': columns, 'shape': list(shape), 'dtype': 'float64'}
+
+        def validate_array(values):
+            _require(values.shape == shape and values.dtype == np.dtype('float64')
+                     and values.flags.c_contiguous, 'OWN_FEATURE_ARRAY_SCOPE_CONFLICT')
+
+        def prior_rows(values):
+            names = {f'OWN_FEATURE_{index:06d}.json' for index in range(len(inputs.symbols))}
+            _require({path.name for path in root.glob('OWN_FEATURE_*.json')} - {'OWN_FEATURE_BINDING.json'} <= names,
+                     'OWN_FEATURE_RECEIPT_SCOPE_CONFLICT')
+            rows, missing = [], False
+            for index, symbol in enumerate(inputs.symbols):
+                receipt = _read(root / f'OWN_FEATURE_{index:06d}.json', identity)
+                if receipt is None:
+                    missing = True
+                    continue
+                _require(not missing and set(receipt) == {'version', 'identity', 'index', 'symbol', 'array_hash', 'preparation'}
+                         and type(receipt['index']) is int and receipt['index'] == index and receipt['symbol'] == symbol
+                         and receipt['preparation'].get('symbol') == symbol,
+                         'OWN_FEATURE_RECEIPT_SCOPE_CONFLICT')
+                _require(receipt['array_hash'] == hashlib.sha256(values[index].tobytes()).hexdigest(),
+                         'OWN_FEATURE_SLICE_CHANGED')
+                rows.append(receipt['preparation'])
+            return rows
+
+        def boundary():
+            if deadline is not None and time.monotonic() >= deadline:
+                from .universe_account_backend_v2 import SegmentBoundary
+                raise SegmentBoundary('UNIVERSE_OWN_FEATURE_NEXT_SEGMENT', phase='AUDIT_FEATURES',
+                                      checkpoint_path=str(binding_path))
+
         previous = _read(manifest_path, identity)
         if previous:
             with array_path.open('rb') as stream:
                 digest = hashlib.file_digest(stream, 'sha256').hexdigest()
             _require(previous['sha256'] == digest, 'OWN_FEATURE_CACHE_CHANGED')
             self.preparation = previous['preparation']
+            self.values = np.load(array_path, mmap_mode='r')
+            try:
+                validate_array(self.values)
+                _require([row['symbol'] for row in self.preparation] == list(inputs.symbols),
+                         'OWN_FEATURE_PREPARATION_SCOPE_CONFLICT')
+                _require(previous.get('cache_format') in (None, 'OWN_FEATURE_PARTITIONS_V1'),
+                         'OWN_FEATURE_CACHE_VERSION_CONFLICT')
+                if previous.get('cache_format') == 'OWN_FEATURE_PARTITIONS_V1':
+                    _require(_read(binding_path, identity) == binding, 'OWN_FEATURE_BINDING_CONFLICT')
+                    _require(prior_rows(self.values) == self.preparation, 'OWN_FEATURE_PREPARATION_SCOPE_CONFLICT')
+                else:
+                    _require(not binding_path.exists() and not list(root.glob('OWN_FEATURE_*.json')),
+                             'OWN_FEATURE_CACHE_VERSION_CONFLICT')
+            except BaseException:
+                self.values._mmap.close()
+                raise
         else:
-            values = np.lib.format.open_memmap(array_path, mode='w+', dtype='float64',
-                shape=(len(inputs.symbols), len(inputs.calendar), len(columns)))
-            values[:] = np.nan
-            daily_groups = inputs.daily.groupby('symbol', sort=False).indices
-            turn_groups = inputs.turn.groupby('symbol', sort=False).indices
-            event_groups = defaultdict(list)
-            for event in inputs.events:
-                event_groups[event['symbol']].append(event)
-            fields_needed = {name for expression in strategy.expressions.values()
-                             for name in _field_references(expression)}
-            self.preparation = []
-            for symbol in inputs.symbols:
-                price_raw = inputs.daily.iloc[daily_groups.get(symbol, [])].sort_values('date').copy()
-                raw = price_raw.loc[price_raw.volume.gt(0)]
-                if raw.empty:
-                    self.preparation.append({'symbol': symbol, 'status': 'NO_VALID_BARS'})
-                    continue
-                price_raw['adjustflag'] = '3'
-                events = tuple(event for event in event_groups[symbol]
-                    if int(raw.date.min()) < event['effective_date'] <= int(raw.date.max()))
-                bars, trace = causal_hfq_bars_v3(price_raw, events, inputs.calendar, inputs.state,
-                    calendar_source=inputs.bundle.get('calendar_source'), source_hashes=inputs.source_hashes)
-                bars = bars.set_index('date')
-                turns = inputs.turn.iloc[turn_groups.get(symbol, [])].set_index('date')
-                vendor = turns['turn'].reindex(bars.index) if 'turn' in turns else None
-                matrix = strategy.build_feature_matrix(bars, vendor)
-                computed = {f'{alias}.{output}': matrix[f'{alias}.{output}'] for alias, output in strategy.references}
-                masks = {name: matrix[name + '__ready'] for name in computed}
-                fields = {name: matrix[name] for name in fields_needed if name in matrix}
-                context = ConditionContext(computed, fields, matrix.index, ready=masks)
-                frame = pd.DataFrame({name: evaluate_condition(expression, context)
-                    for name, expression in strategy.expressions.items()}, index=matrix.index)
-                if 'market_filter' not in frame:
-                    frame['market_filter'] = 1.
-                ready = pd.Series(True, index=matrix.index)
-                condition_refs = {f'{alias}.{output}' for alias, output in
-                                  getattr(strategy, 'condition_references', strategy.references)}
-                for name, series in computed.items():
-                    if name in condition_refs:
-                        ready &= masks[name].eq(True) & series.map(lambda value: math.isfinite(float(value)))
-                for series in fields.values():
-                    ready &= series.map(lambda value: math.isfinite(float(value)))
-                frame['ready'] = ready & frame[['buy', 'sell', 'market_filter']].notna().all(axis=1)
-                if hasattr(strategy, 'selection'):
-                    frame['score'], frame['score_ready'] = strategy.evaluate_selection(matrix)
-                    frame['condition_ready'] = frame['ready']
-                records = [{**{str(key): None if pd.isna(item) else bool(item)
-                    if key in ('ready', 'score_ready', 'condition_ready') else float(item)
-                    for key, item in row.items()}, 'date': int(day)} for day, row in frame.iterrows()]
-                self.preparation.append({'symbol': symbol, 'status': 'COMPUTED', 'bars': len(matrix),
-                    'conditions_hash': stable_hash(records), 'price_trace': trace})
-                indices = [self.days[int(day)] for day in frame.index if int(day) in self.days]
-                selected = frame.loc[[day for day in frame.index if int(day) in self.days], columns]
-                values[self.symbols[symbol], indices, :] = selected.to_numpy(dtype=float)
-            values.flush()
-            del values
+            existing_binding = _read(binding_path, identity)
+            if existing_binding is None:
+                _require(not array_path.exists() and not list(root.glob('OWN_FEATURE_*.json')),
+                         'OWN_FEATURE_INCOMPLETE_BINDING_CONFLICT')
+                values = np.lib.format.open_memmap(array_path, mode='w+', dtype='float64', shape=shape)
+                try:
+                    values[:] = np.nan
+                    values.flush()
+                    _write(binding_path, binding)
+                finally:
+                    values._mmap.close()
+            else:
+                _require(existing_binding == binding and array_path.exists(), 'OWN_FEATURE_BINDING_CONFLICT')
+            values = np.load(array_path, mmap_mode='r+')
+            try:
+                validate_array(values)
+                self.preparation = prior_rows(values)
+                boundary()
+                self._prepare_remaining(strategy, inputs, values, columns, root, identity, boundary)
+                values.flush()
+            finally:
+                values._mmap.close()
             with array_path.open('rb') as stream:
                 digest = hashlib.file_digest(stream, 'sha256').hexdigest()
-            _write(manifest_path, {'version': VERSION, 'identity': identity,
+            _write(manifest_path, {'version': VERSION, 'identity': identity, 'cache_format': 'OWN_FEATURE_PARTITIONS_V1',
                 'sha256': digest, 'preparation': self.preparation})
-        self.values = np.load(array_path, mmap_mode='r')
+            self.values = np.load(array_path, mmap_mode='r')
         self.columns = columns
+
+    def _prepare_remaining(self, strategy, inputs, values, columns, root, identity, boundary):
+        from ..engine.conditions_v2 import ConditionContext
+        from .causal_dividend_features_v1 import causal_hfq_bars_v3
+        from .research_rule_strategy_v2 import _field_references, evaluate_condition
+
+        daily_groups = inputs.daily.groupby('symbol', sort=False).indices
+        turn_groups = inputs.turn.groupby('symbol', sort=False).indices
+        event_groups = defaultdict(list)
+        for event in inputs.events:
+            event_groups[event['symbol']].append(event)
+        fields_needed = {name for expression in strategy.expressions.values()
+                         for name in _field_references(expression)}
+        first = len(self.preparation)
+        for index, symbol in enumerate(inputs.symbols):
+            if index < first:
+                continue
+            boundary()
+            # 未提交证券可能留有崩溃前的数值；从完整历史独立重算这一只。
+            values[index] = np.nan
+            price_raw = inputs.daily.iloc[daily_groups.get(symbol, [])].sort_values('date').copy()
+            raw = price_raw.loc[price_raw.volume.gt(0)]
+            if raw.empty:
+                row = {'symbol': symbol, 'status': 'NO_VALID_BARS'}
+                self._commit_feature(values, index, symbol, row, self.preparation, root, identity)
+                continue
+            price_raw['adjustflag'] = '3'
+            events = tuple(event for event in event_groups[symbol]
+                if int(raw.date.min()) < event['effective_date'] <= int(raw.date.max()))
+            bars, trace = causal_hfq_bars_v3(price_raw, events, inputs.calendar, inputs.state,
+                calendar_source=inputs.bundle.get('calendar_source'), source_hashes=inputs.source_hashes)
+            bars = bars.set_index('date')
+            turns = inputs.turn.iloc[turn_groups.get(symbol, [])].set_index('date')
+            vendor = turns['turn'].reindex(bars.index) if 'turn' in turns else None
+            matrix = strategy.build_feature_matrix(bars, vendor)
+            computed = {f'{alias}.{output}': matrix[f'{alias}.{output}'] for alias, output in strategy.references}
+            masks = {name: matrix[name + '__ready'] for name in computed}
+            fields = {name: matrix[name] for name in fields_needed if name in matrix}
+            context = ConditionContext(computed, fields, matrix.index, ready=masks)
+            frame = pd.DataFrame({name: evaluate_condition(expression, context)
+                for name, expression in strategy.expressions.items()}, index=matrix.index)
+            if 'market_filter' not in frame:
+                frame['market_filter'] = 1.
+            ready = pd.Series(True, index=matrix.index)
+            condition_refs = {f'{alias}.{output}' for alias, output in
+                              getattr(strategy, 'condition_references', strategy.references)}
+            for name, series in computed.items():
+                if name in condition_refs:
+                    ready &= masks[name].eq(True) & series.map(lambda value: math.isfinite(float(value)))
+            for series in fields.values():
+                ready &= series.map(lambda value: math.isfinite(float(value)))
+            frame['ready'] = ready & frame[['buy', 'sell', 'market_filter']].notna().all(axis=1)
+            if hasattr(strategy, 'selection'):
+                frame['score'], frame['score_ready'] = strategy.evaluate_selection(matrix)
+                frame['condition_ready'] = frame['ready']
+            records = [{**{str(key): None if pd.isna(item) else bool(item)
+                if key in ('ready', 'score_ready', 'condition_ready') else float(item)
+                for key, item in row.items()}, 'date': int(day)} for day, row in frame.iterrows()]
+            row = {'symbol': symbol, 'status': 'COMPUTED', 'bars': len(matrix),
+                'conditions_hash': stable_hash(records), 'price_trace': trace}
+            indices = [self.days[int(day)] for day in frame.index if int(day) in self.days]
+            selected = frame.loc[[day for day in frame.index if int(day) in self.days], columns]
+            values[self.symbols[symbol], indices, :] = selected.to_numpy(dtype=float)
+            self._commit_feature(values, index, symbol, row, self.preparation, root, identity)
+
+    @staticmethod
+    def _commit_feature(values, index, symbol, row, preparation, root, identity):
+        values.flush()
+        _write(root / f'OWN_FEATURE_{index:06d}.json', {'version': VERSION, 'identity': identity,
+            'index': index, 'symbol': symbol, 'array_hash': hashlib.sha256(values[index].tobytes()).hexdigest(),
+            'preparation': row})
+        preparation.append(row)
 
     def truth(self, symbol, day):
         row = self.values[self.symbols[symbol], self.days[day]]
@@ -441,7 +529,8 @@ def _reconstruct(bundle, window, result, *, initial_cash, costs, strategy_id,
         _verify_prior_artifact_bytes(day_reader, len(day_reader))
         inputs.assert_unchanged()
         return previous['evidence']
-    frames = _ConditionTable(strategy, inputs, checkpoint_path.parent / (checkpoint_path.stem + '_OWN_FEATURES'), identity)
+    frames = _ConditionTable(strategy, inputs, checkpoint_path.parent / (checkpoint_path.stem + '_OWN_FEATURES'), identity,
+                             deadline=None if segment_seconds is None else started + segment_seconds)
     resources.append(frames.values)
     _tree(result['scan_preparation'], frames.preparation, 'SCAN_PREPARATION_CONFLICT')
     scanner_identity = stable_hash({'version': 'UNIVERSE_SIGNAL_SCAN_V2', 'input_identity': inputs.input_identity,
