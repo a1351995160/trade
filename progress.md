@@ -2916,3 +2916,35 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 - 合格范围是按评价区间资料可用性确定的回顾性范围；历史可投资清单完整性、当时可见性与幸存者偏差没有升级为已验证。资料合格、账户核账、策略盈利、独立验证、Paper 资格分别报告。
 - 当前任务授权固定规则工程验证及旧开发目录清理；唯一研究/原始证据先按 SHA 留恢复包，主目录行情和他人研究不删。旧绝对路径文件可以恢复，但物理签名、冻结计划和许可须重新核验；实际释放与 main 同步另记交付回执。
 - 回滚点 6e300d6a337ee92b7f59d3f95725473c4fcba925；使用发布提交 git revert 或改回 V1 严格模式，保留已消费预算、失败和历史账户记录。
+
+## 2026-10-03 - Task: 修复账户核验身份冲突并重验证同一策略
+
+### What was done
+- 修复universe_evidence_v1.py的FIFO卖出手续费分配运算顺序，保持原值身份与金额容差；增加独立重建账务失败证据。universe_account_backend_v1.py绑定daily_plan.py/common.py并明确期末失败账务范围。没有调整策略、引擎费用、均价或交易规则。
+- 新增tests/research_factory/test_universe_account_identity_v1.py，更新docs/QUALIFIED_UNIVERSE_RESEARCH.md。本次交付reports/strategy_identity_fix_20261003_v1/REPORT_CN.md、FINAL_SUMMARY.json、公共原生任务、冻结对照、原材料保护和测试证据；assemble_delivery.py只汇总已完成证据，不执行账户。
+- 同策略TREND_MOMENTUM_RECOVERY_50K_V1、同20240718—20240731日期、同50000元、同输入/合格范围：全池4607，执行3936，排除671；公共任务5eb6de890000f5968dd9490b43939af43df2975fa876f6c70b2831770bc11f97最终ACCOUNT_VERIFIED。正常期末49460.9367元，压力49353.42190000001元，策略仍亏损；不是独立样本或策略资格。
+
+### Testing
+- 修复前真实合成部分卖出用例2项失败；相关测试96项、新回归22项最终通过（共118，无失败/跳过），日志XML保留。实际压力成交的末位差异补成可移植合成回归。
+- 公共start退出码0，两账户工作进程退出码0/未超时/结算成功，原生完整VERIFICATION均PASS；各10天现金、权益独立重建差额0.0，每日完整3936只扫描。正常账户6组经济/决策/扫描结果与前轮逐项完全相等。
+- 前轮178文件、当前515运行源码、88冻结绑定、登记manifest均逐字节未变。旧预算CONSUMED2、新授权工程重验证CONSUMED2；SOURCE_BASE记录修改后未提交源码身份，未修改旧冻结任务或退款重试。
+
+### Notes
+- 准备期间最终证据序列化补齐后，旧preview被freeze正确以SUBMISSION_PREVIEW_CHANGED拒绝，未执行账户/消费账户额度；保留原记录并刷新后冻结。早期测试注入时点和测试导出字段错误仅修正测试，保留失败日志，没有削弱断言。
+- 原失败无账务快照，不把本轮手续费差异回填成旧失败现场；裸账本均价诊断不适用当前后端，未改均价。压力成本改变002655.SZ止损卖出日期，不能称固定成交路径成本压力。状态可见性、流动性和成本仍为模型，共享指标公式重算非独立公式证明；Paper0、正式资格未授予、未调用原真实模型链。
+- 工作树在main，源码修复未提交/推送；保留此前progress.md全部字节。回滚基点d7634c6d2e51538d0c1440d1fb5d93cc297c5ea4：审阅后仅恢复本次2个源码文件与docs/QUALIFIED_UNIVERSE_RESEARCH.md、移除本次新测试；不执行全工作树reset，不删除账户报告、授权和预算，不退款或改写CONSUMED。原始研究文件不变。
+
+## 2026-10-03 - Task: 提交账户核验修复并准备main发布
+
+### What was done
+- 按用户明确授权提交、推送并合并本次账户核验修复；仅包含核账器、账户后端、22项新回归测试、使用说明、本次任务日志和CI的一行测试目标。当前分支codex/fix-universe-account-identity，基线d7634c6。
+- 将新回归文件加入既有full-universe的Linux/Windows矩阵；其他AI可按AUTONOMOUS_RESEARCH_USER_GUIDE.md、QUALIFIED_UNIVERSE_RESEARCH.md、RESEARCH_CAPABILITIES.md通过原公共入口设计并提交V3策略，无需逐策略重写接入代码。
+
+### Testing
+- 本次修复已有118项本地测试通过，两套同策略/同日期真实账户及完整原生核验PASS，正常成本结果与前轮逐项相等。没有再次启动已消费账户。
+- generate_research_capabilities_v1.py --check为MATCHED；YAML检查确认新回归准确进入Linux/Windows的full-universe目标；源码/说明/CI差异空白检查通过。远端CI、PR及最终main同步状态以reports/strategy_identity_fix_20261003_v1/release_v1/后续发布回执为准，本记录不预先声明远端完成。
+
+### Notes
+- 修改文件：src/chanlun_trader/research_factory/universe_evidence_v1.py（费用顺序和失败重建证据）；universe_account_backend_v1.py（源码绑定和期末失败证据）；tests/research_factory/test_universe_account_identity_v1.py（22项回归）；docs/QUALIFIED_UNIVERSE_RESEARCH.md（核验及重验证说明）；.github/workflows/autonomous-completion.yml（加入本回归）；progress.md（本两项任务追加）。本次发布资料仅在本机release_v1保存，不推送市场数据/账户原件。
+- 之前未提交的研究资料和历史progress内容保持原字节；索引日志仅包含已提交历史与本次两个任务，不把其他待提交研究记录混入修复。发布后在原主目录同步main，不创建额外开发目录。
+- 可回滚到d7634c6，合并后对本PR的合并提交执行git revert -m 1 <merge_sha>（提交方式以发布回执为准）；保留全部账户/失败/授权/预算档案，不退款CONSUMED或修改冻结任务。账户核验通过不代表策略获正式资格，Paper仍0。

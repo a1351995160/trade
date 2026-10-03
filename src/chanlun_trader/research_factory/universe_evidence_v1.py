@@ -247,11 +247,14 @@ class _Reconstruction:
             "positions": sum(bool(p["quantity"]) for p in self.positions.values()),
             "turnover": round(self.turnover, 4), "cash_receivable": receivable, "available_cash": self.cash}
 
-    def economic_identity(self):
-        return stable_hash({"initial_cash": self.policy["initial_cash"], "cash": self.cash,
+    def economic_state(self):
+        return {"initial_cash": self.policy["initial_cash"], "cash": self.cash,
             "reserved_cash": 0., "prices": self.prices,
             "positions": {self.strategy.strategy_id + ":" + s: p for s, p in self.positions.items()},
-            "lots": self.public_lots()})
+            "lots": self.public_lots()}
+
+    def economic_identity(self):
+        return stable_hash(self.economic_state())
 
     def open_actions(self, day):
         stamp = str(_stamp(day))
@@ -449,7 +452,8 @@ class _Reconstruction:
                 amount = min(remaining, lot["remaining_quantity"])
                 if not amount:
                     break
-                realized += (price - lot["cost"] / lot["quantity"]) * amount - fee * amount / quantity
+                # FIFO手续费先按售出份额分配，保持账户身份的浮点运算次序。
+                realized += (price - lot["cost"] / lot["quantity"]) * amount - fee * (amount / quantity)
                 lot["remaining_quantity"] -= amount
                 sold[key] = amount
                 remaining -= amount
@@ -655,7 +659,14 @@ def _plan(plan, previous_day, day, decisions, account, portfolio, inputs):
     _require(plan["input_identity"] == inputs.input_identity and plan["next_session"] == day
              and _time(plan["decision_at"]) == _stamp(previous_day, close=True) + pd.Timedelta(minutes=30), "PLAN_SCOPE_CONFLICT")
     _require(plan["policy_hash"] == stable_hash(portfolio) and plan["members"] == portfolio["members"], "PLAN_POLICY_CONFLICT")
-    _require(plan["account_identity"] == account.economic_identity(), "PLAN_ACCOUNT_IDENTITY_CONFLICT")
+    expected_identity = account.economic_identity()
+    if plan["account_identity"] != expected_identity:
+        error = ValueError("UNIVERSE_AUDIT_PLAN_ACCOUNT_IDENTITY_CONFLICT")
+        error.evidence = {"version": VERSION, "account_date": day,
+            "plan_account_identity": plan["account_identity"],
+            "reconstructed_account_identity": expected_identity,
+            "reconstructed_account": deepcopy(account.economic_state())}
+        raise error
     holdings = [lot for lot in account.public_lots().values() if lot["remaining_quantity"]]
     _tree(plan["holdings"], holdings, "PLAN_HOLDINGS_CONFLICT")
     _require(plan["status"] == "PLANNED" and plan["usage_qualified"] is False
