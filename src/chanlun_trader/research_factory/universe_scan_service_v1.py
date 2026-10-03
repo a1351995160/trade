@@ -63,6 +63,9 @@ def _source_files(strategy) -> dict:
     files.update(REPO / "src" / "chanlun_trader" / name for name in (
         "synthetic_batch_resources.py", "presentation.py", "research/guard.py",
         "engine/individual_dividend_accounting_v1.py"))
+    if strategy.payload.get('version') == 'RESEARCH_RULE_STRATEGY_V4':
+        files.update(folder/name for name in ('universe_compute_governance_v1.py','universe_execution_profile_v1.py',
+            'research_campaign_v1.py','run_budget.py','universe_research_report_v2.py'))
     return {str(_file(path, REPO)): _sha(path) for path in sorted(files)}
 
 
@@ -285,7 +288,9 @@ def _evaluate_conditions(strategy, inputs) -> dict:
         "scanner_identity": scanner.identity if scanner is not None else None}
 
 
-def _worker(root: Path) -> int:
+def _worker(root: Path,phase=None,segment_number=None) -> int:
+    if phase is not None:
+        return _long_prepare_worker(root,phase,segment_number)
     if HANDSHAKE is None or root.resolve() != root:
         raise PermissionError("UNIVERSE_SCAN_RESOURCE_HANDSHAKE_REQUIRED")
     intent_path = _file(root / "SCAN_INTENT.json", root)
@@ -327,7 +332,7 @@ def _worker(root: Path) -> int:
         if sorted(prepared["window"]["symbols"]) != request["symbols"]:
             raise ValueError("UNIVERSE_SCAN_PROVIDER_SHRANK_TARGETS")
         _check_registration(intent["registration"])
-        qualified = request.get('version') == 'FULL_UNIVERSE_SUBMISSION_V2'
+        qualified = request.get('version') in {'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3'}
         if qualified:
             parent_root = root / 'PARENT'
             parent_root.mkdir()
@@ -374,6 +379,183 @@ def _worker(root: Path) -> int:
         return 1
 
 
+def _long_prepare_worker(root,phase,number):
+    intent=read_json(root/'SCAN_INTENT.json')
+    from chanlun_trader.research_factory.universe_compute_governance_v1 import UniverseComputeGovernanceV1
+    meter=UniverseComputeGovernanceV1(root/'COMPUTE',intent['compute_authority'],intent['preview']['request'],'PREPARATION')
+    pending=meter.status()['pending']
+    try:
+        return _long_prepare_worker_impl(root,phase,number)
+    except Exception as exc:
+        if pending and pending['number']==number:
+            immutable(root/('PREPARE_'+str(number).zfill(6)+'_FAILURE.json'),{
+                'dispatch_id':pending['dispatch_id'],'scope_identity':intent['intent_identity'],
+                'exception_type':type(exc).__name__,'message':str(exc),'automatic_retry':False})
+        raise
+
+
+def _long_prepare_worker_impl(root,phase,number):
+    """两个受限阶段共用一个DATA用途；阶段间原件被冻结并重新核对。"""
+    from chanlun_trader.research_factory.universe_compute_governance_v1 import UniverseComputeGovernanceV1
+    from chanlun_trader.research_factory.universe_data_provider_v1 import UniverseDataProviderV1
+    from chanlun_trader.research_factory.strategy_submission_v1 import public_rule_factory
+    from chanlun_trader.research_factory.universe_submission_v1 import freeze_universe_bundle,restore_universe_bundle
+    intent=read_json(_file(root/'SCAN_INTENT.json',root)); request=intent['preview']['request']
+    meter=UniverseComputeGovernanceV1(root/'COMPUTE',intent['compute_authority'],request,'PREPARATION')
+    pending=meter.status()['pending']
+    expected={'purpose':intent['scan_id'],'intent_identity':intent['intent_identity'],
+              'phase':phase,'segment_number':number,'dispatch_id':pending['dispatch_id'] if pending else None}
+    if (HANDSHAKE is None or pending is None or pending['number'] != number or HANDSHAKE.get('execution') != expected
+            or HANDSHAKE['memory_mib'] != meter.profile['memory_mib']
+            or not 0 < HANDSHAKE['wall_seconds'] <= pending['upper_bound_seconds']
+            or intent['intent_identity'] != stable_hash({k:v for k,v in intent.items() if k!='intent_identity'})
+            or request['version'] != 'FULL_UNIVERSE_SUBMISSION_V3'):
+        raise PermissionError('UNIVERSE_PREPARATION_WORKER_SCOPE_CONFLICT')
+    _check_code(intent['source_hashes']); _check_registration(intent['registration']); _authorize(intent['authority'],request)
+    meter.active()
+    immutable(root/('PREPARE_'+str(number).zfill(6)+'_ACCESS.json'),{'reader_pid':os.getpid(),
+        'reader_parent_pid':os.getppid(),'launcher_pid':HANDSHAKE.get('launcher_pid'),
+        'windows_job_verified':HANDSHAKE.get('windows_job_verified',False),
+        'resource_platform':os.name,'dispatch_id':pending['dispatch_id'],'phase':phase})
+    strategy=public_rule_factory(request['rule'],request['strategy_id'])
+    if strategy.rule_identity != intent['preview']['rule_identity']:
+        raise PermissionError('UNIVERSE_SCAN_RULE_CHANGED')
+    parent=root/'PARENT';parent_input=parent/'INPUT.json'
+    if phase=='PREPARE':
+        provider=UniverseDataProviderV1({'registered':intent['registration']['root']})
+        provider.register_manifest(request['dataset_id'],'registered',intent['registration']['original_metadata_path'])
+        prepared,inputs=provider._prepare_with_inputs(request['dataset_id'],symbols=request['symbols'],
+            universe_id=request['universe_id'],feature_start=request['feature_start'],account_start=request['account_start'],
+            account_end=request['account_end'],purpose=request['purpose'],stage='SCAN',normalization_fields=(),
+            required_fields=strategy.requirements.fields,warmup_bars=strategy.requirements.warmup_sessions,
+            authorization=intent['authority']['data_authorization'])
+        if prepared['window']['symbols'] != request['symbols']:
+            raise ValueError('UNIVERSE_SCAN_PROVIDER_SHRANK_TARGETS')
+        actual=sum(d>=request['account_start'] for d in prepared['window']['calendar'])
+        if actual != request['execution_profile']['account_sessions']:
+            raise ValueError('UNIVERSE_EXECUTION_PROFILE_SESSION_CONFLICT')
+        parent.mkdir();freeze_universe_bundle(prepared,parent)
+        immutable(root/'PREPARED_PARENT.json',{'path':str(parent_input),'sha256':_sha(parent_input),
+            'input_identity':prepared['input_identity'],'intent_identity':intent['intent_identity'],
+            'account_sessions':actual})
+        return 75
+    if not (root/'PREPARED_PARENT.json').exists():
+        raise PermissionError('UNIVERSE_PREPARATION_PARENT_REQUIRED')
+    binding=read_json(root/'PREPARED_PARENT.json')
+    if binding['intent_identity'] != intent['intent_identity'] or binding['sha256'] != _sha(parent_input):
+        raise PermissionError('UNIVERSE_PREPARATION_PARENT_CHANGED')
+    snapshot=read_json(parent_input);restored=restore_universe_bundle(snapshot,parent_input)
+    prepared={**snapshot,'bundle':restored['frame']}
+    from chanlun_trader.research_factory.universe_qualified_scope_v1 import qualify_universe_bundle
+    derived=qualify_universe_bundle(prepared,required_fields=strategy.requirements.fields,
+        warmup_bars=strategy.requirements.warmup_sessions)
+    if derived['ready']:freeze_universe_bundle(derived,root)
+    scope=derived['scope_receipt'];excluded={row['symbol']:row for row in scope['excluded']}
+    coverage=deepcopy(scope['account_audit']['coverage'])
+    coverage['completeness']=intent['preview']['data_metadata']['completeness']
+    _check_code(intent['source_hashes']);_check_registration(intent['registration']);meter.active()
+    _write_result(root,{**_base_result(intent),'status':'QUALIFIED_SCOPE_READY' if derived['ready'] else 'QUALIFIED_SCOPE_BLOCKED',
+        'processed_target_count':len(request['symbols']),'qualification_checked':True,'strategy_signals_scanned':False,
+        'signals_evaluated_target_count':0,'signals_evaluated_session_count':0,'unknown_target_count':len(excluded),
+        'qualified_account_ready':derived['ready'],'qualification_scope':scope,'qualified_input_identity':derived['input_identity'],
+        'input_identity':derived['input_identity'] or prepared['input_identity'],'coverage':coverage,
+        'historical_availability':prepared['qualification']['historical_availability'],
+        'source_hashes':deepcopy(prepared['bundle']['source_hashes']),'source_bytes_verified_in_worker':True,
+        'preparation_profile':meter.profile,'compute_consumed':True,
+        'per_symbol':[{'symbol':symbol,'status':'EXCLUDED' if symbol in excluded else
+            'DATA_QUALIFIED' if derived['ready'] else 'ACCOUNT_SCOPE_BLOCKED',
+            'reasons':excluded.get(symbol,{}).get('reasons',scope['blocking_global_gaps']),
+            'evaluated_sessions':0,'unknown_sessions':None,'condition_counts':None} for symbol in request['symbols']]})
+    return 0
+
+
+def _run_long_preparation(root,intent):
+    import time
+    from .universe_execution_profile_v1 import worker_wall_seconds
+    from .universe_compute_governance_v1 import UniverseComputeGovernanceV1
+    meter=UniverseComputeGovernanceV1(root/'COMPUTE',intent['compute_authority'],intent['preview']['request'],'PREPARATION')
+    meter.start()
+    resources=[]
+    for phase in ('PREPARE','QUALIFY'):
+        dispatch=meter.dispatch();number=dispatch['number'];prefix='PREPARE_'+str(number).zfill(6)
+        env={**os.environ,'PYTHONPATH':os.pathsep.join((str(REPO/'src'),str(REPO))),'PYTHONDONTWRITEBYTECODE':'1',
+             **{name:'1' for name in ('OMP_NUM_THREADS','OPENBLAS_NUM_THREADS','MKL_NUM_THREADS','NUMEXPR_NUM_THREADS')}}
+        env.pop('CHANLUN_TEST_ISOLATION',None);begin=time.monotonic()
+        try:
+            resource=run_bounded_worker([sys.executable,str(Path(__file__)), '--worker',str(root),'--phase',phase,'--segment',str(number)],
+                root=REPO,memory_mib=meter.profile['memory_mib'],wall_seconds=worker_wall_seconds(dispatch['upper_bound_seconds']),environment=env,measure_peak_memory=True,
+                execution={'purpose':intent['scan_id'],'intent_identity':intent['intent_identity'],'phase':phase,
+                           'segment_number':number,'dispatch_id':dispatch['dispatch_id']},
+                on_started=lambda pid:immutable(root/(prefix+'_WORKER.json'),{'pid':pid,'dispatch_id':dispatch['dispatch_id']}))
+        except Exception as exc:
+            resource={'returncode':None,'timed_out':False,'error':str(exc)}
+        elapsed=time.monotonic()-begin
+        resource={k:v.decode('utf-8',errors='replace') if isinstance(v,bytes) else v for k,v in resource.items()}
+        resource.update(elapsed_wall_seconds=elapsed,phase=phase,dispatch_id=dispatch['dispatch_id'])
+        path=root/(prefix+'_RESOURCE.json');immutable(path,resource);resources.append(resource)
+        expected=75 if phase=='PREPARE' else 0
+        success=elapsed<=dispatch['upper_bound_seconds'] and resource.get('returncode')==expected and not resource.get('timed_out')
+        meter.charge(number,seconds=elapsed,evidence_identity=_sha(path),
+            outcome='CONTINUE' if success and phase=='PREPARE' else 'COMPLETED' if success else 'FAILED')
+        if not success:
+            if not (root/'RESULT.json').exists():
+                _write_result(root,_blocked_result(intent,'UNIVERSE_PREPARATION_WORKER_FAILED'))
+            break
+    summary={**resources[-1],'elapsed_wall_seconds':meter.status()['charged_seconds'],
+             'segment_count':len(resources),'preparation_profile':meter.profile,'active_metering':True}
+    immutable(root/'RESOURCE.json',summary)
+    result=_receipt(root,intent,summary)
+    return {**result,'recorded_only':False,'content_reread':True,'freshly_scanned':True}
+
+
+def reconcile_long_preparation(root):
+    """仅结清已退出的原准备进程；已知失败不可作为未知崩溃重试。"""
+    from .universe_compute_governance_v1 import UniverseComputeGovernanceV1
+    from ..research_daemon_state import DaemonInstanceLockV1
+    root=Path(root).absolute();intent=read_json(_file(root/'SCAN_INTENT.json',root))
+    if (intent['intent_identity']!=stable_hash({k:v for k,v in intent.items() if k!='intent_identity'})
+            or intent['preview']['request']['version']!='FULL_UNIVERSE_SUBMISSION_V3'):
+        raise PermissionError('UNIVERSE_PREPARATION_SCOPE_CHANGED')
+    _check_code(intent['source_hashes'])
+    meter=UniverseComputeGovernanceV1(root/'COMPUTE',intent['compute_authority'],intent['preview']['request'],'PREPARATION')
+    state=meter.reconcile_segment_mirrors();pending=state['pending']
+    if pending:
+        prefix='PREPARE_'+str(pending['number']).zfill(6);worker=root/(prefix+'_WORKER.json')
+        if not worker.exists() or read_json(worker).get('dispatch_id')!=pending['dispatch_id']:
+            raise PermissionError('UNIVERSE_PREPARATION_WORKER_START_UNKNOWN')
+        pids=[read_json(worker)['pid']];access=root/(prefix+'_ACCESS.json')
+        if access.exists():pids.append(read_json(access)['reader_pid'])
+        if any(DaemonInstanceLockV1._pid_alive(int(pid)) for pid in pids):
+            raise PermissionError('UNIVERSE_PREPARATION_WORKER_STILL_ACTIVE')
+        failure_path=root/(prefix+'_FAILURE.json');resource_path=root/(prefix+'_RESOURCE.json')
+        failure=read_json(failure_path) if failure_path.exists() else None
+        if failure and (failure.get('dispatch_id')!=pending['dispatch_id'] or failure.get('scope_identity')!=intent['intent_identity']):
+            raise PermissionError('UNIVERSE_PREPARATION_FAILURE_DISPATCH_CONFLICT')
+        if failure is None and not resource_path.exists():
+            raise PermissionError('UNIVERSE_PREPARATION_UNKNOWN_REQUIRES_RECONCILIATION')
+        resource=read_json(resource_path) if resource_path.exists() else {}
+        if resource and resource.get('dispatch_id')!=pending['dispatch_id']:
+            raise PermissionError('UNIVERSE_PREPARATION_RESOURCE_DISPATCH_CONFLICT')
+        seconds=resource.get('elapsed_wall_seconds')
+        failed=bool(failure) or resource.get('timed_out') or resource.get('returncode') not in (0,75) or seconds>pending['upper_bound_seconds']
+        if not failed:
+            raise PermissionError('UNIVERSE_PREPARATION_CONTINUATION_REQUIRES_RECONCILIATION')
+        meter.charge(pending['number'],seconds=seconds,
+            evidence_identity=_sha(resource_path) if resource_path.exists() else _sha(failure_path),outcome='FAILED')
+        state=meter.status()
+    if not state['segments'] or state['segments'][-1]['charge']['outcome']!='FAILED':
+        raise PermissionError('UNIVERSE_PREPARATION_TERMINAL_FAILURE_REQUIRED')
+    if not (root/'RESULT.json').exists():
+        _write_result(root,_blocked_result(intent,'UNIVERSE_PREPARATION_KNOWN_FAILURE_NO_RETRY'))
+    last=state['segments'][-1];prefix='PREPARE_'+str(last['dispatch']['number']).zfill(6)
+    resource_path=root/(prefix+'_RESOURCE.json')
+    summary={**(read_json(resource_path) if resource_path.exists() else {}),
+        'returncode':1,'elapsed_wall_seconds':state['charged_seconds'],'segment_count':len(state['segments']),
+        'preparation_profile':meter.profile,'active_metering':True,'known_failure':True}
+    immutable(root/'RESOURCE.json',summary)
+    return _receipt(root,intent,summary)
+
+
 def _receipt(root: Path, intent: dict, resource: dict) -> dict:
     result_path, resource_path = _file(root / "RESULT.json", root), _file(root / "RESOURCE.json", root)
     result = read_json(result_path)
@@ -387,6 +569,30 @@ def _receipt(root: Path, intent: dict, resource: dict) -> dict:
         raise ValueError("UNIVERSE_SCAN_RESOURCE_RESULT_CONFLICT")
     artifacts = {str(path): {"sha256": _sha(path), "physical_signature": _signature(path)}
                  for path in (result_path, resource_path, _file(root / "REPORT_CN.md", root))}
+    if intent['preview']['request']['version']=='FULL_UNIVERSE_SUBMISSION_V3':
+        from .universe_compute_governance_v1 import UniverseComputeGovernanceV1
+        meter=UniverseComputeGovernanceV1(root/'COMPUTE',intent['compute_authority'],intent['preview']['request'],'PREPARATION')
+        state=meter.status()
+        if state['pending'] is not None or resource.get('elapsed_wall_seconds')!=state['charged_seconds']:
+            raise PermissionError('UNIVERSE_PREPARATION_RESOURCE_CHAIN_CONFLICT')
+        if state['segments'][-1]['charge']['outcome']=='FAILED' and result['status']!='SCAN_BLOCKED':
+            raise PermissionError('UNIVERSE_PREPARATION_FAILED_RESULT_NOT_USABLE')
+        for row in state['segments']:
+            number=row['dispatch']['number'];prefix='PREPARE_'+str(number).zfill(6)
+            resource_item=root/(prefix+'_RESOURCE.json')
+            evidence=resource_item if resource_item.exists() else root/(prefix+'_FAILURE.json')
+            if row['charge']['evidence_identity']!=_sha(_file(evidence,root)):
+                raise PermissionError('UNIVERSE_PREPARATION_SEGMENT_RESOURCE_CHANGED')
+            for suffix in ('_WORKER.json','_ACCESS.json','_RESOURCE.json','_FAILURE.json'):
+                path=root/(prefix+suffix)
+                if not path.exists():
+                    if suffix=='_FAILURE.json' or row['charge']['outcome']=='FAILED':continue
+                    raise PermissionError('UNIVERSE_PREPARATION_SEGMENT_EVIDENCE_MISSING')
+                path=_file(path,root)
+                artifacts[str(path)]={'sha256':_sha(path),'physical_signature':_signature(path)}
+        for path in sorted((root/'COMPUTE').glob('*.json')):
+            path=_file(path,root)
+            artifacts[str(path)]={'sha256':_sha(path),'physical_signature':_signature(path)}
     for name in ('QUALIFICATION_SCOPE.json', 'EXCLUSIONS.csv'):
         if (root / name).exists():
             path = _file(root / name, root)
@@ -426,7 +632,7 @@ def _archived(root: Path, intent: dict) -> dict:
 
 def scan_universe(service, request: dict, preview_identity: str) -> dict:
     """受既有数据授权执行一次公共全范围检查，不创建或消费账户预算。"""
-    if not isinstance(request, dict) or request.get("version") not in {'FULL_UNIVERSE_SUBMISSION_V1', 'FULL_UNIVERSE_SUBMISSION_V2'}:
+    if not isinstance(request, dict) or request.get("version") not in {'FULL_UNIVERSE_SUBMISSION_V1', 'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3'}:
         raise ValueError("UNIVERSE_SCAN_REQUEST_REQUIRED")
     preview = service.preview(request)
     if preview["preview_identity"] != preview_identity:
@@ -439,7 +645,7 @@ def scan_universe(service, request: dict, preview_identity: str) -> dict:
     identity_scope = {"objective_id": approved["objective_id"], "dataset_id": normalized["dataset_id"],
         "universe_id": normalized["universe_id"], "rule_identity": strategy.rule_identity,
         **{name: normalized[name] for name in ("feature_start", "account_start", "account_end")}}
-    if normalized['version'] == 'FULL_UNIVERSE_SUBMISSION_V2':
+    if normalized['version'] in {'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3'}:
         # V2只审核资料，不计算信号或绩效；修正资金/持仓请求须有独立预览绑定。
         identity_scope['qualified_preview_identity'] = preview_identity
     key = stable_hash(identity_scope)
@@ -456,6 +662,18 @@ def scan_universe(service, request: dict, preview_identity: str) -> dict:
             "authority": approved, "authorization_identity": stable_hash(authority),
             "registration": registration, "registration_snapshot_sha256": _sha(metadata_path),
             "source_hashes": hashes, "limits": deepcopy(LIMITS)}
+        long_horizon=normalized['version']=='FULL_UNIVERSE_SUBMISSION_V3'
+        if long_horizon:
+            from .universe_compute_governance_v1 import authorized_compute_profile
+            for stage in ('PREPARATION','VERIFICATION','REPORT'):
+                authorized_compute_profile(authority,normalized,stage)
+            intent['compute_authority']=deepcopy(authority)
+            intent['preparation_profile']=authorized_compute_profile(authority,normalized,'PREPARATION')
+            for filename in ('universe_compute_governance_v1.py','universe_execution_profile_v1.py',
+                             'research_campaign_v1.py','run_budget.py','universe_research_report_v2.py',
+                             'universe_report_state_v1.py'):
+                physical=Path(__file__).with_name(filename)
+                intent['source_hashes'][str(physical)]=_sha(physical)
         intent["intent_identity"] = stable_hash(intent)
         path = root / "SCAN_INTENT.json"
         if path.exists() and read_json(_file(path, root)) != intent:
@@ -464,12 +682,16 @@ def scan_universe(service, request: dict, preview_identity: str) -> dict:
         if (root / "SCAN_RECEIPT.json").exists():
             return _archived(root, intent)
         if (root / "START.json").exists():
+            if long_horizon:
+                return {**reconcile_long_preparation(root),'recorded_only':True,'content_reread':False,'freshly_scanned':False}
             raise ValueError("UNIVERSE_SCAN_INTERRUPTED_REQUIRES_RECONCILIATION")
         remaining = (datetime.fromisoformat(approved["expires_at"]) - datetime.now(timezone.utc)).total_seconds()
         if remaining <= 0:
             raise PermissionError("UNIVERSE_SCAN_AUTHORITY_EXPIRED")
         immutable(root / "START.json", {"intent_identity": intent["intent_identity"],
                                       "started_at": datetime.now(timezone.utc).isoformat()})
+        if long_horizon:
+            return _run_long_preparation(root,intent)
         env = os.environ.copy()
         env.update(PYTHONPATH=os.pathsep.join((str(REPO / "src"), str(REPO))), PYTHONDONTWRITEBYTECODE="1")
         env.pop("CHANLUN_TEST_ISOLATION", None)
@@ -523,11 +745,11 @@ def validated_scan_snapshot(service, scanned: dict) -> dict:
             or snapshot.get("input_identity") != archived["input_identity"]
             or sorted(snapshot.get("window", {}).get("symbols", [])) !=
                 (archived.get('qualification_scope', {}).get('qualified_symbols', [])
-                 if intent['preview']['request']['version'] == 'FULL_UNIVERSE_SUBMISSION_V2'
+                 if intent['preview']['request']['version'] in {'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3'}
                  else intent["preview"]["request"]["symbols"])):
         raise ValueError("UNIVERSE_SCAN_SNAPSHOT_BINDING_CONFLICT")
     parent_reference = {}
-    if intent['preview']['request']['version'] == 'FULL_UNIVERSE_SUBMISSION_V2':
+    if intent['preview']['request']['version'] in {'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3'}:
         parent = _file(root / 'PARENT' / 'INPUT.json', root)
         parent_value = read_json(parent)
         scope = archived['qualification_scope']
@@ -546,8 +768,10 @@ def validated_scan_snapshot(service, scanned: dict) -> dict:
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--worker", type=Path, required=True)
+    parser.add_argument('--phase',choices=('PREPARE','QUALIFY'))
+    parser.add_argument('--segment',type=int)
     args = parser.parse_args(argv)
-    return _worker(args.worker.absolute())
+    return _worker(args.worker.absolute(),args.phase,args.segment)
 
 
 if __name__ == "__main__":

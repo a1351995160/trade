@@ -70,11 +70,17 @@ class UniverseSignalScanV1:
                 if 'market_filter' not in conditions:
                     conditions['market_filter'] = 1.0
                 mask = pd.Series(True, index=matrix.index)
+                condition_refs = {f'{a}.{o}' for a, o in getattr(strategy, 'condition_references', strategy.references)}
                 for key, series in values.items():
+                    if key not in condition_refs:
+                        continue
                     mask &= ready[key].eq(True) & series.map(lambda v: math.isfinite(float(v)))
                 for series in fields.values():
                     mask &= series.map(lambda v: math.isfinite(float(v)))
                 conditions['ready'] = mask & conditions[['buy', 'sell', 'market_filter']].notna().all(axis=1)
+                if hasattr(strategy, 'evaluate_selection'):
+                    conditions['score'], conditions['score_ready'] = strategy.evaluate_selection(matrix)
+                    conditions['condition_ready'] = conditions['ready']
                 self.conditions[symbol] = conditions
                 self.preparation.append({'symbol': symbol, 'status': 'COMPUTED', 'bars': len(matrix),
                     'conditions_hash': stable_hash(_records(conditions)), 'price_trace': price_trace})
@@ -88,9 +94,13 @@ class UniverseSignalScanV1:
             return {'buy': None, 'sell': None, 'market_filter': None, 'ready': False,
                     'reason': self._preparation_gaps.get(symbol, 'NO_COMPLETED_BAR')}
         row = frame.loc[day]
-        return {**{key: None if pd.isna(row[key]) else bool(row[key])
+        value = {**{key: None if pd.isna(row[key]) else bool(row[key])
                    for key in ('buy', 'sell', 'market_filter')},
                 'ready': bool(row['ready']), 'reason': 'COMPUTED'}
+        if 'score' in row:
+            value.update(score=None if pd.isna(row['score']) else float(row['score']),
+                         score_ready=bool(row['score_ready']), condition_ready=bool(row['ready']))
+        return value
 
 
 def _field_references_union(strategy):
@@ -99,7 +109,7 @@ def _field_references_union(strategy):
 
 def _records(frame):
     # 不把 NaN 当 JSON 数值；UNKNOWN 仍保持未知。
-    return [{**{str(key): None if pd.isna(value) else bool(value) if key == 'ready' else float(value)
+    return [{**{str(key): None if pd.isna(value) else bool(value) if key in ('ready', 'score_ready', 'condition_ready') else float(value)
                 for key, value in row.items()}, 'date': int(day)} for day, row in frame.iterrows()]
 
 

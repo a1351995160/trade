@@ -14,7 +14,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        suite: [workflow, formal-scope, full-universe]
+        suite: [workflow, formal-scope, full-universe, long-horizon]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 150
     env:
@@ -89,6 +89,49 @@ jobs:
           tests/research_factory/test_formal_rule_adapter_v2.py
           --basetemp=${{ runner.temp }}/formal-scope-tests
           --junitxml=completion-tests.xml
+      - name: Verify long-horizon public entry, continuation and independent evidence
+        if: matrix.suite == 'long-horizon'
+        env:
+          CHANLUN_PROCESS_EVIDENCE_DIR: ${{ runner.temp }}/long-horizon-resource-evidence
+        run: >-
+          python -m pytest -q
+          tests/research_factory/test_universe_execution_profile_v1.py
+          tests/research_factory/test_universe_compute_governance_v1.py
+          tests/research_factory/test_universe_execution_state_v2.py
+          tests/research_factory/test_universe_streaming_execution_v1.py
+          tests/research_factory/test_research_rule_strategy_v4.py
+          tests/research_factory/test_universe_selection_v1.py
+          tests/research_factory/test_portfolio_allocation_explanation_v1.py
+          tests/research_factory/test_universe_signal_funnel_v1.py
+          tests/research_factory/test_universe_evidence_v2.py
+          tests/research_factory/test_universe_research_report_v2.py
+          tests/research_factory/test_universe_report_continuation_v1.py
+          tests/research_factory/test_long_horizon_public_submission_v1.py
+          tests/research_factory/test_long_horizon_submission_web_v1.py
+          tests/research_factory/test_long_horizon_acceptance_v1.py
+          tests/research_factory/test_long_horizon_segment_evidence_v1.py
+          tests/research_factory/test_long_horizon_failure_recovery_v1.py
+          tests/research_factory/test_long_horizon_resources_v1.py
+          tests/research_factory/test_long_horizon_compute_cache_v1.py
+          tests/research_factory/test_universe_campaign_segment_mirror_v1.py
+          tests/research_factory/test_long_horizon_publication_v1.py
+          tests/research_factory/test_baostock_raw_supplement_v1.py
+          tests/research_factory/test_prepare_long_horizon_data_v1.py
+          tests/research_factory/test_long_horizon_relative_references_v1.py
+          --basetemp=${{ runner.temp }}/long-horizon-tests
+          --junitxml=completion-tests.xml
+      - name: Set up Node for long-horizon console regression
+        if: matrix.suite == 'long-horizon'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify console tests and production build
+        if: matrix.suite == 'long-horizon'
+        working-directory: frontend
+        run: |
+          npm ci
+          npm test
+          npm run build
       - name: Verify full historical universe and shared account contracts
         if: matrix.suite == 'full-universe'
         run: >-

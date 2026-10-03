@@ -2948,3 +2948,21 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 - 修改文件：src/chanlun_trader/research_factory/universe_evidence_v1.py（费用顺序和失败重建证据）；universe_account_backend_v1.py（源码绑定和期末失败证据）；tests/research_factory/test_universe_account_identity_v1.py（22项回归）；docs/QUALIFIED_UNIVERSE_RESEARCH.md（核验及重验证说明）；.github/workflows/autonomous-completion.yml（加入本回归）；progress.md（本两项任务追加）。本次发布资料仅在本机release_v1保存，不推送市场数据/账户原件。
 - 之前未提交的研究资料和历史progress内容保持原字节；索引日志仅包含已提交历史与本次两个任务，不把其他待提交研究记录混入修复。发布后在原主目录同步main，不创建额外开发目录。
 - 可回滚到d7634c6，合并后对本PR的合并提交执行git revert -m 1 <merge_sha>（提交方式以发布回执为准）；保留全部账户/失败/授权/预算档案，不退款CONSUMED或修改冻结任务。账户核验通过不代表策略获正式资格，Paper仍0。
+
+## 2026-10-03 - Task: 执行全池长期研究计划与真实规模验收（进行中）
+
+### What was done
+- 按用户指定 ce-work 执行 docs/plans/2026-10-03-001-feat-long-horizon-universe-research-plan.md；在隔离分支 codex/long-horizon-universe-research 开发，基线 786de0d307b770b6ac8f9a99e4349a588ed90ca1。主目录中其他 AI 的修改、研究记录和活跃任务保持原样。
+- 新增 FULL_UNIVERSE_SUBMISSION_V3、RESEARCH_RULE_STRATEGY_V4 与 UNIVERSE_ACCOUNT_BACKEND_V2：全登记检查、全合格扫描、固定评分、分段累计资源、完整状态恢复、独立核账、数量原因漏斗、账户与信号双报告；准备/核验/报告各自受治理，不以账户超时放宽其他阶段。
+- 公共 CLI/API/工作台展示资源、评分、状态及暂停恢复；更新能力目录和中文使用说明。新增原生 BaoStock RAW 接入及长期准备程序，不伪造旧格式来源，不改写旧正式数据资格。
+- 为实际 U8 冻结全部 4607 只登记证券的 9214 个原件请求，采集目录为主目录 data/long_horizon_universe_v1。252/504 账户及对照将保存在主目录 reports/long_horizon_universe_acceptance_v1；目前采集仍进行，未声称真实 504 验收完成。
+
+### Testing
+- 专项已通过：评分与旧策略兼容 53 项；新数据/日期相关 66 项；账户与报告/漏斗相关 136 项，最终报告续跑 58 项；公共新入口/治理专项 83 项。前端 27 项、构建、工作台/API 24 项通过，真实只读浏览器验收证据保存在上述主目录 ui/。
+- 中断资源门新增 6 项，区分实际测量与保守上界收费；与特征分片 4 项合计 10 项通过。完整测试及独立审查正在执行，发现的失败与缺陷需修正后再次核对，不能据专项通过替代全计划验收。
+- 实际 252/504 全池六账户验收、远端 Windows/Linux CI、推送合并及主目录同步尚未完成；最终状态将追加真实证据。
+
+### Notes
+- 修改涉及 research_factory 的新版本后端/规则/状态/报告及治理接线、公共脚本、webapp、工作台、专项测试、CI 与 docs；不增加 ATR 止损、市场指数上下文、分钟/实盘或正式统计资格。
+- 历史状态可见时间仍标 MODELED；全窗口 DATA_QUALIFIED 不是完整历史可投资市场证明。信号观察不是实际账户收益，工程验收允许策略亏损，不领取正式资格或 Paper 天数。
+- 回滚点为 786de0d；未合并时仅恢复本分支自有代码，合并后对本 PR 合并提交执行 git revert。保留授权、预算、失败与原始数据/账户证据，不退款 CONSUMED，不删除其他 AI 文件。交付后仅归档本次开发工作区。

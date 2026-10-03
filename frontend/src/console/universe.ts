@@ -21,17 +21,30 @@ export function isFullUniverseDataset(dataset: UniverseDataset | undefined): boo
 }
 
 export function submissionRequest(base: Record<string, unknown>, dataset: UniverseDataset | undefined,
-  symbols: string, accountScope = 'FULL_REQUIRED'): Record<string, unknown> {
+  symbols: string, accountScope = 'FULL_REQUIRED', executionProfile?: Record<string, unknown>): Record<string, unknown> {
   const request = { ...base }
   delete request.symbols
   delete request.version
   delete request.universe_id
   delete request.account_scope
+  delete request.execution_profile
+  delete request.observation_plan
   if (isFullUniverseDataset(dataset)) {
     request.version = accountScope === 'DATA_QUALIFIED' ? 'FULL_UNIVERSE_SUBMISSION_V2' : 'FULL_UNIVERSE_SUBMISSION_V1'
     if (accountScope === 'DATA_QUALIFIED') request.account_scope = 'DATA_QUALIFIED'
     request.universe_id = dataset!.universe_id
     request.benchmark = 'CASH_AND_PRICE_REFERENCE'
+    if (executionProfile) {
+      request.version = 'FULL_UNIVERSE_SUBMISSION_V3'
+      request.account_scope = 'DATA_QUALIFIED'
+      request.execution_profile = { ...executionProfile }
+      request.observation_plan = { version: 'SIGNAL_OBSERVATION_PLAN_V1', horizons: [5, 10, 20],
+        entry: 'NEXT_EXCHANGE_SESSION_RAW_OPEN', exit: 'HORIZON_SESSION_RAW_CLOSE',
+        price_policy: 'FRACTIONAL_ONE_SHARE_ENTITLED_ECONOMIC_VALUE_V1',
+        comparator: 'QUALIFIED_SCOPE_EQUAL_WEIGHT_SAME_ENTRY_HORIZON',
+        start: Number(String(request.account_start).replace(/-/g, '')),
+        end: Number(String(request.account_end).replace(/-/g, '')) }
+    }
   } else {
     request.symbols = symbols.split(/[，,\s]+/).filter(Boolean)
     request.benchmark = 'FULL_POOL_BUY_HOLD'
@@ -99,16 +112,71 @@ export function universeRunState(value: unknown): string {
     REAL_NOT_ACCEPTED: '尚无真实全范围验收证据',
     WAITING_DATA: '等待补齐数据', SCANNING: '正在扫描登记的全部股票',
     RUNNING: '正在处理', COMPLETED: '指定任务已完成；策略资格另行评审',
+    PAUSED: '已在安全边界暂停；原账户和预算保留', PAUSE_REQUESTED: '已请求暂停，等待收盘或换段安全边界',
+    READY_TO_CONTINUE: '已完成一段，原用途可继续', RESUME_REQUIRED: '需核对原任务后恢复',
+    PREPARATION_RUNNING: '正在准备全部合格股票的因果指标',
+    ACCOUNT_RUNNING: '正在推进连续交易账户', VERIFICATION_RUNNING: '正在独立核对账户',
+    REPORT_RUNNING: '正在生成账户与信号两份报告',
+    PREPARATION: '指标准备', ACCOUNT: '连续账户', VERIFICATION: '独立核账', REPORT: '双报告',
     RECONCILED_DIAGNOSTIC: '账户已核对；不代表策略已证明有效',
   }
   return typeof value === 'string' ? labels[value] ?? value : '尚未提供状态'
+}
+
+export function universeTaskState(record: Record<string, unknown>): string {
+  if (typeof record.status === 'string') return universeRunState(record.status)
+  const items = Object.values((record.items ?? {}) as Record<string, Record<string, unknown>>)
+  if (items.length && items.length === record.total && items.every(item => item.state === 'COMPLETED')) {
+    return '全部账户用途已完成；核账、报告和策略资格须分别查看证据'
+  }
+  return universeRunState(record.status)
 }
 
 export function universeTaskAllowsResume(record: Record<string, unknown> | null, taskId: string): boolean {
   if (!record || record.task_id !== taskId || record.version !== 'UNIVERSE_TASK_METADATA_V1') return false
   const items = record.items && typeof record.items === 'object'
     ? record.items as Record<string, Record<string, unknown>> : {}
-  return Object.values(items).some(item => item.state === 'UNSETTLED_CHECK_WORKER')
+  const stages = record.compute_stages && typeof record.compute_stages === 'object'
+    ? record.compute_stages as Record<string, Record<string, unknown>> : {}
+  if (record.stage === 'COMPLETED' || ['COMPLETED', 'FAILED'].includes(String(stages.REPORT?.state))) return false
+  if (record.execution_profile && (record.paused === true || Object.values(stages)
+    .some(stage => ['PAUSED', 'READY_TO_CONTINUE', 'RESUME_REQUIRED'].includes(String(stage.state))))) return true
+  return Object.values(items).some(item => item.state === 'UNSETTLED_CHECK_WORKER'
+    || (record.execution_profile && ['PAUSED', 'READY_TO_CONTINUE', 'RESUME_REQUIRED'].includes(String(item.state))))
+}
+
+export function universeTaskAllowsPause(record: Record<string, unknown> | null, taskId: string): boolean {
+  if (!record || record.task_id !== taskId || record.version !== 'UNIVERSE_TASK_METADATA_V1') return false
+  const profile = record.execution_profile as Record<string, unknown> | undefined
+  if (profile?.profile_id !== 'LONG_HORIZON_SEGMENTED_V1') return false
+  const items = record.items && typeof record.items === 'object'
+    ? record.items as Record<string, Record<string, unknown>> : {}
+  const stages = record.compute_stages && typeof record.compute_stages === 'object'
+    ? record.compute_stages as Record<string, Record<string, unknown>> : {}
+  if (record.stage === 'COMPLETED' || ['COMPLETED', 'FAILED'].includes(String(stages.REPORT?.state))) return false
+  return Object.values(items).some(item => item.state === 'RUNNING')
+    || Object.values(stages).some(stage => stage.state === 'RUNNING')
+}
+
+export function universeLongProgress(record: Record<string, unknown> | null) {
+  const profile = record?.execution_profile as Record<string, unknown> | undefined
+  if (!profile) return null
+  const items = record?.items && typeof record.items === 'object'
+    ? record.items as Record<string, Record<string, unknown>> : {}
+  const stages = record?.compute_stages && typeof record.compute_stages === 'object'
+    ? record.compute_stages as Record<string, Record<string, unknown>> : {}
+  const seconds = (value: unknown) => typeof value === 'number' && Number.isFinite(value) && value >= 0
+    ? value.toFixed(1) : '未知'
+  return { stage: universeRunState(record?.stage), sessionBound: count(profile.account_sessions), workerSeconds: seconds(profile.worker_seconds),
+    memoryMib: count(profile.memory_mib), rows: Object.entries(items).map(([name, item]) => ({
+      name, state: universeRunState(item.state), phase: universeRunState(item.phase),
+      processed: count(item.processed_sessions), sessions: count(item.account_sessions),
+      lastDay: typeof item.last_day === 'number' ? String(item.last_day) : '尚未完成收盘',
+      chargedSeconds: seconds(item.charged_seconds), remainingSeconds: seconds(item.remaining_seconds),
+    })), stages: Object.entries(stages).map(([name, item]) => ({
+      name: universeRunState(name), state: universeRunState(item.state),
+      chargedSeconds: seconds(item.charged_seconds), remainingSeconds: seconds(item.remaining_seconds),
+    })) }
 }
 
 export function universeScanSummary(record: Record<string, unknown>) {

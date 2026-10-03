@@ -27,6 +27,7 @@ class WindowsMemoryJob:
             _fields_ = [("basic", Basic), ("io", IO), ("process_memory", ctypes.c_size_t),
                 ("job_memory", ctypes.c_size_t), ("peak_process", ctypes.c_size_t), ("peak_job", ctypes.c_size_t)]
 
+        self.information_type = Extended
         self.kernel = ctypes.WinDLL("kernel32", use_last_error=True)
         self.kernel.CreateJobObjectW.argtypes = [ctypes.c_void_p, wintypes.LPCWSTR]
         self.kernel.CreateJobObjectW.restype = wintypes.HANDLE
@@ -101,6 +102,17 @@ class WindowsMemoryJob:
             self.kernel.CloseHandle(self.handle)
             self.handle = None
 
+    def peak_memory_mib(self):
+        """读取同一个已安装上限的 Job 累计提交内存峰值，不用进程结束后的瞬时值。"""
+        from ctypes import wintypes
+        self.kernel.QueryInformationJobObject.argtypes = [wintypes.HANDLE, ctypes.c_int,
+            ctypes.c_void_p, wintypes.DWORD, ctypes.c_void_p]
+        self.kernel.QueryInformationJobObject.restype = wintypes.BOOL
+        value = self.information_type()
+        if not self.kernel.QueryInformationJobObject(self.handle, 9, ctypes.byref(value), ctypes.sizeof(value), None):
+            raise ctypes.WinError(ctypes.get_last_error())
+        return value.peak_job / (1024 * 1024)
+
 
 def worker_resource_handshake():
     """worker 在导入领域/数值组件前阻塞；收到父进程完成约束安装后的启动信号。"""
@@ -132,10 +144,13 @@ def worker_resource_handshake():
     return config
 
 
-def run_bounded_worker(command, *, root, memory_mib, wall_seconds, on_started, environment=None, execution=None, process_limit=2):
+def run_bounded_worker(command, *, root, memory_mib, wall_seconds, on_started, environment=None, execution=None, process_limit=2,
+                       measure_peak_memory=False):
     """仅启动显式 Python worker；先安装 OS 上限，再允许调用领域服务。"""
     if type(process_limit) is not int or not 1 <= process_limit <= 3:
         raise ValueError("BATCH_PROCESS_LIMIT_INVALID")
+    if type(measure_peak_memory) is not bool:
+        raise ValueError("BATCH_MEMORY_MEASUREMENT_OPTION_INVALID")
     if type(memory_mib) is not int or memory_mib < 1 or wall_seconds <= 0:
         raise ValueError("BATCH_RESOURCE_LIMIT_INVALID")
     if os.name != "nt" and not sys.platform.startswith("linux"):
@@ -156,11 +171,18 @@ def run_bounded_worker(command, *, root, memory_mib, wall_seconds, on_started, e
                   "execution": execution, "process_limit": process_limit, "process_limit_enforced": job is not None}
         try:
             stdout, stderr = process.communicate((json.dumps(config) + "\n").encode(), timeout=wall_seconds)
-            return {"returncode": process.returncode, "stdout": stdout, "stderr": stderr, "timed_out": False, "launcher_pid": process.pid, "resource_platform": os.name, "windows_job_bound": job is not None, "process_limit": process_limit, "process_limit_enforced": job is not None}
+            timed_out = False
         except subprocess.TimeoutExpired:
             process.kill()
             stdout, stderr = process.communicate()
-            return {"returncode": process.returncode, "stdout": stdout, "stderr": stderr, "timed_out": True, "launcher_pid": process.pid, "resource_platform": os.name, "windows_job_bound": job is not None, "process_limit": process_limit, "process_limit_enforced": job is not None}
+            timed_out = True
+        result = {"returncode": process.returncode, "stdout": stdout, "stderr": stderr, "timed_out": timed_out,
+            "launcher_pid": process.pid, "resource_platform": os.name, "windows_job_bound": job is not None,
+            "process_limit": process_limit, "process_limit_enforced": job is not None}
+        if measure_peak_memory:
+            result.update(peak_memory_mib=job.peak_memory_mib() if job else None,
+                          memory_measurement='WINDOWS_JOB_PEAK_COMMIT' if job else 'NOT_MEASURED_ON_THIS_HOST')
+        return result
     finally:
         if process is not None and process.poll() is None:
             process.kill()

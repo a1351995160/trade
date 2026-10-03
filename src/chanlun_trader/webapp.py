@@ -644,9 +644,14 @@ def _submission_service(request: Request):
 @app.get('/api/research-submission')
 def research_submission_catalog(request: Request) -> dict:
     from chanlun_trader.research_factory.research_capabilities_v1 import capabilities, published_acceptance
+    from chanlun_trader.research_factory.universe_execution_profile_v1 import execution_profile, SEGMENTED_PROFILE
     service = getattr(request.app.state, 'submission_service', None)
     core = capabilities(data_catalog=service.provider.catalog() if service else None)
+    from .research_factory.research_capabilities_v1 import published_long_horizon_acceptance
     return {'capabilities': core, 'publication': published_acceptance(core),
+            'long_horizon_publication': published_long_horizon_acceptance(core),
+            'execution_profiles': {str(sessions): execution_profile(SEGMENTED_PROFILE, sessions)
+                                   for sessions in (252, 504)},
             'configured': service is not None,
             'actions_allowed': service is not None and request.app.state.execution_policy.trusted_research_allowed}
 
@@ -671,7 +676,7 @@ def research_submission_approval(task_id: str, request: Request) -> dict:
 def research_submission_action(action: str, request: Request, payload: dict = Body(...)) -> dict:
     _require_local_console_request(request)
     service = _submission_service(request)
-    if action not in {'preview', 'diagnose', 'scan', 'freeze', 'approve', 'start', 'resume'}:
+    if action not in {'preview', 'diagnose', 'scan', 'freeze', 'approve', 'start', 'pause', 'resume'}:
         raise HTTPException(status_code=404, detail='SUBMISSION_ACTION_UNKNOWN')
     if action != 'preview' and not request.app.state.execution_policy.trusted_research_allowed:
         raise HTTPException(status_code=403, detail='SUBMISSION_READ_ONLY')
@@ -1461,7 +1466,7 @@ def create_app(research_root: str | Path | None = None, execution_policy: Execut
                     dry_tick = isinstance(body, dict) and body.get("dry_run") is True
                 except ValueError:
                     pass
-            trusted_path = (path in {'/api/research-submission/preview', '/api/research-submission/diagnose', '/api/research-submission/scan', '/api/research-submission/freeze', '/api/research-submission/approve', '/api/research-submission/start', '/api/research-submission/resume'} and submission_service is not None
+            trusted_path = (path in {'/api/research-submission/preview', '/api/research-submission/diagnose', '/api/research-submission/scan', '/api/research-submission/freeze', '/api/research-submission/approve', '/api/research-submission/start', '/api/research-submission/pause', '/api/research-submission/resume'} and submission_service is not None
                             or path in {'/api/research-lifecycle/preview', '/api/research-lifecycle/action'} and lifecycle_service is not None)
             if not policy.governance_allowed and not dry_tick and not (policy.trusted_research_allowed and trusted_path):
                 return deny("EXECUTION_POLICY_READ_ONLY")

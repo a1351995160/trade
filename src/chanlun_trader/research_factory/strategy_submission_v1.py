@@ -23,6 +23,9 @@ REQUEST_FIELDS = {'strategy_id','rule','dataset_id','feature_start','account_sta
 
 
 def public_rule_factory(payload, strategy_id):
+    if isinstance(payload,dict) and payload.get('version') == 'RESEARCH_RULE_STRATEGY_V4':
+        from .research_rule_strategy_v4 import ResearchRuleStrategyV4
+        return ResearchRuleStrategyV4(payload,strategy_id=strategy_id)
     return ResearchRuleStrategyV3(payload, strategy_id=strategy_id)
 
 
@@ -140,11 +143,13 @@ class StrategySubmissionV1:
         self.capabilities = capabilities_snapshot or (lambda: capabilities(data_catalog=self.provider.catalog()))
 
     def preview(self, request):
-        if isinstance(request, dict) and request.get('version') in {'FULL_UNIVERSE_SUBMISSION_V1', 'FULL_UNIVERSE_SUBMISSION_V2'}:
+        if isinstance(request, dict) and request.get('version') in {'FULL_UNIVERSE_SUBMISSION_V1', 'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3'}:
             from .universe_submission_v1 import preview_universe
             return preview_universe(self, request)
         if not isinstance(request, dict) or set(request) != REQUEST_FIELDS:
             raise ValueError('SUBMISSION_REQUEST_FIELDS_INVALID')
+        if request['rule'].get('version') != 'RESEARCH_RULE_STRATEGY_V3':
+            raise ValueError('SUBMISSION_LEGACY_RULE_VERSION_REQUIRED')
         request = deepcopy(request)
         if not isinstance(request['dataset_id'], str) or not re.fullmatch(r'[A-Za-z0-9_-]+', request['dataset_id']):
             raise ValueError('SUBMISSION_DATASET_ID_INVALID')
@@ -221,8 +226,8 @@ class StrategySubmissionV1:
         immutable(root / 'FREEZE_INTENT.json', {'task_id': task_id, 'preview_identity': preview_identity,
             'objective_id': authority['objective_id'], 'automatic_retry': False})
         try:
-            full_universe = normalized.get('version') in {'FULL_UNIVERSE_SUBMISSION_V1', 'FULL_UNIVERSE_SUBMISSION_V2'}
-            qualified_universe = normalized.get('version') == 'FULL_UNIVERSE_SUBMISSION_V2'
+            full_universe = normalized.get('version') in {'FULL_UNIVERSE_SUBMISSION_V1', 'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3'}
+            qualified_universe = normalized.get('version') in {'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3'}
             if full_universe:
                 # 数据准备与必要条件计算全部由900秒/2048MiB受限进程完成。
                 # 此处只接收其固定元数据，不在宿主进程再次加载全市场表。
@@ -291,8 +296,16 @@ class StrategySubmissionV1:
                         parent_sha256=hashlib.sha256(parent_path.read_bytes()).hexdigest())
                     items[-1]['dependency_files'].extend(parent_dependencies)
                     items[-1]['dependency_files'].append(str(Path(__file__).with_name('universe_qualified_scope_v1.py')))
-                items[-1]['backend_options'].update(backend_version='UNIVERSE_ACCOUNT_BACKEND_V1',
+                long_horizon=normalized.get('version') == 'FULL_UNIVERSE_SUBMISSION_V3'
+                items[-1]['backend_options'].update(backend_version='UNIVERSE_ACCOUNT_BACKEND_V2' if long_horizon else 'UNIVERSE_ACCOUNT_BACKEND_V1',
                     checkpoint_path=str(root / 'account' / (normalized['strategy_id'] + '_' + cost + '_CHECKPOINT.json')))
+                if long_horizon:
+                    items[-1]['execution_profile']=deepcopy(normalized['execution_profile'])
+                    items[-1]['observation_plan']=deepcopy(normalized['observation_plan'])
+                    items[-1]['backend_options']['execution_profile']=deepcopy(normalized['execution_profile'])
+                    items[-1]['dependency_files'].extend(str(Path(__file__).with_name(name)) for name in
+                        ('universe_execution_profile_v1.py','universe_compute_governance_v1.py',
+                         'universe_research_report_v2.py','research_campaign_v1.py','run_budget.py'))
                 items[-1]['dependency_files'].extend(str(Path(__file__).with_name(name)) for name in
                     ('universe_data_provider_v1.py', 'baostock_universe_adapter_v1.py', 'tdx_research_adapter_v1.py', 'research_universe_v1.py',
                      'universe_submission_v1.py', 'universe_account_inputs_v1.py', 'universe_benchmark_v1.py',
@@ -310,6 +323,9 @@ class StrategySubmissionV1:
                   'input_identity': prepared['input_identity'], 'items': items, 'benchmark_id': benchmark_id}
         if full_universe:
             config['benchmark_mode'] = normalized['benchmark']
+            if normalized['version'] == 'FULL_UNIVERSE_SUBMISSION_V3':
+                config['execution_profile']=deepcopy(normalized['execution_profile'])
+                config['observation_plan']=deepcopy(normalized['observation_plan'])
         immutable(root / 'PREVIEW.json', preview)
         immutable(root / 'CONFIG.json', config)
         from scripts.run_strategy_account_v1 import freeze_config
@@ -354,7 +370,7 @@ class StrategySubmissionV1:
                 stable_hash({k:v for k,v in preview.items() if k!='preview_identity'}) != task['preview_identity']):
             raise ValueError('SUBMISSION_FROZEN_PREVIEW_CHANGED')
         from .universe_status_v1 import universe_task_metadata_v1
-        metadata = universe_task_metadata_v1(self, task_id) if task.get('submission_version') == 'FULL_UNIVERSE_SUBMISSION_V2' else {}
+        metadata = universe_task_metadata_v1(self, task_id) if task.get('submission_version') in {'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3'} else {}
         return {**metadata, 'task_id':task_id,'preview_identity':task['preview_identity'],'plan_ids':plan_ids,
                 'request':preview['request'],'rule_identity':preview['rule_identity'],
                 'input_identity':task['input_identity'],'job_sha256':task['job_sha256']}
@@ -368,6 +384,8 @@ class StrategySubmissionV1:
         permit = authority.get('account_authorization')
         fields = {'purpose','rule_identity','initial_cash','symbols','feature_start','account_start','account_end',
                   'max_positions','max_symbol_exposure_bps','costs','benchmark','max_account_jobs'}
+        if request.get('version') == 'FULL_UNIVERSE_SUBMISSION_V3':
+            fields.update({'execution_profile','observation_plan'})
         campaign_ref = permit.get('campaign_ref') if isinstance(permit,dict) else None
         valid_fields = fields if campaign_ref is None else (fields - {'rule_identity'}) | {'campaign_ref'}
         if not isinstance(permit,dict) or set(permit)!=valid_fields or permit['purpose']!='FROZEN_PUBLIC_ACCOUNT_PLANS':
@@ -375,6 +393,8 @@ class StrategySubmissionV1:
         if campaign_ref is None and permit['rule_identity']!=summary['rule_identity']:
             raise PermissionError('SUBMISSION_ACCOUNT_RULE_OUTSIDE_AUTHORITY')
         exact = {'initial_cash','max_positions','max_symbol_exposure_bps','costs','benchmark'}
+        if request.get('version') == 'FULL_UNIVERSE_SUBMISSION_V3':
+            exact.update({'execution_profile','observation_plan'})
         if (any(permit[key]!=request[key] for key in exact)
                 or not isinstance(permit['symbols'],list) or sorted(permit['symbols'])!=request['symbols']
                 or any(day(permit[key])!=request[key] for key in ('feature_start','account_start','account_end'))
@@ -393,7 +413,7 @@ class StrategySubmissionV1:
             raise PermissionError('SUBMISSION_ACCOUNT_OBJECTIVE_OUTSIDE_AUTHORITY')
         source.update(expires_at=authority['expires_at'],approved_plan_ids=summary['plan_ids'],
             authorization_ref=request['authorization_ref'],authorization_identity=stable_hash(authority))
-        if request.get('version') == 'FULL_UNIVERSE_SUBMISSION_V2':
+        if request.get('version') in {'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3'}:
             source['qualified_scope_identity'] = summary['qualification_scope']['scope_identity']
         inputs = {'input_identity':job['input_identity'],
                   'novelty':{name:{'allowed':True,'plan_id':value,'reason':'EXPLICIT_FROZEN_PUBLIC_PLAN'}
@@ -453,22 +473,35 @@ class StrategySubmissionV1:
         task = self._task(task_id)
         path = Path(task['job_path'])
         metadata = {}
-        if task.get('submission_version') in {'FULL_UNIVERSE_SUBMISSION_V1', 'FULL_UNIVERSE_SUBMISSION_V2'}:
+        if task.get('submission_version') in {'FULL_UNIVERSE_SUBMISSION_V1', 'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3'}:
             from .universe_status_v1 import universe_task_metadata_v1
             metadata = universe_task_metadata_v1(self, task_id)
             job = read_json(path)
             if task['plan_ids'] != {name: plan['plan_id'] for name, plan in job['plans'].items()}:
                 raise ValueError('SUBMISSION_FROZEN_PLAN_CHANGED')
-        execute_accounts(path, recover=True)
+        execution=execute_accounts(path, recover=True)
+        if execution.get('status') == 'PAUSED':
+            return {**metadata,'task_id':task_id,'status':'PAUSED','execution':execution,'strategy_qualified':False}
         job = read_json(path)
-        checks = {name: verify_job_evidence(path, name=name) for name in job['plans']}
-        evidence = {'job_sha256': hashlib.sha256(path.read_bytes()).hexdigest(), 'items': checks,
-                    'advance_allowed': all(item.get('advance_allowed') is True for item in checks.values())}
+        long_horizon=task.get('submission_version')=='FULL_UNIVERSE_SUBMISSION_V3'
+        if long_horizon:
+            from scripts.run_strategy_account_v1 import run_long_horizon_compute
+            request=read_json(path.parent.parent/'PREVIEW.json')['request']
+            authority=self.authority(request['authorization_ref'])
+            evidence=run_long_horizon_compute(path,authority,request,'VERIFICATION')
+            if evidence.get('status')=='PAUSED':
+                return {**metadata,'task_id':task_id,'status':'PAUSED','execution':evidence,'strategy_qualified':False}
+        else:
+            checks = {name: verify_job_evidence(path, name=name) for name in job['plans']}
+            evidence = {'job_sha256': hashlib.sha256(path.read_bytes()).hexdigest(), 'items': checks,
+                        'advance_allowed': all(item.get('advance_allowed') is True for item in checks.values())}
         immutable(path.parent / 'VERIFICATION.json', evidence)
         if not evidence['advance_allowed']:
             return {'task_id': task_id, 'status': 'EVIDENCE_BLOCKED', 'verification': evidence,
                     'strategy_qualified': False, 'reports': None}
-        reports = report_account_job(path)
+        reports=(run_long_horizon_compute(path,authority,request,'REPORT') if long_horizon else report_account_job(path))
+        if reports.get('status')=='PAUSED':
+            return {**metadata,'task_id':task_id,'status':'PAUSED','execution':reports,'strategy_qualified':False}
         return {**metadata, 'task_id': task_id, 'status': 'ACCOUNT_VERIFIED', 'verification': evidence,
                 'strategy_qualified': False, 'reports': reports}
 
@@ -485,8 +518,24 @@ class StrategySubmissionV1:
         task = self._task(task_id)
         if hashlib.sha256(Path(task['job_path']).read_bytes()).hexdigest() != task['job_sha256']:
             raise ValueError('SUBMISSION_FROZEN_JOB_CHANGED')
+        if task.get('submission_version') == 'FULL_UNIVERSE_SUBMISSION_V3':
+            from scripts.run_strategy_account_v1 import control_job
+            control_job(task['job_path'],'RESUME')
         resume_universe_job(task['job_path'])
+        if task.get('submission_version') == 'FULL_UNIVERSE_SUBMISSION_V3':
+            from scripts.run_strategy_account_v1 import reconcile_long_horizon_compute
+            for stage in ('VERIFICATION','REPORT'):
+                reconcile_long_horizon_compute(task['job_path'],stage)
         return self.start(task_id)
+
+    def pause(self, task_id):
+        task=self._task(task_id)
+        if task.get('submission_version') != 'FULL_UNIVERSE_SUBMISSION_V3':
+            raise PermissionError('SUBMISSION_LONG_HORIZON_PAUSE_REQUIRED')
+        from scripts.run_strategy_account_v1 import control_job
+        state=control_job(task['job_path'],'PAUSE')
+        return {'task_id':task_id,'status':'PAUSE_REQUESTED','control_identity':state['head'],
+                'strategy_qualified':False}
 
     def status(self, task_id):
         from scripts.run_strategy_account_v1 import status
@@ -500,7 +549,7 @@ class StrategySubmissionV1:
         if evidence is not None and evidence.get('job_sha256') != task['job_sha256']:
             raise ValueError('SUBMISSION_VERIFICATION_JOB_CHANGED')
         from .universe_status_v1 import universe_task_metadata_v1
-        metadata = universe_task_metadata_v1(self, task_id) if task.get('submission_version') in {'FULL_UNIVERSE_SUBMISSION_V1', 'FULL_UNIVERSE_SUBMISSION_V2'} else {}
+        metadata = universe_task_metadata_v1(self, task_id) if task.get('submission_version') in {'FULL_UNIVERSE_SUBMISSION_V1', 'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3'} else {}
         return {**metadata, **state, 'task_id': task_id,
                 'recorded_verification': evidence, 'freshly_reverified': False,
                 'reports': {name: str(path.parent / (name + '_REPORT.md'))

@@ -32,7 +32,7 @@ class ForwardPaperEngineV1:
         self.rule_states = {}
         from .rule_exit_adapter_v3 import RuleExitAdapterV3
         adapter_type = RuleExitAdapterV3
-        if header.get('execution_version') == 'UNIVERSE_ACCOUNT_BACKEND_V1':
+        if header.get('execution_version') in ('UNIVERSE_ACCOUNT_BACKEND_V1', 'UNIVERSE_ACCOUNT_BACKEND_V2'):
             from .universe_rule_exit_v1 import UniverseRuleExitV1
             adapter_type = UniverseRuleExitV1
         self.rule_exits = {key: adapter_type(key, strategy.exit_rules)
@@ -55,7 +55,7 @@ class ForwardPaperEngineV1:
             data_manifest_hash=header['header_id'], calendar_version=stable_hash(header['calendar']))
         calendar = sorted(set(header['calendar']) | {int(row['date']) for row in self.bars})
         engine_type = BacktestEngineV2
-        if header.get('execution_version') == 'UNIVERSE_ACCOUNT_BACKEND_V1':
+        if header.get('execution_version') in ('UNIVERSE_ACCOUNT_BACKEND_V1', 'UNIVERSE_ACCOUNT_BACKEND_V2'):
             from .universe_account_backend_v1 import UniverseBacktestEngineV1
             engine_type = UniverseBacktestEngineV1
         self.engine = engine_type(self.store, calendar, config=config,
@@ -65,7 +65,7 @@ class ForwardPaperEngineV1:
         if header.get('company_actions') in ('OBSERVED_CASH_DIVIDEND_V1', 'HISTORICAL_CASH_DIVIDEND_V2', 'OBSERVED_FROZEN_CASH_DIVIDEND_V2', 'HISTORICAL_CORPORATE_ACTION_V2'):
             from ..engine.individual_dividend_accounting_v1 import IndividualDividendAccountingV1
             ledger_type = IndividualDividendAccountingV1
-            if header.get('execution_version') == 'UNIVERSE_ACCOUNT_BACKEND_V1':
+            if header.get('execution_version') in ('UNIVERSE_ACCOUNT_BACKEND_V1', 'UNIVERSE_ACCOUNT_BACKEND_V2'):
                 from .universe_dividend_accounting_v1 import UniverseDividendAccountingV1
                 ledger_type = UniverseDividendAccountingV1
                 if header.get('company_actions') == 'HISTORICAL_CORPORATE_ACTION_V2':
@@ -76,13 +76,15 @@ class ForwardPaperEngineV1:
             self.engine.ledger = self.engine.broker.ledger = self.engine.risk.ledger = ledger
         self.base_risk_config = deepcopy(self.engine.risk.config)
         self.skips = []
+        if header.get('execution_version') == 'UNIVERSE_ACCOUNT_BACKEND_V2':
+            self.allocations = []
         if header.get('observation_policy') is not None:
             self.observation = {'peak_equity': float(self.policy['initial_cash']),
                 'max_drawdown_bps': 0.0, 'completed_days': 0, 'pending_open_day': None,
                 'buy_blocked': False, 'reason_codes': [], 'review_due': False}
 
     def _validate_exit_actions(self, events):
-        if self.header.get('execution_version') == 'UNIVERSE_ACCOUNT_BACKEND_V1':
+        if self.header.get('execution_version') in ('UNIVERSE_ACCOUNT_BACKEND_V1', 'UNIVERSE_ACCOUNT_BACKEND_V2'):
             allowed = {'CASH_DIVIDEND'}
             if self.header.get('company_actions') == 'HISTORICAL_CORPORATE_ACTION_V2':
                 allowed |= {'BONUS', 'CAPITALIZATION'}
@@ -194,6 +196,7 @@ class ForwardPaperEngineV1:
                             or lot.exit_state not in ('EXIT_DUE', 'SELL_PENDING', 'PARTIALLY_FILLED')):
                         raise ValueError('RULE_EXIT_PENDING_LOT_REQUIRED')
                     execution_intents.append({**intent, '_lot_id': lot_id,
+                        **({'parent_intent_id': intent['intent_id']} if hasattr(self, 'allocations') else {}),
                         'intent_id': intent['intent_id'] + ':' + lot_id})
                     if self.header.get('company_actions') == 'HISTORICAL_CORPORATE_ACTION_V2':
                         for child_id, parent_id in self.engine.ledger.bonus_parent_lots.items():
@@ -202,22 +205,35 @@ class ForwardPaperEngineV1:
                             child = self.engine.ledger.lots[child_id]
                             if child.remaining_quantity and child.exit_state in ('EXIT_DUE', 'SELL_PENDING', 'PARTIALLY_FILLED'):
                                 execution_intents.append({**intent, '_lot_id': child_id,
+                                    **({'parent_intent_id': intent['intent_id']} if hasattr(self, 'allocations') else {}),
                                     'intent_id': intent['intent_id'] + ':' + child_id})
             else:
                 execution_intents.append(intent)
         for item in execution_intents:
             symbol, strategy_id, side = item['symbol'], item['strategy_id'], item['side']
             state = states[symbol]
+            link = ({'signal_key': item.get('signal_key'),
+                     'parent_intent_id': item.get('parent_intent_id', item['intent_id']),
+                     'strategy_id': strategy_id, 'symbol': symbol,
+                     'decision_session': int(pd.Timestamp(plan['decision_at']).strftime('%Y%m%d')),
+                     'execution_session': plan['next_session']}
+                    if hasattr(self, 'allocations') else {})
             if state['suspended'] or not state['listed'] or state['delisted']:
-                self.skips.append({'intent_id': item['intent_id'], 'reason': 'SECURITY_NOT_TRADABLE'})
+                self.skips.append({'intent_id': item['intent_id'], 'reason': 'SECURITY_NOT_TRADABLE', **link})
                 continue
-            if (side == 'BUY' and self.header.get('execution_version') == 'UNIVERSE_ACCOUNT_BACKEND_V1'
+            if (side == 'BUY' and self.header.get('execution_version') in ('UNIVERSE_ACCOUNT_BACKEND_V1', 'UNIVERSE_ACCOUNT_BACKEND_V2')
                     and (state.get('universe_member') is not True or state.get('eligibility_status') != 'ELIGIBLE')):
-                self.skips.append({'intent_id': item['intent_id'], 'reason': 'SECURITY_NOT_ELIGIBLE_AT_OPEN'})
+                self.skips.append({'intent_id': item['intent_id'], 'reason': 'SECURITY_NOT_ELIGIBLE_AT_OPEN', **link})
                 continue
             if side == 'BUY':
-                quantity = risk.buy_quantity(strategy_id, symbol, prices[symbol], ts,
-                                             target_weight=item['target_weight'])
+                if hasattr(self, 'allocations'):
+                    allocation = risk.buy_allocation(strategy_id, symbol, prices[symbol], ts,
+                                                     target_weight=item['target_weight'])
+                    quantity = allocation['allocated_quantity']
+                    self.allocations.append({'intent_id': item['intent_id'], **link, **allocation})
+                else:
+                    quantity = risk.buy_quantity(strategy_id, symbol, prices[symbol], ts,
+                                                 target_weight=item['target_weight'])
                 position_id = None
             else:
                 quantity = (self.engine.ledger.sellable_lot_quantity(item['_lot_id'], ts)
@@ -227,14 +243,22 @@ class ForwardPaperEngineV1:
                 position = self.engine.ledger.get_position(strategy_id, symbol)
                 position_id = position.position_id if position else None
             if quantity <= 0:
-                self.skips.append({'intent_id': item['intent_id'], 'reason': 'NO_PERMITTED_QUANTITY'})
+                reason = (allocation['primary_reason'] if side == 'BUY' else 'T1_OR_LOT_NOT_SELLABLE') if hasattr(self, 'allocations') else 'NO_PERMITTED_QUANTITY'
+                self.skips.append({'intent_id': item['intent_id'], 'reason': reason, **link})
                 continue
+            metadata = {'plan_id': plan['plan_id'], 'paper': True,
+                        'target_weight': item.get('target_weight', 0.0)}
+            if hasattr(self, 'allocations'):
+                metadata.update(funnel_version='UNIVERSE_SIGNAL_FUNNEL_V1', **link,
+                    requested_quantity=allocation['requested_quantity'] if side == 'BUY' else quantity,
+                    allocated_quantity=quantity)
+                if item.get('metadata', {}).get('selection') is not None:
+                    metadata['selection'] = deepcopy(item['metadata']['selection'])
             order = Order(order_id='', strategy_id=strategy_id, intent_id=item['intent_id'],
                 signal_id=item['intent_id'], symbol=symbol, side=Side(side), quantity=quantity,
                 created_at=ts, eligible_at=ts, time_in_force=TimeInForce.DAY,
                 position_id=position_id, lot_id=item.get('_lot_id'), priority=item['priority'],
-                metadata={'plan_id': plan['plan_id'], 'paper': True,
-                          'target_weight':item.get('target_weight',0.0)},
+                metadata=metadata,
                 reason=item['reason'] if '_lot_id' in item else 'FORWARD_OBSERVED_OPEN')
             self.engine.order_manager.create_order(order, ts)
             self.engine.order_manager.submit(order, ts)
@@ -350,12 +374,17 @@ class ForwardPaperEngineV1:
             value['rule_exit_states'] = {key: adapter.state() for key, adapter in sorted(self.rule_exits.items())}
         if self.rule_states:
             value['rule_states'] = {f'{key[0]}:{key[1]}': state for key, state in sorted(self.rule_states.items())}
+        if hasattr(self, 'allocations'):
+            value['allocation_records'] = deepcopy(self.allocations)
         if hasattr(self, 'observation'):
             value['observation'] = deepcopy(self.observation)
         return json.loads(canonical_json(value))
 
 
 def paper_strategy(payload, *, strategy_id):
+    if isinstance(payload, dict) and payload.get('version') == 'RESEARCH_RULE_STRATEGY_V4':
+        from .research_rule_strategy_v4 import ResearchRuleStrategyV4
+        return ResearchRuleStrategyV4(payload, strategy_id=strategy_id)
     if isinstance(payload, dict) and payload.get('version') == 'FULL_POOL_BUY_HOLD_V1':
         from .research_benchmark_v1 import FullPoolBuyHoldStrategyV1
         return FullPoolBuyHoldStrategyV1(payload, strategy_id=strategy_id)
