@@ -126,7 +126,10 @@ def _scope(scope, preview, input_identity, window):
     _require(targets == sorted(set(targets)) and qualified == sorted(set(qualified)) and qualified
         and len(excluded) == len(set(excluded)) and not set(qualified).intersection(excluded)
         and sorted(qualified + excluded) == targets and not scope['blocking_global_gaps'], 'QUALIFICATION_PARTITION_CONFLICT')
-    _require(scope['projected_input_identity'] == input_identity and window['symbols'] == qualified
+    # 投影身份在附加回执前生成；最终身份含回执，由冻结 INPUT/JOB 与准备输出另行绑定。
+    _require(_hash(scope['projected_input_identity']) and _hash(input_identity)
+        and scope['projected_input_identity'] != input_identity
+        and window == {**scope['parent_window'], 'symbols': qualified}
         and scope['parent_window']['symbols'] == targets, 'QUALIFIED_INPUT_SCOPE_CONFLICT')
     if preview is not None:
         _self_hash(preview, 'preview_identity', 'PREVIEW_HASH_CONFLICT')

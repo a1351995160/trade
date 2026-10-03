@@ -2984,3 +2984,17 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 - 此处复用的是同进程刚认证的行情及资格输入，不复用交易或独立核账答案，不把已用历史称为独立验证，不授予策略资格或 Paper 天数。跨进程仍重算完整父资格。
 - 39268aa 的 Windows long-horizon 13 项失败均为默认临时路径提前拒绝；修复后的远端结果不得由本地通过替代。外部安全扫描的路径/CLI 告警另按真实调用边界逐项审阅，不删除保护或关闭扫描，不预先声明其状态已转为通过。
 - 回滚点仍为 786de0d；合并后 git revert 对应合并提交。保留全部原始数据、源码归档、失败、授权、预算及已消费记录；不清理其他 AI 的主目录改动。
+
+## 2026-10-04 - Task: 对齐真实资格投影与只读发布身份
+
+### What was done
+- long_horizon_acceptance_publication_v1.py 修正裸投影身份与含资格回执的最终身份被错误要求相等的问题；两者必须是合法不同 SHA，完整子窗口必须等于父窗口仅替换合格证券。冻结 INPUT/JOB、准备输出精确采用、独立 PASS 与源码门禁保持。
+- 修正合成发布夹具并加入真实三板块 production qualifier 与身份/窗口篡改回归。发布器不读取行情或重算账户；当前真实账户 JOB 不绑定发布器，其执行源码闭包未被该补丁改变。
+
+### Testing
+- tests/research_factory/test_long_horizon_publication_v1.py：38 passed in 36.55s，XML 与 JOB 来源核对回执保留在主目录 reports/long_horizon_universe_acceptance_v1/publication_scope_review。
+- 独立只读正确性审阅无可确认缺陷；git diff --check 通过。最新49f3f6b的 Windows/Linux long-horizon 与 full-universe CI 已通过，Windows workflow/formal 仍运行，外部 SonarCloud 状态未声明通过。
+
+### Notes
+- 真实 u8_v4 已完成252日全池资格检查，但首个账户在已知停牌的除息日价格准备失败：610.6213124秒、1977.72265625 MiB，未提交首个交易日。原 START 仍已消费且 FAILED，不退款、不重开；新版停牌因果价格接口正在另行修复，六账户验收尚未完成。
+- 回滚点仍为786de0d；只回滚本任务两文件补丁，不删除原始账户、资格、授权、计费与失败证据。

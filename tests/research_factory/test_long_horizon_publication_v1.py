@@ -73,13 +73,14 @@ def fixture(root):
             ENGINEERING_PURPOSE if reference else 'RESEARCH_ACCOUNT')
         folder = acceptance/role/'account'; input_root = acceptance/role/'input'
         preparation_root = acceptance/'service'/'signal-scans'/('synthetic_scan_'+role)
-        input_identity = stable_hash(['synthetic', count]); objective = 'SYNTHETIC_' + role
+        projected_input_identity = stable_hash(['synthetic bare projection', count]); objective = 'SYNTHETIC_' + role
         days = [(date(2022, 1, 1) + timedelta(days=number)).strftime('%Y%m%d') for number in range(count)]
         window = {'calendar': days, 'account_start': days[0], 'account_end': days[-1], 'symbols': qualified}
         scope = identity({'target_symbols': targets, 'qualified_symbols': qualified,
             'excluded': [{'symbol': '000002.SZ', 'reasons': ['SYNTHETIC_MISSING_EVIDENCE']}],
             'blocking_global_gaps': [], 'parent_window': {**window, 'symbols': targets},
-            'projected_input_identity': input_identity}, 'scope_identity')
+            'projected_input_identity': projected_input_identity}, 'scope_identity')
+        input_identity = stable_hash(['synthetic qualified input with receipt', count, scope])
         save(input_root/'QUALIFICATION_SCOPE.json', scope)
         input_metadata = {'snapshot_version': 'UNIVERSE_FROZEN_INPUT_V1', 'input_identity': input_identity,
             'window': window, 'bundle': {'qualified_scope': scope},
@@ -301,6 +302,71 @@ def contract(tmp_path, monkeypatch):
     return value
 
 
+@pytest.fixture
+def production_qualified_scope():
+    from chanlun_trader.research_factory.universe_account_inputs_v1 import prepare_universe_account_inputs_v1
+    from chanlun_trader.research_factory.universe_qualified_scope_v1 import qualify_universe_bundle
+    from test_universe_account_inputs_v1 import valid_universe_bundle_v1
+
+    bundle, window = valid_universe_bundle_v1()
+    inputs = prepare_universe_account_inputs_v1(bundle, window, stage='SCAN')
+    qualified = qualify_universe_bundle({'bundle': inputs.bundle, 'window': inputs.window,
+        'input_identity': inputs.input_identity})
+    assert qualified['ready'] is True
+    return qualified
+
+
+def test_scope_accepts_production_bare_projection_and_final_receipt_identity(production_qualified_scope, monkeypatch):
+    from chanlun_trader.research_factory.universe_account_inputs_v1 import universe_input_identity_v1
+
+    qualified = production_qualified_scope
+    scope, window = qualified['scope_receipt'], qualified['window']
+    bare = {key: value for key, value in qualified['bundle'].items() if key != 'qualified_scope'}
+    assert scope['projected_input_identity'] == universe_input_identity_v1(bare, window)
+    assert qualified['input_identity'] == universe_input_identity_v1(qualified['bundle'], window)
+    assert scope['projected_input_identity'] != qualified['input_identity']
+
+    def forbidden_read(*args, **kwargs):
+        raise AssertionError('scope publication must only inspect provided metadata')
+
+    monkeypatch.setattr(publication, '_json', forbidden_read)
+    monkeypatch.setattr(publication, '_sha', forbidden_read)
+    assert publication._scope(scope, None, qualified['input_identity'], window) == {
+        'target_count': 3, 'qualified_count': 3, 'excluded_count': 0}
+
+
+@pytest.mark.parametrize('change', ['malformed_projection', 'malformed_final', 'alias_final', 'window'])
+def test_production_scope_rejects_invalid_identity_or_window(production_qualified_scope, change):
+    qualified = production_qualified_scope
+    scope, window = deepcopy(qualified['scope_receipt']), deepcopy(qualified['window'])
+    final_identity = qualified['input_identity']
+    if change == 'malformed_projection': scope['projected_input_identity'] = 'not-a-sha256'
+    elif change == 'malformed_final': final_identity = 'not-a-sha256'
+    elif change == 'alias_final': scope['projected_input_identity'] = final_identity
+    else: window['account_start'] = window['calendar'][0]
+    identity(scope, 'scope_identity')
+    with pytest.raises(ValueError, match='QUALIFIED_INPUT_SCOPE_CONFLICT'):
+        publication._scope(scope, None, final_identity, window)
+
+
+@pytest.mark.parametrize('change', ['final_identity', 'qualified_scope'])
+def test_final_input_binding_remains_required_with_distinct_projection(contract, change):
+    repo, acceptance, archive, snapshot = contract
+    publication.publish_long_horizon_acceptance(repo, acceptance)
+    receipt = json.loads((repo/publication.PREFIX/'PUBLISHED_ACCEPTANCE.json').read_bytes())
+    input_ref = receipt['cases'][0]['input']
+
+    def read(ref):
+        value = json.loads((repo/ref['path']).read_bytes())
+        if ref == input_ref:
+            if change == 'final_identity': value['input_identity'] = stable_hash('foreign qualified input')
+            else: value['bundle']['qualified_scope']['scope_identity'] = stable_hash('foreign scope')
+        return value
+
+    with pytest.raises(ValueError, match='FROZEN_INPUT_METADATA_CONFLICT'):
+        publication._validate(repo, receipt, snapshot, read)
+
+
 def test_publish_six_account_metadata_and_read_without_originals_or_market(contract):
     repo, acceptance, archive, snapshot = contract
     before = deepcopy(snapshot)
@@ -443,6 +509,23 @@ def test_preparation_adoption_requires_same_frame_hashes_without_opening_market(
     with pytest.raises(ValueError, match='SCAN_ADOPTION_CHAIN_CONFLICT'):
         publication.publish_long_horizon_acceptance(repo, acceptance)
     assert not list(repo.rglob('*.parquet'))
+
+
+def test_preparation_final_identity_remains_bound_after_receipt_hashes_are_rebound(contract):
+    repo, acceptance, archive, snapshot = contract
+    scan = acceptance/'service'/'signal-scans'/'synthetic_scan_504'
+    mutate(scan/'RESULT.json', lambda row: row.update(qualified_input_identity=stable_hash('foreign qualified input')),
+        'scan_identity')
+    output = json.loads((scan/'RESULT.json').read_bytes())
+    output_sha = hashlib.sha256((scan/'RESULT.json').read_bytes()).hexdigest()
+
+    def rebind_receipt(row):
+        row['scan_identity'] = output['scan_identity']
+        row['artifacts'][str(scan/'RESULT.json')]['sha256'] = output_sha
+
+    mutate(scan/'SCAN_RECEIPT.json', rebind_receipt, 'receipt_identity')
+    with pytest.raises(ValueError, match='PREPARATION_OUTPUT_SCOPE_CONFLICT'):
+        publication.publish_long_horizon_acceptance(repo, acceptance)
 
 
 def test_measured_peak_memory_required_even_with_job_bound_true(contract):
