@@ -325,7 +325,7 @@ def write_reports(job,index):
         if universe_reference is not None:
             report['benchmark'] = universe_reference
             report['limitations'].extend(universe_reference['limitations'])
-        if job['items'][name]['loader'] == 'chanlun_trader.research_factory.strategy_submission_v1:load_frozen_qualified_bundle':
+        if job.get('items', {}).get(name, {}).get('loader') == 'chanlun_trader.research_factory.strategy_submission_v1:load_frozen_qualified_bundle':
             scope_path = Path(job['items'][name]['loader_kwargs']['path']).parent / 'QUALIFICATION_SCOPE.json'
             scope = read_json(scope_path)
             report['limitations'].extend([
