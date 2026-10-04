@@ -854,7 +854,24 @@ def _execute_day(account, day, plan, orders, fills, portfolio, previous_equity, 
                 opening_cash, opening_equity, spent, gross, modeled["intent"]["target_weight"])
             cost = quantity * price + _fee("BUY", quantity, price, account.costs)
             active_count = sum(bool(account.quantity(s)) for s in account.positions)
-            if (not limits or cost > min(limits["cash"], limits["strategy"]) + 1e-9
+            if versioned:
+                # 组合限制先于原风控；前收权益权重使用原风控的比率容差。
+                if quantity:
+                    if any(p is not modeled and p["side"] == "SELL" and p["symbol"] == symbol for p in pending):
+                        rejection_reason = 'PORTFOLIO_EXIT_BUY_CONFLICT'
+                    elif not limits:
+                        rejection_reason = 'PORTFOLIO_POSITION_LIMIT'
+                    elif (cost > min(limits["cash"], limits["strategy"]) + 1e-9
+                          or quantity * price > min(limits["symbol"], limits["target"], limits["turnover"]) + 1e-9):
+                        rejection_reason = 'PORTFOLIO_CASH_FEE_EXPOSURE_OR_TURNOVER_LIMIT'
+                    elif (previous_equity > 0 and quantity * price / previous_equity
+                          > portfolio["max_symbol_exposure_bps"] / 10000 + 1e-9):
+                        rejection_reason = 'MAX_POSITION_WEIGHT'
+                    elif active_count >= portfolio["max_positions"]:
+                        rejection_reason = 'MAX_POSITIONS'
+                    if rejection_reason:
+                        quantity = 0
+            elif (not limits or cost > min(limits["cash"], limits["strategy"]) + 1e-9
                     or quantity * price > min(limits["symbol"], limits["target"], limits["turnover"]) + 1e-9
                     or active_count >= portfolio["max_positions"]
                     or quantity * price > previous_equity * portfolio["max_symbol_exposure_bps"] / 10000 + 1e-9):
