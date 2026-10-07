@@ -33,6 +33,19 @@ def approved_job(tmp_path):
     return runner, frozen['job_path'], job, authority
 
 
+def await_recorded_worker_exit(runner, root, prefix, access_suffix='_ACCESS.json'):
+    """Windows Job关闭后reader可能稍迟退出；恢复前证明真实退出。"""
+    from chanlun_trader.research_daemon_state import DaemonInstanceLockV1
+    pids = {runner.read_json(root / (prefix + '_WORKER.json'))['pid']}
+    access = root / (prefix + access_suffix)
+    if access.exists():
+        pids.add(runner.read_json(access)['reader_pid'])
+    deadline = time.monotonic() + 5
+    while any(DaemonInstanceLockV1._pid_alive(pid) for pid in pids) and time.monotonic() < deadline:
+        time.sleep(.05)
+    assert not any(DaemonInstanceLockV1._pid_alive(pid) for pid in pids), pids
+
+
 def test_failed_known_overrun_is_recorded_without_expanding_success_bound(tmp_path):
     assert worker_wall_seconds(900) == 890
     assert worker_wall_seconds(.5) == .25
@@ -145,6 +158,7 @@ def test_original_result_survives_host_crash_then_bounded_tail_completion(tmp_pa
             runner.execute_long_horizon_accounts(path)
     original = (root/(name+'_RESULT.json')).read_bytes()
     snapshot = Path(job['items'][name]['backend_options']['checkpoint_path']).read_bytes()
+    await_recorded_worker_exit(runner, root, name + '_SEGMENT_000001', '_INPUT_ACCESS.json')
     resume_universe_job(path)
     assert (root/(name+'_RESULT.json')).read_bytes() == original
     assert Path(job['items'][name]['backend_options']['checkpoint_path']).read_bytes() == snapshot
@@ -178,6 +192,7 @@ def test_known_worker_failure_without_host_resource_closes_no_retry(tmp_path, mo
             runner.execute_long_horizon_accounts(path, recover=True)
     failure = runner.read_json(root/(name+'_SEGMENT_000001_FAILURE.json'))
     assert failure['dispatch_id'] == gov.segment_status(name)['pending']['dispatch_id']
+    await_recorded_worker_exit(runner, root, name + '_SEGMENT_000001', '_INPUT_ACCESS.json')
     with pytest.raises(PermissionError, match='KNOWN_FAILURE_NO_RETRY'):
         resume_universe_job(path)
     state = gov.segment_status(name)
@@ -201,6 +216,7 @@ def test_expired_approval_still_charges_original_dead_worker_before_refusing_new
     class ExpiredClock(datetime):
         @classmethod
         def now(cls, tz=None): return datetime(2050, 1, 1, tzinfo=timezone.utc)
+    await_recorded_worker_exit(runner, root, name + '_SEGMENT_000001', '_INPUT_ACCESS.json')
     with monkeypatch.context() as patch:
         patch.setattr(governance, 'datetime', ExpiredClock)
         # 公共 RESUME 控制记录只允许结清原用途，不自行派发过期 worker。
@@ -229,13 +245,7 @@ def test_report_failure_without_resource_is_failed_offline_not_retried(tmp_path,
     failure = runner.read_json(folder/'SEGMENT_000001_FAILURE.json')
     assert failure['scope_identity'] == runner.sha(folder/'SCOPE.json')
     # Windows Job 关闭后 reader 的退出可能稍迟于 launcher 返回；先证明实际退出。
-    from chanlun_trader.research_daemon_state import DaemonInstanceLockV1
-    pids = (runner.read_json(folder/'SEGMENT_000001_WORKER.json')['pid'],
-            runner.read_json(folder/'SEGMENT_000001_ACCESS.json')['reader_pid'])
-    deadline = time.monotonic() + 5
-    while any(DaemonInstanceLockV1._pid_alive(pid) for pid in pids) and time.monotonic() < deadline:
-        time.sleep(.05)
-    assert not any(DaemonInstanceLockV1._pid_alive(pid) for pid in pids), pids
+    await_recorded_worker_exit(runner, folder, 'SEGMENT_000001')
     runner.save(folder/'REVOKED.json', {'reason': 'offline closing must remain allowed'})
     with pytest.raises(PermissionError, match='KNOWN_FAILURE_NO_RETRY'):
         runner.reconcile_long_horizon_compute(path, 'REPORT')
@@ -267,6 +277,8 @@ def test_preparation_failure_without_resource_is_archived_offline_no_retry(tmp_p
     root = next((service.root/'signal-scans').iterdir()); intent = scans.read_json(root/'SCAN_INTENT.json')
     failure = scans.read_json(root/'PREPARE_000001_FAILURE.json')
     assert failure['scope_identity'] == intent['intent_identity']
+    from scripts import run_strategy_account_v1 as runner
+    await_recorded_worker_exit(runner, root, 'PREPARE_000001')
     result = scans.reconcile_long_preparation(root)
     assert result['status'] == 'SCAN_BLOCKED' and (root/'SCAN_RECEIPT.json').is_file()
     meter = UniverseComputeGovernanceV1(root/'COMPUTE', intent['compute_authority'], intent['preview']['request'], 'PREPARATION')

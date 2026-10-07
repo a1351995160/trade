@@ -1,0 +1,342 @@
+{
+  "schema_version": "EXACT_HEAD_CI_COMPLETION_V1",
+  "review_head": "899dcbc85b1f524681bbb18761c17162ff5a52d6",
+  "captured_at": "2026-10-04T03:55:31.122128+00:00",
+  "pull_request": 36,
+  "pull_request_url": "https://github.com/a1351995160/trade/pull/36",
+  "status": "EIGHT_REQUIRED_COMPLETION_GROUPS_AND_TEN_PR_WORKFLOWS_SUCCESS",
+  "required_workflow": {
+    "id": 37170907404,
+    "name": "Autonomous research completion",
+    "head_sha": "899dcbc85b1f524681bbb18761c17162ff5a52d6",
+    "head_branch": "codex/long-horizon-universe-research",
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-10-04T02:23:32Z",
+    "run_started_at": "2026-10-04T02:23:32Z",
+    "updated_at": "2026-10-04T03:40:00Z",
+    "html_url": "https://github.com/a1351995160/trade/actions/runs/37170907404",
+    "run_attempt": 1
+  },
+  "required_group_count": 8,
+  "required_groups_all_success": true,
+  "required_groups_last_completed_at": "2026-10-04T03:39:59Z",
+  "required_groups": [
+    {
+      "id": 111343496146,
+      "name": "completion (ubuntu-latest, long-horizon)",
+      "head_sha": "899dcbc85b1f524681bbb18761c17162ff5a52d6",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-04T02:26:36Z",
+      "completed_at": "2026-10-04T02:31:14Z",
+      "html_url": "https://github.com/a1351995160/trade/actions/runs/37170907404/job/111343496146",
+      "runner_name": "GitHub Actions 1000004234",
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 111343496285,
+      "name": "completion (windows-latest, workflow)",
+      "head_sha": "899dcbc85b1f524681bbb18761c17162ff5a52d6",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-04T02:28:36Z",
+      "completed_at": "2026-10-04T03:39:59Z",
+      "html_url": "https://github.com/a1351995160/trade/actions/runs/37170907404/job/111343496285",
+      "runner_name": "GitHub Actions 1000004243",
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 111343496296,
+      "name": "completion (ubuntu-latest, workflow)",
+      "head_sha": "899dcbc85b1f524681bbb18761c17162ff5a52d6",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-04T02:27:18Z",
+      "completed_at": "2026-10-04T02:49:12Z",
+      "html_url": "https://github.com/a1351995160/trade/actions/runs/37170907404/job/111343496296",
+      "runner_name": "GitHub Actions 1000004237",
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 111343496308,
+      "name": "completion (ubuntu-latest, full-universe)",
+      "head_sha": "899dcbc85b1f524681bbb18761c17162ff5a52d6",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-04T02:27:44Z",
+      "completed_at": "2026-10-04T02:43:06Z",
+      "html_url": "https://github.com/a1351995160/trade/actions/runs/37170907404/job/111343496308",
+      "runner_name": "GitHub Actions 1000004240",
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 111343496325,
+      "name": "completion (windows-latest, formal-scope)",
+      "head_sha": "899dcbc85b1f524681bbb18761c17162ff5a52d6",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-04T02:28:38Z",
+      "completed_at": "2026-10-04T03:17:35Z",
+      "html_url": "https://github.com/a1351995160/trade/actions/runs/37170907404/job/111343496325",
+      "runner_name": "GitHub Actions 1000004244",
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 111343496338,
+      "name": "completion (windows-latest, long-horizon)",
+      "head_sha": "899dcbc85b1f524681bbb18761c17162ff5a52d6",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-04T02:29:17Z",
+      "completed_at": "2026-10-04T02:35:51Z",
+      "html_url": "https://github.com/a1351995160/trade/actions/runs/37170907404/job/111343496338",
+      "runner_name": "GitHub Actions 1000004245",
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 111343496349,
+      "name": "completion (windows-latest, full-universe)",
+      "head_sha": "899dcbc85b1f524681bbb18761c17162ff5a52d6",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-04T02:30:28Z",
+      "completed_at": "2026-10-04T02:43:34Z",
+      "html_url": "https://github.com/a1351995160/trade/actions/runs/37170907404/job/111343496349",
+      "runner_name": "GitHub Actions 1000004248",
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 111343496369,
+      "name": "completion (ubuntu-latest, formal-scope)",
+      "head_sha": "899dcbc85b1f524681bbb18761c17162ff5a52d6",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-04T02:30:15Z",
+      "completed_at": "2026-10-04T02:46:46Z",
+      "html_url": "https://github.com/a1351995160/trade/actions/runs/37170907404/job/111343496369",
+      "runner_name": "GitHub Actions 1000004247",
+      "runner_group_name": "GitHub Actions"
+    }
+  ],
+  "all_pull_request_workflows_count": 10,
+  "all_pull_request_workflows_success": true,
+  "all_pull_request_workflows": [
+    {
+      "id": 37170907404,
+      "name": "Autonomous research completion",
+      "head_sha": "899dcbc85b1f524681bbb18761c17162ff5a52d6",
+      "head_branch": "codex/long-horizon-universe-research",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-04T02:23:32Z",
+      "run_started_at": "2026-10-04T02:23:32Z",
+      "updated_at": "2026-10-04T03:40:00Z",
+      "html_url": "https://github.com/a1351995160/trade/actions/runs/37170907404",
+      "run_attempt": 1
+    },
+    {
+      "id": 37170907344,
+      "name": "Phase 3C Lifecycle Certification",
+      "head_sha": "899dcbc85b1f524681bbb18761c17162ff5a52d6",
+      "head_branch": "codex/long-horizon-universe-research",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-04T02:23:32Z",
+      "run_started_at": "2026-10-04T02:23:32Z",
+      "updated_at": "2026-10-04T02:34:25Z",
+      "html_url": "https://github.com/a1351995160/trade/actions/runs/37170907344",
+      "run_attempt": 1
+    },
+    {
+      "id": 37170907460,
+      "name": "Price Only Indicator Validation V1",
+      "head_sha": "899dcbc85b1f524681bbb18761c17162ff5a52d6",
+      "head_branch": "codex/long-horizon-universe-research",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-04T02:23:32Z",
+      "run_started_at": "2026-10-04T02:23:32Z",
+      "updated_at": "2026-10-04T02:42:08Z",
+      "html_url": "https://github.com/a1351995160/trade/actions/runs/37170907460",
+      "run_attempt": 1
+    },
+    {
+      "id": 37170907363,
+      "name": "Phase 3A Execution Isolation Certification",
+      "head_sha": "899dcbc85b1f524681bbb18761c17162ff5a52d6",
+      "head_branch": "codex/long-horizon-universe-research",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-04T02:23:32Z",
+      "run_started_at": "2026-10-04T02:23:32Z",
+      "updated_at": "2026-10-04T02:26:45Z",
+      "html_url": "https://github.com/a1351995160/trade/actions/runs/37170907363",
+      "run_attempt": 1
+    },
+    {
+      "id": 37170907453,
+      "name": "Phase 2 Control Plane Certification",
+      "head_sha": "899dcbc85b1f524681bbb18761c17162ff5a52d6",
+      "head_branch": "codex/long-horizon-universe-research",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-04T02:23:32Z",
+      "run_started_at": "2026-10-04T02:23:32Z",
+      "updated_at": "2026-10-04T02:27:43Z",
+      "html_url": "https://github.com/a1351995160/trade/actions/runs/37170907453",
+      "run_attempt": 1
+    },
+    {
+      "id": 37170907351,
+      "name": "Phase 3B Restart Recovery Certification",
+      "head_sha": "899dcbc85b1f524681bbb18761c17162ff5a52d6",
+      "head_branch": "codex/long-horizon-universe-research",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-04T02:23:32Z",
+      "run_started_at": "2026-10-04T02:23:32Z",
+      "updated_at": "2026-10-04T02:28:37Z",
+      "html_url": "https://github.com/a1351995160/trade/actions/runs/37170907351",
+      "run_attempt": 1
+    },
+    {
+      "id": 37170907415,
+      "name": "Backtest Behavior Acceptance V1",
+      "head_sha": "899dcbc85b1f524681bbb18761c17162ff5a52d6",
+      "head_branch": "codex/long-horizon-universe-research",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-04T02:23:32Z",
+      "run_started_at": "2026-10-04T02:23:32Z",
+      "updated_at": "2026-10-04T02:30:27Z",
+      "html_url": "https://github.com/a1351995160/trade/actions/runs/37170907415",
+      "run_attempt": 1
+    },
+    {
+      "id": 37170907324,
+      "name": "R1 Source and Data Readiness Certification",
+      "head_sha": "899dcbc85b1f524681bbb18761c17162ff5a52d6",
+      "head_branch": "codex/long-horizon-universe-research",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-04T02:23:31Z",
+      "run_started_at": "2026-10-04T02:23:31Z",
+      "updated_at": "2026-10-04T02:36:19Z",
+      "html_url": "https://github.com/a1351995160/trade/actions/runs/37170907324",
+      "run_attempt": 1
+    },
+    {
+      "id": 37170907331,
+      "name": "Extensible Backtest Acceptance V2",
+      "head_sha": "899dcbc85b1f524681bbb18761c17162ff5a52d6",
+      "head_branch": "codex/long-horizon-universe-research",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-04T02:23:31Z",
+      "run_started_at": "2026-10-04T02:23:31Z",
+      "updated_at": "2026-10-04T02:27:53Z",
+      "html_url": "https://github.com/a1351995160/trade/actions/runs/37170907331",
+      "run_attempt": 1
+    },
+    {
+      "id": 37170907327,
+      "name": "Phase 1 Certification",
+      "head_sha": "899dcbc85b1f524681bbb18761c17162ff5a52d6",
+      "head_branch": "codex/long-horizon-universe-research",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-04T02:23:31Z",
+      "run_started_at": "2026-10-04T02:23:31Z",
+      "updated_at": "2026-10-04T02:28:35Z",
+      "html_url": "https://github.com/a1351995160/trade/actions/runs/37170907327",
+      "run_attempt": 1
+    }
+  ],
+  "redundant_push_cancellation": {
+    "run_id": 37170905246,
+    "workflow": "Autonomous research completion",
+    "head_sha": "899dcbc85b1f524681bbb18761c17162ff5a52d6",
+    "event": "push",
+    "head_branch": "codex/long-horizon-universe-research",
+    "status": "completed",
+    "conclusion": "cancelled",
+    "html_url": "https://github.com/a1351995160/trade/actions/runs/37170905246",
+    "pre_action_verification": {
+      "path": "C:\\Users\\84219\\AppData\\Local\\Temp\\long_horizon_release_orchestration_v1\\CI_DUPLICATE_PUSH_CANCEL_899dcbc_37170905246.json",
+      "sha256": "dfc584089ebde238bfbd9a8fdfa474f9d326cd2dcb3eef28057bcb63f4662939"
+    },
+    "api_accepted_receipt": {
+      "path": "C:\\Users\\84219\\AppData\\Local\\Temp\\long_horizon_release_orchestration_v1\\CI_DUPLICATE_PUSH_CANCEL_ACCEPTED_899dcbc_37170905246.json",
+      "sha256": "05a411110ec7c5c2e9de92dc90614bc9a506ccc48d39d274349d7164c9f528de"
+    },
+    "pull_request_runs_cancelled": false,
+    "certification_runs_cancelled": false
+  },
+  "third_party_checks": [
+    {
+      "id": 111343766142,
+      "name": "SonarCloud Code Analysis",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-04T02:23:38Z",
+      "completed_at": "2026-10-04T02:25:21Z",
+      "details_url": "https://sonarcloud.io/dashboard?id=a1351995160_trade&pullRequest=36",
+      "head_sha": "899dcbc85b1f524681bbb18761c17162ff5a52d6"
+    }
+  ],
+  "sonar_review": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\shared_deadline_review\\SONAR_CURRENT_HEAD_REVIEW_899dcbc.json",
+    "sha256": "531119165659d2808d1b40f99121a45acbb770e2786cce9d19885350f5218db2"
+  },
+  "sonar_server_state": "11_EXISTING_OPEN_VULNERABILITIES_QUALITY_GATE_ERROR_NEW_SECURITY_RATING_5",
+  "all_github_checks_including_sonar_claimed_success": false,
+  "official_api_receipt": {
+    "path": "C:\\Users\\84219\\AppData\\Local\\Temp\\long_horizon_release_orchestration_v1\\CI_899dcbc_FINAL_API.json",
+    "sha256": "a9edc16212e96beced07db90a800f7930fa8b0b718b06d778c71ba350ae25ef5"
+  },
+  "official_api_references": [
+    "https://api.github.com/repos/a1351995160/trade/actions/runs/37170907404",
+    "https://api.github.com/repos/a1351995160/trade/actions/runs/37170907404/jobs?per_page=100",
+    "https://api.github.com/repos/a1351995160/trade/actions/runs?head_sha=899dcbc85b1f524681bbb18761c17162ff5a52d6&per_page=100",
+    "https://api.github.com/repos/a1351995160/trade/commits/899dcbc85b1f524681bbb18761c17162ff5a52d6/check-runs?per_page=100"
+  ],
+  "real_six_account_acceptance": {
+    "attempt_root": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v7",
+    "source_manifest": {
+      "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\source_archive_v8\\SOURCE_MANIFEST.json",
+      "sha256": "6902c8ee00049927e11dc490bb4f48855e4536e7d7979fe0abb634de7730d82c"
+    },
+    "status": "SEPARATE_REAL_ACCEPTANCE_NOT_EVALUATED_BY_THIS_CI_REVIEW",
+    "sessions": [
+      252,
+      504
+    ],
+    "registered_targets": 4607,
+    "initial_cash": 50000,
+    "all_six_accounts_pass_proven_by_ci": false,
+    "strategy_qualified_proven_by_ci": false,
+    "paper_observation_proven_by_ci": false
+  },
+  "evidence_boundaries": {
+    "production_source_modified": false,
+    "worktree_docs_modified": false,
+    "tests_executed_locally_by_this_agent": false,
+    "remote_ci_actual_results_observed": true,
+    "accounts_started_or_resumed_by_this_agent": false,
+    "sonar_server_dispositions_modified": false,
+    "hidden_rules_or_exclusions_added": false,
+    "merge_performed_by_this_agent": false
+  }
+}

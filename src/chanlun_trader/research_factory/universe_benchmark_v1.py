@@ -1,6 +1,9 @@
 """全范围公开对照：现金与不可投资的期初等权价格篮子。"""
+from copy import copy
+import time
+
 from .common import stable_hash
-from .universe_account_inputs_v1 import prepare_universe_account_inputs_v1
+from .universe_account_inputs_v1 import UniverseAccountInputsV1, prepare_universe_account_inputs_v1
 
 
 VERSION = 'UNIVERSE_PRICE_REFERENCE_V1'
@@ -12,12 +15,22 @@ def universe_price_reference(bundle, window, *, initial_cash):
     此对照不创建订单和账户，不作为正式评审基准。缺成分数据不删权重。
     """
     inputs = prepare_universe_account_inputs_v1(bundle, window, stage='SCAN')
+    return _universe_price_reference_from_inputs(inputs, initial_cash=initial_cash)
+
+
+def _universe_price_reference_from_inputs(inputs, *, initial_cash, deadline=None):
+    """受限报告复用已认证输入；计算口径与公共价格对照相同。"""
+    if type(inputs) is not UniverseAccountInputsV1:
+        raise ValueError('PRICE_REFERENCE_PREPARED_INPUT_REQUIRED')
     days = inputs.calendar
     first = days.index(inputs.window['account_start'])
     if first == 0:
         raise ValueError('PRICE_REFERENCE_PRIOR_SESSION_REQUIRED')
     previous = days[first - 1]
-    members = [symbol for symbol in inputs.symbols if inputs.scan_status(symbol, previous)['entry_eligible']]
+    # 价格篮子沿用原SCAN默认条件，不继承策略指标的字段/预热要求。
+    selection = copy(inputs)
+    selection.required_fields, selection.warmup_bars = frozenset(), 0
+    members = [symbol for symbol in inputs.symbols if selection.scan_status(symbol, previous)['entry_eligible']]
     common = {'version': VERSION, 'input_identity': inputs.input_identity,
         'target_count': len(inputs.symbols), 'initial_members': members,
         'initial_members_identity': stable_hash(members), 'initial_selection_date': previous,
@@ -42,6 +55,9 @@ def universe_price_reference(bundle, window, *, initial_cash):
                 and float(inputs.bar(s, days[first])['open']) * 100 <= initial_cash / len(members)
                 for s in members))
     for day in days[first:]:
+        if deadline is not None and time.monotonic() >= deadline:
+            from .universe_account_backend_v2 import SegmentBoundary
+            raise SegmentBoundary('UNIVERSE_PRICE_REFERENCE_COOPERATIVE_DEADLINE')
         for symbol in members:
             state, bar = inputs.state(symbol, day), inputs.bar(symbol, day)
             if not state['state_known'] or state['delisted']:

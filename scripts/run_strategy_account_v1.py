@@ -685,7 +685,14 @@ def _long_horizon_compute_worker(path,stage,number,member=None):
         'funnel_sha256':sha(root/(member+'_SIGNAL_FUNNEL.json'))}
     output_path=folder/('RESULT_'+member+'.json');save(output_path,value)
     if all((root/(name+'_RESEARCH_REPORT.json')).exists() for name in job['plans']):
-        report_account_job(path)
+        try:
+            cooperative_remaining(deadline,profile_id)
+            report_account_job(path,_universe_inputs=inputs,_deadline=deadline)
+            cooperative_remaining(deadline,profile_id)
+        except SegmentBoundary:
+            save(folder/('SEGMENT_'+str(number).zfill(6)+'_STATUS.json'),{'state':'CONTINUE',
+                'dispatch_id':pending['dispatch_id'],'phase':'REPORT_RENDER','member':member})
+            return 75
     save(folder/('SEGMENT_'+str(number).zfill(6)+'_STATUS.json'),{'state':'COMPLETED',
         'dispatch_id':pending['dispatch_id'],'member':member,'result_sha256':sha(output_path)})
     return 0
@@ -878,10 +885,10 @@ def reconcile_account(path, name):
     return service(job).settle(name,completed=True,seconds=seconds,result_hash=sha(required[3]),error=None)
 
 
-def report_account_job(path):
+def report_account_job(path,*,_universe_inputs=None,_deadline=None):
     job=read_json(path);validate_sources(job)
     index=read_json(Path(job['root'])/'RESULTS_INDEX.json')['items']
-    write_reports(job,index)
+    write_reports(job,index,_universe_inputs=_universe_inputs,_deadline=_deadline)
     return index
 
 
@@ -891,7 +898,7 @@ def execute(path):
     return report_account_job(path)
 
 
-def write_reports(job,index):
+def write_reports(job,index,*,_universe_inputs=None,_deadline=None):
     from copy import deepcopy
     from chanlun_trader.research_factory.strategy_report_v1 import render_markdown
     root=Path(job['root']);results={name:read_json(item['result']) for name,item in index.items()}
@@ -902,11 +909,28 @@ def write_reports(job,index):
     control=results.get(job.get('benchmark_id'))
     universe_reference = None
     if job.get('benchmark_mode') == 'CASH_AND_PRICE_REFERENCE':
-        from chanlun_trader.research_factory.universe_benchmark_v1 import universe_price_reference
+        from chanlun_trader.research_factory.universe_benchmark_v1 import (
+            _universe_price_reference_from_inputs,universe_price_reference)
         item = next(iter(job['items'].values()))
-        data = resolve(item['loader'])(**item['loader_kwargs'])
         options = item['backend_options']
-        universe_reference = universe_price_reference(data['frame'], options['window'], initial_cash=options['initial_cash'])
+        if _universe_inputs is None:
+            data = resolve(item['loader'])(**item['loader_kwargs'])
+            universe_reference = universe_price_reference(data['frame'], options['window'], initial_cash=options['initial_cash'])
+        else:
+            from chanlun_trader.research_factory.universe_account_inputs_v1 import (
+                UniverseAccountInputsV1,normalized_universe_window_v1)
+            from chanlun_trader.research_factory.universe_execution_profile_v1 import validate_execution_profile
+            if (type(_universe_inputs) is not UniverseAccountInputsV1 or _universe_inputs.stage!='ACCOUNT'
+                    or 'profile_id' not in job.get('resources',{})
+                    or _universe_inputs.input_identity!=job['input_identity']
+                    or any(normalized_universe_window_v1(row['backend_options']['window'])!=_universe_inputs.window
+                           or row['backend_options']['initial_cash']!=options['initial_cash']
+                           for row in job['items'].values())):
+                raise PermissionError('REPORT_PREPARED_INPUT_SCOPE_CONFLICT')
+            validate_execution_profile(job['resources'])
+            _universe_inputs.assert_unchanged()
+            universe_reference = _universe_price_reference_from_inputs(_universe_inputs,
+                initial_cash=options['initial_cash'],deadline=_deadline)
     for name,result in results.items():
         if sha(index[name]['result'])!=index[name]['sha256'] or read_json(index[name]['settlement'])['result_sha256']!=index[name]['sha256']:
             raise PermissionError('REPORT_SETTLEMENT_CONFLICT')
