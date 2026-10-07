@@ -98,6 +98,7 @@ jobs:
           tests/research_factory/test_universe_execution_profile_v1.py
           tests/research_factory/test_universe_compute_governance_v1.py
           tests/research_factory/test_universe_execution_state_v2.py
+          tests/research_factory/test_universe_checkpoint_atomic_replace_v1.py
           tests/research_factory/test_universe_streaming_execution_v1.py
           tests/research_factory/test_research_rule_strategy_v4.py
           tests/research_factory/test_universe_selection_v1.py

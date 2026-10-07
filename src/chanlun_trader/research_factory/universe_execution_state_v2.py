@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import tempfile
+import time
 
 import pandas as pd
 
@@ -115,7 +116,17 @@ def write_snapshot(path, value):
                                     default=str, allow_nan=False))
             stream.flush()
             os.fsync(stream.fileno())
-        os.replace(temporary, path)
+        # Windows只读观察者可短暂禁止删除共享；重试同一完整临时文件，不覆盖旧收盘。
+        deadline = time.monotonic() + 1.
+        while True:
+            try:
+                os.replace(temporary, path)
+                break
+            except PermissionError as error:
+                remaining = deadline - time.monotonic()
+                if getattr(error, 'winerror', None) not in {5, 32, 33} or remaining <= 0:
+                    raise
+                time.sleep(min(.01, remaining))
     finally:
         if os.path.exists(temporary):
             os.unlink(temporary)
