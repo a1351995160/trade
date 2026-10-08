@@ -125,3 +125,19 @@ Windows job `111223728278`，run `37130234832`，名称 `completion (windows-lat
 剩余 11 项的人工证据审阅已完成，其具体误报论证如上；外部 SonarCloud 安全门禁仍失败。后续需要拥有 Administer Issues 权限的已认证审阅者逐项确认并处理，或对明确发现的真实边界缺口作定点修复后重新分析。本报告未进行上述外部写入。
 
 本地临时目录修复的 16 项测试、前端 27 项 Node 测试和生产构建通过，仅证明各自本地验证范围。修复后的远端 Windows long-horizon CI 与 SonarCloud 结果仍待对应提交的实际检查，不能据此称全部 CI 为绿色或安全门禁已通过。主用户操作指南未因本工程审阅附件而改变。
+
+
+## 2026-10-08：1928c39 原子收盘保存修复的官方后续扫描
+
+本次直接核对官方 API 与 GitHub 同一提交的 SonarCloud 检查：仍为既有 11 条 OPEN vulnerability，没有新增告警或位置变化。告警涉及的四份源码与 SOURCE9 实际原字节、上一提交一致，前文 A–G 的具体调用链论证仍适用。当前原始凭证为同目录 `SONAR_CURRENT_HEAD_REVIEW_1928c39.json`，主目录 `checkpoint_replace_review/` 保留官方原始 JSON。
+
+新增逻辑只对同一个完整临时快照的原子替换处理 Windows 错误 5/32/33，最多等待一秒。重定向拒绝、原 JSON、身份、原资源限制及消费语义不变；其他错误立即传播，持续占用仍失败。未增加外部输入、命令执行或路径来源。本项人工复核没有发现新增可确认安全缺陷。
+
+SonarCloud 质量门禁仍为 ERROR，失败项是 `new_security_rating`；服务端没有关闭这 11 条告警。本记录未执行误报转换、抑制、排除或门禁变更，不构成全项目安全认证。对应修复的 11 项专项、104 项相关整合及 E 盘 20 次实际短暂读锁提交有独立证据；远端八组 CI 与 SOURCE10 六账户尚未全部完成，不能由本说明推定通过。
+
+
+## 2026-10-08：1928c39 远端八组 CI 已实际完成
+
+后续取得同一提交的真实远端结果：Windows/Linux 的 workflow、formal-scope、full-universe、long-horizon 八组全部成功，十个 PR 工作流及 25 个 PR 检查全部成功，包含必需的 `Deterministic governance suite`。官方运行页面为 https://github.com/a1351995160/trade/actions/runs/37650072626，同目录 `CI_COMPLETION_1928c39.json` 保留各原始回执的路径与哈希。
+
+SonarCloud 的独立检查仍为 FAILURE，前节 11 条 OPEN 告警的人工说明及服务端边界保持；重复 push 的取消也不计为通过。这个结果只证明 1928c39 的自动检查，SOURCE10 真实六账户仍运行中。最终交付元数据提交仍需按其实际 HEAD 验证必需检查，不继承旧提交绿色状态。

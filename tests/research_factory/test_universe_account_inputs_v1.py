@@ -379,6 +379,72 @@ def test_bar_state_queries_preserve_every_field_type_and_null_with_text_cache_vi
     assert universe_input_identity_v1(prepared.bundle, window) == identity
 
 
+@pytest.mark.parametrize("method", ["bar", "state"])
+def test_query_decodes_each_selected_scalar_only_once(method):
+    bundle, window = valid_universe_bundle_v1()
+    prepared = prepare_universe_account_inputs_v1(bundle, window)
+    expected = getattr(prepared, method)(SYMBOLS[0], DAYS[2])
+    columns = prepared._daily_columns if method == "bar" else prepared._state_columns
+
+    class CountedValues:
+        def __init__(self, values):
+            self.values, self.reads = values, 0
+
+        def __getitem__(self, position):
+            self.reads += 1
+            return self.values[position]
+
+    counted = {name: CountedValues(values) for name, values in columns.items()}
+    if method == "bar":
+        prepared._daily_columns = counted
+    else:
+        prepared._state_columns = counted
+    assert getattr(prepared, method)(SYMBOLS[0], DAYS[2]) == expected
+    assert {values.reads for values in counted.values()} == {1}
+
+
+def test_repeated_timestamp_parsing_does_not_cache_state_visibility(monkeypatch):
+    import chanlun_trader.research_factory.universe_account_inputs_v1 as inputs_module
+    bundle, window = valid_universe_bundle_v1()
+    visible_at = "2024-01-04T12:00:00+08:00"
+    bundle["states"]["available_at"] = visible_at
+    prepared = prepare_universe_account_inputs_v1(bundle, window, stage="SCAN")
+    assert prepared.coverage["account_data_ready"] is False
+    before = pd.Timestamp("2024-01-04T09:30:00+08:00")
+    after = pd.Timestamp("2024-01-04T15:00:00+08:00")
+    cache = getattr(inputs_module, "_cached_state_timestamp", None)
+    if cache is not None:
+        cache.cache_clear()
+    original, parses = pd.Timestamp, []
+
+    def observed_timestamp(value, *args, **kwargs):
+        if value == visible_at:
+            parses.append(value)
+        return original(value, *args, **kwargs)
+
+    monkeypatch.setattr(inputs_module.pd, "Timestamp", observed_timestamp)
+    for _ in range(5):
+        assert prepared.state(SYMBOLS[0], DAYS[2], asof=before)["reason"] == "UNIVERSE_STATE_NOT_YET_AVAILABLE"
+        assert prepared.state(SYMBOLS[0], DAYS[2], asof=after)["state_known"] is True
+    assert parses == [visible_at]
+
+
+def test_state_timestamp_cache_is_bounded_and_keeps_invalid_dates_rejected():
+    from chanlun_trader.research_factory.universe_account_inputs_v1 import _cached_state_timestamp
+    _cached_state_timestamp.cache_clear()
+    try:
+        for stamp in pd.date_range("2020-01-01", periods=4200, freq="h", tz="Asia/Shanghai"):
+            assert _cached_state_timestamp(stamp.isoformat()) == stamp
+        assert _cached_state_timestamp.cache_info().currsize <= 4096
+        before = _cached_state_timestamp.cache_info().currsize
+        for _ in range(2):
+            with pytest.raises((ValueError, TypeError)):
+                _cached_state_timestamp("not-a-timestamp")
+        assert _cached_state_timestamp.cache_info().currsize == before
+    finally:
+        _cached_state_timestamp.cache_clear()
+
+
 def test_frame_identity_releases_mapped_columns_and_never_materializes_a_mapped_frame(monkeypatch):
     frame = _identity_frame("nested")
     for number in range(19):

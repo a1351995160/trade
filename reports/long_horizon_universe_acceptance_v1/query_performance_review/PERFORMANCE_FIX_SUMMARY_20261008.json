@@ -1,0 +1,39 @@
+{
+  "status": "QUERY_FIX_TESTED_AND_REVIEWED_REAL_U8_PENDING",
+  "recorded_at": "2026-10-08T04:51:54.710419+00:00",
+  "changed_file_sha256": {
+    "src/chanlun_trader/research_factory/universe_account_inputs_v1.py": "f80ebba4cf0e68b2386c32266fff5961e9d30379363f31459c471a999e658660",
+    "tests/research_factory/test_universe_account_inputs_v1.py": "a55e2c2449798ec948cdca841a01e423ca91e74717007adec47385e7846055ad"
+  },
+  "final_integration": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\host_support_v1\\STATE_QUERY_FINAL_INTEGRATION_20261008.xml",
+    "sha256": "c9ba137e09bf218d1c37ff71f920bb844b60e44841b164104f992b52f6a327f8"
+  },
+  "red_regressions": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\host_support_v1\\STATE_QUERY_RED_20261008.xml",
+    "sha256": "f37199fb6682835745161d3b9d4998e2157f3dc3cebf3116b8cfd1c78cdec66e"
+  },
+  "synthetic_comparison": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\host_support_v1\\STATE_QUERY_REPEAT_BENCHMARK_20261008T044140225267Z.json",
+    "sha256": "5c8b7deb5dfda60993ca4f602edb76fbc325a4f30141af16e927f285c85d713f"
+  },
+  "source10_partial_pause": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\host_support_v1\\SOURCE10_PERFORMANCE_PAUSE_20261008.json",
+    "sha256": "dbb88bdcb24f181180a53a10a5c2c2d940cb2cd5379c340997f759dd2db30c90"
+  },
+  "source10_original_252_completion_inherited_as_new_acceptance": false,
+  "fixed_rule_changed": false,
+  "data_qualification_or_source_checks_skipped": false,
+  "worker_seconds": 900,
+  "memory_mib": 2048,
+  "threads": 1,
+  "concurrency": 1,
+  "manual_review": [
+    "每字段读取一次保留原numpy.item及Arrow缺值类型，原件和输入哈希算法不变",
+    "只缓存普通字符串解析，4096项有界；每次仍核对来源、生命周期、当前决策时刻和可见时间",
+    "不缓存状态资格，错误日期继续拒绝，未通过原件认证不能使用独占输入",
+    "不新增协议、依赖、资源规格、并发或止盈止损规则；新版真实六账户尚未执行"
+  ],
+  "strategy_qualified": false,
+  "real_full_pool_performance_proven": false
+}

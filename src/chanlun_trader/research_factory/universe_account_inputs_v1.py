@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from bisect import bisect_right
 from copy import deepcopy
+from functools import lru_cache
 import hashlib
 import math
 import os
@@ -107,6 +108,21 @@ def _query_values(series: pd.Series):
         return series.array
     # Nullable 数值/日期的 array 标量与旧 numpy 口径不同，保持原查询语义。
     return series.to_numpy(copy=False)
+
+
+def _query_row(columns: dict, position: int) -> dict:
+    row = {}
+    for name, values in columns.items():
+        # Arrow 标量读取需要解码；同一行字段只取一次，原类型和缺值保持。
+        value = values[position]
+        row[name] = value.item() if isinstance(value, np.generic) else value
+    return row
+
+
+@lru_cache(maxsize=4096)
+def _cached_state_timestamp(value: str):
+    # 仅缓存不可变文本的解析，不缓存证券状态或它在某个时刻是否可见。
+    return pd.Timestamp(value)
 
 
 def universe_input_identity_v1(bundle: dict, window: dict) -> str:
@@ -503,8 +519,7 @@ class UniverseAccountInputsV1:
             position = self._daily_index.get_loc((symbol, day))
         except KeyError:
             return None
-        return {name: values[position].item() if isinstance(values[position], np.generic)
-                else values[position] for name, values in self._daily_columns.items()}
+        return _query_row(self._daily_columns, position)
 
     def state(self, symbol: str, day: int, *, asof=None) -> dict:
         day = day if isinstance(day, (int, np.integer)) and day in self._session_indices else _day(day)
@@ -526,8 +541,7 @@ class UniverseAccountInputsV1:
             position = self._states_index.get_loc(key)
         except KeyError:
             return unknown
-        row = {name: values[position].item() if isinstance(values[position], np.generic)
-               else values[position] for name, values in self._state_columns.items()}
+        row = _query_row(self._state_columns, position)
         if self._state_date == "effective_date" and day > row["valid_to"]:
             return {**unknown, "reason": "UNIVERSE_STATE_INTERVAL_EXPIRED"}
         if not set(_STATE_FIELDS) <= set(row):
@@ -570,7 +584,8 @@ class UniverseAccountInputsV1:
                         return {**row, "state_known": False, "reason": "UNIVERSE_STATE_AVAILABILITY_UNKNOWN"}
                     continue
                 try:
-                    stamp = pd.Timestamp(value)
+                    stamp = (_cached_state_timestamp(value) if type(value) is str
+                             else pd.Timestamp(value))
                     if stamp.tzinfo is None or stamp > now:
                         return {**row, "state_known": False, "reason": "UNIVERSE_STATE_NOT_YET_AVAILABLE"}
                 except (ValueError, TypeError):
