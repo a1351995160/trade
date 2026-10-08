@@ -541,7 +541,18 @@ class UniverseDataProviderV1:
         if len(parts) == 1:
             return parts[0]
         index_columns = pandas_metadata.get('index_columns', [])
-        result = pd.concat(parts, ignore_index=not any(isinstance(column, str) for column in index_columns))
+        ignore_index = not any(isinstance(column, str) for column in index_columns)
+        columns = parts[0].columns
+        if len(columns):
+            # 拼好一列即释放各批该列，避免批次表与整份新表同时占用内存。
+            merged = {name: pd.concat([part.pop(name) for part in parts], ignore_index=ignore_index)
+                      for name in columns}
+            result = pd.DataFrame(merged, copy=False)
+            result.columns = columns
+        else:
+            # 仅索引的表没有列副本，仍按原 Pandas 方式恢复完整行轴。
+            result = pd.concat(parts, ignore_index=ignore_index)
+        parts.clear()
         # RangeIndex 只在元数据中保存；每批转换会产生局部 RangeIndex，合并后恢复原轴。
         if len(index_columns) == 1 and isinstance(index_columns[0], dict) and index_columns[0].get('kind') == 'range':
             index = index_columns[0]

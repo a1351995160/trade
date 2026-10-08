@@ -213,6 +213,39 @@ def test_late_invalid_mixed_values_keep_strict_rejection(values,tmp_path):
         submission._write_frame_in_batches(frame,tmp_path/'invalid.parquet')
 
 
+@pytest.mark.parametrize('index_kind', ['range', 'named', 'multi', 'index_only'])
+def test_multiple_frozen_batches_keep_full_column_types_order_and_index(tmp_path, index_kind):
+    from chanlun_trader.research_factory.universe_account_inputs_v1 import _frame_identity
+    count = 16389
+    frame = pd.DataFrame({
+        'seq': np.arange(count, dtype='int64'),
+        'source': pd.Series(['来源/' + 'x' * 512] * count, dtype=object),
+        'late': pd.Series([None] * 16384 + ['中文'] * 5, dtype=object),
+        'optional': pd.Series([None, 3] * (count // 2) + [None], dtype='Int64'),
+        'known': pd.Series([True, None] * (count // 2) + [True], dtype='boolean'),
+        'category': pd.Categorical(['a', 'b'] * (count // 2) + ['a']),
+        'timestamp': pd.date_range('2024-01-02', periods=count, freq='min', tz='Asia/Shanghai'),
+        'numeric': pd.Series(np.arange(count), dtype='float32'),
+    })
+    frame.columns.name = '字段顺序'
+    if index_kind == 'range':
+        frame.index = pd.RangeIndex(5, 5 + count * 3, 3, name='原始行')
+    elif index_kind in ('named', 'index_only'):
+        frame.index = pd.Index(['重复行/' + str(i // 2) for i in range(count)], name='行名称')
+    else:
+        frame.index = pd.MultiIndex.from_arrays([['证券'] * count, np.arange(count)], names=['分组', '行'])
+    if index_kind == 'index_only':
+        frame = frame.iloc[:, :0]
+    path = tmp_path / 'full_axes.parquet'
+    frame.to_parquet(path)
+    actual = UniverseDataProviderV1._read_parquet(path, preserve_pandas_objects=True)
+    pd.testing.assert_frame_equal(actual, frame, check_exact=True)
+    if len(frame.columns):
+        assert _frame_identity(actual, ['seq']) == _frame_identity(frame, ['seq'])
+        assert actual.late.iloc[0] is None and actual.late.iloc[-1] == '中文'
+        assert actual.source.iloc[0] is actual.source.iloc[-1]
+
+
 def test_invalid_unicode_still_rejected_before_successful_freeze(tmp_path):
     frame=pd.DataFrame({'source':pd.Series(['text']*8192+['\ud800'],dtype=object)})
     with pytest.raises(UnicodeEncodeError):

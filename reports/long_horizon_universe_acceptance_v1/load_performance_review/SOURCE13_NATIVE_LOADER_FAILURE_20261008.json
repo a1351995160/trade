@@ -1,0 +1,80 @@
+{
+  "status": "SOURCE13_NATIVE_ACCOUNT_LOADER_MEMORY_FAILURE_BEFORE_FIRST_ACCOUNT_DAY",
+  "recorded_at": "2026-10-08T07:03:59.458964+00:00",
+  "source_manifest": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\source_archive_v13\\SOURCE_MANIFEST.json",
+    "sha256": "4f88860048d8bd6cfe45fd62b83f09f5b7440af6cf583b3612d296a33bc26219"
+  },
+  "host_exit": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v12\\HOST_EXIT.json",
+    "sha256": "a00b3ae6f93642a00b1b0542654d5bbd157a5ed3489c08d577d7ef7fdbed5878"
+  },
+  "host_log": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v12\\HOST.log",
+    "sha256": "16686b7972b9e30c52f81217971fbcd7d4ae85e5adc3774d08350c945b151e86"
+  },
+  "job": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v12\\submission\\tasks\\4b80f56163b54c6ff82e1b13d8612d2387875ff50fd62f0eaf001f10ccd9d9e2\\account\\JOB.json",
+    "sha256": "a812275071e6615d61d1d76c246a1eb59488256c5cf5ae18a96055ef8c29549e"
+  },
+  "start": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v12\\submission\\tasks\\4b80f56163b54c6ff82e1b13d8612d2387875ff50fd62f0eaf001f10ccd9d9e2\\account\\LONG_U252_BASE_START.json",
+    "sha256": "61309756c7cdfd98d6eb38c61bd7ef164e953b655ea6032569980279ef97004a"
+  },
+  "settlement": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v12\\submission\\tasks\\4b80f56163b54c6ff82e1b13d8612d2387875ff50fd62f0eaf001f10ccd9d9e2\\account\\LONG_U252_BASE_SETTLEMENT.json",
+    "sha256": "72ce0e666529ee93a2c6e07e9fc4d2a6f10f484e9d57c112841098e51788cf13"
+  },
+  "resource": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v12\\submission\\tasks\\4b80f56163b54c6ff82e1b13d8612d2387875ff50fd62f0eaf001f10ccd9d9e2\\account\\LONG_U252_BASE_SEGMENT_000001_RESOURCE.json",
+    "sha256": "a66fc5065bfefb3171f59219498374db738b30df48ba2632767b2af39041fb4c"
+  },
+  "charge": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v12\\submission\\tasks\\4b80f56163b54c6ff82e1b13d8612d2387875ff50fd62f0eaf001f10ccd9d9e2\\account\\LONG_U252_BASE_SEGMENT_000001_CHARGE.json",
+    "sha256": "44c676b3764f7d1e525482b5a1339e9e56d2838bc820569594c456fd0218e88e"
+  },
+  "dispatch": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v12\\submission\\tasks\\4b80f56163b54c6ff82e1b13d8612d2387875ff50fd62f0eaf001f10ccd9d9e2\\account\\LONG_U252_BASE_SEGMENT_000001_DISPATCH.json",
+    "sha256": "44b022a3ca0466f655d86ce744cc29777af26d3ab112822e2e455b639ed48c69"
+  },
+  "budget": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v12\\budgets\\segmented_252.json",
+    "sha256": "c0820e9de4e7298f09e9b4aa5f17abe27f783ea7248aad7f5929cb7d45ba39f6"
+  },
+  "scan_receipt": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v12\\submission\\tasks\\signal-scans\\5663c91c1aa666194ad8fcd1255d351a0d4de5eb626fd5be05a91ffb6301a600\\SCAN_RECEIPT.json",
+    "sha256": "f1bcfc51802809848dc3facffd6b6eb91646a3e04ed02c477e854bdf4699713e"
+  },
+  "preparation_resources": [
+    {
+      "resource": {
+        "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v12\\submission\\tasks\\signal-scans\\5663c91c1aa666194ad8fcd1255d351a0d4de5eb626fd5be05a91ffb6301a600\\PREPARE_000001_RESOURCE.json",
+        "sha256": "3da2519f60beddded43b15f0770669e35ae966224a5e68f1fb3278e22304b0b2"
+      },
+      "elapsed_seconds": 256.6518937000001,
+      "peak_memory_mib": 1954.13671875
+    },
+    {
+      "resource": {
+        "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v12\\submission\\tasks\\signal-scans\\5663c91c1aa666194ad8fcd1255d351a0d4de5eb626fd5be05a91ffb6301a600\\PREPARE_000002_RESOURCE.json",
+        "sha256": "cc68c0e56e1f5498d6760cc561f07c90635a327bdd13aa348458b37764f460a7"
+      },
+      "elapsed_seconds": 423.90568560000247,
+      "peak_memory_mib": 1974.4140625
+    }
+  ],
+  "preparation_measured_seconds": 680.5575793000025,
+  "account_jobs_consumed": 1,
+  "account_days": 0,
+  "account_measured_seconds": 411.20247219999874,
+  "account_charged_seconds": 411.20247219999874,
+  "peak_memory_mib": 2058.96484375,
+  "unknown_charged_seconds": 0,
+  "failure_location": "FORMAL_CHILD_PARQUET_FULL_DATAFRAME_CONCAT",
+  "frozen_source13_modified": false,
+  "old_failed_purpose_reopened": false,
+  "old_consumption_refunded": false,
+  "all_six_accounts_complete": false,
+  "strategy_qualified": false,
+  "previous_running_note_was_based_on_20261008T065349_snapshot": true
+}
