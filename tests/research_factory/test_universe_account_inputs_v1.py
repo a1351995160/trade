@@ -10,7 +10,8 @@ import pytest
 
 from chanlun_trader.research_factory.board_execution_policy_v1 import board_policy_identity
 from chanlun_trader.research_factory.universe_account_inputs_v1 import (
-    _frame_identity, _query_values, prepare_universe_account_inputs_v1, universe_input_identity_v1,
+    UniverseAccountInputsV1, _frame_identity, _query_values,
+    prepare_universe_account_inputs_v1, universe_input_identity_v1,
 )
 from chanlun_trader.research_factory.common import canonical_json, stable_hash
 
@@ -826,3 +827,37 @@ def test_empty_states_supports_only_explicit_gap_diagnostics():
     assert prepared.coverage["target_symbol_count"] == 3
     with pytest.raises(ValueError, match="STATE_MISSING"):
         prepare_universe_account_inputs_v1(bundle, window)
+
+
+def test_price_reference_dates_are_parsed_once_with_suspended_session_gap(monkeypatch):
+    from chanlun_trader.research_factory import universe_account_inputs_v1 as module
+    inputs = object.__new__(UniverseAccountInputsV1)
+    inputs.daily = pd.DataFrame({'symbol': ['000001.SZ'] * 3,
+        'date': [20240102, 20240103, 20240105], 'close': [10., 9., 8.1],
+        'prev_close': [10., 9., 8.1]})
+    inputs.events = [{'event_id': 'FIRST', 'symbol': '000001.SZ', 'event_type': 'CASH_DIVIDEND',
+        'record_date': 20240102, 'effective_date': 20240103,
+        'source_published_at': '2024-01-01T09:00:00+08:00', 'terms': {'cash_per_share': 1.}},
+        {'event_id': 'DURING_HALT', 'symbol': '000001.SZ', 'event_type': 'CASH_DIVIDEND',
+         'record_date': 20240103, 'effective_date': 20240104,
+         'source_published_at': '2024-01-01T09:00:00+08:00', 'terms': {'cash_per_share': .9}}]
+    original = module._day
+    calls = []
+    def counted_day(value):
+        calls.append(value)
+        return original(value)
+    monkeypatch.setattr(module, '_day', counted_day)
+    assert inputs._price_reference_gaps() == set()
+    assert calls == [20240103, 20240104]
+    inputs.daily.loc[2, 'prev_close'] = 8.
+    assert inputs._price_reference_gaps() == {('000001.SZ', 20240105)}
+
+
+@pytest.mark.parametrize('bad_date', [None, '2024-02-30', 'UNKNOWN'])
+def test_invalid_price_reference_event_date_still_blocks_every_successor(bad_date):
+    inputs = object.__new__(UniverseAccountInputsV1)
+    inputs.daily = pd.DataFrame({'symbol': ['000001.SZ'] * 3,
+        'date': [20240102, 20240103, 20240105], 'close': [10.] * 3, 'prev_close': [10.] * 3})
+    inputs.events = [{'event_id': 'INVALID', 'symbol': '000001.SZ',
+        'event_type': 'CASH_DIVIDEND', 'effective_date': bad_date, 'terms': {'cash_per_share': .1}}]
+    assert inputs._price_reference_gaps() == {('000001.SZ', 20240103), ('000001.SZ', 20240105)}

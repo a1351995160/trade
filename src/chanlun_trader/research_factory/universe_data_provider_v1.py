@@ -7,6 +7,7 @@ import json
 from pathlib import Path, PureWindowsPath
 import re
 
+import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -494,13 +495,27 @@ class UniverseDataProviderV1:
 
         def to_frame(batch):
             frame = batch.to_pandas(deduplicate_objects=True, use_threads=False)
+            shared_text_columns = set()
             if preserve_pandas_objects:
                 for name in object_columns.intersection(frame.columns):
                     # Pandas 3 标准恢复会把 object 字符串升级为 str 并把 None 转为 nan。
                     # 对象以原 Arrow 空值/结构重建，仍只展开当前批次。
-                    values = batch.column(batch.schema.get_field_index(name)).to_pylist()
+                    column = batch.column(batch.schema.get_field_index(name))
+                    if len(column) and (pa.types.is_string(column.type) or pa.types.is_large_string(column.type)):
+                        # 每批只解码唯一文本，代码索引展开仍保留 object/None。
+                        encoded = column.dictionary_encode()
+                        shared = [strings.setdefault(value, value)
+                                  for value in encoded.dictionary.to_pylist()]
+                        shared.append(None)
+                        indices = encoded.indices.fill_null(-1).to_numpy(zero_copy_only=False)
+                        values = np.asarray(shared, dtype=object)[indices]
+                        shared_text_columns.add(name)
+                    else:
+                        values = column.to_pylist()
                     frame[name] = pd.Series(values, index=frame.index, dtype='object')
             for name in frame:
+                if name in shared_text_columns:
+                    continue
                 dtype = frame[name].dtype
                 if not (pd.api.types.is_object_dtype(dtype)
                         or isinstance(dtype, pd.StringDtype) and dtype.storage == 'python'):

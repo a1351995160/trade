@@ -164,6 +164,24 @@ def test_late_mixed_bytes_retains_binary_not_infer_type_string(tmp_path):
     assert pq.read_table(path)['source'][-1].as_py()==b'\xff'
 
 
+@pytest.mark.parametrize('arrow_type', [pa.string(), pa.large_string()])
+def test_repeated_native_text_preserves_empty_unicode_null_and_frozen_identity(tmp_path, arrow_type):
+    from chanlun_trader.research_factory.universe_account_inputs_v1 import _frame_identity
+    values = (['', '中文来源/🙂/' + 'x' * 512, None, 'None'] * 4097) + ['最后一批']
+    dates = np.arange(len(values), dtype=np.int64)
+    table = pa.table({'symbol': pa.array(['000001.SZ'] * len(values), type=arrow_type),
+        'date': pa.array(dates), 'source': pa.array(values, type=arrow_type)})
+    path = tmp_path / 'repeated_native.parquet'
+    pq.write_table(table, path)
+    expected = pd.DataFrame({'symbol': pd.Series(['000001.SZ'] * len(values), dtype=object),
+        'date': dates, 'source': pd.Series(values, dtype=object)})
+    actual = UniverseDataProviderV1._read_parquet(path, preserve_pandas_objects=True)
+    pd.testing.assert_frame_equal(actual, expected, check_exact=True)
+    assert _frame_identity(actual, ['symbol', 'date']) == _frame_identity(expected, ['symbol', 'date'])
+    assert actual.source.iloc[2] is None and actual.source.iloc[8194] is None
+    assert actual.source.iloc[1] is actual.source.iloc[8193]
+
+
 @pytest.mark.parametrize('values', [['text']*8192+[1], [True]*8192+[2]])
 def test_late_invalid_mixed_values_keep_strict_rejection(values,tmp_path):
     frame=pd.DataFrame({'source':pd.Series(values,dtype=object)})

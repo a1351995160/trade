@@ -377,13 +377,21 @@ class UniverseAccountInputsV1:
         for symbol, rows in self.daily.groupby("symbol", sort=False):
             actions = [e for e in self.events if e.get("symbol") == symbol
                        and e.get("event_type") in {"CASH_DIVIDEND", "BONUS", "CAPITALIZATION"}]
+            try:
+                dated_actions = [(_day(event["effective_date"]), event) for event in actions]
+            except (KeyError, TypeError, ValueError, AttributeError):
+                # 无效日期仍让每个有昨收的后继报价产生原有缺口。
+                dated_actions = None
             previous = None
             for row in rows.itertuples(index=False):
                 if previous is not None and hasattr(row, "prev_close"):
                     try:
                         ref = float(row.prev_close)
                         before = float(previous.close)
-                        own = [e for e in actions if int(previous.date) < _day(e["effective_date"]) <= int(row.date)]
+                        if dated_actions is None:
+                            raise ValueError()
+                        own = [event for effective, event in dated_actions
+                               if int(previous.date) < effective <= int(row.date)]
                         expected = expected_reference_v2(before, own)
                         if math.isfinite(ref) and math.isfinite(before) and abs(ref - expected) > .011:
                             result.add((symbol, int(row.date)))
