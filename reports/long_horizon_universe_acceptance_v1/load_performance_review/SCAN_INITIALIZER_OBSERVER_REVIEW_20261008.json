@@ -1,0 +1,48 @@
+{
+  "status": "TEST_OBSERVER_FIXED_ALL_RUNTIME_AND_BUSINESS_ASSERTIONS_PRESERVED",
+  "recorded_at": "2026-10-08T06:56:44.108648+00:00",
+  "test": {
+    "path": "E:\\worktrees\\long-horizon-universe-research\\trade-system-contract-port-v1\\tests\\research_factory\\test_universe_scan_service_v1.py",
+    "sha256": "35495c37ddd824a6d54d15626bb9dd9df090f886059e7128f44c89e88eb36d7a"
+  },
+  "red": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\host_support_v1\\SCAN_INITIALIZER_OBSERVER_RED_20261008.xml",
+    "sha256": "3491c84c3925edd5093e8e0688413127424e08ae259b57f707e3ffa253ce8846"
+  },
+  "green": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\host_support_v1\\SCAN_INITIALIZER_OBSERVER_GREEN_20261008.xml",
+    "sha256": "e76a71da35e28e7a13d48c978a6895f43e7429cd7d2c743f1911cbaecac51775"
+  },
+  "green_stats": {
+    "tests": 48,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "original_failed_ci_log": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\host_support_v1\\CI_FAILED_UBUNTU_FULL_UNIVERSE_6463ed1.log",
+    "sha256": "1dcc913270f15ae8f5b7b74b74f3634138e7c8c2f2e89826c57e40662a8fcafd"
+  },
+  "original_failed_ci_job": "https://github.com/a1351995160/trade/actions/runs/37738252265/job/113182662050",
+  "observer": "COMPLETE_STRICT_INITIALIZE_INSTEAD_OF_ONLY_PUBLIC_INIT",
+  "one_worker_and_one_validation_assertion_preserved": true,
+  "fields_warmup_identity_coverage_signal_unknown_and_frozen_shape_assertions_preserved": true,
+  "new_owned_frame_no_duplicate_copy_assertion": true,
+  "source13_manifest": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\source_archive_v13\\SOURCE_MANIFEST.json",
+    "sha256": "4f88860048d8bd6cfe45fd62b83f09f5b7440af6cf583b3612d296a33bc26219"
+  },
+  "all_540_runtime_files_unchanged": true,
+  "source13_original_host_start": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v12\\HOST_START.json",
+    "sha256": "a137a0c124646118355fae74f97d0a8ad6e6e20da26cd86a0f5612ea4abb13d7"
+  },
+  "safe_sync_fixture_proof": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\host_support_v1\\SAFE_SYNC_SOURCE13_CHECK_20261008T063710530338Z.json",
+    "sha256": "429ec0d99a5c13bc32cb16e78928738dd889ff5d53a38e0985fb397b69bc45bd"
+  },
+  "real_main_mutated": false,
+  "all_six_accounts_complete": false,
+  "strategy_qualified": false,
+  "failed_tests_hidden_or_skipped": false
+}
