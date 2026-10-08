@@ -182,6 +182,28 @@ def test_repeated_native_text_preserves_empty_unicode_null_and_frozen_identity(t
     assert actual.source.iloc[1] is actual.source.iloc[8193]
 
 
+def test_frozen_text_dictionary_uses_local_pool_without_changing_global_pool(tmp_path, monkeypatch):
+    from chanlun_trader.research_factory import universe_data_provider_v1 as provider
+    count = 8195
+    frame = pd.DataFrame({'source': pd.Series(['原始来源/' + 'x' * 1536] * count, dtype=object)})
+    frame.loc[8192, 'source'] = None
+    path = tmp_path / 'local_dictionary_pool.parquet'
+    frame.to_parquet(path, index=False)
+    before = pa.default_memory_pool().backend_name
+    original = provider.pc.dictionary_encode
+    pools = []
+    def encoded(values, **kwargs):
+        pools.append(kwargs['memory_pool'].backend_name)
+        return original(values, **kwargs)
+    monkeypatch.setattr(provider.pc, 'dictionary_encode', encoded)
+    monkeypatch.setattr(pa, 'set_memory_pool', lambda *a: pytest.fail('不得更换进程默认内存池'))
+    actual = UniverseDataProviderV1._read_parquet(path, preserve_pandas_objects=True)
+    pd.testing.assert_frame_equal(actual, frame, check_exact=True)
+    assert pools and set(pools) == {'system'}
+    assert actual.source.iloc[0] is actual.source.iloc[-1] and actual.source.iloc[8192] is None
+    assert pa.default_memory_pool().backend_name == before
+
+
 @pytest.mark.parametrize('values', [['text']*8192+[1], [True]*8192+[2]])
 def test_late_invalid_mixed_values_keep_strict_rejection(values,tmp_path):
     frame=pd.DataFrame({'source':pd.Series(values,dtype=object)})

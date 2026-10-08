@@ -10,6 +10,7 @@ import re
 import numpy as np
 import pandas as pd
 import pyarrow as pa
+import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
 from ..research.guard import ResearchDataAccessGuard
@@ -358,9 +359,12 @@ class UniverseDataProviderV1:
         if source_qualification is not None:
             bundle['source_qualification'] = source_qualification
         # 动态输入认证负责状态、参考价、公司行动、稀疏日历与板块政策；不走旧矩形V2。
-        from .universe_account_inputs_v1 import prepare_universe_account_inputs_v1
-        inputs = prepare_universe_account_inputs_v1(bundle, window, stage=stage,
-            required_fields=required_fields, warmup_bars=warmup_bars)
+        from .universe_account_inputs_v1 import UniverseAccountInputsV1
+        # 表均为本次读入的新对象，无调用方可变表；完整认证可直接持有列缓冲。
+        # 公共 inputs 构造器仍隔离外部表，本入口不开放绕过认证的参数。
+        inputs = UniverseAccountInputsV1.__new__(UniverseAccountInputsV1)
+        inputs._initialize(bundle, window, stage=stage, required_fields=required_fields,
+            warmup_bars=warmup_bars, require_ready=True, copy_frames=False)
         prepared_bundle = inputs.bundle
         qualification = {'purpose': purpose, 'account_data_ready': inputs.coverage.get('account_data_ready') is True,
             'data_stage': stage, 'historical_availability': 'MODELED',
@@ -503,7 +507,8 @@ class UniverseDataProviderV1:
                     column = batch.column(batch.schema.get_field_index(name))
                     if len(column) and (pa.types.is_string(column.type) or pa.types.is_large_string(column.type)):
                         # 每批只解码唯一文本，代码索引展开仍保留 object/None。
-                        encoded = column.dictionary_encode()
+                        # 临时字典逐批归还系统，不改变进程默认 Arrow 内存池。
+                        encoded = pc.dictionary_encode(column, memory_pool=pa.system_memory_pool())
                         shared = [strings.setdefault(value, value)
                                   for value in encoded.dictionary.to_pylist()]
                         shared.append(None)
