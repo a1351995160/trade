@@ -1,0 +1,13 @@
+{
+  "kind": "LONG_U504_BASE",
+  "reservation": "RES-000002",
+  "receipt_id": "caa2438b90d8d7e55ca3d04a3a36283b65461c16ac088fa01fe6f80c366c898f",
+  "started_at": "2026-10-08T17:40:53.036913+00:00",
+  "counted_before_account_calculation": true,
+  "completed": true,
+  "wall_seconds": 17150.663425999996,
+  "result_sha256": "d40f909c2a790ef1d384473351a3991337e4f604673c5f305b80d7d63e9baa0f",
+  "error": null,
+  "settled_at": "2026-10-09T00:35:19.536957+00:00",
+  "repair_exposures": 0
+}

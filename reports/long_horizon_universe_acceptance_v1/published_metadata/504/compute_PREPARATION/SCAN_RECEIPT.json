@@ -1,0 +1,224 @@
+{
+  "version": "UNIVERSE_PUBLIC_SIGNAL_SCAN_V1",
+  "intent_identity": "62e391207c75de338272883eebe881654b45f99b14727573758b4cbfae98d984",
+  "scan_identity": "5ea616ead712b06ea456be16f1f4194dbbe79d45e770baff66a3ed5458d93a4c",
+  "artifacts": {
+    "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\signal-scans\\81c4f92fe97bd56a4a9c80d95d2b9f9c22dba03236e63bbc691d91340e05ca77\\RESULT.json": {
+      "sha256": "37c6f0c80a319d40882190ea1e08bfb6da692df569b4dafbd610e9b21b6c402c",
+      "physical_signature": {
+        "size": 8686032,
+        "mtime_ns": 1791481192000000000,
+        "ctime_ns": 1791481186880000000,
+        "inode": 207971026720
+      }
+    },
+    "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\signal-scans\\81c4f92fe97bd56a4a9c80d95d2b9f9c22dba03236e63bbc691d91340e05ca77\\RESOURCE.json": {
+      "sha256": "e250c124206b7ad82b5f6bb263d51eacb2f07941cd61a32f13106e9020ebe952",
+      "physical_signature": {
+        "size": 1064,
+        "mtime_ns": 1791481194000000000,
+        "ctime_ns": 1791481193950000000,
+        "inode": 207971027264
+      }
+    },
+    "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\signal-scans\\81c4f92fe97bd56a4a9c80d95d2b9f9c22dba03236e63bbc691d91340e05ca77\\REPORT_CN.md": {
+      "sha256": "7094f905311ae71ccff81e456ba3777703dd9eccff0b85d3ca6dcf998b3a850b",
+      "physical_signature": {
+        "size": 144676,
+        "mtime_ns": 1791481194000000000,
+        "ctime_ns": 1791481193350000000,
+        "inode": 207971027040
+      }
+    },
+    "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\signal-scans\\81c4f92fe97bd56a4a9c80d95d2b9f9c22dba03236e63bbc691d91340e05ca77\\PREPARE_000001_WORKER.json": {
+      "sha256": "171ffa6ac8e704c6e50fdf91f7269e70b0e3451674926e45716b4658f7a8a0bd",
+      "physical_signature": {
+        "size": 106,
+        "mtime_ns": 1791480436000000000,
+        "ctime_ns": 1791480434740000000,
+        "inode": 207971025472
+      }
+    },
+    "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\signal-scans\\81c4f92fe97bd56a4a9c80d95d2b9f9c22dba03236e63bbc691d91340e05ca77\\PREPARE_000001_ACCESS.json": {
+      "sha256": "fd2489daedc9d33458f1f1da0905563c1540c9159d4c33b3ef47b50a155caefc",
+      "physical_signature": {
+        "size": 256,
+        "mtime_ns": 1791480438000000000,
+        "ctime_ns": 1791480436700000000,
+        "inode": 207971025600
+      }
+    },
+    "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\signal-scans\\81c4f92fe97bd56a4a9c80d95d2b9f9c22dba03236e63bbc691d91340e05ca77\\PREPARE_000001_RESOURCE.json": {
+      "sha256": "346071511ae18d33367d978ca5aa84fcdc3d0764e2053bc583e35e0b200c6c27",
+      "physical_signature": {
+        "size": 468,
+        "mtime_ns": 1791480714000000000,
+        "ctime_ns": 1791480713450000000,
+        "inode": 207971025952
+      }
+    },
+    "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\signal-scans\\81c4f92fe97bd56a4a9c80d95d2b9f9c22dba03236e63bbc691d91340e05ca77\\PREPARE_000002_WORKER.json": {
+      "sha256": "c0f71e388ec1dc725170014a1aef6f3f66f8d7d01c35b0e94be0f3e0a222294f",
+      "physical_signature": {
+        "size": 106,
+        "mtime_ns": 1791480714000000000,
+        "ctime_ns": 1791480713470000000,
+        "inode": 207971026080
+      }
+    },
+    "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\signal-scans\\81c4f92fe97bd56a4a9c80d95d2b9f9c22dba03236e63bbc691d91340e05ca77\\PREPARE_000002_ACCESS.json": {
+      "sha256": "7c466b76d17900232670b9b7f6b538da2933332e0b20af22d1ee9567f1a35317",
+      "physical_signature": {
+        "size": 256,
+        "mtime_ns": 1791480716000000000,
+        "ctime_ns": 1791480715480000000,
+        "inode": 207971026208
+      }
+    },
+    "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\signal-scans\\81c4f92fe97bd56a4a9c80d95d2b9f9c22dba03236e63bbc691d91340e05ca77\\PREPARE_000002_RESOURCE.json": {
+      "sha256": "2bc67e3d1bcce15ba93b5c0ac43c34e1701ff558bc3664eb0b9adc756624c977",
+      "physical_signature": {
+        "size": 468,
+        "mtime_ns": 1791481194000000000,
+        "ctime_ns": 1791481193930000000,
+        "inode": 207971027136
+      }
+    },
+    "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\signal-scans\\81c4f92fe97bd56a4a9c80d95d2b9f9c22dba03236e63bbc691d91340e05ca77\\COMPUTE\\COMPUTE_SEGMENT_000001_CHARGE.json": {
+      "sha256": "c25c5c640262dc3a8873ace9363d24bb78c96c82f3f37f10e42412aa486563b1",
+      "physical_signature": {
+        "size": 465,
+        "mtime_ns": 1791480714000000000,
+        "ctime_ns": 1791480713450000000,
+        "inode": 207971549472
+      }
+    },
+    "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\signal-scans\\81c4f92fe97bd56a4a9c80d95d2b9f9c22dba03236e63bbc691d91340e05ca77\\COMPUTE\\COMPUTE_SEGMENT_000001_DISPATCH.json": {
+      "sha256": "14853fa2edc0f599bf17a8e989d3300665b8f7a2137794836f55874e964c2462",
+      "physical_signature": {
+        "size": 309,
+        "mtime_ns": 1791480436000000000,
+        "ctime_ns": 1791480434720000000,
+        "inode": 207971549312
+      }
+    },
+    "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\signal-scans\\81c4f92fe97bd56a4a9c80d95d2b9f9c22dba03236e63bbc691d91340e05ca77\\COMPUTE\\COMPUTE_SEGMENT_000002_CHARGE.json": {
+      "sha256": "ffd7674374bcb9f2783b7a9774c20201db329633a59049f2307f1695945e063b",
+      "physical_signature": {
+        "size": 464,
+        "mtime_ns": 1791481194000000000,
+        "ctime_ns": 1791481193940000000,
+        "inode": 207971549792
+      }
+    },
+    "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\signal-scans\\81c4f92fe97bd56a4a9c80d95d2b9f9c22dba03236e63bbc691d91340e05ca77\\COMPUTE\\COMPUTE_SEGMENT_000002_DISPATCH.json": {
+      "sha256": "f3ad771c14ad908c9f96d239267c1fb1bc0179d9723070ab4c942cbc529d17d0",
+      "physical_signature": {
+        "size": 371,
+        "mtime_ns": 1791480714000000000,
+        "ctime_ns": 1791480713460000000,
+        "inode": 207971549632
+      }
+    },
+    "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\signal-scans\\81c4f92fe97bd56a4a9c80d95d2b9f9c22dba03236e63bbc691d91340e05ca77\\COMPUTE\\COMPUTE_START.json": {
+      "sha256": "8a19ffcdbca1ce7e1029832f24486cf390cd4f18e1924bf28c8e908c675d34ff",
+      "physical_signature": {
+        "size": 1578,
+        "mtime_ns": 1791480436000000000,
+        "ctime_ns": 1791480434710000000,
+        "inode": 207971549184
+      }
+    },
+    "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\signal-scans\\81c4f92fe97bd56a4a9c80d95d2b9f9c22dba03236e63bbc691d91340e05ca77\\QUALIFICATION_SCOPE.json": {
+      "sha256": "2e6109753db2bb00162d5e5e8e3d1376af3e4887fc4f8685c60a85fccd4e4634",
+      "physical_signature": {
+        "size": 5840181,
+        "mtime_ns": 1791481194000000000,
+        "ctime_ns": 1791481190440000000,
+        "inode": 207971026816
+      }
+    },
+    "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\signal-scans\\81c4f92fe97bd56a4a9c80d95d2b9f9c22dba03236e63bbc691d91340e05ca77\\EXCLUSIONS.csv": {
+      "sha256": "4927c4f6e3995e0db5d3f39631b5d0ec6ce6727e8e4935b08455f7cd83fafb45",
+      "physical_signature": {
+        "size": 214584,
+        "mtime_ns": 1791481194000000000,
+        "ctime_ns": 1791481193280000000,
+        "inode": 207971026944
+      }
+    },
+    "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\signal-scans\\81c4f92fe97bd56a4a9c80d95d2b9f9c22dba03236e63bbc691d91340e05ca77\\daily.parquet": {
+      "sha256": "33cbe0c9c7324f6aa0fdfed4750f6a21b4a90a42768f306458020ba2b83cca7c",
+      "physical_signature": {
+        "size": 66442489,
+        "mtime_ns": 1791481168000000000,
+        "ctime_ns": 1791481165360000000,
+        "inode": 207971026336
+      }
+    },
+    "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\signal-scans\\81c4f92fe97bd56a4a9c80d95d2b9f9c22dba03236e63bbc691d91340e05ca77\\turn.parquet": {
+      "sha256": "a293771954099cfafa4aec5c208c8887eb0f2d91a2244d0e7a623580656663d3",
+      "physical_signature": {
+        "size": 16609224,
+        "mtime_ns": 1791481168000000000,
+        "ctime_ns": 1791481166980000000,
+        "inode": 207971026432
+      }
+    },
+    "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\signal-scans\\81c4f92fe97bd56a4a9c80d95d2b9f9c22dba03236e63bbc691d91340e05ca77\\states.parquet": {
+      "sha256": "789b9b1e67e7ce94c8f2d7d3aaebf964086ad13f5fe6f6bf504ec4f6383ae7d2",
+      "physical_signature": {
+        "size": 2754147,
+        "mtime_ns": 1791481172000000000,
+        "ctime_ns": 1791481167750000000,
+        "inode": 207971026528
+      }
+    },
+    "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\signal-scans\\81c4f92fe97bd56a4a9c80d95d2b9f9c22dba03236e63bbc691d91340e05ca77\\INPUT.json": {
+      "sha256": "84066f2c51870f1f56a20b08c3b424aa373ed4214cb6adf959c774d9614011de",
+      "physical_signature": {
+        "size": 32655715,
+        "mtime_ns": 1791481188000000000,
+        "ctime_ns": 1791481171460000000,
+        "inode": 207971026624
+      }
+    },
+    "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\signal-scans\\81c4f92fe97bd56a4a9c80d95d2b9f9c22dba03236e63bbc691d91340e05ca77\\PARENT\\daily.parquet": {
+      "sha256": "3e356b1ab082ccd27ff0396d51eca8b6b8b3df8794ff32dd444673b609376efe",
+      "physical_signature": {
+        "size": 83422021,
+        "mtime_ns": 1791480696000000000,
+        "ctime_ns": 1791480694010000000,
+        "inode": 207972728832
+      }
+    },
+    "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\signal-scans\\81c4f92fe97bd56a4a9c80d95d2b9f9c22dba03236e63bbc691d91340e05ca77\\PARENT\\turn.parquet": {
+      "sha256": "b7fba9f97e7c1498e75102358ef3617d07f2061c0b2de2736101f02e805b240b",
+      "physical_signature": {
+        "size": 20269556,
+        "mtime_ns": 1791480698000000000,
+        "ctime_ns": 1791480695960000000,
+        "inode": 207972728928
+      }
+    },
+    "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\signal-scans\\81c4f92fe97bd56a4a9c80d95d2b9f9c22dba03236e63bbc691d91340e05ca77\\PARENT\\states.parquet": {
+      "sha256": "0963ba3bbc5dbb4a5511fb2a8787e483306f4972dfdb1f275a158022e9a154d8",
+      "physical_signature": {
+        "size": 3506937,
+        "mtime_ns": 1791480702000000000,
+        "ctime_ns": 1791480697080000000,
+        "inode": 207972729024
+      }
+    },
+    "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\signal-scans\\81c4f92fe97bd56a4a9c80d95d2b9f9c22dba03236e63bbc691d91340e05ca77\\PARENT\\INPUT.json": {
+      "sha256": "2cd1357d473201f6aab5955b2a5d309a14a5e046b5ee2667525f5ef26f22b5f3",
+      "physical_signature": {
+        "size": 30048508,
+        "mtime_ns": 1791480714000000000,
+        "ctime_ns": 1791480701520000000,
+        "inode": 207972729120
+      }
+    }
+  },
+  "receipt_identity": "9b573bd32ad767fdb117f4cc25f92b7391fadc63dd1a96800cbaf1f44c53af62"
+}

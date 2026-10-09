@@ -1,0 +1,19 @@
+{
+  "items": {
+    "LONG_U252_BASE": {
+      "result": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\4c0ecd143be5827f81cb42c4d3b8b190b3142cf5d736d7e05190dac961514258\\account\\LONG_U252_BASE_RESULT.json",
+      "sha256": "9cec5df4db50f8ee0c6edad7549e04cde39220d0196b2ad9340568a395da4511",
+      "settlement": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\4c0ecd143be5827f81cb42c4d3b8b190b3142cf5d736d7e05190dac961514258\\account\\LONG_U252_BASE_SETTLEMENT.json",
+      "report": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\4c0ecd143be5827f81cb42c4d3b8b190b3142cf5d736d7e05190dac961514258\\account\\LONG_U252_BASE_REPORT.md"
+    },
+    "LONG_U252_STRESS": {
+      "result": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\4c0ecd143be5827f81cb42c4d3b8b190b3142cf5d736d7e05190dac961514258\\account\\LONG_U252_STRESS_RESULT.json",
+      "sha256": "5a6e17f5f76c8316ed31b09a2d58cf0a5fedf43d7118c97d8c8c26578b2e9aa1",
+      "settlement": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\4c0ecd143be5827f81cb42c4d3b8b190b3142cf5d736d7e05190dac961514258\\account\\LONG_U252_STRESS_SETTLEMENT.json",
+      "report": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\4c0ecd143be5827f81cb42c4d3b8b190b3142cf5d736d7e05190dac961514258\\account\\LONG_U252_STRESS_REPORT.md"
+    }
+  },
+  "worker_seconds": 16098.595830499991,
+  "exposures": 2,
+  "repair_exposures": 0
+}

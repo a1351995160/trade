@@ -1,0 +1,9 @@
+{
+  "reader_pid": 16944,
+  "reader_parent_pid": 14216,
+  "launcher_pid": 14216,
+  "windows_job_verified": true,
+  "resource_platform": "nt",
+  "dispatch_id": "da095fd01fb27a7b52fb18ce7c7c2f38026570a35b2dcd4953c6ddc95ecb084a",
+  "phase": "PREPARE"
+}

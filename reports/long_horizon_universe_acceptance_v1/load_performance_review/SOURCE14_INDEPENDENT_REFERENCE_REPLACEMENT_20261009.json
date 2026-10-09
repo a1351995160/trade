@@ -1,0 +1,54 @@
+{
+  "version": "SOURCE14_INDEPENDENT_REFERENCE_REPLACEMENT_REVIEW_V1",
+  "checked_at": "2026-10-09T14:50:44.429306+00:00",
+  "registration": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13_reference_retry1\\REFERENCE_REPLACEMENT_REGISTRATION.json",
+    "sha256": "380bb15e0ece2795e03ae2536a4c3a12e633f5a9dc6a6fe5c872abaeb099610b",
+    "bytes": 2604
+  },
+  "known_failure": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13_reference_retry1\\KNOWN_FAILED_REFERENCE.json",
+    "sha256": "c4f835d40350977b46ecba2b5b61ef14a25caf6ac3cd47841124d26de1e2ce2d",
+    "bytes": 6060
+  },
+  "native_host": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13_reference_retry1\\HOST_START.json",
+    "sha256": "079f5a93711137d3f49128d6104ce771ae16c2d648b28297f06e1deeea48cd96",
+    "bytes": 1541
+  },
+  "native_frozen_acceptance": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13_reference_retry1\\actual\\FROZEN_ACCEPTANCE.json",
+    "sha256": "7698729533edd8311e598bf3aef8c28cf6ff8272bcec9db369bba2337b2b35f1",
+    "bytes": 3468229
+  },
+  "helper": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\host_support_v1\\replace_failed_source14_reference.py",
+    "sha256": "c12528293a7cac192314cb221ab983ee42821d7cadab15070e418c1f29ffae02",
+    "bytes": 11635
+  },
+  "source_manifest": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\source_archive_v14\\SOURCE_MANIFEST.json",
+    "sha256": "dddfe23467b2a85fc33a5ca82ff2e0e975a7e2c0536e2b7ee5d46ff19065df82",
+    "bytes": 107481
+  },
+  "runtime_source_changes": 0,
+  "reused_completed_segmented_accounts": 4,
+  "original_pause_records_retained": 6,
+  "new_reference_accounts_authorized": 2,
+  "source14_total_account_purposes_including_new_reference": 8,
+  "old_failed_charge_seconds": 257.99633569999423,
+  "old_failed_charge_id": "f52f6d087116c09f8d2e157889ded59ffe58667304040b05911c71f23af45b16",
+  "old_budget_raw_unchanged": true,
+  "old_failed_purpose_reopened": false,
+  "old_consumption_refunded": false,
+  "scope_limits_or_expiry_changed": false,
+  "fake_worker_status_created": false,
+  "old_exit_cause": "UNKNOWN_NONZERO_WINDOWS_PROCESS_EXIT",
+  "old_resource_written_at_local": "2026-10-09 17:44:32 +08:00",
+  "latest_windows_boot_at_local": "2026-10-09 22:19:46 +08:00",
+  "old_exit_not_attributed_to_later_reboot": true,
+  "review": "TWO_INDEPENDENT_READ_ONLY_CODE_AND_EVIDENCE_REVIEWS_NO_BLOCKING_FINDINGS",
+  "all_six_accounts_complete": false,
+  "strategy_qualified": false,
+  "paper": "NOT_RUN"
+}

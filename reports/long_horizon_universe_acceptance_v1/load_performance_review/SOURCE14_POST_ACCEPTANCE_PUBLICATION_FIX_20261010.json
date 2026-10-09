@@ -1,0 +1,31 @@
+{
+  "version": "SOURCE14_POST_ACCEPTANCE_PUBLICATION_FIX_V1",
+  "status": "REAL_ACCEPTANCE_AND_PUBLICATION_VERIFIED",
+  "real_acceptance_sha256": "5fa8c9918f7235f596873290bcd2516507a5d7e5ff518942918ce3ba88baa09a",
+  "publication_receipt_sha256": "8dfea24aba343d169de642214553dbb5b7deee768bac6fca86a20946a23e25c1",
+  "delivery_binding": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\host_support_v1\\PUBLICATION_FIX_DELIVERY_BINDING.json",
+  "delivery_binding_sha256": "b175b4bdc5afb60c96866a51fb7923b0bfdc2d63287d1e6e6ea73dc4707fb344",
+  "source_manifest_sha256": "dddfe23467b2a85fc33a5ca82ff2e0e975a7e2c0536e2b7ee5d46ff19065df82",
+  "original_archived_files_preserved": 540,
+  "unchanged_archived_delivery_files": 539,
+  "publisher_old_sha256": "9d58cbfa06bdb08d997a30870587ea9259005b7725e04888fdbd993ccbe13029",
+  "publisher_new_sha256": "19a64dc63e3519de4e52d6c087057030464882aebe3b3bf2a2eca930f9b112b7",
+  "publisher_in_account_or_capability_source_closure": false,
+  "account_rerun": false,
+  "independent_review": "PASS",
+  "green": {
+    "tests": 56,
+    "failed": 0,
+    "xml": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\host_support_v1\\PUBLISHER_CANONICAL_RULE_GREEN_20261010.xml",
+    "xml_sha256": "346e7f7ee4a620db9fd4c3839b82dd294f4e982802a71b57e159cf23ec417175",
+    "log_sha256": "1302021f549c367e9473c101bae8e67b72d1120dd999ef9895613bce60a8ad91"
+  },
+  "red": {
+    "tests_failed_as_expected": 2,
+    "deselected": 54,
+    "xml": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\host_support_v1\\PUBLISHER_CANONICAL_RULE_RED_20261010.xml",
+    "xml_sha256": "3509e8f15a1b7a38e9156927356e27dc553c32a256dfee324f6c4994604eb8a0",
+    "log_sha256": "4aca959f485d112bede2a3c523b5fa031d8300534ee3d5b93845f8b7871582be"
+  },
+  "scope": "Only submitted rules are canonicalized by the existing V4 parser; stored payloads and all original account evidence are compared without modification."
+}

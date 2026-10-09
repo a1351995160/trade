@@ -1,0 +1,58 @@
+{
+  "version": "SOURCE14_INDEPENDENT_REFERENCE_STRESS_PASS_V1",
+  "checked_at": "2026-10-09T18:49:52.112852+00:00",
+  "source_manifest": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\source_archive_v14\\SOURCE_MANIFEST.json",
+    "sha256": "dddfe23467b2a85fc33a5ca82ff2e0e975a7e2c0536e2b7ee5d46ff19065df82",
+    "bytes": 107481
+  },
+  "job": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13_reference_retry1\\actual\\continuous_reference\\account\\JOB.json",
+    "sha256": "d2d34f54f3e1cb2676dde933d9a1cabde22244b79d4167caf176488be7e64b4e",
+    "bytes": 888442
+  },
+  "result": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13_reference_retry1\\actual\\continuous_reference\\account\\LONG_U504_STRESS_RESULT.json",
+    "sha256": "86aad2352324dccf9ba44e8d3ce8393cf8f259803cc4e2726c58742cabd4ea41",
+    "bytes": 10098435
+  },
+  "settlement": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13_reference_retry1\\actual\\continuous_reference\\account\\LONG_U504_STRESS_SETTLEMENT.json",
+    "sha256": "8c0a3f4dd21531b71d4fd06d5a15824bfc1ac4f9278d726a398ae8cbef664dd8",
+    "bytes": 491
+  },
+  "resource": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13_reference_retry1\\actual\\continuous_reference\\account\\LONG_U504_STRESS_RESOURCE.json",
+    "sha256": "7fb2bcc718d3303c2a90a8d32d3a010c7f223417f4bb734b150eff5799f82a92",
+    "bytes": 610
+  },
+  "audit": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13_reference_retry1\\actual\\continuous_reference\\account\\account\\LONG_U504_STRESS_AUDIT.json",
+    "sha256": "4e4f28aeef9eeb3106d1369f548cd8d5891054fe05012b5d1ab6b521b829c9a0",
+    "bytes": 7732478
+  },
+  "execution_checkpoint": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13_reference_retry1\\actual\\continuous_reference\\account\\account\\LONG_U504_STRESS_CHECKPOINT.json",
+    "sha256": "bd4ff84ef34042157cd1e7194a217936f32a6b1f368a8bd5caa0dee9871c5ea8",
+    "bytes": 7248126
+  },
+  "reconciliation": {
+    "audit_identity": "428182a9685bac40c3edcd5c5eefa15edbf4d575e8f78ecd2ed94c16dc0ee207",
+    "days": 504,
+    "passed": true
+  },
+  "elapsed_wall_seconds": 7128.1490371,
+  "peak_memory_mib": 1978.14453125,
+  "segments": 1,
+  "status": "ALL_SIX_MATRIX_ACCOUNTS_COMPLETED_PUBLIC_FINALIZATION_PENDING",
+  "input_identity": "358666e7e77ac866eb9100bcc7e9518f98b9d0a06322e1f950c69b19f502f487",
+  "complete_acceptance_matrix_accounts": 6,
+  "all_six_accounts_complete": true,
+  "public_reference_verification_and_reports_complete": false,
+  "old_consumption_refunded": false,
+  "old_failed_reference_reopened": false,
+  "strategy_qualified": false,
+  "paper": "NOT_RUN",
+  "source14_cumulative_account_purposes": 8,
+  "final_real_acceptance_verified": false
+}

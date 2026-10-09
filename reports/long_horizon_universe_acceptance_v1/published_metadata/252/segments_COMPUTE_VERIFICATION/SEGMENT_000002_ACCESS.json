@@ -1,0 +1,27 @@
+{
+  "reader_pid": 26712,
+  "reader_parent_pid": 21484,
+  "launcher_pid": 21484,
+  "resource_platform": "nt",
+  "windows_job_verified": true,
+  "compute_identity": "29d1926c770d24388d1e031730d637717187825e95d81099d1fd309baaf37985",
+  "stage": "VERIFICATION",
+  "member": null,
+  "purpose": "AUTHORIZED_POST_ACCOUNT_EVALUATION",
+  "input_identity": "a8f84cd52f6c1d913065b8c3cebaad7728ffc5409df54a426f61a824a9296c5b",
+  "observation_plan": {
+    "version": "SIGNAL_OBSERVATION_PLAN_V1",
+    "horizons": [
+      5,
+      10,
+      20
+    ],
+    "entry": "NEXT_EXCHANGE_SESSION_RAW_OPEN",
+    "exit": "HORIZON_SESSION_RAW_CLOSE",
+    "price_policy": "FRACTIONAL_ONE_SHARE_ENTITLED_ECONOMIC_VALUE_V1",
+    "comparator": "QUALIFIED_SCOPE_EQUAL_WEIGHT_SAME_ENTRY_HORIZON",
+    "start": 20231218,
+    "end": 20241231
+  },
+  "accessed_at": "2026-10-08T16:54:24.530041+00:00"
+}

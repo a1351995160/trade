@@ -1,0 +1,9 @@
+{
+  "state": "CONTINUE",
+  "dispatch_id": "24ee0ed24b8cce4c5ad643fec0486bf59d14945552ca0784a865d379aed50117",
+  "phase": "ACCOUNT",
+  "last_day": 20241022,
+  "state_identity": "d6224402999dfdd5baf06b6c541d1351bda714a3574f0d5f350df30167fadc3b",
+  "checkpoint_sha256": "137f5e568247c76805e6bf28735cf9e8b15272e35a675fbd02222666f6a89b80",
+  "reason": "UNIVERSE_NEXT_SEGMENT"
+}

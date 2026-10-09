@@ -1,0 +1,30 @@
+{
+  "binding": {
+    "stage": "PREPARATION",
+    "profile": {
+      "schema_version": "universe-execution-profile-v1",
+      "profile_id": "LONG_HORIZON_SEGMENTED_V1",
+      "registry_hash": "3c4c4c34e9522a133c9c3a2f9ac121bc8ff7dac119263de51856b89c67d49c93",
+      "account_sessions": 504,
+      "purpose": "RESEARCH_PREPARATION",
+      "total_seconds": 28800,
+      "worker_seconds": 900,
+      "memory_mib": 2048,
+      "threads": 1,
+      "concurrency": 1,
+      "metering": "ACTIVE_SEGMENTS_ONLY",
+      "profile_hash": "c2a52d5c69c0a73ddc07095ae4693abc1e111989a43ce1ae63adaf6e1e6ae25c"
+    },
+    "authorization_identity": "f230cb9713f7a731f0d575c731210fa7d2db9b44aa4c26f84df7a0f3c7619423",
+    "request_identity": "22b3696382975c51b4bae0edfafce8f37755fe8c437d05b76b435be9bc487c6d",
+    "objective_id": "U8_REAL_SEGMENTED_504_V13",
+    "budget_path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\budgets\\segmented_504.json",
+    "budget_key": "f230cb9713f7a731f0d575c731210fa7d2db9b44aa4c26f84df7a0f3c7619423",
+    "expires_at": "2026-10-10T00:00:00+00:00",
+    "root": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\signal-scans\\81c4f92fe97bd56a4a9c80d95d2b9f9c22dba03236e63bbc691d91340e05ca77\\COMPUTE",
+    "campaign_operation": null,
+    "compute_identity": "8eeaa8d5949bc17016db28721ada14bf03b1d25ea88d0932072dc54ad66fefc8"
+  },
+  "reservation": "RES-000001",
+  "started_at": "2026-10-08T17:27:14.704355+00:00"
+}

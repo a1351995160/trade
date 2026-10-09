@@ -1,0 +1,12 @@
+{
+  "schema_version": "strategy-account-segment-dispatch-v1",
+  "kind": "LONG_U504_STRESS",
+  "receipt_id": "caa2438b90d8d7e55ca3d04a3a36283b65461c16ac088fa01fe6f80c366c898f",
+  "segment_number": 22,
+  "profile_hash": "649c5a53a65048ae5fdf017686edbcadf5afee05735c29529e0342a83f4d8b34",
+  "charged_before": 17376.286723899997,
+  "upper_bound_seconds": 900,
+  "previous_head": "3ddc4b3bf2afe92b6ce82d4afc8bf81a0dace92938acb21e02ccf3dfb7850d52",
+  "dispatched_at": "2026-10-09T05:26:01.061883+00:00",
+  "dispatch_id": "1c051a367fe565ab9128cb2313b1262816af832189ba81cddc931585724c5ae5"
+}

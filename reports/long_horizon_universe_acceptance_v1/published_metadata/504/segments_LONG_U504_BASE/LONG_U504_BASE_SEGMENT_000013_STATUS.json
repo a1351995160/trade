@@ -1,0 +1,9 @@
+{
+  "state": "CONTINUE",
+  "dispatch_id": "c9f311ad58ac73f8e53c96eee098bbff057d3f6d75fd72546536bebf1782e5c1",
+  "phase": "ACCOUNT",
+  "last_day": 20240716,
+  "state_identity": "58a4149f6c89cf3778c22e34875a75e29fd7ba85d77f4b6ef34ee4fe233a2f75",
+  "checkpoint_sha256": "4a6230c485d23e920d8b4164a2e47054a746f04fe4321fbcbadbfb21ccb1bf66",
+  "reason": "UNIVERSE_PAUSE_REQUESTED"
+}

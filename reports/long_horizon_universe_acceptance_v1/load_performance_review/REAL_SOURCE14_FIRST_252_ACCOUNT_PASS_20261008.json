@@ -1,0 +1,48 @@
+{
+  "status": "REAL_SOURCE14_FIRST_252_ACCOUNT_PASSED_REMAINING_FIVE_AND_PIPELINE_PENDING",
+  "observed_at": "2026-10-08T14:50:56.466285+00:00",
+  "source_snapshot_git_head": "652ecede5f6967c828f2aff30038c921951b90a8",
+  "source_manifest": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\source_archive_v14\\SOURCE_MANIFEST.json",
+    "sha256": "dddfe23467b2a85fc33a5ca82ff2e0e975a7e2c0536e2b7ee5d46ff19065df82"
+  },
+  "job": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\4c0ecd143be5827f81cb42c4d3b8b190b3142cf5d736d7e05190dac961514258\\account\\JOB.json",
+    "sha256": "af12896e2c00432698894757fc872724d6e2f5efffdb07cbb4b63bb02e316423"
+  },
+  "start": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\4c0ecd143be5827f81cb42c4d3b8b190b3142cf5d736d7e05190dac961514258\\account\\LONG_U252_BASE_START.json",
+    "sha256": "e840ca511de251c582e5fe49f7f8b7e491a49af84c36c0507937c31fc9f327b2"
+  },
+  "result": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\4c0ecd143be5827f81cb42c4d3b8b190b3142cf5d736d7e05190dac961514258\\account\\LONG_U252_BASE_RESULT.json",
+    "sha256": "9cec5df4db50f8ee0c6edad7549e04cde39220d0196b2ad9340568a395da4511"
+  },
+  "audit": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\4c0ecd143be5827f81cb42c4d3b8b190b3142cf5d736d7e05190dac961514258\\account\\LONG_U252_BASE_AUDIT.json",
+    "sha256": "90a8fc25cfedd06364615d0ba73d2a9d69cdd602cedfa34ea5f7de901f0eee15"
+  },
+  "settlement": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\4c0ecd143be5827f81cb42c4d3b8b190b3142cf5d736d7e05190dac961514258\\account\\LONG_U252_BASE_SETTLEMENT.json",
+    "sha256": "a6fd04446ceadb6b24ac3c0f4d8ba7a965736b177e0f205e1d56566907c8dc7b"
+  },
+  "charged_seconds": 8900.832316099992,
+  "unknown_conservatively_charged_seconds": 900,
+  "measured_seconds": 8000.832316099992,
+  "peak_memory_mib": 1983.18359375,
+  "segments_dispatched": 11,
+  "segments_with_measured_resource": 10,
+  "actual_account_days": 252,
+  "independent_reconstructed_days": 252,
+  "whole_qualified_scope_scanned": true,
+  "initial_cash": 50000,
+  "assurance": "HISTORICAL_MODELED",
+  "reboot_recovery_proof": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\host_support_v1\\SOURCE14_OS_REBOOT_RECOVERY_20261008.json",
+    "sha256": "4ac73b0848840a641eaab49fcf961bc9eb0021981aa76ce82d7a41b0bb0d8a5b"
+  },
+  "all_six_and_full_pipeline_passed": false,
+  "strategy_qualified": false,
+  "independent_validation": "NOT_RUN",
+  "paper": "NOT_RUN"
+}

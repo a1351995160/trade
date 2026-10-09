@@ -3416,3 +3416,385 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 - 这两项是有界开发诊断，不是六账户 U8 通过证明。当前整份计划仍未完成；后续按同一规则、资金、股票、252/504 日期、成本、资源及原 2026-10-10 绝对期限新冻结、重新登记并执行全部六用途。
 - 原 SOURCE13 的准备 680.5575793000025 秒与账户 411.20247219999874 秒全部保留；历史已消费用途和 2700 秒保守未知收费不退款、不改写，正式策略与 Paper 资格仍 false。
 - 回滚点 `5d849c483945c5525b8312e1564426ef6bf1303c`；可反向回滚本次逐列合并与文档，停止向新来源派发，保留所有原失败、原件和消费。旧点含已知装载超限，不能据此声明长期能力发布完成。
+
+
+## 2026-10-08 - Task: 冻结SOURCE14并完成正式准备与首次原生换段
+
+### What was done
+
+- 内存修复已提交并推送 `652ecede5f6967c828f2aff30038c921951b90a8`。SOURCE14 540 文件清单 SHA 为 `dddfe23467b2a85fc33a5ca82ff2e0e975a7e2c0536e2b7ee5d46ff19065df82`；相对 SOURCE13 仅提供器最终组装变化，测试独立绑定到 381 passed / 1 skipped 的修复凭证。
+- `u8_v13` 按原公共六账户宿主于 07:28:45 UTC 启动。配置 SHA `50d344ff`、资料 SHA `694d12b4`、固定规则 `c7634f41`、4607 股票、5万元、252/504、BASE/STRESS、原资源及 2026-10-10 绝对到期不变。
+- 原生准备两段通过，4607 登记 / 3669 合格 / 938 排除；第一 252 BASE START 后完成全池指标，并沿原账户正常换段，未重置资金或再次消费账户用途。
+- 新 `ENGINEERING_ATTEMPT_HISTORY.json` 继承原件并追加 SOURCE13 0日失败、1次消费、准备和账户收费；此前15个账户用途与历史2700秒保守未知收费保留。新两项只读开发诊断单独记录679.4886401000003秒，不计为账户通过或退款。
+
+### Testing
+
+- 正式准备累计 671.512026400 秒、峰值 1940.644531250 MiB，原 Windows Job / 2048 MiB 边界，返回75正常换段及0完成；正式范围回执已生成。
+- 首个账户段 832.789578100 秒、峰值 1973.203125000 MiB、返回75，资源与真实收费逐项一致，原生 CONTINUE 后第二段已派发。07:55:53 UTC只读快照为已提交2日，末日20231219；仍未称252账户完成。
+- 安全同步辅助程序只重绑新来源，9项独立Git用例通过，helper SHA `1b93e558103725be52da547597124035bc671c0600577e29a14425eb296fad04`。真实主目录只读准备通过：113662 外来未跟踪项、外来 progress SHA `6417f8a018eae0e37169c4cc8a5d6b9a0d65f101a0a308d85945f50fc8ec9b36`，main_mutated=false。
+- 此记录时 WORK 与 SOURCE14 540 文件原字节逐项匹配；完整证据在主目录 host_support_v1，小进度摘要保存在 load_performance_review。最终Linux/Windows矩阵仍运行，已通过部分作业不替代全部CI完成。
+
+### Notes
+
+- 全部六账户、独立逐日核账、六次真实暂停恢复、504连续参考比较、双报告和正式发布证明继续待完成；整份计划仍active，正式策略、统计及Paper资格均未授予。
+- 最终服务器合并、main同步和本次开发工作区归档须在完整验收与最终CI后进行；其他AI研究文件保持原样。
+- 可用原公共pause安全停止到已提交边界并保留所有消费和证据；回滚点为652eced的上一提交5d849c4，新源码任务不得写入旧来源用途，旧失败不重开、到期不延长。
+
+
+## 2026-10-08 - Task: 完成当前运行源码的Linux与Windows CI并核对既有安全扫描
+
+### What was done
+
+- 精确提交 `652ecede5f6967c828f2aff30038c921951b90a8` 的10个PR测试工作流全部成功，25个实际作业全部成功，包含Ubuntu/Windows的工作流、正式范围、全池与长期回测8项矩阵，以及规则集要求的 `Deterministic governance suite`。
+- 只计算对应HEAD、event=pull_request的原生完成作业；重复push、取消或此前HEAD均未计为通过。小原始元数据摘要保存于 `reports/long_horizon_universe_acceptance_v1/security_review/CI_COMPLETION_652eced.json`，SHA `938bb91f4be2fd1fba191ab0d561d8535c01b7f0aacd0d72fb14e41cfe571aa6`。
+- 通过Sonar官方PR清单、issues、quality-gate和GitHub当前HEAD check再次只读核对：仍为既有11条OPEN告警，键/规则/状态/位置一致，4份已人工复核的相关源码原字节与1928c39一致，没有新增告警；服务端安全门禁仍ERROR，不称安全扫描已通过或告警已关闭。
+
+### Testing
+
+- 当前源码的8项双平台矩阵最终结论为success；全部10个PR工作流、25个作业的HEAD和完成状态由官方Actions API再次核对。
+- Sonar复核摘要SHA `04b3cfc6b144fe9fb28dba469acbcfa3d53be6bf3fa1275b59c799ecca217411`；官方原件及当前GitHub扫描check保存在主目录host_support_v1。没有修改服务端告警、压制规则、增加扫描排除或降低门禁。
+- 本条仅追加元数据和进度，没有修改SOURCE14运行源码或启动额外账户。最新09:06:08 UTC只读快照为252 BASE完成191日、第7段已派发；其他5用途与独立核账仍待完成。
+
+### Notes
+
+- CI成功不是六账户真实U8完成证明，整份计划仍active，当前未合并或同步main。正式策略、统计与Paper资格仍false。
+- 最终发布元数据产生后，最终交付HEAD仍须重新核对规定CI与当前安全扫描；不以本次中间HEAD替代最终HEAD检查。
+- 回滚点为652eced；本条文档和小摘要可随最终文档提交反向回滚，原生CI/Sonar证据、已冻结作业与所有预算消费保留不删除。
+
+
+## 2026-10-08 - Task: 保留系统重启证据并沿SOURCE14原公共任务恢复
+
+### What was done
+
+- Windows实际最后启动时间为2026-10-08 22:32:30.5 +08:00；原宿主与第10段工作进程消失，原HOST_START保留、没有伪造HOST_EXIT或成功结算。
+- 540份冻结运行源码、原提交652eced、配置、输入与未延长的绝对授权逐项复核通过后，再运行原六账户harness。既有任务选择公共resume，不创建新账户或重开失败终态。
+- 将恢复前账户252日、独立核账252日（complete=false）、原START/JOB/派发原件复制到不可覆盖的REBOOT_RECOVERY_001_ORIGINALS；公共恢复已经推进预算资源账，如实保留恢复前预算哈希引用及恢复后原件，未重建旧预算；小摘要SOURCE14_OS_REBOOT_RECOVERY_20261008.json SHA 4ac73b0848840a641eaab49fcf961bc9eb0021981aa76ce82d7a41b0bb0d8a5b保存于load_performance_review。
+
+### Testing
+
+- 实际公共恢复把第10段缺失耗时回执按派发上界900秒计入UNKNOWN_CHARGED_DISPATCH_UPPER_BOUND，原已测7529.9408667秒保持，累计8429.9408667秒；第11段绑定同一receipt/profile及前段计费链。
+- 原BASE START哈希未变、原预算reservation_counter=2且两次CONSUMED；STRESS未START、旧失败未重开、未退款、未提高14400/900秒及2048 MiB上限。独立只读复核确认账户和审计均跳过已经提交的252日期，继续最后核验尾部。
+- 仅添加主目录恢复宿主辅助脚本、恢复证据及本条开发区进度；SOURCE14运行源码原字节保持，最终六账户与504暂停/连续参考仍待验收。
+
+### Notes
+
+- 这次额外真实系统重启不替代事前冻结的504日80/251/390三次暂停及连续参考；当前未合并main、未授予策略资格。
+- 历史未知计费2700秒另保留，本次当前用途再计900秒，最终资源发布必须分别展示且不可抵消。
+- 可通过原公共pause安全暂停到提交边界；回滚点仍652eced，恢复辅助脚本可移除而原授权、START、恢复控制和所有消费原件保留。
+
+
+## 2026-10-08 - Task: 完成SOURCE14第一份真实252日账户及系统重启恢复
+
+### What was done
+
+- 原SOURCE14 252日BASE已HISTORICAL_MODELED_ACCOUNT_COMPLETED，独立reconciliation.passed=true、审计complete=true，共252日；原START哈希不变，结算completed=true与实际结果SHA一致。
+- 用途实际计费8900.8323161秒，其中未知段保守900秒、10份实际资源回执；11段派发均属于原同一用途。峰值1983.18359375 MiB，原14400/900秒和2048 MiB上限不变。
+- 小摘要REAL_SOURCE14_FIRST_252_ACCOUNT_PASS_20261008.json SHA 4203007a953afc852d3f6c6fb8890c45cb7cc736bbe2b5410c1638ec6b7d43c5保存在load_performance_review，完整运行及重启原件保存在主目录。系统已继续原STRESS用途，不重开此前失败、不继承旧来源结果。
+
+### Testing
+
+- 核对原JOB/START/结果/审计/结算、全部11份计费及10份实际资源回执；原机重启造成的第10段按900秒保守计费。账务独立重建252日与结果核验通过，结算结果哈希一致。
+- 本条仅记录已完成的第一账户，不把它写成两成本公共核验/报告或六账户通过；504暂停、连续参考与发布元数据仍待完成。
+
+### Notes
+
+- 策略资格false，独立验证与Paper均NOT_RUN；当前没有合并main、同步主目录或清理正在使用的开发区。
+- 回滚点652eced；可安全暂停原公共任务，既有消费、失败历史、实际资源和本次重启证据保持不可删除。
+
+
+## 2026-10-09 - Task: 完成SOURCE14原生一年期公共回测、独立核验和双报告
+
+### What was done
+
+- SOURCE14原252日BASE/STRESS均完成，公共VERIFICATION.advance_allowed=true、两成员status=PASS；原生EXECUTION确认公共全流程完成，信号/实际账户双报告已生成。
+- 同一全池检查4607只、合格3669只、排除938只，同一冻结输入a8f84cd5；每账户独立重建252日，结果与结算SHA一致。原资格、成本、资金50000及资源上限未变。
+- REAL_SOURCE14_252_PIPELINE_PASS_20261009.json SHA 32d8ae880cb2aca471b2ce1a121fc786b94ca163e924d4992570a7377b80c404保存在load_performance_review，绑定各成员START/RESULT/AUDIT/SETTLEMENT、公共核验、报告和计算资源原件。504准备已由原harness继续。
+
+### Testing
+
+- 两账户各252日reconciliation.passed=true，独立审计complete=true；双报告sessions=252、initial_cash=50000，strategy_qualified/formal_method_applicable/paper_qualified均false。
+- BASE实测8000.8323161秒加原重启未知收费900秒，STRESS实测7197.7635144秒；全部实际段在2048 MiB以内。公共核验851.1583409秒、报告1536.54671秒已原生完成。
+- 仅确认一年期公共整链路，不声明504/连续参考/六次暂停、六账户或最终发布通过；既有首次账户和恢复历史摘要原样保留。
+
+### Notes
+
+- HISTORICAL_MODELED，策略无资格，独立验证和Paper均NOT_RUN；尚未合并main或删除开发区。
+- 本次只新增交付证据和进度，冻结运行源码无改动。回滚点652eced；可通过公共入口安全暂停原任务，保留消费和收费链。
+
+
+## 2026-10-09 - Task: 保留第二次实际系统重启原件并恢复SOURCE14同一504日任务
+
+### What was done
+
+- Windows于2026-10-09 08:18:12.5 +08:00实际重启，原HOST_RESUME_001、账户第20段与reader进程全部消失；未伪造HOST_EXIT、费用实测或成功结算。
+- 原540份SOURCE14源码、652eced、配置、绝对到期2026-10-10 08:00 +08:00、原504输入/JOB/START/预算及19段资源复核有效；引擎已提交504日、独立核账417日complete=false。
+- 恢复前12份原件（包括旧预算原字节、504检查点/审计、三份暂停证据及一年期完成记录）先按SHA保存在REBOOT_RECOVERY_002_ORIGINALS，再运行同一原harness --execute，自动选PUBLIC_005公共resume。
+- 主目录仅新增恢复宿主/证据辅助脚本，更新只读监控的第二宿主退出观察；开发区新增SOURCE14_SECOND_OS_REBOOT_RECOVERY_20261009.json SHA 5c0c49c121022cbdf1e022f68d235a5fef31843d3f288aefabe3ea2e0c3b3f0c及本条进度，冻结运行源码无改动。
+
+### Testing
+
+- 实际第20段按900秒未知保守扣费CONTINUE，累计16401.4384837秒，第21段绑定同一BASE receipt/profile及前段收费链；原28800/900秒、2048 MiB上限不变。
+- 原504 BASE START SHA保持，reservation_counter=2且两次CONSUMED；不新开用途、不退款。原三份80/251/390暂停及六份PAUSE/RESUME链身份有效，BASE剩余暂停请求为空，STRESS仍保留三个冻结暂停点。
+- 已提交的504引擎日不重做，恢复独立核账第418日起；一年期原EXECUTION原样复用。实际六账户最终证据尚未生成，不把恢复启动写成通过。
+
+### Notes
+
+- 当前SOURCE14两次重启分别产生252 BASE和504 BASE各900秒未知收费，共1800；更早失败/暂停历史2700秒独立保留，不抵消。
+- 原预算与恢复前进度原件已先保留，区别于首次重启未能留旧预算原字节的事实；旧摘要不改写。策略无资格，未合并main或清理开发区。
+- 回滚点652eced；可用原公共pause安全停在提交边界，旧授权、START、控制链、实际消费和重启证据全部保留。
+
+
+## 2026-10-09 - Task: 完成SOURCE14第一份真实504日账户及独立核账
+
+### What was done
+
+- 原SOURCE14 504日BASE结算completed=true、HISTORICAL_MODELED_ACCOUNT_COMPLETED；引擎504日、独立审计504日complete=true、reconciliation.passed=true。
+- 原START哈希不变；21段派发、20份实际资源共16250.663426秒，加第二次系统重启第20未知段900秒，实际计费17150.663426秒。峰值1979.9296875 MiB，原28800/900秒、2048 MiB上限未变。
+- REAL_SOURCE14_FIRST_504_ACCOUNT_PASS_20261009.json SHA 2b404aa3d488082e55c3d6ce2e03ce6d1510011a4789f2909f91128ca3835bf5保存在load_performance_review，绑定原START/RESULT/AUDIT/SETTLEMENT/CHECKPOINT、3次真实暂停及第二次重启恢复。原harness已继续504 STRESS。
+
+### Testing
+
+- 实际结果、独立核账、结算SHA一致，全部504日通过；原21份收费链、20份实测资源核对通过，三份80/251/390 BASE暂停证明保留。
+- 当前完成三个账户（252两成本和504正常成本），没有将公共504核验/报告、压力恢复、连续参考及六账户写成通过。冻结运行源码无修改。
+
+### Notes
+
+- HISTORICAL_MODELED，策略资格false，独立验证和Paper均NOT_RUN；尚未最终发布、合并main、同步或删除开发区。
+- 回滚点652eced；可用原公共pause安全暂停原任务，保留实际收费、旧失败与恢复历史。
+
+
+## 2026-10-09 - Task: 完成SOURCE14四个真实分段账户及六次计划内暂停
+
+### What was done
+
+- 252/504日、BASE/STRESS四用途均原生HISTORICAL_MODELED_ACCOUNT_COMPLETED，独立审计252/252/504/504日全部complete=true、reconciliation.passed=true，原结算结果SHA一致。
+- 504 STRESS实际24段资源19782.5895158秒、峰值1980.84375 MiB、未知0，原28800/900秒、2048 MiB上限不变；两种成本各80/251/390日六次实际暂停回执齐全。
+- REAL_SOURCE14_FOUR_SEGMENTED_ACCOUNTS_PASS_20261009.json SHA 35a2baca7468697763ec47cc2f5b5a5b3540f62cf0f25728fd82824aec913db6保存在load_performance_review，绑定四账户START/RESULT/AUDIT/SETTLEMENT及六次暂停原件。原harness继续504公共核验、报告与连续参考。
+
+### Testing
+
+- 四成员逐一核对引擎日数、独立核账日数、成功结算、结果SHA、实际/未知收费和资源上限；六次暂停用途与事前80/251/390阈值顺序一致。
+- 当前仅四个分段账户通过；504公共核验/报告、两份连续参考及18状态/逐日/经济内容对照仍待完成，不声明REAL_ACCEPTANCE存在。
+
+### Notes
+
+- HISTORICAL_MODELED，策略无资格、独立验证/Paper NOT_RUN；尚未最终发布、合并main、同步主目录或删除开发区。
+- 回滚点652eced；可用公共pause安全暂停原任务，所有旧失败、1800秒当前未知收费及更早2700秒历史未知收费分别保留，不退款。
+
+
+## 2026-10-09 - Task: 完成SOURCE14两年期公共核验与双报告并进入连续对照
+
+### What was done
+
+- 原504公共EXECUTION.advance_allowed=true，BASE/STRESS公共核验均PASS，双报告完成；EXECUTION原件SHA 8ba805b72e969cd641655d20e1a058f96cd193e0c787bffecca5feda82df64f4。
+- 公共核验实测1047.0966388秒、两段、峰值1981.66796875 MiB；报告4554.9356158秒、六段、峰值2026.8984375 MiB，全部在原定上限内，没有删股、缩短评价区间或换策略。
+- 原harness自动建立既有批准的continuous_reference，正常成本参考已START、压力成本待START；仍同一SOURCE14冻结来源。
+
+### Testing
+
+- 原生四个252/504分段账户及各自公共核验/报告完成；六份真实80/251/390暂停证明保留。独立核账252/252/504/504日全部PASS。
+- 当前仅进入连续对照，不声明两份连续参考、18项状态/每日/经济内容相等或REAL_ACCEPTANCE完成。未运行新的策略搜索。
+
+### Notes
+
+- 运行源码仍652eced的540份冻结字节；HISTORICAL_MODELED，策略无资格，独立验证/Paper NOT_RUN。尚未合并main、同步主目录或删除开发区。
+- 回滚点652eced；可用原公共pause安全暂停分段任务，原始收费、失败与恢复链全部保留。
+
+
+## 2026-10-09 - Task: 完成SOURCE14正常成本连续参考账户
+
+### What was done
+
+- 原continuous_reference正常成本用途一次进程完成504日，7205.3154765秒、峰值1951.0078125 MiB、returncode=0；RESULT原件SHA 4de9094ed4cfa47bdb4baf454be57c2559823db289e9fd8cd41283d4faf3a401，成功结算绑定原结果。原harness继续压力成本连续参考。
+- 只读监控辅助脚本现在对连续用途读取已结算RESULT.reconciliation日数和passed；连续用途不写分段AUDIT.json，所以旧显示0仅是没有分段审计落盘文件，实际RESULT已内置独立核账504日PASS。未修改冻结运行或核验源码。
+
+### Testing
+
+- 实际RESULT状态、reconciliation.passed=true/days=504、结算SHA及Windows Job实测资源通过，输入与原504分段任务保持同一身份358666e7。
+- 当前仅五个账户完成，连续参考公共核验/报告、18状态与每日经济对照仍未完成；不声明最终验收通过。
+
+### Notes
+
+- HISTORICAL_MODELED、策略资格false；最终发布、CI、main合并同步与清理仍待完成。
+- 回滚点652eced；原始START/预算/派发和资源不删不退款，监控辅助脚本仅改变进度读取显示。
+
+
+## 2026-10-09 - Task: 结清已知失败连续参考并另立同源码独立工程对照
+
+### What was done
+
+- 第三次Windows重启后只读核实：原连续STRESS RESOURCE写于17:44:32，早于22:19:46重启；returncode=1073807364、非超时、257.99633569999423秒、峰值1481.2890625 MiB。退出原因未知，不能归因于稍后的重启。
+- 先保留16份原件（含原预算字节），再调用原治理end_segment/settle写入FAILED及真实计费；charge ID f52f6d087116c09f8d2e157889ded59ffe58667304040b05911c71f23af45b16。旧预算哈希不变，两个原用途仍CONSUMED，不退款、不重开、不补造Worker状态或宿主退出。
+- 在u8_v13_reference_retry1另立两个独立工程参考用途，规则/日期/5万元/4607目标股票/输入/540源码字节/8小时规格/2026-10-10T00:00UTC到期不变。新部署复用原分段任务和扫描，逐字节保留两份已完成EXECUTION；原harness仅重跑新BASE/STRESS连续参考、核验、报告及对照，不重跑四个成功分段账户。
+- SOURCE14_INDEPENDENT_REFERENCE_REPLACEMENT_20261009.json SHA 2f067100b982474d2809efc3d236260f91fbf51a574126fa1d4a8bd35f8d3766已保留在load_performance_review；私有执行及监控助手放在主目录host_support_v1，不属于运行源码。
+
+### Testing
+
+- 只读540源码字节/HEAD/原件/预算/已完成EXECUTION哈希预检PASS；两项独立只读审查无阻断问题。执行后复核原预算字节不变、FAILED收费与原RESOURCE一致、复制EXECUTION哈希一致。
+- 新原生harness已启动并真实冻结新验收计划；当前仍待两项新连续账户、公共核验/报告及最终18状态/逐日/经济内容对照，不声明整体验收完成。
+
+### Notes
+
+- SOURCE14累计有8个账户用途（原6个含1个失败及1个被替代参考，加新参考2个），最终验收矩阵要求4个原成功分段与2个新成功连续账户；全量尝试历史及消耗必须披露，不能将新增用途伪装为原预算余额。
+- HISTORICAL_MODELED、策略无资格、独立验证/Paper NOT_RUN。回滚点652eced；不删除已生成历史或退还消耗；发布、main合并同步、开发区清理仍待完成。
+
+
+## 2026-10-09 - Task: 核实原连续压力参考退出对应的系统关机事件
+
+### What was done
+
+- 只读查询System/User32事件1074：2026-10-09 17:44:31发生开始菜单发起的关闭电源；原Worker RESOURCE于17:44:32落盘，时间相邻。此前记录“原因未知”是当时证据边界；本条追加系统关机对应证据，不改写旧失败或预算。
+- SOURCE14_WINDOWS_SHUTDOWN_CORRELATION_20261009.json保留经过最小字段投影的事件ID、记录号、UTC时间及RESOURCE哈希，不复制账户用户名或完整系统事件正文。
+
+### Testing
+
+- 核对事件ID1074、关机类型、来源程序及RESOURCE写入时间差小于3秒；新工程参考继续由原harness运行。
+
+### Notes
+
+- 原FAILED及已消费状态保持；运行源码未变。回滚点652eced，历史证据保留，无系统电源设置变更。
+
+
+## 2026-10-09 - Task: 有界预检已完成正常连续账户与两年分段账户一致性
+
+### What was done
+
+- SOURCE14_PRELIMINARY_BASE_COMPARISON_20261009.json SHA e6b67d4a830c8ce25b216821e8681813971bdaf00790887bbbdc5dcb92189cad保存旧已成功连续BASE与原504分段BASE的提前只读对照；不使用或改动新retry1。
+- 按原harness实际字段比较6组经济数据、18项账户状态；两份checkpoint自身身份及manifest链验证通过，504日期及payload_identity一致。未读日gzip原件，因此明确只是PRELIMINARY_COMPLETED_BASE_COMPARISON，不能替代最终逐日对照。
+- 同步修正文档AUTONOMOUS_RESEARCH_USER_GUIDE.md中的旧说明：V4已支持冻结数值评分排序，V3保留原顺序，ATR止损仍未接通。
+
+### Testing
+
+- Windows Job 512 MiB/120秒受限诊断，单数值线程；实际3.3630798秒、峰值210.46875 MiB、rc0、未超时，4份账户原件及源码前后哈希不变。
+- 未启动研究账户、未改预算/运行源码，未伪称最终六账户通过；新连续BASE继续运行。文档仅局部文字修正。
+
+### Notes
+
+- 本诊断单独计为开发验证3.3630798秒，不减免原研究收费。回滚点652eced，保留所有已生成证据；历史盈利及Paper资格不在本项验证范围。
+
+
+## 2026-10-10 - Task: 纠正连续参考审计文件定位及监控解释
+
+### What was done
+
+- 更正此前“连续参考不写AUDIT/OWN_FEATURE缓存”的解释：冻结reference_config的checkpoint目录比JOB根多一层account，实际审计、指标及独立指标缓存都位于checkpoint_path.parent。旧已成功连续BASE实际有3669份执行特征、3669份独立特征和完整504日AUDIT。原错误记录保留，本条追加更正。
+- 仅修改主目录host_support_v1中的monitor_u8_v13.py、monitor_source14_reference_retry1.py，按冻结checkpoint.parent读取实际审计及缓存；不修改运行/核验源码或账户原件。
+- 公共VERIFICATION通过research_evidence_v1定位实际AUDIT，再由universe_evidence_v2验证完整审计身份、逐日原件及输入；不会直接相信RESULT.reconciliation自报值。REPORT与分段账户共用原受限汇总路径。
+
+### Testing
+
+- 只读核对原JOB路径与嵌套实际文件；监控修正后正确显示旧连续BASE的504日独立审计，以及新BASE在00:37已完成181/504日独立核账。新BASE引擎504日已完成但尚未结算，不声明最终验收通过。
+
+### Notes
+
+- 回滚点652eced；监控是只读辅助文件，所有原账务、预算、运行源码和历史失败保留。先前SOURCE14单次成功BASE的结果/结算证据本身不受监控解释更正影响。
+
+
+## 2026-10-10 - Task: 新独立正常成本连续参考完成504日及独立核账
+
+### What was done
+
+- u8_v13_reference_retry1原harness正常成本连续参考单次进程完成504交易日及独立核账，成功结算。实际7178.8695695999995秒，峰值1952.12890625 MiB，rc0、非超时、仅1段；RESULT SHA f56aa15040b3c7725ababeffd96312693878fa487c82282aee43db79db8d187e。
+- SOURCE14_INDEPENDENT_REFERENCE_BASE_PASS_20261010.json SHA db5082c486c19c652c0ab3ab8abade42bd83eab5ad9365518939c1eaec4d300c保留新JOB/RESULT/SETTLEMENT/RESOURCE、正确嵌套AUDIT及checkpoint原件引用。压力成本新连续参考继续运行。
+
+### Testing
+
+- 核对真实Windows Job资源、1段、504日AUDIT.complete=true、RESULT独立核账passed、结算结果SHA及同一冻结输入；未借用旧连续BASE顶替新用途。
+- 验收矩阵当前5/6完成；参考公共核验、双报告及最终18状态/逐日/经济内容比较仍待完成，不声明REAL_ACCEPTANCE存在。
+
+### Notes
+
+- HISTORICAL_MODELED、策略无资格、独立验证/Paper NOT_RUN。回滚点652eced，所有原失败消费与新参考用途分开保留；尚未合并同步或清理开发区。
+
+
+## 2026-10-10 - Task: 为交付后清理开发目录保留测试原件
+
+### What was done
+
+- 在主目录 reports/long_horizon_universe_acceptance_v1/worktree_test_archive_source14/ 保留开发区78份XML、日志及标准输出/错误文本，共2,592,057字节；不复制行情、环境或大型夹具。未被正式JSON引用的旧文本明确标记 OLD_TEST_TEXT_NOT_REFERENCED_BY_CURATED_JSON，不冒充本版新增通过证据。
+- MANIFEST.json SHA 99a429655652ef1b1a199d372cbd27cefc9c16d381a1245aa08b8d927a30108f 记录原路径、副本及逐项哈希，供后续受管开发目录归档后查询。
+
+### Testing
+
+- 24份正式JSON的开发区文件引用均无缺失；14项已在主目录的XML/log原件存在且声明哈希匹配。78份测试文本源文件和副本独立读取SHA全部相同，复制文本总量低于20 MiB。
+- 未修改源码、账户原件、预算、Git索引或主目录用户研究文件，未提前删除或归档开发目录。
+
+### Notes
+
+- 回滚点652eced；本项仅保留测试资料，原开发区仍存在，后续仅在验收、合并和主目录同步完成后归档本次受管工作区。既有失败和消耗记录继续保留。
+
+
+## 2026-10-10 - Task: 限定旧版900秒说明并核对最终主目录交付条件
+
+### What was done
+
+- 局部修订 docs/AUTONOMOUS_RESEARCH_USER_GUIDE.md、docs/RESEARCH_LIFECYCLE_OPERATIONS.md 的旧全范围扫描/恢复说明，标明旧版本；补充长期V3每段900秒、原用途累计4/8小时和原授权到期的区别，并链接长期指南。
+- 独立只读复核U1–U7未发现新增实现阻断。发现主目录 frontend/dist 是忽略文件且仍为旧产物，列入合并同步后从最终源码重新构建、核对实际界面的必要收尾；当前不更改正在验收的冻结源码或启动服务。
+
+### Testing
+
+- git diff --check通过。文档所述版本边界已与执行规格及公共恢复路径核对；未重跑已通过的源码测试，未读取市场行情。
+- U8仍为5/6完成，不能由文档核对代替真实验收；发布后需通过 publication --long-horizon读取动态凭证，不能手改生成能力目录的静态状态冒充通过。
+
+### Notes
+
+- 回滚点652eced，恢复本次两份手写文档即可撤销说明修改。前端构建、原生验收、发布、CI、main合并同步及受管开发区归档仍未宣称完成。
+
+
+## 2026-10-10 - Task: 最后一个独立连续压力账户完成及六账户矩阵齐备
+
+### What was done
+
+- 新独立压力连续参考单次进程完成504交易日与504日独立核账，成功结算。实际7128.1490371秒、峰值1978.14453125 MiB，rc0、非超时、仅1段；RESULT SHA 86aad2352324dccf9ba44e8d3ce8393cf8f259803cc4e2726c58742cabd4ea41。
+- SOURCE14_INDEPENDENT_REFERENCE_STRESS_PASS_20261010.json SHA 820b230758388adf5689581e80dd1e7fdf31e70b559dd1f00e57562fd352b2da保留真实JOB/结果/结算/Windows资源/嵌套AUDIT/checkpoint引用，明确六账户完成但最终公共核验与报告尚待完成。
+- 原harness自动进入新连续参考的公共VERIFICATION；原252/504四账户与公共核验/报告均继续复用已完成同字节证据，未重复执行或重开额度。
+
+### Testing
+
+- 核对同一输入358666e7、完整独立AUDIT.complete=true且504日、RESULT核账PASS、结算绑定实际结果SHA、单段Windows Job强制资源及2048 MiB内存上限。
+- 最终逐日经济与18项状态对照、连续参考公共核验及双报告未完成，REAL_ACCEPTANCE尚不存在；不以6/6账户完成冒充整体验收通过。
+
+### Notes
+
+- 六个成功矩阵账户与SOURCE14累计8个已消费用途分别记载，旧失败及被替代参考原件保留；此前15个用途的历史未删除或退款。
+- HISTORICAL_MODELED、策略无资格、独立验证/Paper NOT_RUN。回滚点652eced；发布、最终CI、main合并同步及受管目录归档仍待完成。
+
+
+## 2026-10-10 - Task: 原生六账户长周期验收完成并定位发布规范化误拒
+
+### What was done
+
+- u8_v13_reference_retry1/actual/REAL_ACCEPTANCE.json原生生成，SHA 5fa8c9918f7235f596873290bcd2516507a5d7e5ff518942918ce3ba88baa09a，状态REAL_252_504_ACCOUNT_VERIFIED；HOST实际退出0。正常/压力各504日的完整逐日经济内容及18项完整账户状态比较均PASS。
+- 新连续参考公共VERIFICATION完成2段、1004.8597016999975秒；REPORT完成5段、3934.202528900001秒。六账户矩阵及各准备/核验/报告阶段合计收费81698.35410379997秒，实际证据4,650,756,721字节/52,707文件；这不是全研发累计，也不包含旧替代参考、前版尝试、资料维护或停机等待。
+- 正式发布在写文件前误拒LONG_PUBLICATION_FIXED_RULE_CONFLICT。实测六份原请求与固定示例一致；正式V4 parser将指标实例从fast/slow/rsi/volatility排序为fast/rsi/slow/volatility，账户存的是正确规范化payload，发布器却直接比较原数组顺序。整数40/70同时规范化为浮点，但不是Python直接相等失败的主要原因。
+
+### Testing
+
+- 原harness完整执行并逐日读取原件比较，两个成本分支各504日PASS；六个账户独立核账及公共核验/双报告全部完成。没有用提前BASE诊断代替最终比较。
+- 两项独立只读审查确认三个JOB各103项来源、六份策略/后端/入口以及能力目录37项闭包均不包含发布器；发布器本来就按独立当前SHA进入发布包。通过同一个正式V4解析器规范化原请求和固定示例后，六份原存payload完整相等。
+
+### Notes
+
+- 原SOURCE14的540归档文件、REAL、FROZEN、harness、账户/预算/失败历史保持原字节；必要的后验修复仅针对发布比较及其回归测试，按新的发布器SHA单独披露，不宣称它参加了原账户执行。
+- 原生U8已完成，发布、最终CI、main合并同步和受管目录归档仍待完成；策略资格false，独立验证/Paper NOT_RUN。回滚点652eced，原件和消费不得删除或重开。
+
+## 2026-10-10 - Task: 完成长周期原生验收及正式发布核验
+
+### What was done
+
+- SOURCE14 冻结运行真实完成 252/504 交易日的四个 BASE/STRESS 分段账户，以及 504 日两个独立连续参考账户。检查 4607 只，全部 3669 只资料合格股票参与，938 只逐项排除。504 日两个成本场景的完整逐日经济序列、6 项经济字段及 18 项完整状态与连续参考一致。REAL_ACCEPTANCE.json SHA 5fa8c9918f7235f596873290bcd2516507a5d7e5ff518942918ce3ba88baa09a；原生 HOST_EXIT 真实退出码 0。
+- 仅修复发布器对正式 V4 parser 指标实例规范化次序的误拒：请求与固定例子使用正式解析，已经保存的账户规则继续按原字节内容完整哈希比较。修改 long_horizon_acceptance_publication_v1.py 与对应测试，不修改账户源码、冻结资料、原结果或消费记录。原 SOURCE14 540 文件归档全部保留；交付 539 项原字节及唯一发布器修复，分别绑定原验收和新发布器 SHA。
+- 正式发布及公共 publication --long-horizon 均返回 PUBLISHED_METADATA_VERIFIED：6 账户，252/504 日，三项能力；凭证 SHA 8dfea24aba343d169de642214553dbb5b7deee768bac6fca86a20946a23e25c1。发布凭证及必要元数据存于 reports/long_horizon_universe_acceptance_v1；完整原件仍在主目录同名目录的 u8_v13_reference_retry1/actual。
+- 增补 SOURCE14_POST_ACCEPTANCE_PUBLICATION_FIX_20261010.json 记录修复、原生验收和测试来源；主目录私有 PUBLICATION_FIX_DELIVERY_BINDING.json SHA b175b4bdc5afb60c96866a51fb7923b0bfdc2d63287d1e6e6ea73dc4707fb344 明确唯一差异，旧清单不改写。
+
+### Testing
+
+- 真实六账户及逐日独立核账、排序/漏斗/双报告、实际中断恢复和连续参考通过。成功矩阵累计主动资源 81698.3541038 秒，证据 4650756721 字节/52707 文件；并非整个研发过程的成本。所有旧失败、未知耗时保守收费及旧参考替换记录继续保留。
+- 发布器模块 56 passed in 94.83s，绿色 XML SHA 346e7f7ee4a620db9fd4c3839b82dd294f4e982802a71b57e159cf23ec417175；冻结旧发布器对两项实际规范化请求真实误拒的红色 XML SHA 3509e8f15a1b7a38e9156927356e27dc553c32a256dfee324f6c4994604eb8a0。阈值、参数、评分、退出、说明和已存规则篡改仍拒绝。
+- 发布器两文件及新安全同步 helper 获独立只读审查 PASS；helper 隔离 Git 场景 14 项通过，绑定最终 SHA 后另留验证记录。
+
+### Notes
+
+- 本轮为 HISTORICAL_MODELED 工程验证，独立策略验证/正式资格/Paper 均未完成，不将未来有效性写成已经证实。原市场可见时间模型及全窗口资料资格限制继续公开。
+- 推送最终 HEAD、检查 CI、合并 PR36、安全同步主目录、重建前端及仅归档本任务 worktree 的交付操作接着执行，不能以本节预称已完成。
+- 回滚点为主目录基线 786de0d307b770b6ac8f9a99e4349a588ed90ca1；通过版本回退停止新版派发，保留原件、预算、所有失败及同步备份，不删除资料或重开消费。

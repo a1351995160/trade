@@ -6,6 +6,7 @@ from pathlib import Path, PurePosixPath
 import re
 
 from .common import stable_hash
+from .research_rule_strategy_v4 import validate_rule_payload
 from .universe_execution_profile_v1 import (
     CONTINUOUS_PROFILE, ENGINEERING_PURPOSE, SEGMENTED_PROFILE, execution_profile,
 )
@@ -354,7 +355,10 @@ def _validate(repo, receipt, snapshot, read):
                 and result['result_schema'] == 'UNIVERSE_SHARDED_RESULT_V2', 'RESULT_SCOPE_CONFLICT')
             payload = plan['strategy']['parameters']['candidate_payload']
             request = frozen['requests']['504' if reference else role]
-            _require(payload == request['rule'] == snapshot['examples']['multi_indicator_ranked']
+            requested = validate_rule_payload(request['rule'])
+            example = validate_rule_payload(snapshot['examples']['multi_indicator_ranked'])
+            # 只规范化提交定义；已存账户 payload 必须精确保持正式解析器产物。
+            _require(stable_hash(payload) == stable_hash(requested) == stable_hash(example)
                 and request['account_scope'] == 'DATA_QUALIFIED' and request['costs'] == ['BASE', 'STRESS'], 'FIXED_RULE_CONFLICT')
             _require(proof['status'] == 'PASS' and proof['advance_allowed'] is True and proof['reasons'] == []
                 and proof['plan_id'] == plan['plan_id'] and proof['input_identity'] == job['input_identity']

@@ -1,0 +1,16 @@
+{
+  "returncode": 75,
+  "stdout": "",
+  "stderr": "",
+  "timed_out": false,
+  "launcher_pid": 22468,
+  "resource_platform": "nt",
+  "windows_job_bound": true,
+  "process_limit": 2,
+  "process_limit_enforced": true,
+  "peak_memory_mib": 2024.6015625,
+  "memory_measurement": "WINDOWS_JOB_PEAK_COMMIT",
+  "elapsed_wall_seconds": 830.8284198000001,
+  "dispatch_id": "3a8988fa553921bcbc6379d4195cd941dea6e5c6f5ff1f6737f8bbd83bc28850",
+  "member": "LONG_U504_STRESS"
+}

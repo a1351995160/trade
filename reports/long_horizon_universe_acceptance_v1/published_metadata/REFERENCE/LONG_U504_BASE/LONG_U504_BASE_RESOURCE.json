@@ -1,0 +1,21 @@
+{
+  "returncode": 0,
+  "stdout": "",
+  "stderr": "",
+  "timed_out": false,
+  "launcher_pid": 20592,
+  "resource_platform": "nt",
+  "windows_job_bound": true,
+  "process_limit": 2,
+  "process_limit_enforced": true,
+  "peak_memory_mib": 1952.12890625,
+  "memory_measurement": "WINDOWS_JOB_PEAK_COMMIT",
+  "elapsed_wall_seconds": 7178.8695695999995,
+  "segment_number": 1,
+  "dispatch_id": "b79ac7f408f473dc1b203ae9df26cd53a44039cd9d227413a9c5635af9301f22",
+  "segment_count": 1,
+  "active_metering": true,
+  "segments": [
+    "ea8abe181c1b03a302a1a9d925e1a34660fe440863e4644381548ba43440e931"
+  ]
+}

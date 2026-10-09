@@ -10,6 +10,7 @@ import pytest
 
 from chanlun_trader.research_factory.common import stable_hash
 from chanlun_trader.research_factory import long_horizon_acceptance_publication_v1 as publication
+from chanlun_trader.research_factory.research_rule_strategy_v4 import ResearchRuleStrategyV4, validate_rule_payload
 from chanlun_trader.research_factory.universe_execution_profile_v1 import (
     CONTINUOUS_PROFILE, ENGINEERING_PURPOSE, SEGMENTED_PROFILE, execution_profile,
 )
@@ -30,7 +31,7 @@ def identity(value, key):
     return value
 
 
-def fixture(root):
+def fixture(root, *, request_edit=None, payload_edit=None):
     """构造所有绑定，故意不创建任何行情或日明细文件。"""
     repo, archive, acceptance = root/'repo', root/'source_archive', root/'original_evidence'
     code = ['src/chanlun_trader/research_factory/core.py',
@@ -43,8 +44,11 @@ def fixture(root):
         path.write_bytes(Path(publication.__file__).read_bytes() if path.name == Path(publication.__file__).name else b'# synthetic test-only source\n')
         other = archive/relative; other.parent.mkdir(parents=True, exist_ok=True); shutil.copyfile(path, other)
         source_hashes[str(other)] = hashlib.sha256(other.read_bytes()).hexdigest()
-    rule = {'version': 'RESEARCH_RULE_STRATEGY_V4', 'indicator_instances': [
-        {'id': name, 'instance_id': name.lower()} for name in ('MA', 'RSI', 'ROLLING_VOLATILITY')]}
+    from chanlun_trader.research_factory.research_capabilities_v1 import capabilities
+    rule = deepcopy(capabilities()['examples']['multi_indicator_ranked'])
+    request_rule = deepcopy(rule)
+    if request_edit is not None:
+        request_edit(request_rule)
     snapshot = {'data': {'status': 'UNKNOWN'}, 'source_hashes': {'core.py': source_hashes[str(archive/code[0])]},
         'full_universe': {'source_hashes': {'full.py': source_hashes[str(archive/code[1])]}},
         'long_horizon': {'source_hashes': {'long.py': source_hashes[str(archive/code[2])]}},
@@ -88,7 +92,7 @@ def fixture(root):
                 'sha256': stable_hash(['uncreated synthetic market bytes', kind, count])} for kind in ('daily', 'turn', 'states')}}
         input_sha = save(input_root/'INPUT.json', input_metadata)
         if not reference:
-            request = {'rule': rule, 'account_scope': 'DATA_QUALIFIED', 'costs': ['BASE', 'STRESS'],
+            request = {'rule': request_rule, 'account_scope': 'DATA_QUALIFIED', 'costs': ['BASE', 'STRESS'],
                 'symbols': targets, 'execution_profile': profile, 'authorization_ref': 'SYNTHETIC_' + role,
                 'dataset_id': dataset['dataset_id']}
             frozen['requests'][role] = request
@@ -106,8 +110,11 @@ def fixture(root):
                 'backend_options': {'checkpoint_path': str(folder/'account'/(name+'_CHECKPOINT.json'))}}
             backend = {'backend': 'UNIVERSE_ACCOUNT_BACKEND_V2', 'initial_cash': 50000,
                 'execution_profile': profile, 'window': window, 'source_hashes': source_hashes}
+            parameters = ResearchRuleStrategyV4(rule, strategy_id=name).parameters
+            if payload_edit is not None:
+                payload_edit(parameters['candidate_payload'])
             plan = identity({'runtime': item, 'backend': backend, 'strategy': {'source_hashes': source_hashes,
-                'parameters': {'candidate_payload': rule, 'rule_identity': stable_hash(rule)}}}, 'plan_id')
+                'parameters': parameters}}, 'plan_id')
             job['items'][name], job['plans'][name] = item, plan
         job_sha = save(folder/'JOB.json', job)
         source = {'origin': 'USER_EXPLICIT_CURRENT_TASK', 'statement': 'synthetic contract test only',
@@ -196,7 +203,7 @@ def fixture(root):
                 'signal': {'scope_count': len(qualified), 'observation_plan': observation,
                     'observation_plan_identity': stable_hash(observation), 'account_independent_denominator': True}}, 'report_identity')
             funnel = identity({'version': 'UNIVERSE_SIGNAL_FUNNEL_V1', 'mode': 'DAY_STREAM',
-                'strategy_id': name, 'rule_identity': stable_hash(rule), 'calendar_identity': stable_hash(days),
+                'strategy_id': name, 'rule_identity': plan['strategy']['parameters']['rule_identity'], 'calendar_identity': stable_hash(days),
                 'counts': {'scan_rows': count*len(qualified), 'opportunity_signals': 0, 'intents': 0, 'orders': 0, 'fills': 0},
                 'opportunity_dispositions': {}, 'detail_chain_identity': stable_hash(['synthetic funnel', count]),
                 'layer_counts_by_side': {side: {'intents': 0, 'orders': 0, 'fills': 0} for side in ('BUY', 'SELL')}}, 'identity')
@@ -380,6 +387,69 @@ def test_publish_six_account_metadata_and_read_without_originals_or_market(contr
     shutil.rmtree(acceptance); shutil.rmtree(archive)
     assert publication.published_long_horizon_acceptance(repo, snapshot) == result
     assert snapshot == before
+
+
+@pytest.mark.parametrize('reordered_request', [False, True])
+def test_fixed_example_request_publishes_its_formal_canonical_payload(tmp_path, monkeypatch, reordered_request):
+    edit = (lambda rule: rule['indicator_instances'].reverse()) if reordered_request else None
+    repo, acceptance, archive, snapshot = fixture(tmp_path, request_edit=edit)
+    from chanlun_trader.research_factory import research_capabilities_v1
+    monkeypatch.setattr(research_capabilities_v1, 'capabilities', lambda: deepcopy(snapshot))
+    frozen = json.loads((acceptance/'FROZEN_ACCEPTANCE.json').read_bytes())
+    rule = frozen['requests']['252']['rule']
+    job = json.loads((acceptance/'252'/'account'/'JOB.json').read_bytes())
+    payload = job['plans']['SYNTHETIC_BASE']['strategy']['parameters']['candidate_payload']
+    assert payload == validate_rule_payload(rule)
+    assert payload != rule
+    assert [item['instance_id'] for item in payload['indicator_instances']] == ['fast', 'rsi', 'slow', 'volatility']
+    assert type(rule['buy']['args'][1]['args'][1]['params']['value']) is int
+    assert type(payload['buy']['args'][1]['args'][1]['params']['value']) is float
+    before = {path: path.read_bytes() for path in acceptance.rglob('*') if path.is_file()}
+    result = publication.publish_long_horizon_acceptance(repo, acceptance)
+    assert result['status'] == 'PUBLISHED_METADATA_VERIFIED'
+    assert result['account_count'] == 6 and result['strategy_qualified'] is False
+    assert before == {path: path.read_bytes() for path in acceptance.rglob('*') if path.is_file()}
+
+
+def change_fixed_rule(rule, change):
+    if change == 'threshold': rule['buy']['args'][1]['args'][1]['params']['value'] = 41
+    elif change == 'indicator_parameter': rule['indicator_instances'][0]['params']['window'] = 11
+    elif change == 'selection_direction': rule['selection']['direction'] = 'DESCENDING'
+    elif change == 'selection_score':
+        rule['selection']['score'] = {'op': 'mul', 'args': [rule['selection']['score'],
+            {'op': 'const', 'args': [], 'params': {'value': 2}}], 'params': {}}
+    elif change == 'exit': rule['exits']['stop_loss_pct'] = .09
+    elif change == 'hypothesis': rule['hypothesis'] += ' 已改动'
+    elif change == 'change_reason': rule['change_reason'] += ' 已改动'
+    elif change == 'stored_instance_order': rule['indicator_instances'].reverse()
+    elif change == 'stored_noncanonical_number': rule['buy']['args'][1]['args'][1]['params']['value'] = 40
+    else: raise AssertionError(change)
+
+
+@pytest.mark.parametrize('location', ['request', 'stored_payload'])
+@pytest.mark.parametrize('change', ['threshold', 'indicator_parameter', 'selection_direction',
+    'selection_score', 'exit', 'hypothesis', 'change_reason'])
+def test_fixed_rule_semantic_changes_remain_rejected_with_rebound_fixture_metadata(tmp_path, monkeypatch, location, change):
+    options = {'request_edit' if location == 'request' else 'payload_edit': lambda rule: change_fixed_rule(rule, change)}
+    repo, acceptance, archive, snapshot = fixture(tmp_path, **options)
+    from chanlun_trader.research_factory import research_capabilities_v1
+    monkeypatch.setattr(research_capabilities_v1, 'capabilities', lambda: deepcopy(snapshot))
+    with pytest.raises(ValueError, match='FIXED_RULE_CONFLICT'):
+        publication.publish_long_horizon_acceptance(repo, acceptance)
+    assert not (repo/publication.PREFIX/'PUBLISHED_ACCEPTANCE.json').exists()
+
+
+@pytest.mark.parametrize('change', ['stored_instance_order', 'stored_noncanonical_number'])
+def test_original_candidate_payload_is_not_normalized_to_hide_changes(tmp_path, monkeypatch, change):
+    repo, acceptance, archive, snapshot = fixture(tmp_path, payload_edit=lambda rule: change_fixed_rule(rule, change))
+    from chanlun_trader.research_factory import research_capabilities_v1
+    monkeypatch.setattr(research_capabilities_v1, 'capabilities', lambda: deepcopy(snapshot))
+    job = json.loads((acceptance/'252'/'account'/'JOB.json').read_bytes())
+    altered = job['plans']['SYNTHETIC_BASE']['strategy']['parameters']['candidate_payload']
+    assert stable_hash(altered) != stable_hash(validate_rule_payload(snapshot['examples']['multi_indicator_ranked']))
+    assert validate_rule_payload(altered) == validate_rule_payload(snapshot['examples']['multi_indicator_ranked'])
+    with pytest.raises(ValueError, match='FIXED_RULE_CONFLICT'):
+        publication.publish_long_horizon_acceptance(repo, acceptance)
 
 
 def mutate(path, edit, own_identity=None):

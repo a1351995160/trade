@@ -1,0 +1,31 @@
+{
+  "returncode": 0,
+  "stdout": "",
+  "stderr": "",
+  "timed_out": false,
+  "launcher_pid": 16580,
+  "resource_platform": "nt",
+  "windows_job_bound": true,
+  "process_limit": 2,
+  "process_limit_enforced": true,
+  "peak_memory_mib": 1951.0546875,
+  "memory_measurement": "WINDOWS_JOB_PEAK_COMMIT",
+  "elapsed_wall_seconds": 8900.832316099992,
+  "segment_number": 11,
+  "dispatch_id": "53de69b479f0754ad2f7d0096a870cecc5ea8eada2a61d82db1e224b9388cf33",
+  "segment_count": 11,
+  "active_metering": true,
+  "segments": [
+    "6b09a8aa610815f26a2a0f0bf173d4b30fa8d3879eec8c0dea7c3a7fcf8e6fa2",
+    "562d3af597e574357dd09f9b4301e032937233083ccef1cef0f648fa26c38e8e",
+    "25c6712a1d5aeab2d4eed8a053d4cf7bb26d129ed4f532889eb7c1893247f5de",
+    "026c77e7e57a458275609b3ea70e2fb0538389460e393c256152ed3aa5b0ba4d",
+    "2900d64d74ea8fbb52d253eaed7ace08c3cf093e974b9a4366aafd876fc24371",
+    "d30e69619e68b9a64079f41db1689fdd9e53c785399167076f4ee977d0979dfe",
+    "e225c045dda00a046dc7a8affd971c3706c33646312e5bda7ee39f866f9d9d58",
+    "3f4e5ec13d07b7d03ad9da3d241ef02912dee35755e09ba13f5cfe76beefe92f",
+    "d4c1571773d55064cec5ae4945d7b379c427e141c668180835c8fdbb7e10a36f",
+    "ced0615ce4ab4dd2ff569afee462af2a1272062aeff63b3b2c222c1f7fd59204",
+    "98e5770f0c909bb1fe68e3dc9aeacc43ebe7131d264e082d3c7828b9cda259c6"
+  ]
+}
