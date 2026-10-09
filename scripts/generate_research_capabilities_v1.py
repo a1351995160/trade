@@ -42,6 +42,21 @@ def check_examples(snapshot):
                 'max_positions': 2, 'max_symbol_exposure_bps': 5000, 'costs': ['BASE', 'STRESS'],
                 'benchmark': 'FULL_POOL_BUY_HOLD', 'purpose': 'EXPLORATORY',
                 'authorization_ref': 'DOCUMENTATION_NO_EXECUTION_AUTHORITY'}
+            if rule['version'] == 'RESEARCH_RULE_STRATEGY_V4':
+                from chanlun_trader.research_factory.universe_execution_profile_v1 import execution_profile, SEGMENTED_PROFILE
+                from chanlun_trader.research_factory.universe_research_report_v2 import default_observation_plan
+                request.pop('symbols')
+                request.update(version='FULL_UNIVERSE_SUBMISSION_V3', dataset_id='documentation_full_universe',
+                    universe_id='documentation_three_boards', benchmark='CASH_AND_PRICE_REFERENCE',
+                    account_scope='DATA_QUALIFIED', execution_profile=execution_profile(SEGMENTED_PROFILE, 6),
+                    observation_plan=default_observation_plan({'account_start': request['account_start'], 'account_end': request['account_end']}))
+                preview = service.preview(request)
+                if preview['status'] != 'PREVIEW_ONLY_CONTENT_AND_AUTHORIZATION_NOT_CHECKED' or preview['coverage']['target_count'] != 3:
+                    raise ValueError('DOCUMENTATION_LONG_UNIVERSE_PREVIEW_BOUNDARY_CHANGED')
+                results[name] = {'status': preview['status'], 'rule_identity': preview['rule_identity'],
+                                 'long_universe': {'submission_version': request['version'], 'target_count': 3,
+                                                  'execution_profile': request['execution_profile']['profile_id']}}
+                continue
             preview = service.preview(request)
             if preview['status'] != 'PREVIEW_ONLY_CONTENT_AND_AUTHORIZATION_NOT_CHECKED':
                 raise ValueError('DOCUMENTATION_PREVIEW_BOUNDARY_CHANGED')

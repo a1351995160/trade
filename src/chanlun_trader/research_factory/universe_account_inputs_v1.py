@@ -7,8 +7,10 @@ from __future__ import annotations
 
 from bisect import bisect_right
 from copy import deepcopy
+from functools import lru_cache
 import hashlib
 import math
+import os
 import re
 from typing import Any
 
@@ -106,6 +108,21 @@ def _query_values(series: pd.Series):
         return series.array
     # Nullable 数值/日期的 array 标量与旧 numpy 口径不同，保持原查询语义。
     return series.to_numpy(copy=False)
+
+
+def _query_row(columns: dict, position: int) -> dict:
+    row = {}
+    for name, values in columns.items():
+        # Arrow 标量读取需要解码；同一行字段只取一次，原类型和缺值保持。
+        value = values[position]
+        row[name] = value.item() if isinstance(value, np.generic) else value
+    return row
+
+
+@lru_cache(maxsize=4096)
+def _cached_state_timestamp(value: str):
+    # 仅缓存不可变文本的解析，不缓存证券状态或它在某个时刻是否可见。
+    return pd.Timestamp(value)
 
 
 def universe_input_identity_v1(bundle: dict, window: dict) -> str:
@@ -360,13 +377,21 @@ class UniverseAccountInputsV1:
         for symbol, rows in self.daily.groupby("symbol", sort=False):
             actions = [e for e in self.events if e.get("symbol") == symbol
                        and e.get("event_type") in {"CASH_DIVIDEND", "BONUS", "CAPITALIZATION"}]
+            try:
+                dated_actions = [(_day(event["effective_date"]), event) for event in actions]
+            except (KeyError, TypeError, ValueError, AttributeError):
+                # 无效日期仍让每个有昨收的后继报价产生原有缺口。
+                dated_actions = None
             previous = None
             for row in rows.itertuples(index=False):
                 if previous is not None and hasattr(row, "prev_close"):
                     try:
                         ref = float(row.prev_close)
                         before = float(previous.close)
-                        own = [e for e in actions if int(previous.date) < _day(e["effective_date"]) <= int(row.date)]
+                        if dated_actions is None:
+                            raise ValueError()
+                        own = [event for effective, event in dated_actions
+                               if int(previous.date) < effective <= int(row.date)]
                         expected = expected_reference_v2(before, own)
                         if math.isfinite(ref) and math.isfinite(before) and abs(ref - expected) > .011:
                             result.add((symbol, int(row.date)))
@@ -502,8 +527,7 @@ class UniverseAccountInputsV1:
             position = self._daily_index.get_loc((symbol, day))
         except KeyError:
             return None
-        return {name: values[position].item() if isinstance(values[position], np.generic)
-                else values[position] for name, values in self._daily_columns.items()}
+        return _query_row(self._daily_columns, position)
 
     def state(self, symbol: str, day: int, *, asof=None) -> dict:
         day = day if isinstance(day, (int, np.integer)) and day in self._session_indices else _day(day)
@@ -525,8 +549,7 @@ class UniverseAccountInputsV1:
             position = self._states_index.get_loc(key)
         except KeyError:
             return unknown
-        row = {name: values[position].item() if isinstance(values[position], np.generic)
-               else values[position] for name, values in self._state_columns.items()}
+        row = _query_row(self._state_columns, position)
         if self._state_date == "effective_date" and day > row["valid_to"]:
             return {**unknown, "reason": "UNIVERSE_STATE_INTERVAL_EXPIRED"}
         if not set(_STATE_FIELDS) <= set(row):
@@ -569,7 +592,8 @@ class UniverseAccountInputsV1:
                         return {**row, "state_known": False, "reason": "UNIVERSE_STATE_AVAILABILITY_UNKNOWN"}
                     continue
                 try:
-                    stamp = pd.Timestamp(value)
+                    stamp = (_cached_state_timestamp(value) if type(value) is str
+                             else pd.Timestamp(value))
                     if stamp.tzinfo is None or stamp > now:
                         return {**row, "state_known": False, "reason": "UNIVERSE_STATE_NOT_YET_AVAILABLE"}
                 except (ValueError, TypeError):
@@ -750,9 +774,55 @@ def prepare_universe_account_inputs_v1(bundle: dict, window: dict, *, stage="ACC
                                   required_fields=required_fields, warmup_bars=warmup_bars)
 
 
+_OWNED_INPUT_OWNER = object()
+
+
+class _OwnedUniverseBundleV1(dict):
+    """仅在当前进程存活的严格输入；凭据不进入字典或冻结 JSON。"""
+
+    __slots__ = ("_owned_inputs",)
+
+    def __init__(self, inputs, owner):
+        if (owner is not _OWNED_INPUT_OWNER or type(inputs) is not UniverseAccountInputsV1
+                or inputs.stage != "ACCOUNT" or inputs._copy_frames is not False
+                or "qualified_scope" not in inputs.bundle):
+            raise ValueError("UNIVERSE_OWNED_INPUT_OWNER_INVALID")
+        super().__init__(inputs.bundle)
+        self._owned_inputs = (owner, os.getpid(), inputs, deepcopy(inputs.window),
+                              inputs.required_fields, inputs.warmup_bars, inputs.input_identity)
+        inputs.bundle = self
+
+
+def _retain_owned_universe_account_inputs_v1(inputs):
+    return _OwnedUniverseBundleV1(inputs, _OWNED_INPUT_OWNER)
+
+
 def _prepare_owned_universe_account_inputs_v1(bundle: dict, window: dict, *,
                                              required_fields=(), warmup_bars=0):
-    """内部投影独占列的所有权转移；保留完整严格 ACCOUNT 校验。"""
+    """内部投影完整严格认证；只复用同进程、同对象、同要求的已认证输入。"""
+    if type(bundle) is _OwnedUniverseBundleV1:
+        owner, process, inputs, retained_window, fields, warmup, identity = bundle._owned_inputs
+        if (owner is not _OWNED_INPUT_OWNER or process != os.getpid()
+                or inputs.bundle is not bundle or inputs.stage != "ACCOUNT"
+                or inputs._copy_frames is not False or inputs.window != retained_window
+                or inputs.required_fields != fields or inputs.warmup_bars != warmup
+                or inputs.input_identity != identity
+                or any(bundle.get(name) is not getattr(inputs, name)
+                       for name in ("daily", "turn", "states"))):
+            raise ValueError("UNIVERSE_OWNED_INPUT_BINDING_INVALID")
+        if (type(warmup_bars) is not int or warmup_bars < 0
+                or not isinstance(required_fields, (list, tuple, set, frozenset))
+                or not set(required_fields) <= set((*_RAW_PRICES, *_RAW_ACTIVITY,
+                                                   "prev_close", "turn"))):
+            raise ValueError("UNIVERSE_REQUIRED_FIELDS_INVALID")
+        if (normalized_universe_window_v1(window) != retained_window
+                or frozenset(required_fields) != fields or warmup_bars != warmup):
+            raise ValueError("UNIVERSE_OWNED_INPUT_REQUIREMENTS_CONFLICT")
+        inputs.assert_unchanged()
+        from .universe_qualified_scope_v1 import verify_qualified_scope_bundle
+        verify_qualified_scope_bundle(bundle, retained_window,
+            required_fields=sorted(fields), warmup_bars=warmup)
+        return inputs.require_account_ready()
     inputs = UniverseAccountInputsV1.__new__(UniverseAccountInputsV1)
     inputs._initialize(bundle, window, stage="ACCOUNT", required_fields=required_fields,
                        warmup_bars=warmup_bars, require_ready=True, copy_frames=False)

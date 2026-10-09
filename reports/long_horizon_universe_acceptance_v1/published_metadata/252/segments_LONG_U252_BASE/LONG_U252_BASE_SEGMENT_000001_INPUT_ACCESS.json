@@ -1,0 +1,20 @@
+{
+  "reader_pid": 33804,
+  "reader_parent_pid": 35252,
+  "launcher_pid": 35252,
+  "resource_platform": "nt",
+  "windows_job_verified": true,
+  "input_identity": "a8f84cd52f6c1d913065b8c3cebaad7728ffc5409df54a426f61a824a9296c5b",
+  "loader": "chanlun_trader.research_factory.strategy_submission_v1:load_frozen_qualified_bundle",
+  "loader_kwargs": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\4c0ecd143be5827f81cb42c4d3b8b190b3142cf5d736d7e05190dac961514258\\INPUT.json",
+    "sha256": "5f25bb0aa47ad699caf1f55f658f2f70ea416f4a636b3dac085c52a34fb3cad6",
+    "input_identity": "a8f84cd52f6c1d913065b8c3cebaad7728ffc5409df54a426f61a824a9296c5b",
+    "parent_path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\4c0ecd143be5827f81cb42c4d3b8b190b3142cf5d736d7e05190dac961514258\\PARENT\\INPUT.json",
+    "parent_sha256": "d4d83fc0a9866897db460fa8bcb1e2a69b6287631c17249317c5c3019edd18d9"
+  },
+  "purpose": "LONG_U252_BASE",
+  "segment_number": 1,
+  "dispatch_id": "ed486f066f0362c110d2f5dd475a913b5f0873b5337368bb9ecc1e5f04053fe3",
+  "accessed_at": "2026-10-08T07:41:12.874456+00:00"
+}

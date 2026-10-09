@@ -272,6 +272,33 @@ def test_private_preparation_returns_one_inputs_object_without_changing_public_p
         service.prepare('sample', normalization_fields=(), **args)
 
 
+def test_provider_owns_newly_read_frames_but_public_inputs_still_isolate_callers(tmp_path, monkeypatch):
+    from chanlun_trader.research_factory.universe_account_inputs_v1 import (
+        UniverseAccountInputsV1, prepare_universe_account_inputs_v1,
+    )
+    _, args = registered_dataset(tmp_path)
+    original_sha = hashlib.sha256((tmp_path / 'daily.parquet').read_bytes()).hexdigest()
+    captured = []
+    original = UniverseAccountInputsV1._frame
+    def tracked(self, value, date_col, name, **kwargs):
+        frame = original(self, value, date_col, name, **kwargs)
+        if name == 'daily':
+            captured.append((value, frame))
+        return frame
+    monkeypatch.setattr(UniverseAccountInputsV1, '_frame', tracked)
+    prepared, inputs = provider(tmp_path, [])._prepare_with_inputs('sample', **args)
+    source, normalized = captured[0]
+    assert np.shares_memory(source.close.to_numpy(copy=False), normalized.close.to_numpy(copy=False))
+    assert inputs._copy_frames is False
+    public = prepare_universe_account_inputs_v1(prepared['bundle'], prepared['window'], stage='SCAN')
+    assert public._copy_frames is True and public.input_identity == inputs.input_identity
+    original_close = public.daily.close.iloc[0]
+    prepared['bundle']['daily'].loc[0, 'close'] = original_close + 1
+    assert public.daily.close.iloc[0] == original_close
+    public.assert_unchanged()
+    assert hashlib.sha256((tmp_path / 'daily.parquet').read_bytes()).hexdigest() == original_sha
+
+
 def test_private_scan_keeps_optional_field_gaps_while_public_required_source_field_stays_strict(tmp_path):
     _, args = registered_dataset(tmp_path)
     service = provider(tmp_path, [])

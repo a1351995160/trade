@@ -1,0 +1,55 @@
+{
+  "status": "COLUMNWISE_ASSEMBLY_TESTED_REAL_PRODUCTION_LOADER_AND_PREPARATION_PASSED_SIX_ACCOUNTS_PENDING",
+  "recorded_at": "2026-10-08T07:27:31.431767+00:00",
+  "changed_file_sha256": {
+    "src/chanlun_trader/research_factory/universe_data_provider_v1.py": "43bb614d9d3605dd441866286751db199aa0b919652fe474ccea89bcf0e2e32b",
+    "tests/research_factory/test_universe_frozen_io_v1.py": "ee296e4e42bc6fcdaf6daeed1cda47249a3787889346f42e5789b828b1ad93aa"
+  },
+  "green_tests": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\host_support_v1\\COLUMNWISE_FROZEN_ASSEMBLY_GREEN_20261008.xml",
+    "sha256": "ee0102b37f7850f2d62bb756ae8e261103611feade98e2d8f88e49ecdc39dbf0"
+  },
+  "tests": {
+    "tests": 382,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1
+  },
+  "total_passed": 381,
+  "total_skipped": 1,
+  "source13_native_loader_failure": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\host_support_v1\\SOURCE13_NATIVE_LOADER_FAILURE_20261008.json",
+    "sha256": "aff6aacb58a73f7187b77dd5410f20f8ff2de1c91a68a7e7a7878ef2ba2a3bad"
+  },
+  "real_production_loader": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\host_support_v1\\COLUMNWISE_REAL_PRODUCTION_IMPORT_LOADER_20261008\\RESULT.json",
+    "sha256": "1bcece2d2465acf92a4bdb50c19114d0e361cda43f96cfd23b0b611a54faa967"
+  },
+  "real_provider_preparation": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\host_support_v1\\COLUMNWISE_REAL_PROVIDER_PREPARATION_20261008\\RESULT.json",
+    "sha256": "e2e259ed1105e2c1a7407035adf66f0bb89102c8ffa7eb892c7d99906964cf82"
+  },
+  "original_frozen_parent": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v12\\submission\\tasks\\signal-scans\\5663c91c1aa666194ad8fcd1255d351a0d4de5eb626fd5be05a91ffb6301a600\\PARENT\\INPUT.json",
+    "sha256": "6f89a61e99c947eff11b857b9e1e8f5311765f1dbfb6a671ff30377707d5a998"
+  },
+  "new_frozen_parent": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\host_support_v1\\COLUMNWISE_REAL_PROVIDER_PREPARATION_20261008\\PARENT\\INPUT.json",
+    "sha256": "dde872a6d2b72897a704b550847eb9a49fce657c61257a7c448a18a87e595f33"
+  },
+  "review": {
+    "mode": "MANUAL_RISK_BASED_REVIEW_WITH_REAL_IDENTITY_AND_NEGATIVE_TESTS",
+    "batch_columns_released_only_after_the_same_column_is_assembled": true,
+    "column_dtype_order_names_nulls_and_all_index_kinds_preserved": true,
+    "whole_parent_qualified_scope_and_formal_child_checks_preserved": true,
+    "same_full_parent_bytes_identity_and_qualification": true,
+    "production_entry_import_and_backend_preparation_included_in_loader_measurement": true,
+    "no_strategy_costs_dates_limits_or_authorization_changes": true
+  },
+  "all_six_accounts_complete": false,
+  "strategy_qualified": false,
+  "old_failed_purpose_reopened": false,
+  "old_consumption_refunded": false,
+  "expiry_extended": false,
+  "rollback_point": "5d849c483945c5525b8312e1564426ef6bf1303c"
+}

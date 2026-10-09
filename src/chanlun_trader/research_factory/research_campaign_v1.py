@@ -3,6 +3,7 @@ from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
 import json
+import math
 import os
 import re
 
@@ -44,8 +45,25 @@ class ResearchCampaignV1:
     @classmethod
     def create(cls, root, authorization):
         required = {'authorization_id', 'objective_id', 'resource_limits', 'stages', 'expires_at', *LIMIT_KEYS}
-        if not isinstance(authorization, dict) or set(authorization) != required:
+        optional = {'execution_profiles', 'engineering_authorization'}
+        if (not isinstance(authorization, dict) or not required <= set(authorization)
+                or set(authorization) - required - optional):
             raise ValueError('CAMPAIGN_AUTHORIZATION_FIELDS')
+        if 'engineering_authorization' in authorization and 'execution_profiles' not in authorization:
+            raise ValueError('CAMPAIGN_EXECUTION_PROFILE_AUTHORIZATION_REQUIRED')
+        if 'execution_profiles' in authorization:
+            from .universe_execution_profile_v1 import validate_execution_profile, CONTINUOUS_PROFILE, ENGINEERING_PURPOSE
+            profiles=authorization['execution_profiles']
+            if not isinstance(profiles,list) or not profiles:
+                raise ValueError('CAMPAIGN_EXECUTION_PROFILES_INVALID')
+            values=[validate_execution_profile(profile) for profile in profiles]
+            if len({value['profile_hash'] for value in values}) != len(values):
+                raise ValueError('CAMPAIGN_EXECUTION_PROFILES_DUPLICATED')
+            engineering=authorization.get('engineering_authorization')
+            if engineering is not None and engineering != ENGINEERING_PURPOSE:
+                raise PermissionError('CAMPAIGN_ENGINEERING_AUTHORIZATION_INVALID')
+            if any(value['profile_id'] == CONTINUOUS_PROFILE for value in values) and engineering != ENGINEERING_PURPOSE:
+                raise PermissionError('ENGINEERING_CONTINUOUS_REFERENCE_AUTHORIZATION_REQUIRED')
         service = cls(root, authorization['authorization_id'])
         _identifier(authorization['objective_id'])
         if (not isinstance(authorization['stages'], list) or not authorization['stages']
@@ -154,7 +172,7 @@ class ResearchCampaignV1:
                                   {'reason': reason, 'sequence': len(budget._events)})
 
     def reserve_operation(self, *, operation_id, batch_id, stage, kind, subject_identity, upper_bounds,
-                          cost_bound_evidence=None, hypothesis_identity=None):
+                          cost_bound_evidence=None, hypothesis_identity=None, execution_profile=None):
         _identifier(operation_id)
         _identifier(batch_id)
         if kind not in KINDS or not isinstance(subject_identity, str) or not subject_identity:
@@ -171,9 +189,21 @@ class ResearchCampaignV1:
         item = {'operation_id': operation_id, 'batch_id': batch_id, 'stage': stage, 'kind': kind,
                 'subject_identity': subject_identity, 'upper_bounds': units, 'cost_bound_evidence': cost_bound_evidence,
                 'hypothesis_identity': hypothesis_identity}
+        if execution_profile is not None:
+            from .universe_execution_profile_v1 import validate_execution_profile
+            profile=validate_execution_profile(execution_profile)
+            if kind not in ('ACCOUNT','DATA','VERIFY') or units['wall_seconds'] != profile['total_seconds']:
+                raise ValueError('CAMPAIGN_EXECUTION_PROFILE_BOUND_CONFLICT')
+            purposes={'ACCOUNT':{'RESEARCH_ACCOUNT','ENGINEERING_CONTINUOUS_REFERENCE'},
+                      'DATA':{'RESEARCH_PREPARATION'},'VERIFY':{'RESEARCH_VERIFICATION','RESEARCH_REPORT'}}
+            if profile['purpose'] not in purposes[kind]:
+                raise PermissionError('CAMPAIGN_EXECUTION_PURPOSE_CONFLICT')
+            item['execution_profile']=profile
         with self._lock():
             budget = self._budget()
             view = budget.campaign_view()
+            if execution_profile is not None and profile not in view['authorization'].get('execution_profiles',[]):
+                raise PermissionError('CAMPAIGN_EXECUTION_PROFILE_NOT_AUTHORIZED')
             existing = view['operations'].get(operation_id)
             if existing:
                 if any(existing[key] != value for key, value in item.items()):
@@ -202,6 +232,54 @@ class ResearchCampaignV1:
                 budget.reserve_trial(trial_id=operation_id, batch_id=batch_id, candidate_id=subject_identity,
                                      candidate_hash=subject_identity, family_id=kind)
             return deepcopy(budget.campaign_view()['operations'][operation_id])
+
+    def start_execution_segment(self, operation_id, *, segment_number, profile=None, upper_bound_seconds=None):
+        """继续原 operation；不建立第二个 Trial 或第二份账户额度。"""
+        from .universe_execution_profile_v1 import validate_execution_profile, segment_allowance
+        with self._lock():
+            budget=self._budget(); view=budget.campaign_view(); operation=view['operations'][operation_id]
+            self._dispatchable(view,operation['stage'])
+            frozen=operation.get('execution_profile')
+            if frozen is None or operation['status'] != 'RUNNING':
+                raise PermissionError('CAMPAIGN_EXECUTION_CONTINUATION_NOT_AUTHORIZED')
+            value=validate_execution_profile(frozen)
+            if profile is not None and validate_execution_profile(profile) != value:
+                raise PermissionError('CAMPAIGN_EXECUTION_PROFILE_CONFLICT')
+            segments=operation.get('segments',[])
+            if operation.get('active_segment') is not None or (segments and segments[-1].get('outcome') in ('COMPLETED','FAILED')):
+                raise PermissionError('CAMPAIGN_EXECUTION_SEGMENT_ALREADY_DISPATCHED_OR_TERMINAL')
+            if type(segment_number) is not int or segment_number != len(segments)+1:
+                raise PermissionError('CAMPAIGN_EXECUTION_SEGMENT_NUMBER_CONFLICT')
+            now=datetime.now(timezone.utc)
+            allowed=segment_allowance(value,operation.get('active_wall_seconds',0),
+                seconds_to_expiry=(_timestamp(view['authorization']['expires_at'])-now).total_seconds())
+            upper=allowed if upper_bound_seconds is None else upper_bound_seconds
+            if type(upper) not in (int,float) or not 0 < upper <= allowed:
+                raise PermissionError('CAMPAIGN_EXECUTION_SEGMENT_BOUND_CONFLICT')
+            item={'operation_id':operation_id,'segment_number':segment_number,'profile_hash':value['profile_hash'],
+                  'upper_bound_seconds':upper,'dispatched_at':now.isoformat()}
+            budget.campaign_event('CAMPAIGN_EXECUTION_SEGMENT_DISPATCHED',item)
+            return deepcopy(budget.campaign_view()['operations'][operation_id]['active_segment'])
+
+    def end_execution_segment(self, operation_id, *, segment_number, seconds=None,
+                              evidence_identity=None, outcome='CONTINUE'):
+        from .universe_execution_profile_v1 import segment_charge
+        if outcome not in ('CONTINUE','PAUSED','COMPLETED','FAILED'):
+            raise ValueError('CAMPAIGN_EXECUTION_SEGMENT_OUTCOME_INVALID')
+        with self._lock():
+            budget=self._budget(); operation=budget.campaign_view()['operations'][operation_id]
+            active=operation.get('active_segment')
+            if operation['status'] not in ('RUNNING','UNKNOWN') or active is None or active['segment_number'] != segment_number:
+                raise PermissionError('CAMPAIGN_EXECUTION_SEGMENT_NOT_ACTIVE')
+            amount,basis=segment_charge(seconds,active['upper_bound_seconds'],evidence_identity,outcome=outcome)
+            item={'operation_id':operation_id,'segment_number':segment_number,'measured_seconds':seconds,
+                  'seconds':amount,'basis':basis,'evidence_identity':evidence_identity,'outcome':outcome,
+                  'charged_at':datetime.now(timezone.utc).isoformat()}
+            budget.campaign_event('CAMPAIGN_EXECUTION_SEGMENT_CHARGED',item)
+            if basis=='MEASURED_FAILED_RESOURCE_BOUND_VIOLATION':
+                budget.campaign_event('CAMPAIGN_PAUSED',{'reason':'DISPATCH_RESOURCE_BOUND_VIOLATION',
+                    'operation_id':operation_id,'sequence':len(budget._events)})
+            return deepcopy(budget.campaign_view()['operations'][operation_id]['segments'][-1])
 
     def start_operation(self, operation_id):
         with self._lock():
@@ -241,9 +319,26 @@ class ResearchCampaignV1:
                 return deepcopy(operation)
             if operation['status'] not in ('RUNNING', 'UNKNOWN'):
                 raise ValueError('CAMPAIGN_OPERATION_NOT_STARTED')
+            if operation.get('execution_profile') is not None:
+                if operation.get('active_segment') is not None:
+                    raise PermissionError('CAMPAIGN_EXECUTION_SEGMENT_NOT_SETTLED')
+                if units['wall_seconds'] < operation.get('active_wall_seconds',0):
+                    raise ValueError('CAMPAIGN_EXECUTION_ACTIVE_USAGE_CANNOT_BE_ERASED')
             if units[KINDS[operation['kind']]] != 1 or units['wall_seconds'] < 1:
                 raise ValueError('CAMPAIGN_CONSUMPTION_CANNOT_BE_ERASED')
             if any(amount > operation['upper_bounds'][name] for name, amount in units.items()):
+                segments=operation.get('segments',[])
+                if (operation.get('execution_profile') is not None and outcome=='FAILED' and segments
+                        and segments[-1].get('outcome')=='FAILED'
+                        and segments[-1].get('basis')=='MEASURED_FAILED_RESOURCE_BOUND_VIOLATION'
+                        and units['wall_seconds']==max(1,math.ceil(operation['active_wall_seconds']))
+                        and all(units[name]<=operation['upper_bounds'][name] for name in units if name!='wall_seconds')):
+                    item['resource_overrun']={name:max(0,units[name]-operation['upper_bounds'][name]) for name in units}
+                    if operation['kind'] in ('ACCOUNT','DATA'):budget.complete_trial(operation_id)
+                    budget.campaign_event('CAMPAIGN_OPERATION_RESOURCE_OVERRUN_SETTLED',item)
+                    budget.campaign_event('CAMPAIGN_PAUSED',{'reason':'ACTUAL_RESOURCE_OVERRUN',
+                        'operation_id':operation_id,'sequence':len(budget._events)})
+                    return deepcopy(budget.campaign_view()['operations'][operation_id])
                 budget.campaign_event('CAMPAIGN_OPERATION_UNKNOWN', {'operation_id': operation_id, 'reason': 'REPORTED_USAGE_EXCEEDS_BOUND'})
                 budget.campaign_event('CAMPAIGN_PAUSED', {'reason': 'REPORTED_USAGE_EXCEEDS_BOUND', 'sequence': len(budget._events)})
                 raise BudgetLedgerMismatchError('CAMPAIGN_USAGE_EXCEEDS_RESERVED_BOUND')

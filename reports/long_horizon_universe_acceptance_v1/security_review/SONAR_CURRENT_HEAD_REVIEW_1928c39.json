@@ -1,0 +1,238 @@
+{
+  "schema_version": "SONAR_CURRENT_HEAD_REVIEW_V1",
+  "review_head": "1928c3964c004f17191c330e30cc03f0b9e24b06",
+  "captured_at": "2026-10-07T17:01:14.520185+00:00",
+  "analysis_time": "2026-10-07T16:11:16+0000",
+  "pull_request_url": "https://github.com/a1351995160/trade/pull/36",
+  "official_api_references": {
+    "pull_requests": "https://sonarcloud.io/api/project_pull_requests/list?project=a1351995160_trade",
+    "issues": "https://sonarcloud.io/api/issues/search?componentKeys=a1351995160_trade&pullRequest=36&resolved=false&types=VULNERABILITY&ps=100",
+    "quality_gate": "https://sonarcloud.io/api/qualitygates/project_status?projectKey=a1351995160_trade&pullRequest=36"
+  },
+  "server_findings": {
+    "unresolved_vulnerability_count": 11,
+    "issues": [
+      {
+        "key": "AaECNOtm2ukvKcrcbJgp",
+        "rule": "pythonsecurity:S6350",
+        "severity": "MAJOR",
+        "status": "OPEN",
+        "file": "scripts/run_long_horizon_universe_acceptance_v1.py",
+        "line": 221,
+        "prior_report_section": "B",
+        "prior_report_coverage": "固定公共 CLI、参数数组及维护者部署边界",
+        "manual_review_conclusion": "已有具体调用链误报论证；服务端尚未接受或处置，不能视为已关闭",
+        "server_disposition": "OPEN_NOT_CHANGED_BY_THIS_REVIEW"
+      },
+      {
+        "key": "AaECNOtm2ukvKcrcbJgr",
+        "rule": "pythonsecurity:S8705",
+        "severity": "MAJOR",
+        "status": "OPEN",
+        "file": "scripts/run_long_horizon_universe_acceptance_v1.py",
+        "line": 221,
+        "prior_report_section": "B",
+        "prior_report_coverage": "固定公共 CLI；扫描标注的 HTTP 来源实际为维护者 argparse 参数",
+        "manual_review_conclusion": "已有具体调用链误报论证；服务端尚未接受或处置，不能视为已关闭",
+        "server_disposition": "OPEN_NOT_CHANGED_BY_THIS_REVIEW"
+      },
+      {
+        "key": "AaECNOtm2ukvKcrcbJgq",
+        "rule": "pythonsecurity:S6549",
+        "severity": "MAJOR",
+        "status": "OPEN",
+        "file": "scripts/run_long_horizon_universe_acceptance_v1.py",
+        "line": 229,
+        "prior_report_section": "C",
+        "prior_report_coverage": "部署服务生成的冻结任务 checkpoint 存在性分支",
+        "manual_review_conclusion": "已有具体调用链误报论证；服务端尚未接受或处置，不能视为已关闭",
+        "server_disposition": "OPEN_NOT_CHANGED_BY_THIS_REVIEW"
+      },
+      {
+        "key": "AaECNOxo2ukvKcrcbJhY",
+        "rule": "pythonsecurity:S8707",
+        "severity": "MAJOR",
+        "status": "OPEN",
+        "file": "scripts/run_strategy_account_v1.py",
+        "line": 32,
+        "prior_report_section": "D",
+        "prior_report_coverage": "本地操作者明确选择的 job 文件哈希",
+        "manual_review_conclusion": "已有具体调用链误报论证；服务端尚未接受或处置，不能视为已关闭",
+        "server_disposition": "OPEN_NOT_CHANGED_BY_THIS_REVIEW"
+      },
+      {
+        "key": "AaECNOxo2ukvKcrcbJhX",
+        "rule": "pythonsecurity:S6549",
+        "severity": "MAJOR",
+        "status": "OPEN",
+        "file": "scripts/run_strategy_account_v1.py",
+        "line": 417,
+        "prior_report_section": "E",
+        "prior_report_coverage": "受限 worker 续跑 checkpoint，前置来源、握手、派发与计划检查",
+        "manual_review_conclusion": "已有具体调用链误报论证；服务端尚未接受或处置，不能视为已关闭",
+        "server_disposition": "OPEN_NOT_CHANGED_BY_THIS_REVIEW"
+      },
+      {
+        "key": "AaECNOxo2ukvKcrcbJhU",
+        "rule": "pythonsecurity:S6549",
+        "severity": "MAJOR",
+        "status": "OPEN",
+        "file": "scripts/run_strategy_account_v1.py",
+        "line": 420,
+        "prior_report_section": "E",
+        "prior_report_coverage": "同一冻结 checkpoint 的存在性与哈希分支",
+        "manual_review_conclusion": "已有具体调用链误报论证；服务端尚未接受或处置，不能视为已关闭",
+        "server_disposition": "OPEN_NOT_CHANGED_BY_THIS_REVIEW"
+      },
+      {
+        "key": "AaECNOxo2ukvKcrcbJhW",
+        "rule": "pythonsecurity:S6549",
+        "severity": "MAJOR",
+        "status": "OPEN",
+        "file": "scripts/run_strategy_account_v1.py",
+        "line": 459,
+        "prior_report_section": "F",
+        "prior_report_coverage": "任务根目录与所选 job 规范父目录的防替换检查",
+        "manual_review_conclusion": "已有具体调用链误报论证；服务端尚未接受或处置，不能视为已关闭",
+        "server_disposition": "OPEN_NOT_CHANGED_BY_THIS_REVIEW"
+      },
+      {
+        "key": "AaECNOxo2ukvKcrcbJhV",
+        "rule": "pythonsecurity:S6549",
+        "severity": "MAJOR",
+        "status": "OPEN",
+        "file": "scripts/run_strategy_account_v1.py",
+        "line": 1006,
+        "prior_report_section": "E",
+        "prior_report_coverage": "维护者本地只读状态入口检查冻结 checkpoint",
+        "manual_review_conclusion": "已有具体调用链误报论证；服务端尚未接受或处置，不能视为已关闭",
+        "server_disposition": "OPEN_NOT_CHANGED_BY_THIS_REVIEW"
+      },
+      {
+        "key": "AaECNOja2ukvKcrcbJgG",
+        "rule": "pythonsecurity:S8707",
+        "severity": "MAJOR",
+        "status": "OPEN",
+        "file": "src/chanlun_trader/research_factory/research_evidence_v1.py",
+        "line": 34,
+        "prior_report_section": "D",
+        "prior_report_coverage": "scope、宿主握手及任务根目录绑定后的本地 job 读取",
+        "manual_review_conclusion": "已有具体调用链误报论证；服务端尚未接受或处置，不能视为已关闭",
+        "server_disposition": "OPEN_NOT_CHANGED_BY_THIS_REVIEW"
+      },
+      {
+        "key": "AaECNOja2ukvKcrcbJgF",
+        "rule": "pythonsecurity:S2083",
+        "severity": "BLOCKER",
+        "status": "OPEN",
+        "file": "src/chanlun_trader/research_factory/research_evidence_v1.py",
+        "line": 38,
+        "prior_report_section": "G",
+        "prior_report_coverage": "资源原件路径由正则校验的策略名、递增段号及固定后缀构造",
+        "manual_review_conclusion": "已有具体调用链误报论证；服务端尚未接受或处置，不能视为已关闭",
+        "server_disposition": "OPEN_NOT_CHANGED_BY_THIS_REVIEW"
+      },
+      {
+        "key": "AaECNOg12ukvKcrcbJgA",
+        "rule": "pythonsecurity:S6549",
+        "severity": "MAJOR",
+        "status": "OPEN",
+        "file": "src/chanlun_trader/research_factory/universe_report_state_v1.py",
+        "line": 57,
+        "prior_report_section": "F",
+        "prior_report_coverage": "报告制品根目录重定向拒绝及逐项路径、字节核对",
+        "manual_review_conclusion": "已有具体调用链误报论证；服务端尚未接受或处置，不能视为已关闭",
+        "server_disposition": "OPEN_NOT_CHANGED_BY_THIS_REVIEW"
+      }
+    ]
+  },
+  "quality_gate": {
+    "status": "ERROR",
+    "conditions": [
+      {
+        "status": "OK",
+        "metricKey": "new_reliability_rating",
+        "comparator": "GT",
+        "periodIndex": 1,
+        "errorThreshold": "1",
+        "actualValue": "1"
+      },
+      {
+        "status": "ERROR",
+        "metricKey": "new_security_rating",
+        "comparator": "GT",
+        "periodIndex": 1,
+        "errorThreshold": "1",
+        "actualValue": "5"
+      },
+      {
+        "status": "OK",
+        "metricKey": "new_maintainability_rating",
+        "comparator": "GT",
+        "periodIndex": 1,
+        "errorThreshold": "1",
+        "actualValue": "1"
+      },
+      {
+        "status": "OK",
+        "metricKey": "new_duplicated_lines_density",
+        "comparator": "GT",
+        "periodIndex": 1,
+        "errorThreshold": "3",
+        "actualValue": "0.1"
+      },
+      {
+        "status": "OK",
+        "metricKey": "new_security_hotspots_reviewed",
+        "comparator": "LT",
+        "periodIndex": 1,
+        "errorThreshold": "100",
+        "actualValue": "100.0"
+      }
+    ],
+    "periods": [],
+    "ignoredConditions": false
+  },
+  "findings": [],
+  "references": {
+    "pull_requests": {
+      "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\checkpoint_replace_review\\SONAR_PULL_REQUESTS_1928c39.json",
+      "sha256": "0e4f951e1e8debc73536e02a0bf454e0e07e0a20953989b86eafe7c5bb63ec2e"
+    },
+    "issues": {
+      "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\checkpoint_replace_review\\SONAR_ISSUES_1928c39.json",
+      "sha256": "b08748fb737ae25c3a3abdb18343613e2765686cd6348c6e13ffb9b2310282e1"
+    },
+    "quality_gate": {
+      "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\checkpoint_replace_review\\SONAR_QUALITY_GATE_1928c39.json",
+      "sha256": "c30acabdb8b2697bc1b300108d34bb642ab957b0603fad85abf9c3d93379a1ea"
+    },
+    "github_pr": {
+      "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\checkpoint_replace_review\\SONAR_GITHUB_PR_1928c39.json",
+      "sha256": "007b75d5ab3d63ce58d1400225eb4c29882f8abf56cb106a9ed089414e23c25a"
+    },
+    "github_current_head_checks": {
+      "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\checkpoint_replace_review\\SONAR_GITHUB_HEAD_CHECKS_1928c39.json",
+      "sha256": "c0e5c64ca93036db45cb51d8f23bb7392de434ba0827dc26ad1fc16948316fb3"
+    },
+    "prior_review": {
+      "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\report_input_reuse_review\\SONAR_CURRENT_HEAD_REVIEW_f36c6ad.json",
+      "sha256": "c599bd6bb39567a7c990e25e1d446732e2dc9c0965c7bef8f3b7a29368b5eefe"
+    }
+  },
+  "unchanged_reviewed_source_sha256": {
+    "scripts/run_long_horizon_universe_acceptance_v1.py": "8fad34aa9d4bc12868b84d96ba5db6d71c18789fc13064976b444d9b46275be3",
+    "scripts/run_strategy_account_v1.py": "86dfbe721bf411e8de6322ba7f8b3ade756bd15f6b7a3d16ddd8bdd7ec0ec5fa",
+    "src/chanlun_trader/research_factory/research_evidence_v1.py": "d14081559a635156b683e4dec53a1915ea682531e3ec69aee32fcd86099cdca6",
+    "src/chanlun_trader/research_factory/universe_report_state_v1.py": "86ab03e0c2cb6a32071ab53c393899dfc12065dd8c702499e2b6c35ac83f6a7d"
+  },
+  "new_unresolved_findings": 0,
+  "changed_source_review_cn": "新增逻辑仅对同一完整临时快照的原子替换处理Windows错误5/32/33，最多等待一秒；路径拒绝重定向、JSON字节、身份及消费语义不变，其他错误立即传播，持续占用仍失败。未增加外部输入、命令执行或路径来源。",
+  "conclusion_cn": "官方清单仍为既有11条OPEN告警，对应源码与上次人工复核逐字节一致，没有新增告警或位置变化。服务端质量门禁仍失败，不能声称告警已关闭或项目通过全部安全检查。",
+  "server_issues_disposition_modified": false,
+  "sonar_rules_suppressed_or_excluded": false,
+  "entire_project_security_certified": false,
+  "tests_run_in_this_review": false,
+  "accounts_run_in_this_review": false,
+  "full_six_accounts_completed": false
+}

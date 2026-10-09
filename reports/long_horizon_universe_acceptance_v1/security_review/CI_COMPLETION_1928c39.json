@@ -1,0 +1,36 @@
+{
+  "status": "CURRENT_HEAD_REQUIRED_AND_EIGHT_JOB_CI_PASSED_REAL_U8_PENDING",
+  "recorded_at": "2026-10-07T17:49:37.914028+00:00",
+  "head_sha": "1928c3964c004f17191c330e30cc03f0b9e24b06",
+  "required_check": "Deterministic governance suite",
+  "completion_jobs_passed": 8,
+  "pr_workflows_passed": 10,
+  "pr_checks_passed": 25,
+  "sonar_server_status": "FAILURE",
+  "sonar_server_state_changed": false,
+  "real_six_account_acceptance_completed": false,
+  "strategy_qualified": false,
+  "merged_to_main": false,
+  "references": {
+    "pull_request": {
+      "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\checkpoint_replace_review\\CI_1928c39_PR.json",
+      "sha256": "3450be59d6303620f401c9326b06bb03ae7c4830b1800bf2c3b5a3a0447cb423"
+    },
+    "completion_eight_jobs": {
+      "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\checkpoint_replace_review\\CI_1928c39_EIGHT_JOBS.json",
+      "sha256": "d9d241fff5b0f11810435db65c28f4c0274b9dee9e9820ccca2645b8f56116fc"
+    },
+    "all_pr_workflows": {
+      "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\checkpoint_replace_review\\CI_1928c39_PR_WORKFLOWS.json",
+      "sha256": "ddccf835f1cb0e7e054bc1c05998ad93fb3bfbea56a2c7c551239482c618555a"
+    },
+    "all_checks_including_cancelled_push_and_sonar": {
+      "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\checkpoint_replace_review\\CI_1928c39_ALL_CHECKS.json",
+      "sha256": "69e4f0600d76259d519cb01a2265e8a9965edf9376cd7cdf88a8d86373af6604"
+    },
+    "current_head_sonar_review": {
+      "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\checkpoint_replace_review\\SONAR_CURRENT_HEAD_REVIEW_1928c39.json",
+      "sha256": "4c8969f552a7a6eda7a6ec91c24d0c74cd73858f496fceb0bd4c26742f2ac429"
+    }
+  }
+}

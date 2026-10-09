@@ -5,6 +5,7 @@ import hashlib
 import json
 import math
 from pathlib import Path
+import time
 
 import pandas as pd
 
@@ -283,7 +284,97 @@ def reconstruct_account(bundle, window, result, *, initial_cash, costs, strategy
             "exit_behavior": "VERIFIED" if enabled else "NOT_CONFIGURED", "exit_rows": verified_exit_rows}
 
 
-def verify_job_evidence(job_path, *, name):
+def _verify_interrupted_segment(root, prefix, dispatch, charge, following, receipt):
+    """未取得耗时回执的中断按上界收费；它不能充当成功的完成段。"""
+    _require(charge['outcome'] == 'CONTINUE' and charge['seconds'] == dispatch['upper_bound_seconds']
+             and charge['measured_seconds'] is None and charge['evidence_identity'] is None
+             and not (root / (prefix + '_RESOURCE.json')).exists(), 'UNKNOWN_SEGMENT_CHARGE_CONFLICT')
+    resume = _json(root / (prefix + '_RESUME.json'))
+    _require(resume.get('dispatch_id') == dispatch['dispatch_id'] and resume.get('budget_reused') is True
+             and resume.get('charge_basis') == 'UNKNOWN_UPPER_BOUND', 'UNKNOWN_SEGMENT_RESUME_NOT_PROVEN')
+    worker_path = root / (prefix + '_WORKER.json')
+    if resume.get('execution_not_launched') is True:
+        proof_path = root / (prefix + '_MIRROR_REPAIR.json')
+        proof = _json(proof_path)
+        source = receipt['source']
+        _require(source.get('origin') == 'CAMPAIGN_V1' and not worker_path.exists()
+                 and not (root / (prefix + '_INPUT_ACCESS.json')).exists()
+                 and _sha(proof_path) == resume.get('mirror_repair_sha256')
+                 and proof.get('version') == 'CAMPAIGN_SEGMENT_MIRROR_REPAIR_V1'
+                 and proof.get('receipt_id') == receipt['receipt_id']
+                 and proof.get('source_identity') == stable_hash(source)
+                 and proof.get('dispatch_id') == dispatch['dispatch_id'] and proof.get('worker_absent') is True,
+                 'UNKNOWN_SEGMENT_MIRROR_PROOF_CONFLICT')
+        from .etf_account_governance_v1 import validate_campaign_source
+        campaign = validate_campaign_source(source, receipt['strategy_plans'], receipt['objective_id'])
+        operation_id = source['operation_ids'][dispatch['kind']]
+        parent = campaign.status()['operations'][operation_id]['segments'][dispatch['segment_number'] - 1]
+        expected = stable_hash({key: parent[key] for key in
+            ('operation_id', 'segment_number', 'profile_hash', 'upper_bound_seconds', 'dispatched_at')})
+        _require(proof.get('operation_id') == operation_id and proof.get('parent_dispatch_identity') == expected,
+                 'UNKNOWN_SEGMENT_PARENT_MIRROR_CONFLICT')
+    else:
+        worker = _json(worker_path)
+        _require(worker.get('dispatch_id') == dispatch['dispatch_id']
+                 and worker.get('segment_number') == dispatch['segment_number']
+                 and worker.get('purpose') == dispatch['kind']
+                 and isinstance(resume.get('state_identity'), str) and len(resume['state_identity']) == 64,
+                 'UNKNOWN_SEGMENT_WORKER_BINDING_CONFLICT')
+        resumed = pd.Timestamp(resume['resumed_at'])
+        _require(resumed.tzinfo is not None and pd.Timestamp(dispatch['dispatched_at']) <= resumed
+                 <= pd.Timestamp(following['dispatched_at']), 'UNKNOWN_SEGMENT_RESUME_TIME_CONFLICT')
+
+
+def _verify_segment_resources(job, name, aggregate, settlement):
+    """只核对原 START 下的全部派发，不把最后一段当作整段资源证明。"""
+    from .etf_account_governance_v1 import StrategyBatchGovernanceV1
+    gov = StrategyBatchGovernanceV1(job['root'], job['budget_path'], job['objective_id'], job['plans'])
+    state = gov.segment_status(name)
+    root = Path(job['root'])
+    _require(state['pending'] is None and state['segments']
+             and state['segments'][-1]['charge']['outcome'] == 'COMPLETED', 'SEGMENT_COMPLETION_NOT_PROVEN')
+    _same(aggregate['elapsed_wall_seconds'], state['charged_seconds'], 'CUMULATIVE_RESOURCE_CONFLICT', 1e-6)
+    _same(settlement['wall_seconds'], state['charged_seconds'], 'CUMULATIVE_SETTLEMENT_CONFLICT', 1e-6)
+    _require(aggregate['active_metering'] is True and aggregate['segment_count'] == len(state['segments'])
+             and aggregate['segments'] == [row['charge']['charge_id'] for row in state['segments']],
+             'SEGMENT_RESOURCE_CHAIN_CONFLICT')
+    receipt = _json(root / 'CONFIRMATION.json')
+    measured_seconds = upper_bound_seconds = 0.
+    for index, row in enumerate(state['segments']):
+        dispatch, charge = row['dispatch'], row['charge']
+        prefix = name + '_SEGMENT_' + str(dispatch['segment_number']).zfill(6)
+        path = root / (prefix + '_RESOURCE.json')
+        if charge['basis'] == 'UNKNOWN_CHARGED_DISPATCH_UPPER_BOUND':
+            _require(index + 1 < len(state['segments']), 'UNKNOWN_SEGMENT_CANNOT_COMPLETE_ACCOUNT')
+            _verify_interrupted_segment(root, prefix, dispatch, charge,
+                state['segments'][index + 1]['dispatch'], receipt)
+            upper_bound_seconds += charge['seconds']
+            continue
+        resource, worker, access = _json(path), _json(root / (prefix + '_WORKER.json')), _json(root / (prefix + '_INPUT_ACCESS.json'))
+        _require(charge['basis'] == 'MEASURED_ACTIVE_WALL_SECONDS' and _sha(path) == charge['evidence_identity'],
+                 'SEGMENT_RESOURCE_RECEIPT_CONFLICT')
+        _same(resource['elapsed_wall_seconds'], charge['seconds'], 'SEGMENT_MEASUREMENT_CONFLICT', 1e-6)
+        _require(resource.get('returncode') == (0 if charge['outcome'] == 'COMPLETED' else 75)
+                 and not resource.get('timed_out') and charge['outcome'] in {'CONTINUE', 'PAUSED', 'COMPLETED'},
+                 'SEGMENT_WORKER_NOT_SUCCESSFUL')
+        _require(all(value.get('dispatch_id') == dispatch['dispatch_id']
+                     and value.get('segment_number') == dispatch['segment_number']
+                     for value in (resource, worker, access)), 'SEGMENT_WORKER_IDENTITY_CONFLICT')
+        direct = worker['pid'] == access['reader_pid']
+        child = (access.get('resource_platform') == resource.get('resource_platform') == 'nt'
+                 and access.get('reader_parent_pid') == worker['pid'] == access.get('launcher_pid')
+                 and resource.get('launcher_pid') == worker['pid'] and access.get('windows_job_verified') is True
+                 and resource.get('windows_job_bound') is True)
+        item = job['items'][name]
+        _require((direct or child) and worker['purpose'] == access['purpose'] == name
+                 and access['input_identity'] == job['input_identity'] and access['loader'] == item['loader']
+                 and access['loader_kwargs'] == item['loader_kwargs'], 'SEGMENT_INPUT_ACCESS_CONFLICT')
+        measured_seconds += charge['seconds']
+    return {**state, 'measured_seconds': measured_seconds,
+            'conservatively_charged_seconds': upper_bound_seconds}
+
+
+def verify_job_evidence(job_path, *, name, audit_checkpoint_path=None, segment_seconds=None, segment_deadline=None):
     """只读冻结 INPUT 路径；缺证 INCOMPLETE，矛盾 FAIL，全部一致才 PASS。"""
     root = Path(job_path).resolve().parent
     try:
@@ -295,9 +386,21 @@ def verify_job_evidence(job_path, *, name):
         _require(item == plan["runtime"], "RUNTIME_PLAN_CONFLICT")
         qualified_loader = item['loader'] == 'chanlun_trader.research_factory.strategy_submission_v1:load_frozen_qualified_bundle'
         _require(qualified_loader or item["loader"] == "chanlun_trader.research_factory.strategy_submission_v1:load_frozen_bundle", "OFFLINE_INPUT_LOADER_UNSUPPORTED")
-        _require(not qualified_loader or plan['backend']['backend'] == 'UNIVERSE_ACCOUNT_BACKEND_V1',
+        long_universe = plan['backend']['backend'] == 'UNIVERSE_ACCOUNT_BACKEND_V2'
+        if segment_deadline is not None:
+            _require(long_universe and type(segment_deadline) in (int, float) and math.isfinite(segment_deadline),
+                     'LONG_VERIFICATION_DEADLINE_INVALID')
+        def remaining_audit_seconds():
+            if segment_deadline is None:
+                return segment_seconds
+            remaining = segment_deadline - time.monotonic()
+            if remaining <= 0:
+                from .universe_account_backend_v2 import SegmentBoundary
+                raise SegmentBoundary('UNIVERSE_VERIFICATION_COOPERATIVE_DEADLINE')
+            return remaining
+        _require(not qualified_loader or plan['backend']['backend'] in {'UNIVERSE_ACCOUNT_BACKEND_V1', 'UNIVERSE_ACCOUNT_BACKEND_V2'},
                  'OFFLINE_QUALIFIED_BACKEND_REQUIRED')
-        if plan['backend']['backend'] == 'UNIVERSE_ACCOUNT_BACKEND_V1':
+        if plan['backend']['backend'] in {'UNIVERSE_ACCOUNT_BACKEND_V1', 'UNIVERSE_ACCOUNT_BACKEND_V2'}:
             from .universe_submission_v1 import validate_frozen_universe_scopes
             validate_frozen_universe_scopes(job, include_archives=True)
         receipt = _json(root / "CONFIRMATION.json")
@@ -320,6 +423,9 @@ def verify_job_evidence(job_path, *, name):
         _require(pd.Timestamp(receipt["recorded_at"]) <= pd.Timestamp(start["started_at"]) < pd.Timestamp(receipt["expires_at"])
                  and pd.Timestamp(start["started_at"]) <= pd.Timestamp(settlement["settled_at"]), "AUTHORIZATION_TIME_CONFLICT")
         resource = _json(root / (name + "_RESOURCE.json"))
+        segment_evidence = None
+        if long_universe:
+            segment_evidence = _verify_segment_resources(job, name, resource, settlement)
         _require(type(resource["returncode"]) is int and resource["returncode"] == 0 and not resource.get("timed_out"), "WORKER_NOT_SUCCESSFUL")
         worker = _json(root / (name + "_WORKER.json"))
         access = _json(root / (name + "_INPUT_ACCESS.json"))
@@ -347,6 +453,8 @@ def verify_job_evidence(job_path, *, name):
         _require(Path(index["result"]).resolve() == result_path and Path(index["settlement"]).resolve() == root / (name + "_SETTLEMENT.json")
                  and index["sha256"] == digest == settlement["result_sha256"], "RESULT_HASH_BINDING_CONFLICT")
         from .strategy_submission_v1 import load_frozen_bundle, load_frozen_qualified_bundle
+        if segment_deadline is not None:
+            remaining_audit_seconds()
         loaded = (load_frozen_qualified_bundle if qualified_loader else load_frozen_bundle)(**item["loader_kwargs"])
         if qualified_loader and source['origin'] != 'CAMPAIGN_V1':
             _require(source.get('qualified_scope_identity') == loaded['frame']['qualified_scope']['scope_identity'],
@@ -356,14 +464,23 @@ def verify_job_evidence(job_path, *, name):
         result = _json(result_path)
         _require(result["strategy_plan"] == plan and result["input_identity"] == job["input_identity"], "RESULT_PLAN_CONFLICT")
         reconstruct = reconstruct_account
-        if plan['backend']['backend'] == 'UNIVERSE_ACCOUNT_BACKEND_V1':
+        audit_options = {}
+        if plan['backend']['backend'] in {'UNIVERSE_ACCOUNT_BACKEND_V1', 'UNIVERSE_ACCOUNT_BACKEND_V2'}:
             _require(result.get('execution_description') == plan['backend'], 'RESULT_EXECUTION_POLICY_CONFLICT')
             from .universe_evidence_v1 import reconstruct_universe_account
             reconstruct = reconstruct_universe_account
+            if long_universe:
+                from .universe_execution_artifacts_v1 import hydrated_result
+                result = hydrated_result(result)
+                checkpoint = Path(item['backend_options']['checkpoint_path'])
+                audit_options = {'audit_checkpoint_path': audit_checkpoint_path or checkpoint.parent / (name + '_AUDIT.json'),
+                                 'segment_seconds': remaining_audit_seconds()}
         audit = reconstruct(loaded["frame"], frozen["window"], result,
             initial_cash=plan["backend"]["initial_cash"], costs=plan["backend"]["costs"], strategy_id=name,
-            rule=plan["strategy"]["parameters"].get("candidate_payload"))
-        return {"version": VERSION, "status": "PASS", "advance_allowed": True, "reasons": [],
+            rule=plan["strategy"]["parameters"].get("candidate_payload"), **audit_options)
+        resource_layer = ({'resource_accounting': {key: segment_evidence[key] for key in
+            ('charged_seconds', 'measured_seconds', 'conservatively_charged_seconds')}} if segment_evidence else {})
+        return {"version": VERSION, "status": "PASS", "advance_allowed": True, "reasons": [], **resource_layer,
                 "plan_id": plan["plan_id"], "result_sha256": digest, "input_identity": loaded["input_identity"],
                 "account_audit": audit, "data_qualification": frozen.get("qualification"),
                 "evidence_layers": {"account_reconciled": True, "input_profile": loaded["frame"]["profile"],

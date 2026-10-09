@@ -7,8 +7,10 @@ import json
 from pathlib import Path, PureWindowsPath
 import re
 
+import numpy as np
 import pandas as pd
 import pyarrow as pa
+import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
 from ..research.guard import ResearchDataAccessGuard
@@ -357,9 +359,12 @@ class UniverseDataProviderV1:
         if source_qualification is not None:
             bundle['source_qualification'] = source_qualification
         # 动态输入认证负责状态、参考价、公司行动、稀疏日历与板块政策；不走旧矩形V2。
-        from .universe_account_inputs_v1 import prepare_universe_account_inputs_v1
-        inputs = prepare_universe_account_inputs_v1(bundle, window, stage=stage,
-            required_fields=required_fields, warmup_bars=warmup_bars)
+        from .universe_account_inputs_v1 import UniverseAccountInputsV1
+        # 表均为本次读入的新对象，无调用方可变表；完整认证可直接持有列缓冲。
+        # 公共 inputs 构造器仍隔离外部表，本入口不开放绕过认证的参数。
+        inputs = UniverseAccountInputsV1.__new__(UniverseAccountInputsV1)
+        inputs._initialize(bundle, window, stage=stage, required_fields=required_fields,
+            warmup_bars=warmup_bars, require_ready=True, copy_frames=False)
         prepared_bundle = inputs.bundle
         qualification = {'purpose': purpose, 'account_data_ready': inputs.coverage.get('account_data_ready') is True,
             'data_stage': stage, 'historical_availability': 'MODELED',
@@ -494,13 +499,28 @@ class UniverseDataProviderV1:
 
         def to_frame(batch):
             frame = batch.to_pandas(deduplicate_objects=True, use_threads=False)
+            shared_text_columns = set()
             if preserve_pandas_objects:
                 for name in object_columns.intersection(frame.columns):
                     # Pandas 3 标准恢复会把 object 字符串升级为 str 并把 None 转为 nan。
                     # 对象以原 Arrow 空值/结构重建，仍只展开当前批次。
-                    values = batch.column(batch.schema.get_field_index(name)).to_pylist()
+                    column = batch.column(batch.schema.get_field_index(name))
+                    if len(column) and (pa.types.is_string(column.type) or pa.types.is_large_string(column.type)):
+                        # 每批只解码唯一文本，代码索引展开仍保留 object/None。
+                        # 临时字典逐批归还系统，不改变进程默认 Arrow 内存池。
+                        encoded = pc.dictionary_encode(column, memory_pool=pa.system_memory_pool())
+                        shared = [strings.setdefault(value, value)
+                                  for value in encoded.dictionary.to_pylist()]
+                        shared.append(None)
+                        indices = encoded.indices.fill_null(-1).to_numpy(zero_copy_only=False)
+                        values = np.asarray(shared, dtype=object)[indices]
+                        shared_text_columns.add(name)
+                    else:
+                        values = column.to_pylist()
                     frame[name] = pd.Series(values, index=frame.index, dtype='object')
             for name in frame:
+                if name in shared_text_columns:
+                    continue
                 dtype = frame[name].dtype
                 if not (pd.api.types.is_object_dtype(dtype)
                         or isinstance(dtype, pd.StringDtype) and dtype.storage == 'python'):
@@ -521,7 +541,18 @@ class UniverseDataProviderV1:
         if len(parts) == 1:
             return parts[0]
         index_columns = pandas_metadata.get('index_columns', [])
-        result = pd.concat(parts, ignore_index=not any(isinstance(column, str) for column in index_columns))
+        ignore_index = not any(isinstance(column, str) for column in index_columns)
+        columns = parts[0].columns
+        if len(columns):
+            # 拼好一列即释放各批该列，避免批次表与整份新表同时占用内存。
+            merged = {name: pd.concat([part.pop(name) for part in parts], ignore_index=ignore_index)
+                      for name in columns}
+            result = pd.DataFrame(merged, copy=False)
+            result.columns = columns
+        else:
+            # 仅索引的表没有列副本，仍按原 Pandas 方式恢复完整行轴。
+            result = pd.concat(parts, ignore_index=ignore_index)
+        parts.clear()
         # RangeIndex 只在元数据中保存；每批转换会产生局部 RangeIndex，合并后恢复原轴。
         if len(index_columns) == 1 and isinstance(index_columns[0], dict) and index_columns[0].get('kind') == 'range':
             index = index_columns[0]

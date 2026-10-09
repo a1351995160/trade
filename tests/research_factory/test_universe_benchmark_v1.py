@@ -3,7 +3,10 @@ from copy import deepcopy
 import pytest
 import pandas as pd
 
-from chanlun_trader.research_factory.universe_benchmark_v1 import universe_price_reference
+from chanlun_trader.research_factory.universe_benchmark_v1 import (
+    _universe_price_reference_from_inputs, universe_price_reference,
+)
+from chanlun_trader.research_factory.universe_account_inputs_v1 import prepare_universe_account_inputs_v1
 from universe_test_fixture_v1 import fixture
 
 
@@ -122,3 +125,38 @@ def test_non_session_payment_is_counted_once_or_remains_unpaid_at_window_end(pay
         if day >= 20220404:
             expected = 0 if payment < days[-1] else -.6 / 12 / 3
             assert rows[day]['net_return'] == pytest.approx(expected)
+
+
+@pytest.mark.parametrize('corporate_actions', [False, True])
+def test_prepared_reference_matches_public_reference_without_new_input_copy(monkeypatch, corporate_actions):
+    if corporate_actions:
+        from test_universe_evidence_v1 import share_case
+        bundle, window, _, _ = share_case(cash=True)
+    else:
+        window, bundle = fixture(prices=[12., 13., 13.])
+    expected = universe_price_reference(bundle, window, initial_cash=50000)
+    inputs = prepare_universe_account_inputs_v1(bundle, window)
+    daily = inputs.daily
+    monkeypatch.setattr('chanlun_trader.research_factory.universe_benchmark_v1.prepare_universe_account_inputs_v1',
+                        lambda *args, **kwargs: pytest.fail('不能再次复制已认证的全市场资料'))
+    assert _universe_price_reference_from_inputs(inputs, initial_cash=50000) == expected
+    assert inputs.daily is daily
+    inputs.assert_unchanged()
+
+
+def test_prepared_reference_obeys_existing_worker_deadline(monkeypatch):
+    from chanlun_trader.research_factory.universe_account_backend_v2 import SegmentBoundary
+    window, bundle = fixture()
+    inputs = prepare_universe_account_inputs_v1(bundle, window)
+    monkeypatch.setattr('chanlun_trader.research_factory.universe_benchmark_v1.time.monotonic', lambda: 830.)
+    with pytest.raises(SegmentBoundary, match='UNIVERSE_PRICE_REFERENCE_COOPERATIVE_DEADLINE'):
+        _universe_price_reference_from_inputs(inputs, initial_cash=50000, deadline=830.)
+
+
+def test_strategy_warmup_does_not_change_price_reference_members():
+    window, bundle = fixture(prices=[12., 13., 13.])
+    expected = universe_price_reference(bundle, window, initial_cash=50000)
+    inputs = prepare_universe_account_inputs_v1(bundle, window, required_fields=['turn'], warmup_bars=100)
+    assert not inputs.scan_status(inputs.symbols[0], inputs.calendar[59])['entry_eligible']
+    assert _universe_price_reference_from_inputs(inputs, initial_cash=50000) == expected
+    assert inputs.warmup_bars == 100 and inputs.required_fields == frozenset({'turn'})

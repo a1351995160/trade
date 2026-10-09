@@ -19,7 +19,7 @@ from chanlun_trader.research_factory.research_universe_v1 import _day
 from chanlun_trader.research_factory.universe_data_provider_v1 import UniverseDataProviderV1
 from scripts.prepare_universe_actions_v1 import _ACTION_FIELDS, _query_scope, _read_response, _response_header
 from scripts.prepare_universe_supplements_v1 import (
-    _RAW_FIELDS, _load, _query_header, _sha, _write, read_account_raw_response_v1,
+    _RAW_FIELDS, _append, _load, _query_header, _sha, _write, read_account_raw_response_v1,
 )
 
 VERSION = 'UNIVERSE_ACTION_DATE_RESOLUTION_V1'
@@ -184,6 +184,9 @@ def _action_source_readonly(source):
 
 
 def _market_source_readonly(source, plan):
+    if source.get('format') == 'BAOSTOCK_COLLECTOR_RAW_V1':
+        from chanlun_trader.research_factory.baostock_raw_supplement_v1 import read_collected_raw_v1
+        return read_collected_raw_v1(source, plan)
     guard = ResearchDataAccessGuard()
     guard.check_range(_day(source['start']), _day(source['end']), 'resolution proof registered raw market')
     path = Path(source['path']).absolute()
@@ -405,10 +408,17 @@ def resolve_universe_action_dates_v1(*, source_catalog, gaps, manifest, output_d
     for symbol in sorted(relevant):
         try:
             source = market_sources[symbol]
-            root = Path(source['path']).parents[2]
-            rows, binding = read_account_raw_response_v1(root, symbol, plan, audit)
-            if any(binding[key] != source[key] for key in ('path', 'sha256', 'started_sha256', 'access_sha256')):
-                raise ValueError('ACTION_RESOLUTION_MARKET_BINDING_CHANGED')
+            if source.get('format') == 'BAOSTOCK_COLLECTOR_RAW_V1':
+                _append(audit, {'event': 'ACTION_RESOLUTION_COLLECTOR_RAW_READ_ATTEMPT',
+                    'symbol': symbol, 'path': source['path'], 'sha256': source['sha256']})
+                rows, binding = _market_source_readonly(source, plan)
+                _append(audit, {'event': 'ACTION_RESOLUTION_COLLECTOR_RAW_READ_VERIFIED',
+                    'symbol': symbol, 'path': binding['path'], 'sha256': binding['sha256']})
+            else:
+                root = Path(source['path']).parents[2]
+                rows, binding = read_account_raw_response_v1(root, symbol, plan, audit)
+                if any(binding[key] != source[key] for key in ('path', 'sha256', 'started_sha256', 'access_sha256')):
+                    raise ValueError('ACTION_RESOLUTION_MARKET_BINDING_CHANGED')
             if _day(plan['start']) >= min((_day(row['date']) for row in rows), default=0):
                 # 不能用截窗首行来证明上市起点；重复因子仍可核对同日配对价格。
                 binding['query_covers_before_first_bar'] = False

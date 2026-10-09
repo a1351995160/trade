@@ -1,0 +1,9 @@
+{
+  "state": "CONTINUE",
+  "dispatch_id": "f84174432dfe2c7522acb522785d4bcbcf9575e6e54104f311cdb69d639deba5",
+  "phase": "AUDIT",
+  "last_day": 20241231,
+  "state_identity": "b935a72728faf9dceab164330b4b6fe4b59ecaa3cf83ec525f3ab4fc822e75a2",
+  "checkpoint_sha256": "446216f4042f9522d95d6bf1e5f36e75ceed2c396fa3d83c940bd79adf7c74eb",
+  "reason": "UNIVERSE_AUDIT_NEXT_SEGMENT"
+}

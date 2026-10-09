@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, replace
+from copy import deepcopy
 import math
 import re
 from collections.abc import Mapping
@@ -106,6 +107,15 @@ def build_portfolio_plan(*, policy, decisions, ledger, admissions,
                            "priority": members[key[0]].priority,
                            "target_weight": float(target_weight),
                            "reason": str(decision.get("reason", "STRATEGY_DECISION"))})
+        selection = decision.get("metadata", {}).get("selection")
+        if selection is not None:
+            from .universe_selection_v1 import selection_sort_key
+            selection_sort_key(selection, symbol=key[1])
+            if selection["rule_identity"] != members[key[0]].rule_identity:
+                raise ValueError("PORTFOLIO_SELECTION_RULE_CONFLICT")
+            normalized[-1]["metadata"] = {"selection": deepcopy(selection)}
+        if "signal_key" in decision:
+            normalized[-1]["signal_key"] = str(decision["signal_key"])
         if "exit_lot_ids" in decision:
             lot_ids = decision["exit_lot_ids"]
             if (decision["side"] != "SELL" or not isinstance(lot_ids, list) or not lot_ids
@@ -125,7 +135,14 @@ def build_portfolio_plan(*, policy, decisions, ledger, admissions,
     for lot in holdings:
         owners.setdefault(lot["symbol"], set()).add(lot["strategy_id"])
     intents, excluded = [], []
-    for item in sorted(normalized, key=lambda row: (row["side"] != "SELL", row["priority"], row["strategy_id"], row["symbol"])):
+    def ordering(row):
+        if row.get("metadata", {}).get("selection") is not None:
+            from .universe_selection_v1 import selection_sort_key
+            score_key = selection_sort_key(row["metadata"]["selection"], symbol=row["symbol"])
+        else:
+            score_key = (0, 0., row["symbol"])
+        return (row["side"] != "SELL", row["priority"], row["strategy_id"], *score_key)
+    for item in sorted(normalized, key=ordering):
         reason = None
         if item["side"] == "HOLD":
             continue
@@ -134,6 +151,8 @@ def build_portfolio_plan(*, policy, decisions, ledger, admissions,
                 reason = "UNASSIGNED_HOLDINGS"
             elif item["strategy_id"] not in valid:
                 reason = "STRATEGY_NOT_ADMITTED_OR_POLICY_EXPIRED"
+            elif item.get("metadata", {}).get("selection", {}).get("score_ready") is False:
+                reason = "SCORE_UNKNOWN"
             elif item["symbol"] in exits:
                 reason = "EXIT_BUY_CONFLICT"
             elif policy.overlap == "ONE_STRATEGY_PER_SYMBOL" and owners.get(item["symbol"], set()) - {item["strategy_id"]}:
@@ -146,7 +165,8 @@ def build_portfolio_plan(*, policy, decisions, ledger, admissions,
             intents.append(item)
             if item["side"] == "BUY":
                 owners.setdefault(item["symbol"], set()).add(item["strategy_id"])
-    payload = {"schema_version": "PORTFOLIO_PAPER_PLAN_V1", "decision_at": stamp.isoformat(),
+    versioned = any("metadata" in item or "signal_key" in item for item in normalized)
+    payload = {"schema_version": "PORTFOLIO_PAPER_PLAN_V2" if versioned else "PORTFOLIO_PAPER_PLAN_V1", "decision_at": stamp.isoformat(),
                "next_session": next_session, "input_identity": input_identity,
                "account_identity": account_identity(ledger), "policy_hash": policy.content_hash,
                "members": [member.model_dump() for member in policy.members],
@@ -210,7 +230,8 @@ class PortfolioExecutionRiskV1(RiskManager):
             raise ValueError("PORTFOLIO_OBSERVED_PRICE_MISSING")
         return value
 
-    def _limits(self, strategy_id, symbol, price, ts, *, exclude=None, target_weight=1.0):
+    def _limits(self, strategy_id, symbol, price, ts, *, exclude=None, target_weight=1.0,
+                evidence=None):
         if (isinstance(target_weight, bool) or not isinstance(target_weight, (int, float))
                 or not math.isfinite(target_weight) or not 0 <= target_weight <= 1):
             raise ValueError("PORTFOLIO_TARGET_WEIGHT_INVALID")
@@ -228,6 +249,12 @@ class PortfolioExecutionRiskV1(RiskManager):
         equity = self.ledger.current_equity()
         if not all(math.isfinite(value) and value >= 0 for value in (equity, self.ledger.available_cash(), self.opening_cash)):
             raise ValueError("PORTFOLIO_ACCOUNT_OR_PRICE_INVALID")
+        if evidence is not None:
+            evidence.update(equity=equity, ledger_cash=float(self.ledger.cash),
+                ledger_reserved_cash=float(self.ledger.reserved_cash),
+                available_cash=float(self.ledger.available_cash()), opening_cash=float(self.opening_cash),
+                opening_equity=float(self.opening_equity), lot_size=self.policy.lot_size,
+                estimated_price=float(price), target_weight=float(target_weight))
         exposure = strategy_exposure = pending_cost = pending_symbol = pending_strategy = pending_gross = 0.0
         strategy_symbol_exposure = pending_strategy_symbol = 0.0
         position_keys = set()
@@ -244,6 +271,8 @@ class PortfolioExecutionRiskV1(RiskManager):
                 strategy_symbol_exposure += value
         if (self.policy.overlap == "ONE_STRATEGY_PER_SYMBOL"
                 and any(owner != strategy_id and ticker == symbol for owner, ticker in position_keys)):
+            if evidence is not None:
+                evidence["occupied_position_keys"] = [list(key) for key in sorted(position_keys)]
             raise ValueError("PORTFOLIO_SYMBOL_OWNED_BY_OTHER_STRATEGY")
         for order in self.orders_provider():
             if not order.is_open or order is exclude or (exclude is not None and order.order_id and order.order_id == exclude.order_id):
@@ -252,6 +281,8 @@ class PortfolioExecutionRiskV1(RiskManager):
                 raise ValueError("PORTFOLIO_UNASSIGNED_ORDER")
             if order.side == Side.SELL:
                 if order.symbol == symbol:
+                    if evidence is not None:
+                        evidence["conflicting_sell_order_id"] = order.order_id
                     raise ValueError("PORTFOLIO_EXIT_BUY_CONFLICT")
                 continue
             value = order.remaining_quantity * (price if order.symbol == symbol else self._price(order.symbol))
@@ -266,13 +297,18 @@ class PortfolioExecutionRiskV1(RiskManager):
             position_keys.add((order.strategy_id, order.symbol))
             if (self.policy.overlap == "ONE_STRATEGY_PER_SYMBOL" and order.symbol == symbol
                     and order.strategy_id != strategy_id):
+                if evidence is not None:
+                    evidence.update(occupied_position_keys=[list(key) for key in sorted(position_keys)],
+                                    conflicting_buy_order_id=order.order_id)
                 raise ValueError("PORTFOLIO_SYMBOL_OWNED_BY_OTHER_STRATEGY")
-        if (strategy_id, symbol) not in position_keys and len(position_keys) >= self.policy.max_positions:
+        position_limit = ((strategy_id, symbol) not in position_keys
+                          and len(position_keys) >= self.policy.max_positions)
+        if position_limit and evidence is None:
             raise ValueError("PORTFOLIO_POSITION_LIMIT")
         bought = [trade for trade in self.ledger.trades[self.start_trade_count:] if trade.side == Side.BUY]
         spent = sum(trade.gross_value + trade.fee for trade in bought)
         gross = sum(trade.gross_value for trade in bought)
-        return {
+        limits = {
             "cash": max(0., min(self.ledger.available_cash(), self.opening_cash - spent) - pending_cost),
             "symbol": max(0., equity * self.policy.max_symbol_exposure_bps / 10000 - exposure - pending_symbol),
             "strategy": max(0., equity * self.members[strategy_id].weight_bps / 10000 - strategy_exposure - pending_strategy),
@@ -280,19 +316,69 @@ class PortfolioExecutionRiskV1(RiskManager):
                           - strategy_symbol_exposure - pending_strategy_symbol),
             "turnover": max(0., self.opening_equity * self.policy.max_buy_turnover_bps / 10000 - gross - pending_gross),
         }
+        if evidence is not None:
+            evidence.update(equity=equity, ledger_cash=float(self.ledger.cash),
+                ledger_reserved_cash=float(self.ledger.reserved_cash),
+                available_cash=float(self.ledger.available_cash()), opening_cash=float(self.opening_cash),
+                opening_equity=float(self.opening_equity), same_open_buy_cost=spent,
+                pending_buy_cost=pending_cost, pending_buy_gross=pending_gross,
+                symbol_exposure=exposure, pending_symbol_exposure=pending_symbol,
+                member_exposure=strategy_exposure, pending_member_cost=pending_strategy,
+                member_symbol_exposure=strategy_symbol_exposure,
+                pending_member_symbol_exposure=pending_strategy_symbol,
+                occupied_position_keys=[list(key) for key in sorted(position_keys)],
+                max_positions=self.policy.max_positions, position_limit=position_limit,
+                member_weight_bps=self.members[strategy_id].weight_bps,
+                target_weight=float(target_weight), max_symbol_exposure_bps=self.policy.max_symbol_exposure_bps,
+                max_buy_turnover_bps=self.policy.max_buy_turnover_bps,
+                lot_size=self.policy.lot_size, estimated_price=float(price), limits=limits)
+        return limits
 
     def buy_quantity(self, strategy_id, symbol, price, ts, *, target_weight=1.0):
+        return self.buy_allocation(strategy_id, symbol, price, ts,
+                                   target_weight=target_weight)["allocated_quantity"]
+
+    def buy_allocation(self, strategy_id, symbol, price, ts, *, target_weight=1.0):
+        """保存各限制的独立数量上限；旧整数入口仍使用同一分配结果。"""
+        basis = {}
         try:
-            limits = self._limits(strategy_id, symbol, price, ts, target_weight=target_weight)
-        except ValueError:
-            return 0
+            limits = self._limits(strategy_id, symbol, price, ts,
+                                  target_weight=target_weight, evidence=basis)
+        except ValueError as error:
+            return {"version": "PORTFOLIO_BUY_ALLOCATION_V1", "requested_quantity": 0,
+                    "allocated_quantity": 0, "primary_reason": str(error),
+                    "binding_limits": [str(error)], "basis": basis, "quantity_limits": {}}
+        names = {"cash": "CASH_INCLUDING_FEES", "symbol": "SYMBOL_EXPOSURE",
+                 "strategy": "MEMBER_ALLOCATION", "target": "TARGET_WEIGHT",
+                 "turnover": "BUY_TURNOVER"}
+        caps = {}
+        for name, amount in limits.items():
+            cap = int(amount / price / self.policy.lot_size) * self.policy.lot_size
+            if name in ("cash", "strategy"):
+                while cap > 0 and (cap * price + self.fee_model.calc("BUY", cap, price).total_fee
+                                   > amount + 1e-9):
+                    cap -= self.policy.lot_size
+            caps[names[name]] = cap
+        requested = int(limits["target"] / price / self.policy.lot_size) * self.policy.lot_size
         quantity = int(min(limits.values()) / price / self.policy.lot_size) * self.policy.lot_size
         while quantity > 0:
             cost = quantity * price + self.fee_model.calc("BUY", quantity, price).total_fee
             if cost <= min(limits["cash"], limits["strategy"]) + 1e-9:
                 break
             quantity -= self.policy.lot_size
-        return quantity
+        if basis["position_limit"]:
+            quantity = 0
+        bindings = (["POSITION_LIMIT"] if basis["position_limit"] else [])
+        bindings += [name for name, cap in caps.items() if cap == quantity and cap < requested]
+        if requested == 0:
+            bindings += ["TARGET_WEIGHT" if limits["target"] <= 0 else "LOT_ROUNDING"]
+        if quantity == 0 and any(0 < value < price * self.policy.lot_size for value in limits.values()):
+            bindings.append("LOT_ROUNDING")
+        bindings = list(dict.fromkeys(bindings))
+        return {"version": "PORTFOLIO_BUY_ALLOCATION_V1", "requested_quantity": requested,
+                "allocated_quantity": quantity, "primary_reason": bindings[0] if bindings else "ALLOCATED",
+                "binding_limits": bindings, "basis": basis, "quantity_limits": caps,
+                "estimated_fee": self.fee_model.calc("BUY", quantity, price).total_fee if quantity else 0.}
 
     def pre_trade(self, order, ts, estimated_price, index_ok=True):
         if order.side == Side.SELL:

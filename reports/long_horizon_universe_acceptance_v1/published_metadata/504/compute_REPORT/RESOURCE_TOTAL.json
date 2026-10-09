@@ -1,0 +1,18 @@
+{
+  "charged_seconds": 4554.935615799994,
+  "profile": {
+    "schema_version": "universe-execution-profile-v1",
+    "profile_id": "LONG_HORIZON_SEGMENTED_V1",
+    "registry_hash": "3c4c4c34e9522a133c9c3a2f9ac121bc8ff7dac119263de51856b89c67d49c93",
+    "account_sessions": 504,
+    "purpose": "RESEARCH_REPORT",
+    "total_seconds": 28800,
+    "worker_seconds": 900,
+    "memory_mib": 2048,
+    "threads": 1,
+    "concurrency": 1,
+    "metering": "ACTIVE_SEGMENTS_ONLY",
+    "profile_hash": "3ed1a0388c42578eb1a509d91d5b1345cc2ebaf2bd0597b3c6989bb07c4a6a3c"
+  },
+  "compute_identity": "29cc5e8e9420d0fd64f6754968cb43c0dd681f1c7609091292c85c08f4dbd97e"
+}

@@ -1,0 +1,8 @@
+{
+  "number": 2,
+  "compute_identity": "2b0e9dbc16f7d3baf8a09410d632cb41a5373d63f786efbd1c5ecf9fdf6e5890",
+  "upper_bound_seconds": 900,
+  "previous_head": "10fba1aaa90c08534b734b0bc9f480f33d4e6de27da95648597d36f9dd422a78",
+  "dispatched_at": "2026-10-09T06:15:00.241331+00:00",
+  "dispatch_id": "d47274e729cfbcdfc71951368af264b060a3dfb829121b306f57f67461afed6b"
+}

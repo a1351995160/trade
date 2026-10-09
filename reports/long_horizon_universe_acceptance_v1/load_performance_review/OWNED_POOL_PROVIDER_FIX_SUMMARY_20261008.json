@@ -1,0 +1,64 @@
+{
+  "status": "OWNED_POOL_PROVIDER_FIX_TESTED_REAL_PREPARATION_PASSED_SIX_ACCOUNTS_PENDING",
+  "recorded_at": "2026-10-08T06:31:19.779199+00:00",
+  "changed_file_sha256": {
+    "src/chanlun_trader/research_factory/universe_data_provider_v1.py": "e75b453644093beb4d31a01e6cbca11e66d7b2c157c37044dacd08dbc4a2967d",
+    "tests/research_factory/test_universe_frozen_io_v1.py": "a6d6fa2b17a1ed72d4eacc90e8bd59d1fa3d49e315d06ab86368c5e0c9c55b6b",
+    "tests/research_factory/test_tdx_research_adapter_v1.py": "4b598d04a1dd58777dcf1098f5ed15ff162f6df717cdc5ced5392c8d1f52dcad"
+  },
+  "green_tests": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\host_support_v1\\OWNED_PROVIDER_PREPARATION_GREEN_20261008.xml",
+    "sha256": "595a588272cc2acb890b904b15645c56595fb1a6a6f1060a6ddc1eef8479bb50"
+  },
+  "red_duplicate_copy": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\host_support_v1\\OWNED_PROVIDER_PREPARATION_RED_20261008.xml",
+    "sha256": "a4ef6c017bae90b2ecdd79d5c6ed08c28e2f07118006b44143e0432d7c81d835"
+  },
+  "tests": {
+    "tests": 330,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1
+  },
+  "total_passed": 329,
+  "total_skipped": 1,
+  "source12_prepare_failure": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\host_support_v1\\SOURCE12_PREPARATION_FAILURE_20261008.json",
+    "sha256": "1bb81497f776905e986aa654eaf634b826c8d10a600c2020ffe930f88d3b8051"
+  },
+  "pool_only_diagnostic": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\host_support_v1\\LOCAL_POOL_REAL_PREPARATION_20261008\\RESULT.json",
+    "sha256": "c5e9f84e84a83e974e4044390eeb8efd1138ee96610232638a09c4db84912a2f"
+  },
+  "real_owned_provider_preparation": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\host_support_v1\\OWNED_POOL_REAL_PREPARATION_20261008\\RESULT.json",
+    "sha256": "071e34dd94b24313bbe359123fe57721ef59b164584e11e690d5c60ec90e8bea"
+  },
+  "original_frozen_parent": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v10\\submission\\tasks\\signal-scans\\dfb24985738570672cb6106cf13a2ab1f16739f392f083589ce5eb5528602dd7\\PARENT\\INPUT.json",
+    "sha256": "bd68f0677521a8f2b9b1594222b146e45a42b6edf5775f7f10c9f3eac7ff8f8b"
+  },
+  "new_frozen_parent": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\host_support_v1\\OWNED_POOL_REAL_PREPARATION_20261008\\PARENT\\INPUT.json",
+    "sha256": "6e7d2c40c5927a8cd0da5be2251d40c9cb95e81a95bb2947fde00da9980c8a5f"
+  },
+  "parent_input_identity": "bffc709d4d4e82480ed8205b1feb323672e355834b21dc5294a182c492ea66b5",
+  "review": {
+    "mode": "MANUAL_RISK_BASED_REVIEW_WITH_REAL_IDENTITY_AND_NEGATIVE_TESTS",
+    "all_4607_targets_preserved": true,
+    "whole_source_hash_and_ranges_checked": true,
+    "all_validation_readiness_and_historical_visibility_checks_preserved": true,
+    "newly_loaded_frames_only_internal_borrow": true,
+    "public_input_constructor_still_isolates_external_mutable_tables": true,
+    "no_public_reuse_or_memory_pool_override_parameter": true,
+    "temporary_dictionary_pool_is_local_and_default_pool_unchanged": true,
+    "all_parent_frames_same_bytes_as_original_native_source11_parent": true,
+    "no_strategy_or_costs_or_resource_limits_changed": true
+  },
+  "all_six_accounts_complete": false,
+  "strategy_qualified": false,
+  "original_failed_compute_reopened": false,
+  "old_consumption_refunded": false,
+  "expiry_extended": false,
+  "rollback_point": "1ab9cae1b6c1fede8e23d911e994ddca2b9de3fb"
+}

@@ -1,0 +1,56 @@
+{
+  "version": "SOURCE14_INDEPENDENT_REFERENCE_BASE_PASS_V1",
+  "checked_at": "2026-10-09T16:50:21.381529+00:00",
+  "source_manifest": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\source_archive_v14\\SOURCE_MANIFEST.json",
+    "sha256": "dddfe23467b2a85fc33a5ca82ff2e0e975a7e2c0536e2b7ee5d46ff19065df82",
+    "bytes": 107481
+  },
+  "job": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13_reference_retry1\\actual\\continuous_reference\\account\\JOB.json",
+    "sha256": "d2d34f54f3e1cb2676dde933d9a1cabde22244b79d4167caf176488be7e64b4e",
+    "bytes": 888442
+  },
+  "result": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13_reference_retry1\\actual\\continuous_reference\\account\\LONG_U504_BASE_RESULT.json",
+    "sha256": "f56aa15040b3c7725ababeffd96312693878fa487c82282aee43db79db8d187e",
+    "bytes": 10084683
+  },
+  "settlement": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13_reference_retry1\\actual\\continuous_reference\\account\\LONG_U504_BASE_SETTLEMENT.json",
+    "sha256": "f44f8f0e92bc6d6b39ddeaef3526c4d61ce899d1afefe9a5617cdfbe0052a486",
+    "bytes": 495
+  },
+  "resource": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13_reference_retry1\\actual\\continuous_reference\\account\\LONG_U504_BASE_RESOURCE.json",
+    "sha256": "45df98ace6a6b6f81f18d94da4a36a009e52bfe711e5f28256547ca690674673",
+    "bytes": 616
+  },
+  "audit": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13_reference_retry1\\actual\\continuous_reference\\account\\account\\LONG_U504_BASE_AUDIT.json",
+    "sha256": "8423391b5f43ca34caa179d4340306ff82306569de1a7f143233f575716872b5",
+    "bytes": 7664241
+  },
+  "execution_checkpoint": {
+    "path": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13_reference_retry1\\actual\\continuous_reference\\account\\account\\LONG_U504_BASE_CHECKPOINT.json",
+    "sha256": "6dc118687eb6e18805b31779006e240c1aa05e5fc494a0a530f48d5829e222d0",
+    "bytes": 7228217
+  },
+  "reconciliation": {
+    "audit_identity": "82267643eded34c1f61506073ce2f0c11a660999d4d3377f4396a6f11fb4fcef",
+    "days": 504,
+    "passed": true
+  },
+  "elapsed_wall_seconds": 7178.8695695999995,
+  "peak_memory_mib": 1952.12890625,
+  "segments": 1,
+  "status": "ONE_INDEPENDENT_CONTINUOUS_REFERENCE_COMPLETED",
+  "input_identity": "358666e7e77ac866eb9100bcc7e9518f98b9d0a06322e1f950c69b19f502f487",
+  "complete_acceptance_matrix_accounts": 5,
+  "all_six_accounts_complete": false,
+  "public_reference_verification_and_reports_complete": false,
+  "old_consumption_refunded": false,
+  "old_failed_reference_reopened": false,
+  "strategy_qualified": false,
+  "paper": "NOT_RUN"
+}

@@ -128,7 +128,7 @@ def prepare(strategy: Strategy, backend, runtime=None) -> dict:
     backend.check(strategy.requirements)
     plan={'strategy':declaration,'backend':backend.describe()}
     if runtime is not None:
-        if (plan['backend']['backend'] == 'UNIVERSE_ACCOUNT_BACKEND_V1'
+        if (plan['backend']['backend'] in {'UNIVERSE_ACCOUNT_BACKEND_V1', 'UNIVERSE_ACCOUNT_BACKEND_V2'}
                 and any(Path(path).suffix == '.parquet' for path in runtime['source_hashes'])):
             from .universe_submission_v1 import validate_universe_freeze_scopes
             validate_universe_freeze_scopes({'items': [runtime],
@@ -152,7 +152,19 @@ def backend_for(strategy,options=None):
             backend = FullPoolBuyHoldBackendV1(**options)
             backend.check(strategy.requirements)
             return backend
-        if {'RESEARCH_RULE_STRATEGY_V2', 'RESEARCH_RULE_STRATEGY_V3'} & set(strategy.requirements.capabilities):
+        if {'RESEARCH_RULE_STRATEGY_V2', 'RESEARCH_RULE_STRATEGY_V3', 'RESEARCH_RULE_STRATEGY_V4'} & set(strategy.requirements.capabilities):
+            if options.get('backend_version') == 'UNIVERSE_ACCOUNT_BACKEND_V2':
+                from .universe_account_backend_v2 import UniverseAccountBackendV2
+                if 'window' not in options or set(options) - {'window', 'costs', 'initial_cash',
+                        'max_positions', 'max_symbol_exposure_bps', 'backend_version', 'batch_size',
+                        'checkpoint_path', 'execution_profile'}:
+                    raise ValueError('UNIVERSE_BACKEND_OPTIONS_INVALID')
+                backend = UniverseAccountBackendV2(**options)
+                backend.validate_strategy(strategy)
+                backend.check(strategy.requirements)
+                return backend
+            if 'RESEARCH_RULE_STRATEGY_V4' in strategy.requirements.capabilities:
+                raise ValueError('RULE_V4_LONG_HORIZON_BACKEND_REQUIRED')
             if options.get('backend_version') == 'UNIVERSE_ACCOUNT_BACKEND_V1':
                 from .universe_account_backend_v1 import UniverseAccountBackendV1
                 if 'window' not in options or set(options) - {'window', 'costs', 'initial_cash',

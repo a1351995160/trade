@@ -25,7 +25,7 @@ def universe_task_metadata_v1(service, task_id: str) -> dict:
     task = service._task(task_id)
     root = service.root / task_id
     preview = _metadata(root / "PREVIEW.json", root)
-    if preview.get("request", {}).get("version") not in {'FULL_UNIVERSE_SUBMISSION_V1', 'FULL_UNIVERSE_SUBMISSION_V2'}:
+    if preview.get("request", {}).get("version") not in {'FULL_UNIVERSE_SUBMISSION_V1', 'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3'}:
         return {}
     if (preview.get("preview_identity") != task["preview_identity"]
             or stable_hash({k: v for k, v in preview.items() if k != "preview_identity"})
@@ -47,7 +47,7 @@ def universe_task_metadata_v1(service, task_id: str) -> dict:
     snapshot = _metadata(input_path, root)
     if expected != {hashlib.sha256(input_path.read_bytes()).hexdigest()}:
         raise ValueError("UNIVERSE_STATUS_INPUT_CHANGED")
-    qualified = preview['request']['version'] == 'FULL_UNIVERSE_SUBMISSION_V2'
+    qualified = preview['request']['version'] in {'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3'}
     scope = snapshot.get('bundle', {}).get('qualified_scope') if qualified else None
     if qualified:
         if (not isinstance(scope, dict) or scope != task.get('qualification_scope')
@@ -71,6 +71,11 @@ def universe_task_metadata_v1(service, task_id: str) -> dict:
     coverage["completeness"] = metadata.get("completeness", "UNIVERSE_COMPLETENESS_UNKNOWN")
     extra = {'qualification_scope': scope, 'registered_target_count': len(scope['target_symbols']),
              'qualified_target_count': len(scope['qualified_symbols']), 'excluded_target_count': len(scope['excluded'])} if qualified else {}
+    if preview['request']['version'] == 'FULL_UNIVERSE_SUBMISSION_V3':
+        from .universe_execution_profile_v1 import validate_execution_profile
+        extra.update(execution_profile=validate_execution_profile(preview['request']['execution_profile']),
+                     observation_plan=deepcopy(preview['request']['observation_plan']),
+                     account_sessions=preview['request']['execution_profile']['account_sessions'])
     return {**extra, "version": "UNIVERSE_TASK_METADATA_V1", "coverage": coverage,
         "universe_id": preview["request"]["universe_id"],
         "dataset_id": preview["request"]["dataset_id"], "input_identity": task["input_identity"],
@@ -84,9 +89,9 @@ def diagnose_universe(service, request: dict, preview_identity: str) -> dict:
     同一预览/授权的记录只读复用，不自称已重新检查变化中的原件。
     实际账户冻结仍必须重新检查来源，诊断不成为执行权限。
     """
-    if not isinstance(request, dict) or request.get("version") not in {'FULL_UNIVERSE_SUBMISSION_V1', 'FULL_UNIVERSE_SUBMISSION_V2'}:
+    if not isinstance(request, dict) or request.get("version") not in {'FULL_UNIVERSE_SUBMISSION_V1', 'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3'}:
         raise ValueError("UNIVERSE_DIAGNOSIS_REQUEST_REQUIRED")
-    if request['version'] == 'FULL_UNIVERSE_SUBMISSION_V2':
+    if request['version'] in {'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3'}:
         return service.scan(request, preview_identity)
     preview = service.preview(request)
     if preview["preview_identity"] != preview_identity:

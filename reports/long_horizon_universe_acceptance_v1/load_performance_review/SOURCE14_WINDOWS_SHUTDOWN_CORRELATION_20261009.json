@@ -1,0 +1,18 @@
+{
+  "version": "SOURCE14_WINDOWS_SHUTDOWN_CORRELATION_V1",
+  "checked_at": "2026-10-09T14:52:44.210358+00:00",
+  "system_event": {
+    "EventId": 1074,
+    "RecordId": 327135,
+    "Provider": "User32",
+    "Utc": "2026-10-09T09:44:31.1362667Z",
+    "PowerOff": true,
+    "FromStartMenu": true
+  },
+  "resource_file_written_at_utc": "2026-10-09T09:44:32+00:00",
+  "resource_sha256": "50d8d029984c1a3c55da8fe5936bfa38a1300f56270c401aa6cbadd26171b104",
+  "observation": "SYSTEM_POWER_OFF_RECORDED_IMMEDIATELY_BEFORE_NONZERO_WORKER_EXIT_RESOURCE",
+  "interpretation": "ACCOUNT_PROCESS_INTERRUPTED_DURING_SHUTDOWN",
+  "later_boot_not_used_as_exit_timestamp": true,
+  "raw_account_failure_or_consumption_modified": false
+}

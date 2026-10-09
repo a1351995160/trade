@@ -1,0 +1,32 @@
+{
+  "returncode": 0,
+  "stdout": "",
+  "stderr": "",
+  "timed_out": false,
+  "launcher_pid": 24280,
+  "resource_platform": "nt",
+  "windows_job_bound": true,
+  "process_limit": 2,
+  "process_limit_enforced": true,
+  "peak_memory_mib": 1940.64453125,
+  "memory_measurement": "WINDOWS_JOB_PEAK_COMMIT",
+  "elapsed_wall_seconds": 671.5120263999997,
+  "phase": "QUALIFY",
+  "dispatch_id": "114134094b0bb8977e7d96b29a1199ab4d81fe4be4f849e7ec7a1b6f4c56cbf9",
+  "segment_count": 2,
+  "preparation_profile": {
+    "schema_version": "universe-execution-profile-v1",
+    "profile_id": "LONG_HORIZON_SEGMENTED_V1",
+    "registry_hash": "3c4c4c34e9522a133c9c3a2f9ac121bc8ff7dac119263de51856b89c67d49c93",
+    "account_sessions": 252,
+    "purpose": "RESEARCH_PREPARATION",
+    "total_seconds": 14400,
+    "worker_seconds": 900,
+    "memory_mib": 2048,
+    "threads": 1,
+    "concurrency": 1,
+    "metering": "ACTIVE_SEGMENTS_ONLY",
+    "profile_hash": "9bede2efb252568a65b68ee47655bd71128237734f05dbd32870d75af5a0258e"
+  },
+  "active_metering": true
+}

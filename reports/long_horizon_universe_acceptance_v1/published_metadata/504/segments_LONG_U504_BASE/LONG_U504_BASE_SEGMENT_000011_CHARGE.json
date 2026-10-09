@@ -1,0 +1,11 @@
+{
+  "schema_version": "strategy-account-segment-charge-v1",
+  "dispatch_id": "94927f4fc14530d28696229304329b411334bb85c69a4ed5a289c9df6ec069aa",
+  "measured_seconds": 836.4558768999996,
+  "seconds": 836.4558768999996,
+  "basis": "MEASURED_ACTIVE_WALL_SECONDS",
+  "evidence_identity": "2ef243546568d8c2774c0ab4fec0fdf2e5724038c6a95c00a2f710b5651d09f0",
+  "outcome": "CONTINUE",
+  "charged_at": "2026-10-08T20:08:33.319646+00:00",
+  "charge_id": "70cba99aa6d4ed99c307a8f4f86bb28e81217981a0a135d29251baf42e79f9c6"
+}

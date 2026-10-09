@@ -1,0 +1,96 @@
+{
+  "status": "PRELIMINARY_COMPLETED_BASE_COMPARISON",
+  "declaration": {
+    "purpose": "PRELIMINARY_READ_ONLY_EXISTING_BASE_NO_DAILY_GZIP_NOT_FINAL_ACCEPTANCE",
+    "created_at": "2026-10-09T15:14:57.622738+00:00",
+    "source_harness_sha256": "8fad34aa9d4bc12868b84d96ba5db6d71c18789fc13064976b444d9b46275be3",
+    "result_sha256": {
+      "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\0b55d771ba1ec469fbfe5c84ad4c87baaad9e79349a641bae4fd09c5c9f695b3\\account\\LONG_U504_BASE_RESULT.json": "d40f909c2a790ef1d384473351a3991337e4f604673c5f305b80d7d63e9baa0f",
+      "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\actual\\continuous_reference\\account\\LONG_U504_BASE_RESULT.json": "4de9094ed4cfa47bdb4baf454be57c2559823db289e9fd8cd41283d4faf3a401"
+    },
+    "wall_seconds": 120,
+    "memory_mib": 512,
+    "threads": 1,
+    "independent_diagnostic_concurrency": 1,
+    "process_limit": 2,
+    "new_account_started": false,
+    "research_budget_consumed": false,
+    "strategy_qualified": false
+  },
+  "resource": {
+    "returncode": 0,
+    "timed_out": false,
+    "launcher_pid": 8492,
+    "resource_platform": "nt",
+    "windows_job_bound": true,
+    "process_limit": 2,
+    "process_limit_enforced": true,
+    "peak_memory_mib": 210.46875,
+    "memory_measurement": "WINDOWS_JOB_PEAK_COMMIT",
+    "elapsed_wall_seconds": 3.363079799999923
+  },
+  "observed": {
+    "status": "PRELIMINARY_COMPLETED_BASE_COMPARISON",
+    "source_harness_sha256": "8fad34aa9d4bc12868b84d96ba5db6d71c18789fc13064976b444d9b46275be3",
+    "original_sha256": {
+      "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\0b55d771ba1ec469fbfe5c84ad4c87baaad9e79349a641bae4fd09c5c9f695b3\\account\\LONG_U504_BASE_RESULT.json": "d40f909c2a790ef1d384473351a3991337e4f604673c5f305b80d7d63e9baa0f",
+      "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\actual\\continuous_reference\\account\\LONG_U504_BASE_RESULT.json": "4de9094ed4cfa47bdb4baf454be57c2559823db289e9fd8cd41283d4faf3a401",
+      "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\source_archive_v14\\trade-system-contract-port-v1\\scripts\\run_long_horizon_universe_acceptance_v1.py": "8fad34aa9d4bc12868b84d96ba5db6d71c18789fc13064976b444d9b46275be3",
+      "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\submission\\tasks\\0b55d771ba1ec469fbfe5c84ad4c87baaad9e79349a641bae4fd09c5c9f695b3\\account\\LONG_U504_BASE_CHECKPOINT.json": "8c0b528fcee3714fbfa80f13cb6fbb21b697b6c683bcdb0b456fa597c65a7ba7",
+      "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13\\actual\\continuous_reference\\account\\account\\LONG_U504_BASE_CHECKPOINT.json": "5bad2a8fee4c37de6d3a021d309a1d0dd45ef3932c9bad324dc48c9ed861b154"
+    },
+    "input_identity": "358666e7e77ac866eb9100bcc7e9518f98b9d0a06322e1f950c69b19f502f487",
+    "sessions": 504,
+    "economic_field_identities": {
+      "fills": "ba0d1e88b31a0f9c30a483e82e2fb7f806705fc186c80e7d9be9a44e2ce44b3c",
+      "metrics": "7cc9515ae5cbf8c085efd66b73151c5c43d68d21e68c99054788da089d532282",
+      "final_account_checkpoint": "67193ba670f28c7bce336ec7ad4e98ec6d3f451d946d2946fa05fde97617c7cb",
+      "scanner_identity": "83ccbdd4a69a3494c46851d6aec56378299aaa538e6414c845a2fbc5999030da",
+      "scan_preparation": "9b2ace87f07cf4c2ee77e582598791a63530dea5742e923637b0a8c2c4c399cc",
+      "account_policy": "5928dbb86900652804511b24a4918fee02ca593f0a10095f949ea0f35ac179c5"
+    },
+    "engine_field_identities": {
+      "ledger": "bed2378f20c158fe4d7a73c46f497888a1fc45844bbe2f641af5871fbef3e97e",
+      "engine": "af01571940dc2fc21bdbee72e546c649bf82bc7301ffbd761d9db56fba711fd2",
+      "orders": "f5d460112c59e7fa2d2a14d25d76c85e9edc9c906111b9e3ebe3283e36093374",
+      "order_counters": "715965e415113f2c53c795cb11980af93cbc033134cc14fc2872147b36a74e64",
+      "broker_fill_counter": "9bdb2af6799204a299c603994b8e400e4b1fd625efdb74066cc869fee42c9df3",
+      "events": "8de7832b7593cbbfe6936cdc512f4d1aad00ff9f07327c0f95cf3e9e256a2c02",
+      "event_counter": "3538a1ef2e113da64249eea7bd068b585ec7ce5df73b2d1e319d8c9bf47eb314",
+      "rule_states": "55f9641d9abce932bd38202b5e1d311efabc9abc7f9e8885d0cc71b6e3ebc6d8",
+      "rule_exits": "42e6ecb91a0c6fce7f1cd23595d142456f87d006db702ba7c044af524835c216",
+      "bars": "5be2ba59334b9b39cd773cbacbfc29681872fb5aced6a28490a6aa1a9987d61e",
+      "states": "8293851381e121cdf6795bb54e31f0307dab2064115be591d1637b62b0e117aa",
+      "skips": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "allocations": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "decisions": "87dae5b24b6e68619f10f361e5ba8acf290d72fdaa07aaf97e25d5d85f2878b0",
+      "peak": "8ccfcd0daa3d9b3eadb4b27607f9954b4e30ac3b221eda3b1232453259e029a5",
+      "drawdown": "85d78b512f0b6e5a2ac040863a813bbae9cbadcd3a3d9826f049fc90ad404ecb",
+      "last_day": "5b5cbcf563a137d5fa0c0b5ae7501fe0e6f7db0426b64ab4fcb2e7c1cef7db96",
+      "calendar_identity": "d640b20bd840cd25d3277a86e8b17ca11b0fdc6c1e42856f5511cb0c812b836d"
+    },
+    "checkpoint_state_identities": [
+      "2fb05fd2d630aefe1bc6957c5c143830693bcfde6579bf24ee9c1fd56f72647d",
+      "18f7519d17b2ce2394407b4b30b446a6b5df10abc840d75296c54f705d991170"
+    ],
+    "manifest_identity": [
+      "0daa75e4509a24304ebfece9d365d69a9ac37aef8b21f578daeff825331c886a",
+      "a2f7fbaaedf59efde835e5670a9f5cfaaa64c34e10f2b2a3b68e2d96278d523a"
+    ],
+    "daily_manifest_dates_and_payload_identities_equal": true,
+    "daily_manifest_payload_list_identity": "04b9e0522bd4858c80fbdfe95b1a1d2994e15d7c6c69c912d9d4a67bd3a8ab7e",
+    "daily_gzip_files_read": 0,
+    "final_all_day_content_comparison_completed": false,
+    "preliminary_read_only": true,
+    "strategy_qualified": false,
+    "new_account_started": false,
+    "research_budget_consumed": false,
+    "runtime_sources_changed": false,
+    "windows_job_verified": true,
+    "diagnostic_wall_seconds": 1.4275267000002714
+  },
+  "strategy_qualified": false,
+  "final_acceptance_passed": false,
+  "new_retry1_reference_used": false,
+  "daily_gzip_files_read": 0
+}

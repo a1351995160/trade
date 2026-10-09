@@ -1,0 +1,9 @@
+{
+  "state": "CONTINUE",
+  "dispatch_id": "1352f6ec1aadb1f69d6447aa1b0f9bd708c53838373a57d418570572cde95caa",
+  "phase": "FEATURES",
+  "last_day": null,
+  "state_identity": null,
+  "checkpoint_sha256": null,
+  "reason": "UNIVERSE_FEATURE_NEXT_SEGMENT"
+}

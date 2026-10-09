@@ -1,0 +1,16 @@
+{
+  "returncode": 0,
+  "stdout": "",
+  "stderr": "",
+  "timed_out": false,
+  "launcher_pid": 24280,
+  "resource_platform": "nt",
+  "windows_job_bound": true,
+  "process_limit": 2,
+  "process_limit_enforced": true,
+  "peak_memory_mib": 1940.64453125,
+  "memory_measurement": "WINDOWS_JOB_PEAK_COMMIT",
+  "elapsed_wall_seconds": 426.6680352000003,
+  "phase": "QUALIFY",
+  "dispatch_id": "114134094b0bb8977e7d96b29a1199ab4d81fe4be4f849e7ec7a1b6f4c56cbf9"
+}

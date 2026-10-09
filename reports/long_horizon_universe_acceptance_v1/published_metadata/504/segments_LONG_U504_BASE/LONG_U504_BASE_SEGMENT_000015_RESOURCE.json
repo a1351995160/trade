@@ -1,0 +1,16 @@
+{
+  "returncode": 75,
+  "stdout": "",
+  "stderr": "",
+  "timed_out": false,
+  "launcher_pid": 19984,
+  "resource_platform": "nt",
+  "windows_job_bound": true,
+  "process_limit": 2,
+  "process_limit_enforced": true,
+  "peak_memory_mib": 1972.81640625,
+  "memory_measurement": "WINDOWS_JOB_PEAK_COMMIT",
+  "elapsed_wall_seconds": 834.0450781,
+  "segment_number": 15,
+  "dispatch_id": "bde58cf8b68feba8fd40cdb9928d187eae38d9858296b91d387e7e1b31029c5e"
+}

@@ -1,0 +1,9 @@
+{
+  "reader_pid": 24880,
+  "reader_parent_pid": 10356,
+  "launcher_pid": 10356,
+  "windows_job_verified": true,
+  "resource_platform": "nt",
+  "dispatch_id": "06e39f3ec6be55bb58c30b0281676f1c79f427b44424783a631f9b3933db0c6c",
+  "phase": "QUALIFY"
+}

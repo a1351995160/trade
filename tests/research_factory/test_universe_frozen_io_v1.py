@@ -1,4 +1,8 @@
 """冻结传输保留全列类型及缺值，不用整表 Arrow 展开长来源字段。"""
+from datetime import date, datetime, timezone, timedelta
+import numpy as np
+import pyarrow.parquet as pq
+
 import pandas as pd
 import pyarrow as pa
 import pytest
@@ -79,3 +83,172 @@ def test_schema_inference_does_not_change_process_memory_pool(monkeypatch):
     original_type = pa.Schema.from_pandas(frame, preserve_index=False).field('source').type
     assert submission._schema_in_columns(frame).field('source').type == original_type
     assert pa.default_memory_pool().backend_name == before
+
+
+@pytest.mark.parametrize('values,dtype', [
+    ([None, '来源/' + 'x'*512], object),
+    ([None, b'\x00\xff'], object),
+    (['a', b'\xff'], object),
+    ([None, None], object),
+    ([None, pd.NaT, 'a'], object),
+    ([np.nan, pd.NA, 'a'], object),
+    ([1, 2.5], object),
+    ([None, Decimal('1.1'), Decimal('100.00')], object),
+    ([{'z':1}, {'a':2}], object),
+    ([[1], [2.5]], object),
+    ([date(2020,1,1), datetime(2020,1,2)], object),
+    ([datetime(2020,1,1,tzinfo=timezone.utc), datetime(2020,1,1,tzinfo=timezone(timedelta(hours=8)))], object),
+    (['a', 'b'], 'category'),
+    ([None, 2], 'Int32'),
+    ([True, None], 'boolean'),
+    ([1.5, 2.5], 'float32'),
+    (['a', None], 'string[python]'),
+    (['a', None], 'string[pyarrow]'),
+    ([1, None], pd.ArrowDtype(pa.int32())),
+])
+def test_all_value_schema_matches_original(values, dtype, tmp_path):
+    series=pd.Series(values,dtype=dtype)
+    frame=pd.DataFrame({'value':series})
+    expected=pa.Schema.from_pandas(frame,preserve_index=False)
+    actual=submission._schema_in_columns(frame)
+    assert actual.equals(expected,check_metadata=True)
+    path=tmp_path/'typed.parquet'
+    submission._write_frame_in_batches(frame,path)
+    reference=pa.Table.from_pandas(frame,schema=expected,preserve_index=False)
+    reference_path=tmp_path/'original_path.parquet'
+    pq.write_table(reference,reference_path)
+    persisted=pq.read_table(path)
+    original_persisted=pq.read_table(reference_path)
+    assert persisted.schema.equals(original_persisted.schema,check_metadata=True)
+    assert persisted.equals(original_persisted)
+
+
+def test_pure_text_schema_never_materializes_full_strings(tmp_path,monkeypatch):
+    count=16389
+    frame=pd.DataFrame({
+        'source':pd.Series(['原始完整资料/'+'x'*512]*count,dtype=object),
+        'late_source':pd.Series([None]*16384+['late']*5,dtype=object),
+        'bytes_source':pd.Series([None]+[b'\x00\xff']*(count-1),dtype=object),
+        'date':pd.Series([20240102]*count,dtype='int64'),
+    })
+    expected=pa.Schema.from_pandas(frame,preserve_index=False)
+    original_array=submission.pa.array
+    calls=[]
+    def limited_array(values,*args,**kwargs):
+        if isinstance(values,pd.Series) and values.dtype==object:
+            assert len(values)<=8192,'不得为纯文本类型推断复制整列 payload'
+        calls.append((len(values),kwargs.get('memory_pool')))
+        return original_array(values,*args,**kwargs)
+    monkeypatch.setattr(submission.pa,'array',limited_array)
+    before=pa.default_memory_pool().backend_name
+    monkeypatch.setattr(submission.pa,'set_memory_pool',lambda *a:pytest.fail('不得更换全局池'))
+    assert submission._schema_in_columns(frame).equals(expected,check_metadata=True)
+    path=tmp_path/'complete.parquet'
+    submission._write_frame_in_batches(frame,path)
+    assert all(pool is not None and pool.backend_name=='system' for count,pool in calls if count)
+    persisted=pq.read_table(path)
+    assert persisted.num_rows==count
+    assert persisted['late_source'].to_pylist()==frame['late_source'].tolist()
+    assert persisted['source'].to_pylist()==frame['source'].tolist()
+    assert persisted['bytes_source'].to_pylist()==frame['bytes_source'].tolist()
+    assert pa.default_memory_pool().backend_name==before
+
+
+def test_late_mixed_bytes_retains_binary_not_infer_type_string(tmp_path):
+    frame=pd.DataFrame({'source':pd.Series(['x']*8192+[b'\xff'],dtype=object)})
+    expected=pa.Schema.from_pandas(frame,preserve_index=False)
+    assert expected.field('source').type==pa.binary()
+    assert submission._schema_in_columns(frame).equals(expected,check_metadata=True)
+    path=tmp_path/'binary.parquet'
+    submission._write_frame_in_batches(frame,path)
+    assert pq.read_table(path)['source'][-1].as_py()==b'\xff'
+
+
+@pytest.mark.parametrize('arrow_type', [pa.string(), pa.large_string()])
+def test_repeated_native_text_preserves_empty_unicode_null_and_frozen_identity(tmp_path, arrow_type):
+    from chanlun_trader.research_factory.universe_account_inputs_v1 import _frame_identity
+    values = (['', '中文来源/🙂/' + 'x' * 512, None, 'None'] * 4097) + ['最后一批']
+    dates = np.arange(len(values), dtype=np.int64)
+    table = pa.table({'symbol': pa.array(['000001.SZ'] * len(values), type=arrow_type),
+        'date': pa.array(dates), 'source': pa.array(values, type=arrow_type)})
+    path = tmp_path / 'repeated_native.parquet'
+    pq.write_table(table, path)
+    expected = pd.DataFrame({'symbol': pd.Series(['000001.SZ'] * len(values), dtype=object),
+        'date': dates, 'source': pd.Series(values, dtype=object)})
+    actual = UniverseDataProviderV1._read_parquet(path, preserve_pandas_objects=True)
+    pd.testing.assert_frame_equal(actual, expected, check_exact=True)
+    assert _frame_identity(actual, ['symbol', 'date']) == _frame_identity(expected, ['symbol', 'date'])
+    assert actual.source.iloc[2] is None and actual.source.iloc[8194] is None
+    assert actual.source.iloc[1] is actual.source.iloc[8193]
+
+
+def test_frozen_text_dictionary_uses_local_pool_without_changing_global_pool(tmp_path, monkeypatch):
+    from chanlun_trader.research_factory import universe_data_provider_v1 as provider
+    count = 8195
+    frame = pd.DataFrame({'source': pd.Series(['原始来源/' + 'x' * 1536] * count, dtype=object)})
+    frame.loc[8192, 'source'] = None
+    path = tmp_path / 'local_dictionary_pool.parquet'
+    frame.to_parquet(path, index=False)
+    before = pa.default_memory_pool().backend_name
+    original = provider.pc.dictionary_encode
+    pools = []
+    def encoded(values, **kwargs):
+        pools.append(kwargs['memory_pool'].backend_name)
+        return original(values, **kwargs)
+    monkeypatch.setattr(provider.pc, 'dictionary_encode', encoded)
+    monkeypatch.setattr(pa, 'set_memory_pool', lambda *a: pytest.fail('不得更换进程默认内存池'))
+    actual = UniverseDataProviderV1._read_parquet(path, preserve_pandas_objects=True)
+    pd.testing.assert_frame_equal(actual, frame, check_exact=True)
+    assert pools and set(pools) == {'system'}
+    assert actual.source.iloc[0] is actual.source.iloc[-1] and actual.source.iloc[8192] is None
+    assert pa.default_memory_pool().backend_name == before
+
+
+@pytest.mark.parametrize('values', [['text']*8192+[1], [True]*8192+[2]])
+def test_late_invalid_mixed_values_keep_strict_rejection(values,tmp_path):
+    frame=pd.DataFrame({'source':pd.Series(values,dtype=object)})
+    with pytest.raises((pa.ArrowInvalid,pa.ArrowTypeError)):
+        pa.Schema.from_pandas(frame,preserve_index=False)
+    with pytest.raises((pa.ArrowInvalid,pa.ArrowTypeError)):
+        submission._write_frame_in_batches(frame,tmp_path/'invalid.parquet')
+
+
+@pytest.mark.parametrize('index_kind', ['range', 'named', 'multi', 'index_only'])
+def test_multiple_frozen_batches_keep_full_column_types_order_and_index(tmp_path, index_kind):
+    from chanlun_trader.research_factory.universe_account_inputs_v1 import _frame_identity
+    count = 16389
+    frame = pd.DataFrame({
+        'seq': np.arange(count, dtype='int64'),
+        'source': pd.Series(['来源/' + 'x' * 512] * count, dtype=object),
+        'late': pd.Series([None] * 16384 + ['中文'] * 5, dtype=object),
+        'optional': pd.Series([None, 3] * (count // 2) + [None], dtype='Int64'),
+        'known': pd.Series([True, None] * (count // 2) + [True], dtype='boolean'),
+        'category': pd.Categorical(['a', 'b'] * (count // 2) + ['a']),
+        'timestamp': pd.date_range('2024-01-02', periods=count, freq='min', tz='Asia/Shanghai'),
+        'numeric': pd.Series(np.arange(count), dtype='float32'),
+    })
+    frame.columns.name = '字段顺序'
+    if index_kind == 'range':
+        frame.index = pd.RangeIndex(5, 5 + count * 3, 3, name='原始行')
+    elif index_kind in ('named', 'index_only'):
+        frame.index = pd.Index(['重复行/' + str(i // 2) for i in range(count)], name='行名称')
+    else:
+        frame.index = pd.MultiIndex.from_arrays([['证券'] * count, np.arange(count)], names=['分组', '行'])
+    if index_kind == 'index_only':
+        frame = frame.iloc[:, :0]
+    path = tmp_path / 'full_axes.parquet'
+    frame.to_parquet(path)
+    actual = UniverseDataProviderV1._read_parquet(path, preserve_pandas_objects=True)
+    pd.testing.assert_frame_equal(actual, frame, check_exact=True)
+    if len(frame.columns):
+        assert _frame_identity(actual, ['seq']) == _frame_identity(frame, ['seq'])
+        assert actual.late.iloc[0] is None and actual.late.iloc[-1] == '中文'
+        assert actual.source.iloc[0] is actual.source.iloc[-1]
+
+
+def test_invalid_unicode_still_rejected_before_successful_freeze(tmp_path):
+    frame=pd.DataFrame({'source':pd.Series(['text']*8192+['\ud800'],dtype=object)})
+    with pytest.raises(UnicodeEncodeError):
+        pa.Table.from_pandas(frame,preserve_index=False)
+    with pytest.raises(UnicodeEncodeError):
+        submission._write_frame_in_batches(frame,tmp_path/'invalid_unicode.parquet')

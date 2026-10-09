@@ -1,0 +1,19 @@
+{
+  "items": {
+    "LONG_U504_BASE": {
+      "result": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13_reference_retry1\\actual\\continuous_reference\\account\\LONG_U504_BASE_RESULT.json",
+      "sha256": "f56aa15040b3c7725ababeffd96312693878fa487c82282aee43db79db8d187e",
+      "settlement": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13_reference_retry1\\actual\\continuous_reference\\account\\LONG_U504_BASE_SETTLEMENT.json",
+      "report": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13_reference_retry1\\actual\\continuous_reference\\account\\LONG_U504_BASE_REPORT.md"
+    },
+    "LONG_U504_STRESS": {
+      "result": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13_reference_retry1\\actual\\continuous_reference\\account\\LONG_U504_STRESS_RESULT.json",
+      "sha256": "86aad2352324dccf9ba44e8d3ce8393cf8f259803cc4e2726c58742cabd4ea41",
+      "settlement": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13_reference_retry1\\actual\\continuous_reference\\account\\LONG_U504_STRESS_SETTLEMENT.json",
+      "report": "E:\\llmwiki\\trade-system-contract-port-v1\\reports\\long_horizon_universe_acceptance_v1\\u8_v13_reference_retry1\\actual\\continuous_reference\\account\\LONG_U504_STRESS_REPORT.md"
+    }
+  },
+  "worker_seconds": 14307.0186067,
+  "exposures": 2,
+  "repair_exposures": 0
+}

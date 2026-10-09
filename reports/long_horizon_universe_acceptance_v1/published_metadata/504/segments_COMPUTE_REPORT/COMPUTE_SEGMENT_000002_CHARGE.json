@@ -1,0 +1,10 @@
+{
+  "dispatch_id": "782b65d6c9c88e26ae86cd94ae1b51162e7ccc0b116161ad6161bf0187f8309f",
+  "measured_seconds": 830.9701857999971,
+  "seconds": 830.9701857999971,
+  "basis": "MEASURED_ACTIVE_WALL_SECONDS",
+  "evidence_identity": "68e7c99271a4b42d2c1cf02f7dc05ee9d9cd8a5193ae25dddeadcd406e6aa45b",
+  "outcome": "CONTINUE",
+  "charged_at": "2026-10-09T06:51:33.125491+00:00",
+  "charge_id": "82a3fa3af692ac42aa5b9fd125547ab8dd16246f6bd62897c4739a3bc0a610f5"
+}

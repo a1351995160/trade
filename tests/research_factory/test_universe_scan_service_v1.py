@@ -274,15 +274,16 @@ def test_worker_reuses_first_validated_inputs_with_actual_rule_fields_and_warmup
         required_fields=strategy.requirements.fields, warmup_bars=strategy.requirements.warmup_sessions)
     expected_evaluation = scan._evaluate_conditions(strategy, expected)
     made = []
-    original = UniverseAccountInputsV1.__init__
-    def construct(instance, *a, **kw):
+    original = UniverseAccountInputsV1._initialize
+    def initialize(instance, *a, **kw):
         original(instance, *a, **kw)
         made.append(instance)
-    monkeypatch.setattr(UniverseAccountInputsV1, '__init__', construct)
+    monkeypatch.setattr(UniverseAccountInputsV1, '_initialize', initialize)
     launches = synthetic_launcher(monkeypatch)
     result = call_scan(service, request)
     assert len(launches) == len(made) == 1
     actual = made[0]
+    assert actual._copy_frames is False
     assert actual.required_fields == frozenset(strategy.requirements.fields)
     assert actual.warmup_bars == strategy.requirements.warmup_sessions
     assert actual.input_identity == expected.input_identity == result['input_identity']

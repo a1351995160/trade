@@ -10,7 +10,8 @@ import pytest
 
 from chanlun_trader.research_factory.board_execution_policy_v1 import board_policy_identity
 from chanlun_trader.research_factory.universe_account_inputs_v1 import (
-    _frame_identity, _query_values, prepare_universe_account_inputs_v1, universe_input_identity_v1,
+    UniverseAccountInputsV1, _frame_identity, _query_values,
+    prepare_universe_account_inputs_v1, universe_input_identity_v1,
 )
 from chanlun_trader.research_factory.common import canonical_json, stable_hash
 
@@ -377,6 +378,72 @@ def test_bar_state_queries_preserve_every_field_type_and_null_with_text_cache_vi
     assert all_queries() == actual
     assert prepared._coverage() == coverage
     assert universe_input_identity_v1(prepared.bundle, window) == identity
+
+
+@pytest.mark.parametrize("method", ["bar", "state"])
+def test_query_decodes_each_selected_scalar_only_once(method):
+    bundle, window = valid_universe_bundle_v1()
+    prepared = prepare_universe_account_inputs_v1(bundle, window)
+    expected = getattr(prepared, method)(SYMBOLS[0], DAYS[2])
+    columns = prepared._daily_columns if method == "bar" else prepared._state_columns
+
+    class CountedValues:
+        def __init__(self, values):
+            self.values, self.reads = values, 0
+
+        def __getitem__(self, position):
+            self.reads += 1
+            return self.values[position]
+
+    counted = {name: CountedValues(values) for name, values in columns.items()}
+    if method == "bar":
+        prepared._daily_columns = counted
+    else:
+        prepared._state_columns = counted
+    assert getattr(prepared, method)(SYMBOLS[0], DAYS[2]) == expected
+    assert {values.reads for values in counted.values()} == {1}
+
+
+def test_repeated_timestamp_parsing_does_not_cache_state_visibility(monkeypatch):
+    import chanlun_trader.research_factory.universe_account_inputs_v1 as inputs_module
+    bundle, window = valid_universe_bundle_v1()
+    visible_at = "2024-01-04T12:00:00+08:00"
+    bundle["states"]["available_at"] = visible_at
+    prepared = prepare_universe_account_inputs_v1(bundle, window, stage="SCAN")
+    assert prepared.coverage["account_data_ready"] is False
+    before = pd.Timestamp("2024-01-04T09:30:00+08:00")
+    after = pd.Timestamp("2024-01-04T15:00:00+08:00")
+    cache = getattr(inputs_module, "_cached_state_timestamp", None)
+    if cache is not None:
+        cache.cache_clear()
+    original, parses = pd.Timestamp, []
+
+    def observed_timestamp(value, *args, **kwargs):
+        if value == visible_at:
+            parses.append(value)
+        return original(value, *args, **kwargs)
+
+    monkeypatch.setattr(inputs_module.pd, "Timestamp", observed_timestamp)
+    for _ in range(5):
+        assert prepared.state(SYMBOLS[0], DAYS[2], asof=before)["reason"] == "UNIVERSE_STATE_NOT_YET_AVAILABLE"
+        assert prepared.state(SYMBOLS[0], DAYS[2], asof=after)["state_known"] is True
+    assert parses == [visible_at]
+
+
+def test_state_timestamp_cache_is_bounded_and_keeps_invalid_dates_rejected():
+    from chanlun_trader.research_factory.universe_account_inputs_v1 import _cached_state_timestamp
+    _cached_state_timestamp.cache_clear()
+    try:
+        for stamp in pd.date_range("2020-01-01", periods=4200, freq="h", tz="Asia/Shanghai"):
+            assert _cached_state_timestamp(stamp.isoformat()) == stamp
+        assert _cached_state_timestamp.cache_info().currsize <= 4096
+        before = _cached_state_timestamp.cache_info().currsize
+        for _ in range(2):
+            with pytest.raises((ValueError, TypeError)):
+                _cached_state_timestamp("not-a-timestamp")
+        assert _cached_state_timestamp.cache_info().currsize == before
+    finally:
+        _cached_state_timestamp.cache_clear()
 
 
 def test_frame_identity_releases_mapped_columns_and_never_materializes_a_mapped_frame(monkeypatch):
@@ -760,3 +827,37 @@ def test_empty_states_supports_only_explicit_gap_diagnostics():
     assert prepared.coverage["target_symbol_count"] == 3
     with pytest.raises(ValueError, match="STATE_MISSING"):
         prepare_universe_account_inputs_v1(bundle, window)
+
+
+def test_price_reference_dates_are_parsed_once_with_suspended_session_gap(monkeypatch):
+    from chanlun_trader.research_factory import universe_account_inputs_v1 as module
+    inputs = object.__new__(UniverseAccountInputsV1)
+    inputs.daily = pd.DataFrame({'symbol': ['000001.SZ'] * 3,
+        'date': [20240102, 20240103, 20240105], 'close': [10., 9., 8.1],
+        'prev_close': [10., 9., 8.1]})
+    inputs.events = [{'event_id': 'FIRST', 'symbol': '000001.SZ', 'event_type': 'CASH_DIVIDEND',
+        'record_date': 20240102, 'effective_date': 20240103,
+        'source_published_at': '2024-01-01T09:00:00+08:00', 'terms': {'cash_per_share': 1.}},
+        {'event_id': 'DURING_HALT', 'symbol': '000001.SZ', 'event_type': 'CASH_DIVIDEND',
+         'record_date': 20240103, 'effective_date': 20240104,
+         'source_published_at': '2024-01-01T09:00:00+08:00', 'terms': {'cash_per_share': .9}}]
+    original = module._day
+    calls = []
+    def counted_day(value):
+        calls.append(value)
+        return original(value)
+    monkeypatch.setattr(module, '_day', counted_day)
+    assert inputs._price_reference_gaps() == set()
+    assert calls == [20240103, 20240104]
+    inputs.daily.loc[2, 'prev_close'] = 8.
+    assert inputs._price_reference_gaps() == {('000001.SZ', 20240105)}
+
+
+@pytest.mark.parametrize('bad_date', [None, '2024-02-30', 'UNKNOWN'])
+def test_invalid_price_reference_event_date_still_blocks_every_successor(bad_date):
+    inputs = object.__new__(UniverseAccountInputsV1)
+    inputs.daily = pd.DataFrame({'symbol': ['000001.SZ'] * 3,
+        'date': [20240102, 20240103, 20240105], 'close': [10.] * 3, 'prev_close': [10.] * 3})
+    inputs.events = [{'event_id': 'INVALID', 'symbol': '000001.SZ',
+        'event_type': 'CASH_DIVIDEND', 'effective_date': bad_date, 'terms': {'cash_per_share': .1}}]
+    assert inputs._price_reference_gaps() == {('000001.SZ', 20240103), ('000001.SZ', 20240105)}

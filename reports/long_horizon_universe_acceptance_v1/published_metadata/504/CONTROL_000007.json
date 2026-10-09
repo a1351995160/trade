@@ -1,0 +1,9 @@
+{
+  "sequence": 7,
+  "previous_head": "d0fea9d1c2a4e61c599537d05b7e0db848b027677916843fdd5ad8ae041a0d74",
+  "event": "PAUSE",
+  "job_sha256": "80bb520d534cc928860643b2cec07373e27f6160e9a0dd45023ac2810d0c45aa",
+  "receipt_id": "caa2438b90d8d7e55ca3d04a3a36283b65461c16ac088fa01fe6f80c366c898f",
+  "recorded_at": "2026-10-09T01:42:53.490409+00:00",
+  "event_id": "614a09a39fa4e510644929687aba4d82319083c515a12e02ef0d2e3affd00296"
+}

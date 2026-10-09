@@ -1,0 +1,61 @@
+{
+  "active_reservations": {},
+  "buckets": [
+    {
+      "exhausted": true,
+      "key": "caa2438b90d8d7e55ca3d04a3a36283b65461c16ac088fa01fe6f80c366c898f:LONG_U504_BASE",
+      "kind": "strategy_interface_account_v1",
+      "limit": 1,
+      "remaining": 0,
+      "reserved": 0,
+      "used": 1
+    },
+    {
+      "exhausted": true,
+      "key": "caa2438b90d8d7e55ca3d04a3a36283b65461c16ac088fa01fe6f80c366c898f:LONG_U504_STRESS",
+      "kind": "strategy_interface_account_v1",
+      "limit": 1,
+      "remaining": 0,
+      "reserved": 0,
+      "used": 1
+    },
+    {
+      "exhausted": true,
+      "key": "f230cb9713f7a731f0d575c731210fa7d2db9b44aa4c26f84df7a0f3c7619423",
+      "kind": "universe_compute_preparation_v1",
+      "limit": 1,
+      "remaining": 0,
+      "reserved": 0,
+      "used": 1
+    },
+    {
+      "exhausted": true,
+      "key": "f230cb9713f7a731f0d575c731210fa7d2db9b44aa4c26f84df7a0f3c7619423",
+      "kind": "universe_compute_report_v1",
+      "limit": 1,
+      "remaining": 0,
+      "reserved": 0,
+      "used": 1
+    },
+    {
+      "exhausted": true,
+      "key": "f230cb9713f7a731f0d575c731210fa7d2db9b44aa4c26f84df7a0f3c7619423",
+      "kind": "universe_compute_verification_v1",
+      "limit": 1,
+      "remaining": 0,
+      "reserved": 0,
+      "used": 1
+    }
+  ],
+  "objective_id": "U8_REAL_SEGMENTED_504_V13",
+  "reservation_counter": 5,
+  "schema_version": "search-budget-registry-v1",
+  "settled_reservations": {
+    "RES-000001": "CONSUMED",
+    "RES-000002": "CONSUMED",
+    "RES-000003": "CONSUMED",
+    "RES-000004": "CONSUMED",
+    "RES-000005": "CONSUMED"
+  },
+  "updated_at": "2026-10-09T14:49:31+00:00"
+}

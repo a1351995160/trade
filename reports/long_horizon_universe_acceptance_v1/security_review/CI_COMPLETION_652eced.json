@@ -1,0 +1,372 @@
+{
+  "status": "EXACT_RUNTIME_HEAD_TEN_PR_WORKFLOWS_TWENTY_FIVE_JOBS_AND_EIGHT_MATRIX_PASSED",
+  "recorded_at": "2026-10-08T09:05:32.442206+00:00",
+  "head": "652ecede5f6967c828f2aff30038c921951b90a8",
+  "pull_request": 36,
+  "runs": [
+    {
+      "conclusion": "success",
+      "databaseId": 37743616728,
+      "headSha": "652ecede5f6967c828f2aff30038c921951b90a8",
+      "status": "completed",
+      "url": "https://github.com/a1351995160/trade/actions/runs/37743616728",
+      "workflowName": "Phase 3A Execution Isolation Certification",
+      "event": "pull_request",
+      "jobs": [
+        {
+          "id": 113199831728,
+          "name": "Execution policy and workspace isolation",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-08T07:37:25Z",
+          "completed_at": "2026-10-08T07:38:45Z",
+          "html_url": "https://github.com/a1351995160/trade/actions/runs/37743616728/job/113199831728"
+        }
+      ]
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 37743616676,
+      "headSha": "652ecede5f6967c828f2aff30038c921951b90a8",
+      "status": "completed",
+      "url": "https://github.com/a1351995160/trade/actions/runs/37743616676",
+      "workflowName": "Phase 3B Restart Recovery Certification",
+      "event": "pull_request",
+      "jobs": [
+        {
+          "id": 113199830963,
+          "name": "Restart recovery (windows-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-08T07:31:58Z",
+          "completed_at": "2026-10-08T07:35:37Z",
+          "html_url": "https://github.com/a1351995160/trade/actions/runs/37743616676/job/113199830963"
+        },
+        {
+          "id": 113199831168,
+          "name": "Restart recovery (ubuntu-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-08T07:38:47Z",
+          "completed_at": "2026-10-08T07:40:00Z",
+          "html_url": "https://github.com/a1351995160/trade/actions/runs/37743616676/job/113199831168"
+        }
+      ]
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 37743616736,
+      "headSha": "652ecede5f6967c828f2aff30038c921951b90a8",
+      "status": "completed",
+      "url": "https://github.com/a1351995160/trade/actions/runs/37743616736",
+      "workflowName": "Phase 2 Control Plane Certification",
+      "event": "pull_request",
+      "jobs": [
+        {
+          "id": 113199831403,
+          "name": "Autonomous control plane certification",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-08T07:39:36Z",
+          "completed_at": "2026-10-08T07:41:02Z",
+          "html_url": "https://github.com/a1351995160/trade/actions/runs/37743616736/job/113199831403"
+        }
+      ]
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 37743616760,
+      "headSha": "652ecede5f6967c828f2aff30038c921951b90a8",
+      "status": "completed",
+      "url": "https://github.com/a1351995160/trade/actions/runs/37743616760",
+      "workflowName": "Phase 3C Lifecycle Certification",
+      "event": "pull_request",
+      "jobs": [
+        {
+          "id": 113199831281,
+          "name": "Lifecycle certification (ubuntu-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-08T07:34:13Z",
+          "completed_at": "2026-10-08T07:38:58Z",
+          "html_url": "https://github.com/a1351995160/trade/actions/runs/37743616760/job/113199831281"
+        },
+        {
+          "id": 113199831683,
+          "name": "Lifecycle certification (windows-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-08T07:36:09Z",
+          "completed_at": "2026-10-08T07:44:11Z",
+          "html_url": "https://github.com/a1351995160/trade/actions/runs/37743616760/job/113199831683"
+        }
+      ]
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 37743616772,
+      "headSha": "652ecede5f6967c828f2aff30038c921951b90a8",
+      "status": "completed",
+      "url": "https://github.com/a1351995160/trade/actions/runs/37743616772",
+      "workflowName": "Backtest Behavior Acceptance V1",
+      "event": "pull_request",
+      "jobs": [
+        {
+          "id": 113199831197,
+          "name": "BT behavior acceptance (ubuntu-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-08T07:29:39Z",
+          "completed_at": "2026-10-08T07:30:10Z",
+          "html_url": "https://github.com/a1351995160/trade/actions/runs/37743616772/job/113199831197"
+        },
+        {
+          "id": 113199831544,
+          "name": "BT behavior acceptance (windows-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-08T07:32:06Z",
+          "completed_at": "2026-10-08T07:33:08Z",
+          "html_url": "https://github.com/a1351995160/trade/actions/runs/37743616772/job/113199831544"
+        }
+      ]
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 37743616704,
+      "headSha": "652ecede5f6967c828f2aff30038c921951b90a8",
+      "status": "completed",
+      "url": "https://github.com/a1351995160/trade/actions/runs/37743616704",
+      "workflowName": "Phase 1 Certification",
+      "event": "pull_request",
+      "jobs": [
+        {
+          "id": 113199831259,
+          "name": "Deterministic governance suite",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-08T07:34:46Z",
+          "completed_at": "2026-10-08T07:36:07Z",
+          "html_url": "https://github.com/a1351995160/trade/actions/runs/37743616704/job/113199831259"
+        }
+      ]
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 37743616716,
+      "headSha": "652ecede5f6967c828f2aff30038c921951b90a8",
+      "status": "completed",
+      "url": "https://github.com/a1351995160/trade/actions/runs/37743616716",
+      "workflowName": "Extensible Backtest Acceptance V2",
+      "event": "pull_request",
+      "jobs": [
+        {
+          "id": 113199831131,
+          "name": "BT extensible acceptance V2 (windows-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-08T07:29:48Z",
+          "completed_at": "2026-10-08T07:31:54Z",
+          "html_url": "https://github.com/a1351995160/trade/actions/runs/37743616716/job/113199831131"
+        },
+        {
+          "id": 113199831206,
+          "name": "BT extensible acceptance V2 (ubuntu-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-08T07:36:07Z",
+          "completed_at": "2026-10-08T07:37:23Z",
+          "html_url": "https://github.com/a1351995160/trade/actions/runs/37743616716/job/113199831206"
+        }
+      ]
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 37743616643,
+      "headSha": "652ecede5f6967c828f2aff30038c921951b90a8",
+      "status": "completed",
+      "url": "https://github.com/a1351995160/trade/actions/runs/37743616643",
+      "workflowName": "Price Only Indicator Validation V1",
+      "event": "pull_request",
+      "jobs": [
+        {
+          "id": 113199831067,
+          "name": "Price-only indicator acceptance (windows-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-08T07:33:09Z",
+          "completed_at": "2026-10-08T07:48:56Z",
+          "html_url": "https://github.com/a1351995160/trade/actions/runs/37743616643/job/113199831067"
+        },
+        {
+          "id": 113199831215,
+          "name": "Price-only indicator acceptance (ubuntu-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-08T07:40:02Z",
+          "completed_at": "2026-10-08T07:45:44Z",
+          "html_url": "https://github.com/a1351995160/trade/actions/runs/37743616643/job/113199831215"
+        }
+      ]
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 37743616690,
+      "headSha": "652ecede5f6967c828f2aff30038c921951b90a8",
+      "status": "completed",
+      "url": "https://github.com/a1351995160/trade/actions/runs/37743616690",
+      "workflowName": "R1 Source and Data Readiness Certification",
+      "event": "pull_request",
+      "jobs": [
+        {
+          "id": 113199831004,
+          "name": "R1 certification (ubuntu-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-08T07:44:12Z",
+          "completed_at": "2026-10-08T07:52:16Z",
+          "html_url": "https://github.com/a1351995160/trade/actions/runs/37743616690/job/113199831004"
+        },
+        {
+          "id": 113199831164,
+          "name": "R1 certification (windows-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-08T07:42:55Z",
+          "completed_at": "2026-10-08T07:57:30Z",
+          "html_url": "https://github.com/a1351995160/trade/actions/runs/37743616690/job/113199831164"
+        },
+        {
+          "id": 113199831185,
+          "name": "R2 and R3 formal services (ubuntu-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-08T07:46:49Z",
+          "completed_at": "2026-10-08T07:52:37Z",
+          "html_url": "https://github.com/a1351995160/trade/actions/runs/37743616690/job/113199831185"
+        },
+        {
+          "id": 113199831247,
+          "name": "R2 and R3 formal services (windows-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-08T07:48:41Z",
+          "completed_at": "2026-10-08T07:57:28Z",
+          "html_url": "https://github.com/a1351995160/trade/actions/runs/37743616690/job/113199831247"
+        }
+      ]
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 37743616626,
+      "headSha": "652ecede5f6967c828f2aff30038c921951b90a8",
+      "status": "completed",
+      "url": "https://github.com/a1351995160/trade/actions/runs/37743616626",
+      "workflowName": "Autonomous research completion",
+      "event": "pull_request",
+      "jobs": [
+        {
+          "id": 113199830704,
+          "name": "completion (ubuntu-latest, long-horizon)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-08T07:34:47Z",
+          "completed_at": "2026-10-08T07:37:50Z",
+          "html_url": "https://github.com/a1351995160/trade/actions/runs/37743616626/job/113199830704"
+        },
+        {
+          "id": 113199830798,
+          "name": "completion (ubuntu-latest, workflow)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-08T07:32:33Z",
+          "completed_at": "2026-10-08T07:54:41Z",
+          "html_url": "https://github.com/a1351995160/trade/actions/runs/37743616626/job/113199830798"
+        },
+        {
+          "id": 113199830844,
+          "name": "completion (windows-latest, workflow)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-08T07:45:45Z",
+          "completed_at": "2026-10-08T08:54:40Z",
+          "html_url": "https://github.com/a1351995160/trade/actions/runs/37743616626/job/113199830844"
+        },
+        {
+          "id": 113199830862,
+          "name": "completion (ubuntu-latest, formal-scope)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-08T07:38:33Z",
+          "completed_at": "2026-10-08T07:50:29Z",
+          "html_url": "https://github.com/a1351995160/trade/actions/runs/37743616626/job/113199830862"
+        },
+        {
+          "id": 113199830914,
+          "name": "completion (windows-latest, full-universe)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-08T07:40:19Z",
+          "completed_at": "2026-10-08T08:02:31Z",
+          "html_url": "https://github.com/a1351995160/trade/actions/runs/37743616626/job/113199830914"
+        },
+        {
+          "id": 113199830946,
+          "name": "completion (windows-latest, long-horizon)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-08T07:47:57Z",
+          "completed_at": "2026-10-08T07:54:52Z",
+          "html_url": "https://github.com/a1351995160/trade/actions/runs/37743616626/job/113199830946"
+        },
+        {
+          "id": 113199831001,
+          "name": "completion (windows-latest, formal-scope)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-08T07:47:47Z",
+          "completed_at": "2026-10-08T08:59:46Z",
+          "html_url": "https://github.com/a1351995160/trade/actions/runs/37743616626/job/113199831001"
+        },
+        {
+          "id": 113199831075,
+          "name": "completion (ubuntu-latest, full-universe)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-08T07:41:03Z",
+          "completed_at": "2026-10-08T08:00:13Z",
+          "html_url": "https://github.com/a1351995160/trade/actions/runs/37743616626/job/113199831075"
+        }
+      ]
+    }
+  ],
+  "required_check": {
+    "id": 113199831259,
+    "name": "Deterministic governance suite",
+    "status": "completed",
+    "conclusion": "success",
+    "started_at": "2026-10-08T07:34:46Z",
+    "completed_at": "2026-10-08T07:36:07Z",
+    "html_url": "https://github.com/a1351995160/trade/actions/runs/37743616704/job/113199831259"
+  },
+  "matrix_jobs": 8,
+  "primary_jobs": 25,
+  "sonar_check": [
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-08T07:30:09Z",
+      "conclusion": "FAILURE",
+      "detailsUrl": "https://sonarcloud.io/dashboard?id=a1351995160_trade&pullRequest=36",
+      "name": "SonarCloud Code Analysis",
+      "startedAt": "2026-10-08T07:28:17Z",
+      "status": "COMPLETED",
+      "workflowName": ""
+    }
+  ],
+  "all_six_native_accounts_complete": false,
+  "final_delivery_head_ci_still_required": true,
+  "push_duplicates_counted_as_pass": false,
+  "cancelled_runs_counted_as_pass": false,
+  "source540_changed_by_this_collector": false,
+  "main_synced": false
+}

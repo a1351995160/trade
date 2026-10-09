@@ -1,0 +1,13 @@
+{
+  "kind": "LONG_U252_STRESS",
+  "reservation": "RES-000003",
+  "receipt_id": "86b53ef2ebbda0e0c267c89979d015fa634aab1f4f26c84735bc4965c8ee6b74",
+  "started_at": "2026-10-08T14:47:03.265372+00:00",
+  "counted_before_account_calculation": true,
+  "completed": true,
+  "wall_seconds": 7197.7635144000005,
+  "result_sha256": "5a6e17f5f76c8316ed31b09a2d58cf0a5fedf43d7118c97d8c8c26578b2e9aa1",
+  "error": null,
+  "settled_at": "2026-10-08T16:47:02.072315+00:00",
+  "repair_exposures": 0
+}

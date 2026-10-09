@@ -1,0 +1,9 @@
+{
+  "sequence": 12,
+  "previous_head": "4459058c8ee2b3a84d1cd6c648697a741971b515c8bf60f0231fa924c30504d9",
+  "event": "RESUME",
+  "job_sha256": "80bb520d534cc928860643b2cec07373e27f6160e9a0dd45023ac2810d0c45aa",
+  "receipt_id": "caa2438b90d8d7e55ca3d04a3a36283b65461c16ac088fa01fe6f80c366c898f",
+  "recorded_at": "2026-10-09T04:16:14.871380+00:00",
+  "event_id": "ae625f4322a818ce100cac76c91937a045a3f0d32d978edefd9668fc37902fa2"
+}

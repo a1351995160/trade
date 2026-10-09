@@ -1,0 +1,12 @@
+{
+  "schema_version": "strategy-account-segment-dispatch-v1",
+  "kind": "LONG_U504_BASE",
+  "receipt_id": "caa2438b90d8d7e55ca3d04a3a36283b65461c16ac088fa01fe6f80c366c898f",
+  "segment_number": 13,
+  "profile_hash": "649c5a53a65048ae5fdf017686edbcadf5afee05735c29529e0342a83f4d8b34",
+  "charged_before": 9664.724229799998,
+  "upper_bound_seconds": 900,
+  "previous_head": "f5a256770e1c4d21cf79785f31b7a1e3c6d529bea94987090bb7c97865cb86e9",
+  "dispatched_at": "2026-10-08T20:22:28.335636+00:00",
+  "dispatch_id": "c9f311ad58ac73f8e53c96eee098bbff057d3f6d75fd72546536bebf1782e5c1"
+}
