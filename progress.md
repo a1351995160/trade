@@ -3820,3 +3820,22 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 - 没有创建真实研究授权、扩容旧任务预算、读取封存行情或产生新策略资格。主目录现有合法 TRAIN 日历只有 462 日，缺 42 日及配套；真实受限模型网关与可信 252 日独立资料仍是外部条件，不能用合成测试补证。
 - 开发目录为受管 worktree E:/worktrees/continuous-universe-research/trade-system-contract-port-v1。主目录的既有 progress.md 修改、行情、研究结果及未跟踪文件保持原样；最终 CI、推送、main 合并、安全同步和仅归档本 worktree 待交付操作完成后另记。
 - 回滚点 78cfd99a489ecd450ce2fba27a2a6c99dd438e40；先停派并结清原请求，回退代码及部署，保留所有批准/预算/回执/暴露原件；回滚不退款或重新授予独立性。
+
+## 2026-10-10 - Task: 补齐设计接手包的长期探索失败谱系
+
+### What was done
+
+- diagnosis_research_v4.py 的设计 handover 改为只读取 config、canonical 探索记录和预算；复用已核验的最终探索定性摘要，附消费计数，不再调用 confirmation.status。完整业务状态仍由普通 status 提供。
+- docs/CONTINUOUS_UNIVERSE_RESEARCH_GUIDE.md 说明设计接手和完整状态的区别。原初筛记录、长期原件及所有独立结果保持不变。
+- 为保留正在运行的冻结源码验收，后续交付在受管 E:/worktrees/continuous-universe-delivery/trade-system-contract-port-v1 独立目录进行；原 continuous-universe-research 目录仅继续原测试，最终两目录都须归档。
+
+### Testing
+
+- 新增红色回归先真实捕获设计 handover 调用 confirmation.status（1 failed in 4.09s）；修复后最终反馈及生命周期模块 15 passed in 62.47s，全部只用隔离合成 metadata，无真实模型、行情或授权。
+- canonical 最终探索原件校验、独立敏感数据隔离、原件只读不变及 UTF-8 上下文上限均通过。能力文档生成 MATCHED，compileall 和 git diff --check 通过。
+- Windows 本地全 continuous（排除已独立运行的 504 晋级及单列反馈文件）和 504 晋级真实受限 worker 仍在运行；远端双平台 CI 待推送后核对，尚未预称通过。
+
+### Notes
+
+- 代码基线回滚点仍为 78cfd99a489ecd450ce2fba27a2a6c99dd438e40；本小修可回退至 d4630453f289367ac84c3f2c4466281400e8fbf5，但该点故意保留红色 handover 回归，不应作为最终绿色交付。
+- 实际模型与 504/252 日资料门槛未获得新证据，计划保持 active；没有签发真实批准、清除消费、启动后台研究或提升策略资格。

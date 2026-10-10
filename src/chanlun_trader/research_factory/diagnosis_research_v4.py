@@ -637,13 +637,20 @@ class DiagnosisResearchV4:
             'budget_hash': stable_hash(self.campaign.peek_status()), 'exposures': [], 'strategy_qualified': False}
 
     def handover(self, design=True):
-        state = self.status()
         if not design:
-            return {**state, 'contract': self.config()['contract'], 'root': str(self.root)}
+            return {**self.status(), 'contract': self.config()['contract'], 'root': str(self.root)}
+        config, view, records = self.config(), self.campaign.peek_status(), self._records()
+        maximum = min(view['authorization']['resource_limits']['candidate_attempts'],
+                      view['authorization']['max_batches'] * config['candidates_per_batch'])
+        progress = {'completed_attempts': len(records), 'authorized_attempts': maximum,
+            'next_candidate_id': 'CANDIDATE_' + str(len(records) + 1).zfill(4) if len(records) < maximum else None}
         return {'version': VERSION, 'research_root': str(self.root),
-            'contract_identity': self.config()['contract']['content_hash'],
-            'progress': state['progress'], 'history': [{'candidate_id': row['candidate_id'],
+            'contract_identity': config['contract']['content_hash'],
+            'progress': progress, 'history': [{'candidate_id': row['candidate_id'],
                 'rule_identity': row['rule_identity'], 'feedback_codes': row['feedback']['codes'],
-                'hypothesis': row['hypothesis'], 'change_reason': row['change_reason']} for row in state['attempts']],
+                'hypothesis': row['hypothesis'], 'change_reason': row['change_reason']} for row in records],
+            'final_exploration': self._final_exploration_feedback(records),
+            'budget': {key: deepcopy(view[key]) for key in ('used', 'reserved', 'remaining',
+                'stage_used', 'stage_reserved', 'stage_remaining', 'paused', 'expired', 'revoked') if key in view},
             'independent_results_omitted': True, 'goal_complete': False,
             'resume': '同一受信部署恢复原campaign并调用advance；不能重建新余额。'}

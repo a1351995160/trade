@@ -80,6 +80,8 @@ python scripts/run_trusted_research_v1.py continuous-handover --workspace-root <
 
 `create` 只登记，`start` 标记允许推进，不代替模型预算或资料授权；`advance` 每次只执行一个有界步骤。`continuous-pause/resume/revoke` 需 `--reason`。接手沿用同一研究 ID 和 campaign，不重建余额。
 
+设计接手包包含初筛历史、已核验最终探索的定性失败码与证据身份、累计及阶段消费；它不查询独立验证状态，也不包含独立收益、行情或诊断。查看完整业务状态使用普通 `continuous-status`，不要把该完整结果交回策略设计端。
+
 增量使用 `continuous-preview --grant <增量.json>`、`continuous-owner-approve --grant <增量.json>`、`continuous-grant --grant <增量.json> --approval-reference <新审批引用.json>`。增量绑定原授权身份，逐资源与逐阶段列出 delta、轮次 delta 和有效期，不能改写合同或历史。
 
 宿主沿用现有 daemon 命令并指定 `--lifecycle-bindings <统一部署.json>`，仅推进明确启动的登记研究。每个研究每 tick 最多一个有界步骤。中断后核对原工作进程和回执，活跃或未知用途不能重复派发；停止宿主不清除原预留与账本。
