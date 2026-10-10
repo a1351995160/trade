@@ -13,7 +13,7 @@ from scripts.prepare_long_horizon_data_v1 import (
 from chanlun_trader.research_factory.baostock_raw_supplement_v1 import RAW_FIELDS
 from tests.research_factory.test_baostock_raw_supplement_v1 import RawClient
 from tests.research_factory.test_tdx_research_adapter_v1 import DATES, SYMBOLS, daily, evidence
-from tests.research_factory.test_universe_actions_v1 import Response, sha, write
+from tests.research_factory.test_universe_actions_v1 import Response, action, legacy_catalog, sha, write
 
 
 class AllDaysClient(RawClient):
@@ -42,7 +42,7 @@ class AllDaysClient(RawClient):
         return Response(fields, rows)
 
 
-def setup(tmp_path, *, omit=None, conflict=False, factor_rows=False):
+def setup(tmp_path, *, omit=None, conflict=False, factor_rows=False, execute=True):
     legacy = tmp_path / 'trade-system-contract-port-v1'
     base = legacy / 'data/full_universe'
     base.mkdir(parents=True)
@@ -89,10 +89,148 @@ def setup(tmp_path, *, omit=None, conflict=False, factor_rows=False):
     queue_path = tmp_path / 'queue.json'
     write(queue_path, queue)
     acquisition = tmp_path / 'acquisition'
-    collector.collect(queue_path, acquisition, client=AllDaysClient(conflict=conflict, factor_rows=factor_rows))
+    if execute:
+        collector.collect(queue_path, acquisition, client=AllDaysClient(conflict=conflict, factor_rows=factor_rows))
     return {'base_manifest': path, 'legacy_root': legacy, 'acquisition_root': acquisition,
         'output_root': tmp_path / 'prepared', 'feature_start': DATES[0],
         'account_start': DATES[1], 'account_end': DATES[-1]}
+
+
+def two_generation_collection(tmp_path):
+    from scripts import prepare_universe_collection_continuation_v1 as continuation
+    args = setup(tmp_path, execute=False)
+    queue_path = tmp_path / 'queue.json'
+    queue = json.loads(queue_path.read_bytes())
+    original = queue['batches'][0]
+    queue['batches'] = [{**original, 'batch_id': f'BATCH_{index // 3}',
+        'requests': original['requests'][index:index + 3]} for index in range(0, 9, 3)]
+    write(queue_path, queue)
+
+    def failing_client(fail_at):
+        client, calls = AllDaysClient(), []
+        for api in ('query_history_k_data_plus', 'query_adjust_factor', 'query_dividend_data'):
+            normal = getattr(client, api)
+            def request(*, _normal=normal, **query):
+                calls.append(query)
+                if len(calls) == fail_at:
+                    response = Response([], [])
+                    response.error_code = '10002007'
+                    response.error_msg = 'synthetic receive failure'
+                    return response
+                return _normal(**query)
+            setattr(client, api, request)
+        return client
+
+    roots = [args['acquisition_root'], tmp_path / 'continued_1', tmp_path / 'continued_2']
+    for index, failure in enumerate((5, 2)):
+        with pytest.raises(RuntimeError, match='BAOSTOCK_RESPONSE_FAILED'):
+            collector.collect(queue_path, roots[index], client=failing_client(failure))
+        plan = tmp_path / f'continuation_{index + 1}'
+        continuation.prepare_continuation(roots[index], plan,
+            collection_output_root=roots[index + 1], reason='合成完整池续采回归')
+        queue_path = plan / 'ACQUISITION_BATCHES.json'
+    collector.collect(queue_path, roots[-1], client=AllDaysClient())
+    args['acquisition_root'] = roots[-1]
+    return args, roots
+
+
+def test_long_preparation_inherits_completed_and_partial_raw_across_two_continuations(tmp_path):
+    args, roots = two_generation_collection(tmp_path)
+    originals = {path: path.read_bytes() for root in roots for path in root.rglob('*') if path.is_file()}
+    result = prepare_long_horizon_data_v1(**args)
+    assert result['target_count'] == 3 and result['corporate_actions']['account_terms_covered_symbol_count'] == 3
+    started = json.loads((args['output_root'] / 'PREPARATION_STARTED.json').read_bytes())
+    collection = started['collection']
+    assert collection['request_count'] == 11 and collection['success_count'] == 9
+    assert collection['root_planned_request_count'] == 9 and collection['generation'] == 2
+    catalog = json.loads((args['output_root'] / 'RAW_SOURCE_CATALOG.json').read_bytes())
+    assert {row['symbol'] for row in catalog['responses']} == set(SYMBOLS)
+    assert {str(Path(row['result_path']).parents[2]) for row in catalog['responses']} == {str(roots[0]), str(roots[2])}
+    partial = next(row for row in collection['successful_requests']
+        if row['request_item']['api'] == 'query_history_k_data_plus' and not row['batch_completed'])
+    assert partial['collection_root'] == str(roots[0]) and partial['parent_batch_status'] == 'BLOCKED'
+    assert all(path.read_bytes() == content for path, content in originals.items())
+
+
+def test_long_preparation_still_rejects_incomplete_continuation_leaf(tmp_path):
+    args, roots = two_generation_collection(tmp_path)
+    args['acquisition_root'] = roots[1]
+    with pytest.raises(ValueError, match='LONG_DATA_COLLECTION_NOT_COMPLETE'):
+        prepare_long_horizon_data_v1(**args)
+    assert not args['output_root'].exists()
+
+
+def additional_cross_year_catalog(tmp_path, *, cash='0.2'):
+    catalog = legacy_catalog(tmp_path, event=action(dividOperateDate='2023-03-03',
+        dividRegistDate='2023-03-02', dividPayDate='2023-03-06',
+        dividPlanDate='2022-12-30', dividCashPsBeforeTax=cash))
+    declaration = json.loads(catalog.read_bytes())
+    registration = Path(declaration['datasets'][0]['manifest_path'])
+    metadata = json.loads(registration.read_bytes())
+    for row in metadata['files'].values():
+        row.update(start=20221230, end=20241231)
+    write(registration, metadata)
+    return catalog, registration
+
+
+def test_additional_legacy_catalog_preserves_cross_year_physical_bounds_and_both_catalog_identities(tmp_path):
+    args = setup(tmp_path)
+    catalog, registration = additional_cross_year_catalog(tmp_path / 'supplement')
+    duplicate = tmp_path / 'same_sources_catalog.json'
+    duplicate.write_bytes(catalog.read_bytes())
+    originals = {path: path.read_bytes() for path in (catalog, registration, duplicate,
+        args['base_manifest'], Path(json.loads(catalog.read_bytes())['roots']['A']) / 'DIVIDEND_000001.SZ_2023.json')}
+    prepare_long_horizon_data_v1(**args, additional_legacy_catalog=[catalog, duplicate])
+    merged = json.loads((args['output_root'] / 'LEGACY_ACTION_CATALOG_EXTENDED.json').read_bytes())
+    assert merged['original_source_catalog']['sha256'] == sha(args['base_manifest'].parent / 'OLD_ACTION_CATALOG.json')
+    assert {row['path'] for row in merged['additional_legacy_catalogs']} == {str(catalog), str(duplicate)}
+    assert all(row['datasets'][0]['sha256'] == sha(registration) for row in merged['additional_legacy_catalogs'])
+    sources = json.loads((args['output_root'] / 'actions_v1/SOURCE_CATALOG.json').read_bytes())['sources']
+    extra = [row for row in sources if row['source_year_type'] == 'report']
+    assert len(extra) == 1 and extra[0]['physical_start'] == 20221230 and extra[0]['physical_end'] == 20241231
+    assert extra[0]['sha256'] == sha(Path(extra[0]['path']))
+    assert all(path.read_bytes() == content for path, content in originals.items())
+
+
+@pytest.mark.parametrize('changed', ['raw', 'conflicting_query'])
+def test_additional_legacy_catalog_changed_or_conflicting_original_is_rejected(tmp_path, changed):
+    base = tmp_path / 'base_catalog.json'
+    write(base, {'roots': {}, 'datasets': []})
+    catalog, _ = additional_cross_year_catalog(tmp_path / 'supplement')
+    additions = [catalog]
+    if changed == 'raw':
+        source = catalog.parent / 'legacy/DIVIDEND_000001.SZ_2023.json'
+        source.write_bytes(source.read_bytes() + b' ')
+        reason = 'ACTION_RAW_SOURCE_SHA_CHANGED'
+    else:
+        conflicting, _ = additional_cross_year_catalog(tmp_path / 'conflicting', cash='0.3')
+        additions.append(conflicting)
+        reason = 'LONG_DATA_ADDITIONAL_LEGACY_IDENTITY_CONFLICT'
+    output = tmp_path / 'output'
+    output.mkdir()
+    with pytest.raises(ValueError, match=reason):
+        preparation._merge_legacy_action_catalogs(base, additions, output)
+    assert not (output / 'LEGACY_ACTION_CATALOG_EXTENDED.json').exists()
+
+
+@pytest.mark.parametrize('changed', ['catalog', 'registration'])
+def test_additional_registration_changed_during_verification_cannot_receive_old_identity(tmp_path, monkeypatch, changed):
+    from scripts import prepare_universe_actions_v1 as actions
+    base = tmp_path / 'base_catalog.json'
+    write(base, {'roots': {}, 'datasets': []})
+    catalog, registration = additional_cross_year_catalog(tmp_path / 'supplement')
+    original = actions._read_response
+    def read_and_change(item, audit):
+        result = original(item, audit)
+        target = catalog if changed == 'catalog' else registration
+        target.write_bytes(target.read_bytes() + b' ')
+        return result
+    monkeypatch.setattr(actions, '_read_response', read_and_change)
+    output = tmp_path / 'output'
+    output.mkdir()
+    with pytest.raises(ValueError, match='LONG_DATA_ADDITIONAL_LEGACY_REGISTRATION_CHANGED'):
+        preparation._merge_legacy_action_catalogs(base, catalog, output)
+    assert not (output / 'LEGACY_ACTION_CATALOG_EXTENDED.json').exists()
 
 
 def test_full_registered_three_board_data_uses_real_native_raw_and_new_hashes(tmp_path):

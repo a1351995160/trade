@@ -84,31 +84,31 @@ def relocate_declarations_v1(value, legacy_root, relocations):
 
 def _new_collection_sources(acquisition_root):
     root = Path(acquisition_root).absolute()
-    raw, queue = collector._load_queue(root / 'ACQUISITION_BATCHES.json')
-    frozen = _load(root / 'FROZEN_COLLECTION.json')
-    if frozen != collector._collection_scope(raw, queue):
-        raise ValueError('LONG_DATA_FROZEN_COLLECTION_CHANGED')
-    events = collector._read_events(root, frozen)
-    completed = {e['batch_id']: e for e in events if e['event'] == 'BATCH_COMPLETED'}
-    if len(completed) != len(queue['batches']):
-        raise ValueError('LONG_DATA_COLLECTION_NOT_COMPLETE')
+    try:
+        view = collector.verified_collection_successes_v1(root, require_complete=True)
+    except ValueError as exc:
+        if str(exc) == 'COLLECTOR_COLLECTION_NOT_COMPLETE':
+            raise ValueError('LONG_DATA_COLLECTION_NOT_COMPLETE') from exc
+        raise
     sources = {}
-    for plan in queue['batches']:
-        batch = plan['batch_id']
-        proof = collector._verify_success(root, plan, completed[batch])
-        responses = {r['file']: r for r in proof['responses']}
-        for item in plan['requests']:
-            if item['api'] != 'query_history_k_data_plus':
-                continue
-            source = collected_raw_source_v1(root / 'batches' / batch, item,
-                responses[item['file']], result_sha256=proof['result_sha256'])
-            if source['symbol'] in sources:
-                raise ValueError('LONG_DATA_DUPLICATE_RAW_SECURITY')
-            sources[source['symbol']] = source
-    return sources, {'queue_sha256': frozen['queue_sha256'],
-        'frozen_collection_sha256': _sha(root / 'FROZEN_COLLECTION.json'),
-        'journal_sha256': _sha(root / 'COLLECTION_JOURNAL.jsonl'),
-        'completed_batches': len(completed), 'raw_source_count': len(sources)}
+    for reference in view['sources']:
+        item = reference['request_item']
+        if item['api'] != 'query_history_k_data_plus':
+            continue
+        directory = Path(reference['collection_root']) / 'batches' / reference['batch_id']
+        source = collected_raw_source_v1(directory, item, reference['result_row'],
+            result_sha256=reference['result_sha256'])
+        if source['symbol'] in sources:
+            raise ValueError('LONG_DATA_DUPLICATE_RAW_SECURITY')
+        sources[source['symbol']] = source
+    leaf = view['collections'][-1]
+    return sources, {key: leaf[key] for key in (
+        'queue_sha256', 'frozen_collection_sha256', 'journal_sha256')} | {
+        'completed_batches': leaf['completed_batch_count'], 'raw_source_count': len(sources),
+        'collections': view['collections'], 'successful_requests': view['sources'],
+        'request_count': view['request_count'], 'success_count': view['success_count'],
+        'root_planned_request_count': view['root_planned_request_count'],
+        'generation': view['generation'], 'retry_counts_by_operation': view['retry_counts_by_operation']}
 
 
 def _calendar(calendar_path, feature_start, account_start, account_end):
@@ -230,6 +230,70 @@ def _register_legacy_actions(catalog_path, output, legacy_root, relocations):
     return target
 
 
+def _merge_legacy_action_catalogs(base_catalog, additional, output):
+    """只在新登记中接入补充原件；同身份去重，查询或路径身份冲突即阻断。"""
+    if not additional:
+        return base_catalog
+    from scripts.prepare_universe_actions_v1 import _legacy_sources, _read_response
+    paths = [additional] if isinstance(additional, (str, Path)) else additional
+    merged = _load(base_catalog)
+    base_rows, _ = _legacy_sources(base_catalog)
+    operations, physical_paths = defaultdict(set), {}
+
+    def identity(row):
+        return collector._hash({'path': str(row['path']), 'sha256': row['sha256'],
+            'api': row['api'], 'request': row['request'],
+            'physical_metadata': row['physical_metadata']})
+
+    for row in base_rows:
+        signature = identity(row)
+        operations[collector._hash({'api': row['api'], 'request': row['request']})].add(signature)
+        physical_paths[str(row['path'])] = signature
+    catalogs, seen_catalogs, additions = [], set(), []
+    for source in paths:
+        path = Path(source).absolute()
+        digest = _sha(path)
+        if (str(path), digest) in seen_catalogs:
+            continue
+        seen_catalogs.add((str(path), digest))
+        declaration = _load(path)
+        catalogs.append({'path': str(path), 'sha256': digest, 'datasets': [
+            {'path': str(Path(dataset['manifest_path']).absolute()),
+             'sha256': _sha(Path(dataset['manifest_path']))} for dataset in declaration.get('datasets', [])]})
+        rows, skipped = _legacy_sources(path)
+        if skipped:
+            raise ValueError('LONG_DATA_ADDITIONAL_LEGACY_SCOPE_UNAVAILABLE')
+        for row in rows:
+            _read_response(row, output / 'ADDITIONAL_LEGACY_READ_EVENTS.jsonl')
+            operation = collector._hash({'api': row['api'], 'request': row['request']})
+            signature, physical = identity(row), str(row['path'])
+            if (operations[operation] and operations[operation] != {signature}
+                    or physical in physical_paths and physical_paths[physical] != signature):
+                raise ValueError('LONG_DATA_ADDITIONAL_LEGACY_IDENTITY_CONFLICT')
+            if signature in operations[operation]:
+                continue
+            operations[operation].add(signature)
+            physical_paths[physical] = signature
+            additions.append(row)
+    for catalog in catalogs:
+        for reference in [catalog, *catalog['datasets']]:
+            if _sha(Path(reference['path'])) != reference['sha256']:
+                raise ValueError('LONG_DATA_ADDITIONAL_LEGACY_REGISTRATION_CHANGED')
+    grouped = defaultdict(dict)
+    for row in additions:
+        grouped[row['path'].parent][row['path'].name] = row['physical_metadata']
+    for index, (directory, files) in enumerate(sorted(grouped.items(), key=lambda pair: str(pair[0]))):
+        root_id = f'additional_legacy_{index}'
+        registration = output / f'additional_legacy_registration_{index}.json'
+        _write(registration, {'files': files})
+        merged['roots'][root_id] = str(directory)
+        merged['datasets'].append({'root_id': root_id, 'manifest_path': str(registration)})
+    merged['additional_legacy_catalogs'] = catalogs
+    target = output / 'LEGACY_ACTION_CATALOG_EXTENDED.json'
+    _write(target, merged)
+    return target
+
+
 def _rebind_declaration(binding, legacy_root, output, name, relocations):
     source = inherited_path_v1(binding['path'], binding['sha256'], legacy_root, relocations)
     original = _load(source)
@@ -240,7 +304,8 @@ def _rebind_declaration(binding, legacy_root, output, name, relocations):
 
 
 def prepare_long_horizon_data_v1(*, base_manifest, acquisition_root, output_root,
-        legacy_root, feature_start=20220902, account_start=20221205, account_end=20241231):
+        legacy_root, feature_start=20220902, account_start=20221205, account_end=20241231,
+        additional_legacy_catalog=None):
     """固定全目标登记；缺证据仍进入缺口/排除表，不因结果好坏缩池。"""
     base_path, output, legacy = (Path(p).absolute() for p in
         (base_manifest, output_root, legacy_root))
@@ -349,6 +414,7 @@ def prepare_long_horizon_data_v1(*, base_manifest, acquisition_root, output_root
     _write(registration, manifest)
     legacy_catalog = _register_legacy_actions(base_path.parent /
         base['corporate_action_preparation']['source_catalog'], output, legacy, relocations)
+    legacy_catalog = _merge_legacy_action_catalogs(legacy_catalog, additional_legacy_catalog, output)
     from scripts.prepare_universe_actions_v1 import prepare_universe_actions_v1
     action_v1 = prepare_universe_actions_v1(manifest=registration, acquisition_root=acquisition_root,
         output_dir=output / 'actions_v1', legacy_catalog=legacy_catalog,
@@ -411,6 +477,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for key in ('base-manifest', 'acquisition-root', 'output-root', 'legacy-root'):
         parser.add_argument('--' + key, required=True)
+    parser.add_argument('--additional-legacy-catalog', action='append')
     for key, default in [('feature-start', 20220902), ('account-start', 20221205), ('account-end', 20241231)]:
         parser.add_argument('--' + key, type=int, default=default)
     result = prepare_long_horizon_data_v1(**vars(parser.parse_args()))
