@@ -84,6 +84,18 @@ def long_resume_metadata(tmp_path):
     return path, job
 
 
+def test_optional_progress_reads_original_bytes_and_only_missing_is_absent(tmp_path):
+    from chanlun_trader.research_factory.universe_execution_recovery_v1 import _optional_progress_bytes
+    checkpoint = tmp_path / 'CHECKPOINT.json'
+    assert _optional_progress_bytes(checkpoint, tmp_path) is None
+    checkpoint.write_bytes(b'{"same_original":true}')
+    assert _optional_progress_bytes(checkpoint, tmp_path) == b'{"same_original":true}'
+    with pytest.raises(ValueError, match='UNIVERSE_RESUME_PROGRESS_REFERENCE_INVALID'):
+        _optional_progress_bytes(tmp_path, tmp_path)
+    with pytest.raises(ValueError, match='UNIVERSE_RESUME_PROGRESS_REFERENCE_INVALID'):
+        _optional_progress_bytes(tmp_path.parent / 'outside.json', tmp_path)
+
+
 @pytest.mark.parametrize('field', ['root_parent', 'root_external', 'checkpoint_parent',
                                   'checkpoint_external', 'checkpoint_device', 'feature_external'])
 def test_long_resume_rejects_untrusted_paths_before_source_reads_or_budget_access(tmp_path, monkeypatch, field):

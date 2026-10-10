@@ -1,5 +1,7 @@
 """显式恢复未结算的全范围回测；沿用原 START、预算和时间上限。"""
 from datetime import datetime, timezone
+import hashlib
+import json
 import os
 from pathlib import Path
 import sys
@@ -9,7 +11,22 @@ from ..research_daemon_state import DaemonInstanceLockV1
 from .common import stable_hash
 from .engine_replay_recovery_v1 import _read_receipt
 from .mutation_boundary import ObjectiveMutationLock
-from .secure_file_reference_v1 import checked_directory_path, checked_file_path, validated_reference_path
+from .secure_file_reference_v1 import checked_directory_path, checked_file_path, read_file_bytes, validated_reference_path
+
+
+def _optional_progress_bytes(path, root):
+    """只读已归属任务的进度原件；缺失是合法状态，其他读取错误不降级。"""
+    try:
+        return read_file_bytes(path, root=root, error_code='UNIVERSE_RESUME_PROGRESS_REFERENCE_INVALID')
+    except ValueError as error:
+        cause = error
+        for _ in range(8):
+            if isinstance(cause, FileNotFoundError):
+                return None
+            cause = cause.__cause__
+            if cause is None:
+                break
+        raise
 
 
 def resume_universe_job(path):
@@ -195,13 +212,15 @@ def resume_long_horizon_job(path,job,*,reconcile_only=False):
                     raise PermissionError('UNIVERSE_RESUME_FAILURE_DISPATCH_CONFLICT')
                 known_failure=True
             checkpoint, feature_binding = checkpoints[name], feature_bindings[name]
-            if checkpoint.exists():
-                value=runner.read_json(checkpoint)
+            checkpoint_raw = _optional_progress_bytes(checkpoint, root)
+            feature_raw = None if checkpoint_raw is not None else _optional_progress_bytes(feature_binding, root)
+            if checkpoint_raw is not None:
+                value=json.loads(checkpoint_raw)
                 from .universe_execution_state_v2 import VERSION
                 if value.get('version') != VERSION or value.get('state_identity') != stable_hash(
                         {k:v for k,v in value.items() if k!='state_identity'}):
                     raise PermissionError('UNIVERSE_RESUME_FULL_STATE_CHANGED')
-            elif not feature_binding.is_file() and not known_failure:
+            elif feature_raw is None and not known_failure:
                 raise PermissionError('UNIVERSE_RESUME_NO_COMMITTED_PROGRESS')
             resource_path=root/(prefix+'_RESOURCE.json');status_path=root/(prefix+'_STATUS.json')
             resource=runner.read_json(resource_path) if resource_path.exists() else None
@@ -224,8 +243,8 @@ def resume_long_horizon_job(path,job,*,reconcile_only=False):
                     outcome='FAILED'
             gov.end_segment(name,number,seconds=measured,evidence_identity=evidence,outcome=outcome)
             runner.save(root/(prefix+'_RESUME.json'),{'dispatch_id':pending['dispatch_id'],
-                'state_identity':runner.sha(checkpoint) if checkpoint.exists() else
-                    runner.sha(feature_binding) if feature_binding.is_file() else None,
+                'state_identity':hashlib.sha256(checkpoint_raw).hexdigest() if checkpoint_raw is not None else
+                    hashlib.sha256(feature_raw).hexdigest() if feature_raw is not None else None,
                 'charge_basis':'MEASURED' if measured is not None else 'UNKNOWN_UPPER_BOUND',
                 'budget_reused':True,'resumed_at':datetime.now(timezone.utc).isoformat()})
             if outcome in ('COMPLETED','FAILED'):
