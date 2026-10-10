@@ -9,6 +9,7 @@ from types import SimpleNamespace
 import pytest
 
 from chanlun_trader.research.guard import configured_access_authority
+from chanlun_trader.research_factory import secure_file_reference_v1 as secure_reference
 from chanlun_trader.research_factory.secure_file_reference_v1 import (
     checked_directory_path, file_sha256, read_file_bytes, read_pinned_json, validated_reference_path,
 )
@@ -190,6 +191,73 @@ def test_opened_file_must_match_checked_object(tmp_path, monkeypatch):
     monkeypatch.setattr(os, 'open', lambda _path, flags: original_open(substituted, flags))
     with pytest.raises(ValueError, match='^' + CODE + '$'):
         read_file_bytes(target, error_code=CODE, root=tmp_path)
+
+
+@pytest.mark.parametrize('bounded', [False, True])
+def test_native_open_supports_fixed_unicode_space_path(tmp_path, monkeypatch, bounded):
+    owner = tmp_path / '外部 Owner'
+    owner.mkdir()
+    target = owner / '固定 原件.json'
+    target.write_bytes(b'approved')
+    original_open = os.open
+    opened_paths = []
+
+    def open_native(path, flags):
+        assert isinstance(path, str)
+        assert path == os.path.normcase(os.path.normpath(str(target)))
+        opened_paths.append(path)
+        return original_open(path, flags)
+
+    monkeypatch.setattr(os, 'open', open_native)
+    assert read_file_bytes(target, error_code=CODE, root=owner if bounded else None) == b'approved'
+    assert len(opened_paths) == 1
+
+
+@pytest.mark.parametrize('bounded', [False, True])
+def test_native_representation_cannot_redirect_checked_path_to_prefix_sibling(tmp_path, monkeypatch, bounded):
+    owner = tmp_path / 'owner'
+    sibling = tmp_path / 'owner-other'
+    owner.mkdir()
+    sibling.mkdir()
+    target, redirected = owner / 'fixed.json', sibling / 'fixed.json'
+    target.write_bytes(b'approved')
+    redirected.write_bytes(b'outside')
+    original_checked, original_normpath = secure_reference.checked_file_path, os.path.normpath
+    checked = []
+
+    def checked_file(*args, **kwargs):
+        result = original_checked(*args, **kwargs)
+        checked.append(result)
+        return result
+
+    def normpath(path):
+        if str(path) == str(target):
+            assert checked == [target]
+            return str(redirected)
+        return original_normpath(path)
+
+    def forbidden(*_args, **_kwargs):
+        pytest.fail('native out-of-root path must be rejected before open')
+
+    monkeypatch.setattr(secure_reference, 'checked_file_path', checked_file)
+    monkeypatch.setattr(os.path, 'normpath', normpath)
+    monkeypatch.setattr(os, 'open', forbidden)
+    with pytest.raises(ValueError, match='^' + CODE + '$'):
+        read_file_bytes(target, error_code=CODE, root=owner if bounded else None)
+    assert checked == [target]
+
+
+def test_native_boundary_accepts_drive_root_but_not_equal_root_file(tmp_path, monkeypatch):
+    target = tmp_path / 'fixed.json'
+    target.write_bytes(b'approved')
+    assert read_file_bytes(target, error_code=CODE, root=Path(target.anchor)) == b'approved'
+
+    def forbidden(*_args, **_kwargs):
+        pytest.fail('a directory boundary must not be opened as its own file')
+
+    monkeypatch.setattr(os, 'open', forbidden)
+    with pytest.raises(ValueError, match='^' + CODE + '$'):
+        read_file_bytes(target, error_code=CODE, root=target)
 
 
 def test_json_size_bound_and_pending_absolute_reference(tmp_path):

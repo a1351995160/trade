@@ -79,7 +79,12 @@ def _regular_reader(value, *, error_code, root):
     try:
         path = checked_file_path(value, error_code=error_code, root=root)
         before = path.lstat()
-        descriptor = os.open(path, os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0))
+        native_path = os.path.normcase(os.path.normpath(str(path)))
+        native_root = os.path.normcase(os.path.normpath(str(root if root is not None else path.parent)))
+        # 最终系统调用也验证原生路径归属；固定外部原件以已核验父目录为边界。
+        if not native_path.startswith(native_root.rstrip(os.sep) + os.sep):
+            raise ValueError
+        descriptor = os.open(native_path, os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0))
         opened = os.fstat(descriptor)
         # 再验路径及已打开对象，拒绝检查与打开之间发生的文件/链接替换。
         checked_file_path(path, error_code=error_code, root=root)
