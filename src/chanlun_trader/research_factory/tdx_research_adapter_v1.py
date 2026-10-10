@@ -10,7 +10,7 @@ import struct
 import numpy as np
 import pandas as pd
 
-from ..research.guard import ResearchDataAccessGuard
+from ..research.guard import ResearchDataAccessGuard, TrustedResearchDataAccessScopeV1
 from .research_universe_v1 import BOARDS, canonical_symbol, identity, scope_board
 
 
@@ -114,7 +114,7 @@ class TdxResearchAdapterV1:
     """适用于登记TDX日线原件/缓存的同一规范化流程，三板块一视同仁。"""
 
     def normalize_daily(self, frame: pd.DataFrame, *, evidence: dict,
-                        required_fields=()) -> dict:
+                        required_fields=(), trusted_scope=None) -> dict:
         conversion = validate_tdx_evidence(evidence)
         if (not isinstance(required_fields, (tuple, list, set))
                 or not all(isinstance(field, str) for field in required_fields)
@@ -145,7 +145,15 @@ class TdxResearchAdapterV1:
             pd.to_datetime(daily.date.astype(str), format='%Y%m%d', errors='raise')
         except ValueError as exc:
             raise ValueError('TDX_DATE_INVALID') from exc
-        ResearchDataAccessGuard().check_frame(daily, 'date')
+        if trusted_scope is None:
+            guard = ResearchDataAccessGuard()
+        elif isinstance(trusted_scope, TrustedResearchDataAccessScopeV1):
+            binding = trusted_scope.binding
+            guard = trusted_scope.guard(purpose='INDEPENDENT_CONFIRMATION',
+                dataset_id=binding['dataset_id'], manifest_sha256=binding['manifest_sha256'])
+        else:
+            raise ValueError('TDX_TRUSTED_DATA_SCOPE_REQUIRED')
+        guard.check_frame(daily, 'date')
         if daily.duplicated(['symbol', 'date']).any():
             raise ValueError('TDX_DUPLICATE_SYMBOL_DATE')
         numeric = ['open', 'high', 'low', 'close', 'volume', 'amount']

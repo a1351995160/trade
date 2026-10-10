@@ -15,7 +15,7 @@ from chanlun_trader.webapp import create_app
 
 
 def lifecycle_service(root, filename):
-    from chanlun_trader.research_factory.lifecycle_service_v2 import LifecycleServiceV2
+    from scripts.lifecycle_deployment_v2 import build_lifecycle_service
     if root is None:
         raise ValueError('LIFECYCLE_EXPLICIT_RESEARCH_ROOT_REQUIRED')
     root, filename = Path(root).absolute(), Path(filename).absolute()
@@ -24,10 +24,7 @@ def lifecycle_service(root, filename):
             or filename.stat().st_size > 20 * 1024 * 1024):
         raise ValueError('LIFECYCLE_CONFIG_OUTSIDE_WORKSPACE')
     config = json.loads(filename.read_text(encoding='utf-8-sig'))
-    if not isinstance(config, dict) or 'bindings' not in config or set(config) - {'bindings', 'real_binding_ids'}:
-        raise ValueError('LIFECYCLE_DEPLOYMENT_CONFIG_FIELDS')
-    from scripts.lifecycle_deployment_v2 import qualified_research_loader
-    return LifecycleServiceV2(root, config['bindings'], research_loader=qualified_research_loader(root), real_binding_ids=config.get('real_binding_ids', ()))
+    return build_lifecycle_service(root, config)
 
 
 def main() -> None:

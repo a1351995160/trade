@@ -181,3 +181,45 @@ def inventory_metadata(roots: list[str | Path]) -> dict:
         inventories.append(entry)
     return {'schema_version': 'DATA_DIRECTORY_METADATA_V1', 'roots': inventories,
             'content_read': False, 'data_qualification': 'UNKNOWN'}
+
+
+def continuous_data_dependencies_v1(manifest: dict, *, account_sessions=None) -> dict:
+    """列出长度与配套依赖；元数据/日数不授予更早账户或独立验证资格。
+
+    account_sessions 仅供可信投影程序填入子日历的实际账户日数。未知日数不
+    用行情范围或工作日估算补造；独立观察须由独立协议另行认证。
+    """
+    if account_sessions is not None and (type(account_sessions) is not int or account_sessions < 0):
+        raise ValueError('DATA_DEPENDENCY_ACCOUNT_SESSIONS_INVALID')
+    files = manifest.get('files', {})
+    if not isinstance(files, dict):
+        raise ValueError('DATA_DEPENDENCY_MANIFEST_INVALID')
+    categories = []
+    for kind in ('DAILY', 'STATES', 'REFERENCE_PRICES', 'EVENTS', 'CALENDAR',
+                 'CORPORATE_ACTION_COVERAGE', 'SOURCE_QUALIFICATION'):
+        items = [row for row in files.values() if row.get('kind') == kind]
+        categories.append({'kind': kind, 'source_count': len(items),
+            'declared_ranges': [{'start': row.get('start'), 'end': row.get('end'),
+                                 'source_id': row.get('source_id')} for row in items],
+            'status': 'REQUIRES_CONTENT_QUALIFICATION' if items else 'MISSING'})
+    missing = [row['kind'] for row in categories if row['status'] == 'MISSING']
+    return {'schema_version': 'CONTINUOUS_DATA_DEPENDENCIES_V1',
+        'exploration_504': {'required_account_sessions': 504,
+            'observed_calendar_account_sessions': account_sessions,
+            'missing_account_sessions': max(0, 504 - account_sessions) if account_sessions is not None else None,
+            'status': ('SESSION_COUNT_UNKNOWN' if account_sessions is None else
+                       'ACCOUNT_SESSIONS_INSUFFICIENT' if account_sessions < 504 else
+                       'REQUIRES_ACCOUNT_AND_WARMUP_QUALIFICATION'),
+            'earlier_data_requires': ['PRICES', 'STATES', 'REFERENCE_PRICES', 'EVENTS',
+                'CALENDAR', 'CORPORATE_ACTION_COVERAGE', 'HISTORICAL_UNIVERSE_SCOPE', 'RULE_WARMUP'],
+            'historical_universe_scope': deepcopy(manifest.get('universe_scope')),
+            'ready': False},
+        'independent_252': {'required_observed_sessions': 252, 'observed_sessions': None,
+            'status': 'AUTHENTICATED_INDEPENDENT_OBSERVATIONS_NOT_ESTABLISHED', 'ready': False,
+            'requires': ['FROZEN_FAMILY_AND_SELECTION', 'TRUSTED_INDEPENDENT_PROTOCOL',
+                'EXPLICIT_DATA_AUTHORIZATION', 'REAL_OBSERVED_PUBLICATION_AND_ACCESS_EVIDENCE',
+                '252_ACTUAL_ACCOUNT_SESSIONS', 'NO_DESIGN_EXPOSURE']},
+        'categories': categories, 'missing_categories': missing,
+        'account_data_ready': False, 'independent_confirmation_eligible': False,
+        'limitations': ['PHYSICAL_TRAIN_PROJECTION_DOES_NOT_CREATE_INDEPENDENCE',
+                       'PRICE_ONLY_EXTENSION_DOES_NOT_EXTEND_ACCOUNT_QUALIFICATION']}

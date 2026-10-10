@@ -25,7 +25,7 @@ def universe_task_metadata_v1(service, task_id: str) -> dict:
     task = service._task(task_id)
     root = service.root / task_id
     preview = _metadata(root / "PREVIEW.json", root)
-    if preview.get("request", {}).get("version") not in {'FULL_UNIVERSE_SUBMISSION_V1', 'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3'}:
+    if preview.get("request", {}).get("version") not in {'FULL_UNIVERSE_SUBMISSION_V1', 'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3','FULL_UNIVERSE_SUBMISSION_V4'}:
         return {}
     if (preview.get("preview_identity") != task["preview_identity"]
             or stable_hash({k: v for k, v in preview.items() if k != "preview_identity"})
@@ -47,7 +47,7 @@ def universe_task_metadata_v1(service, task_id: str) -> dict:
     snapshot = _metadata(input_path, root)
     if expected != {hashlib.sha256(input_path.read_bytes()).hexdigest()}:
         raise ValueError("UNIVERSE_STATUS_INPUT_CHANGED")
-    qualified = preview['request']['version'] in {'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3'}
+    qualified = preview['request']['version'] in {'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3','FULL_UNIVERSE_SUBMISSION_V4'}
     scope = snapshot.get('bundle', {}).get('qualified_scope') if qualified else None
     if qualified:
         if (not isinstance(scope, dict) or scope != task.get('qualification_scope')
@@ -89,9 +89,9 @@ def diagnose_universe(service, request: dict, preview_identity: str) -> dict:
     同一预览/授权的记录只读复用，不自称已重新检查变化中的原件。
     实际账户冻结仍必须重新检查来源，诊断不成为执行权限。
     """
-    if not isinstance(request, dict) or request.get("version") not in {'FULL_UNIVERSE_SUBMISSION_V1', 'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3'}:
+    if not isinstance(request, dict) or request.get("version") not in {'FULL_UNIVERSE_SUBMISSION_V1', 'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3','FULL_UNIVERSE_SUBMISSION_V4'}:
         raise ValueError("UNIVERSE_DIAGNOSIS_REQUEST_REQUIRED")
-    if request['version'] in {'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3'}:
+    if request['version'] in {'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3','FULL_UNIVERSE_SUBMISSION_V4'}:
         return service.scan(request, preview_identity)
     preview = service.preview(request)
     if preview["preview_identity"] != preview_identity:

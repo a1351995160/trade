@@ -224,3 +224,81 @@ def assert_tdx_ready():
         capture_output=True,text=True,timeout=10,check=True)
     if 'tdxw.exe' not in processes.stdout.lower():
         raise RuntimeError('TDX_CLIENT_NOT_RUNNING')
+
+
+def universe_snapshot_projection(store, snapshot_ids, *, target_symbols, calendar,
+                                 feature_start, account_start, account_end, frozen_at,
+                                 profile='REAL_OBSERVED'):
+    """已有快照的全登记范围投影；不采集、不补值、不授予独立性或读取授权。
+
+    多个同日分片可以共同覆盖登记池，但重叠证券必须完全相同。缺失的开盘、
+    收盘、公司行动和采集时点各自保留；SYNTHETIC 不能升级为真实观察。
+    """
+    if profile not in ('REAL_OBSERVED', 'SYNTHETIC'):
+        raise ValueError('SNAPSHOT_PROJECTION_PROFILE_INVALID')
+    if (not isinstance(snapshot_ids, list) or len(snapshot_ids) != len(set(snapshot_ids))
+            or not isinstance(target_symbols, list) or not target_symbols
+            or len(target_symbols) != len(set(target_symbols))
+            or any(not re.fullmatch(r'(00\d{4}\.SZ|60\d{4}\.SH|30\d{4}\.SZ)', symbol)
+                   for symbol in target_symbols)):
+        raise ValueError('SNAPSHOT_PROJECTION_SCOPE_INVALID')
+    from .universe_account_inputs_v1 import normalized_universe_window_v1
+    window = normalized_universe_window_v1({'symbols': target_symbols, 'calendar': calendar,
+        'feature_start': feature_start, 'account_start': account_start, 'account_end': account_end})
+    frozen = _stamp(frozen_at)
+    collected, refs, actions, reasons = {}, [], {}, []
+    for snapshot_id in snapshot_ids:
+        value = store.load(snapshot_id)
+        if value['profile'] != profile:
+            raise ValueError('SNAPSHOT_PROJECTION_PROFILE_CONFLICT')
+        if _stamp(value['received_at']) <= frozen:
+            reasons.append('SNAPSHOT_CAPTURE_NOT_AFTER_PROTOCOL_FREEZE')
+        key = (value['market_date'], value['phase'])
+        if key[0] not in window['calendar']:
+            raise ValueError('SNAPSHOT_PROJECTION_OUT_OF_WINDOW')
+        group = collected.setdefault(key, {'bars': {}, 'turn': {}, 'states': {}})
+        for field in group:
+            for row in value['payload'][field]:
+                symbol = row['symbol']
+                if symbol not in window['symbols']:
+                    raise ValueError('SNAPSHOT_PROJECTION_SYMBOL_OUT_OF_SCOPE')
+                prior = group[field].get(symbol)
+                if prior is not None and prior != row:
+                    raise ValueError('SNAPSHOT_PROJECTION_OVERLAP_CONFLICT')
+                group[field][symbol] = row
+        if value['payload']['corporate_actions_complete'] is not True:
+            reasons.append('SNAPSHOT_CORPORATE_ACTION_COVERAGE_INCOMPLETE')
+        for action in value['payload']['corporate_actions']:
+            actions[stable_hash(action)] = action
+        refs.append({'snapshot_id': snapshot_id, 'snapshot_hash': value['snapshot_hash'],
+            'received_at': value['received_at'], 'market_date': value['market_date'],
+            'phase': value['phase'], 'source_response_hash': value['source_response_hash']})
+    gaps = []
+    account_days, warmup_days = [], []
+    target = set(window['symbols'])
+    for day in window['calendar']:
+        phases = ('OPEN', 'CLOSE') if day >= window['account_start'] else ('CLOSE',)
+        complete = True
+        for phase in phases:
+            group = collected.get((day, phase), {})
+            for field in ('bars', 'turn', 'states'):
+                missing = sorted(target - set(group.get(field, {})))
+                if missing:
+                    gaps.append({'date': day, 'phase': phase, 'field': field, 'missing_symbols': missing})
+                    complete = False
+        if complete:
+            (account_days if day >= window['account_start'] else warmup_days).append(day)
+    if gaps:
+        reasons.append('FULL_REGISTERED_SNAPSHOT_COVERAGE_INCOMPLETE')
+    if actions:
+        # 旧快照的 unresolved action 不可直接当作全池账户支持的完整条款。
+        reasons.append('SNAPSHOT_ACTION_TERMS_REQUIRE_ACCOUNT_QUALIFICATION')
+    value = {'version': 'UNIVERSE_FORWARD_SNAPSHOT_PROJECTION_V1', 'profile': profile,
+        'window': window, 'target_count': len(target), 'snapshot_refs': refs,
+        'complete_account_dates': account_days, 'complete_warmup_dates': warmup_days,
+        'account_sessions': len(account_days), 'warmup_sessions': len(warmup_days),
+        'gaps': gaps, 'corporate_actions': list(actions.values()),
+        'reason_codes': sorted(set(reasons)), 'ready_for_registered_data_preparation': not reasons,
+        'independence_granted': False, 'source_authentication': 'CANONICAL_SNAPSHOT_STORE',
+        'data_values_visible_to_design': False}
+    return {**value, 'projection_hash': stable_hash(value)}

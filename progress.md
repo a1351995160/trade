@@ -3798,3 +3798,158 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 - 本轮为 HISTORICAL_MODELED 工程验证，独立策略验证/正式资格/Paper 均未完成，不将未来有效性写成已经证实。原市场可见时间模型及全窗口资料资格限制继续公开。
 - 推送最终 HEAD、检查 CI、合并 PR36、安全同步主目录、重建前端及仅归档本任务 worktree 的交付操作接着执行，不能以本节预称已完成。
 - 回滚点为主目录基线 786de0d307b770b6ac8f9a99e4349a588ed90ca1；通过版本回退停止新版派发，保留原件、预算、所有失败及同步备份，不删除资料或重开消费。
+
+## 2026-10-10 - Task: 实现 U1–U8 持续全池研究工程接线
+
+### What was done
+
+- 按 docs/plans/2026-10-10-001-feat-continuous-universe-research-plan.md 实现明确总目标、Owner 内容绑定授权及增量、阶段资源储备、同任务多批接续和完整失败历史。普通候选由固定服务按总授权派生精确用途，旧消费、未知调用和超耗债务不清零。
+- 公共 FULL_UNIVERSE_SUBMISSION_V4 复用新版全池检查、合格范围、V4 多指标及排序规则、正常/压力账户、独立核账与报告。每次 advance 至多派发一个受限 worker；暂停、到期、撤销后仅核对已派发的原请求，禁止新计算。
+- 短期初筛、同规则最终 504 日探索复核及冻结后 252 日独立业务验证分开；新增固定 TRAIN 投影、未来登记证明、可信用途和物理来源/字节配额。独立访问史及结果不回流策略设计；正式资格与 Paper 另行判断。
+- 增加受限模型网关客户端、原请求查询恢复、CLI/工作台/宿主统一控制、只读状态和结构化预检、存储边界及统一验收入口。默认模型无硬上限时明确等待，未调用真实收费服务。
+- 新建 CONTINUOUS_UNIVERSE_RESEARCH_GUIDE.md、TRAIN_DATASET_PROJECTION_V1.md、CONTINUOUS_UNIVERSE_ACCEPTANCE.md 和 CONTINUOUS_UNIVERSE_DELIVERY_20261010.md，更新公共能力表和 CI 双平台 continuous suite。计划原文不改，真实交付门槛未达，保持 active。
+
+### Testing
+
+- 分模块工程回归已通过：公共 V4 真实受限 worker 6 项（222.90 秒）；U3 数据及投影/准入相关 68 项；模型网关 26 项；模型停派结算恢复 4 项；U6 19 项、U8 12 项；存储边界 2 项。先前两批真实公共 worker 回归 5 项（447.21 秒），完整最终源码回归和远端 CI 将另记最终结果。
+- 能力文档生成检查 MATCHED；compileall 与 git diff --check 通过。所有模型及行情测试使用明确标记的合成替身和隔离原件，不是新真实模型/策略/独立验证证据。
+- 独立审查发现的回执错归属、TRAIN 证明字段、登记确认绕过准入、异步自身暴露误判等已修复并回归；最终探索失败反馈接线和最后全套回归仍在本任务中继续完成。
+
+### Notes
+
+- 没有创建真实研究授权、扩容旧任务预算、读取封存行情或产生新策略资格。主目录现有合法 TRAIN 日历只有 462 日，缺 42 日及配套；真实受限模型网关与可信 252 日独立资料仍是外部条件，不能用合成测试补证。
+- 开发目录为受管 worktree E:/worktrees/continuous-universe-research/trade-system-contract-port-v1。主目录的既有 progress.md 修改、行情、研究结果及未跟踪文件保持原样；最终 CI、推送、main 合并、安全同步和仅归档本 worktree 待交付操作完成后另记。
+- 回滚点 78cfd99a489ecd450ce2fba27a2a6c99dd438e40；先停派并结清原请求，回退代码及部署，保留所有批准/预算/回执/暴露原件；回滚不退款或重新授予独立性。
+
+## 2026-10-10 - Task: 补齐设计接手包的长期探索失败谱系
+
+### What was done
+
+- diagnosis_research_v4.py 的设计 handover 改为只读取 config、canonical 探索记录和预算；复用已核验的最终探索定性摘要，附消费计数，不再调用 confirmation.status。完整业务状态仍由普通 status 提供。
+- docs/CONTINUOUS_UNIVERSE_RESEARCH_GUIDE.md 说明设计接手和完整状态的区别。原初筛记录、长期原件及所有独立结果保持不变。
+- 为保留正在运行的冻结源码验收，后续交付在受管 E:/worktrees/continuous-universe-delivery/trade-system-contract-port-v1 独立目录进行；原 continuous-universe-research 目录仅继续原测试，最终两目录都须归档。
+
+### Testing
+
+- 新增红色回归先真实捕获设计 handover 调用 confirmation.status（1 failed in 4.09s）；修复后最终反馈及生命周期模块 15 passed in 62.47s，全部只用隔离合成 metadata，无真实模型、行情或授权。
+- canonical 最终探索原件校验、独立敏感数据隔离、原件只读不变及 UTF-8 上下文上限均通过。能力文档生成 MATCHED，compileall 和 git diff --check 通过。
+- Windows 本地全 continuous（排除已独立运行的 504 晋级及单列反馈文件）和 504 晋级真实受限 worker 仍在运行；远端双平台 CI 待推送后核对，尚未预称通过。
+
+### Notes
+
+- 代码基线回滚点仍为 78cfd99a489ecd450ce2fba27a2a6c99dd438e40；本小修可回退至 d4630453f289367ac84c3f2c4466281400e8fbf5，但该点故意保留红色 handover 回归，不应作为最终绿色交付。
+- 实际模型与 504/252 日资料门槛未获得新证据，计划保持 active；没有签发真实批准、清除消费、启动后台研究或提升策略资格。
+
+## 2026-10-10 - Task: 核实并修复持续研究安全扫描边界
+
+### What was done
+- 按 PR #37 的实际 SonarCloud 告警核对新路径：公共任务先校验 ID，再从固定任务目录重建 JOB 原件路径；最终探索与验收复用该归属检查。
+- 新增 secure_file_reference_v1.py，统一绝对路径、普通文件、打开对象身份、可选归属边界、内容摘要与错误口径；可信部署与 Owner 的合法外部引用保持支持。TRAIN、独立快照和长周期恢复在开具资料范围或接触预算前核对路径。
+- 模型上下文裁剪改为对现有记录的有限遍历；保留原先确定性裁剪顺序及全部累计计数。合成公共服务夹具对齐真实 task/account 目录，未放宽账户或业务断言。
+- CI 增加共享安全读取的攻击与正常路径测试。原目录的冻结 504 日进程继续运行；所有修正仅在 delivery 工作区完成。
+
+### Testing
+- 安全读取、TRAIN 投影/准入及统一验收：89 passed、1 skipped；跳过为本机没有创建符号链接权限，文件对象替换攻击用例通过。
+- 生命周期与恢复最终冻结版本：31 passed；最终探索反馈与独立业务验证：24 passed。能力文档生成检查 MATCHED，git diff --check 通过。
+- 原实现 continuous 239 passed、独立接手回归 15 passed、前端 29 passed 与生产构建通过；修改后的公共账户及最终双平台 CI 尚在执行，不能将这些前序结果当作最终 CI 结论。
+
+### Notes
+- 不使用 NOSONAR、规则排除或状态伪造；等待修正版实际远端安全和兼容检查后再合并。
+- 回滚点为合并前 78cfd99a489ecd450ce2fba27a2a6c99dd438e40；回滚保留已有授权、消费、未知请求、回执与暴露记录。主目录已有未提交研究资料原样保留，最终同步仅处理本次新增文件和追加记录。
+
+## 2026-10-10 - Task: 在文件系统探测前拒绝越界恢复引用
+
+### What was done
+- 安全复扫剩余一项源于先解析路径后检查归属。共享引用读取改为先做纯词法归属校验；长周期恢复从规范 JOB 推导 root，再比较回执声明，不先探测自报目录。
+
+### Testing
+- 新增 validate/bytes/hash/json 四入口越界断言，禁止调用 resolve/lstat/open，修前四项失败、修后通过；共享读取与恢复最终回归 31 passed、1 skipped（本机符号链接权限）。git diff --check 通过，最终远端复扫及 CI 待执行。
+
+### Notes
+- 主目录同步程序另经只读审阅，改为快进明确批准的不可变合并 SHA，避免 origin/main 在预检后移动。该辅助程序在临时目录，不随产品发布。
+- 回滚与审计保留要求沿用上一条，未改变规则、成本、账户算法或真实资料权限。
+
+## 2026-10-10 - Task: 明确检查引用的全部父目录分量
+
+### What was done
+- 共享读取先核纯词法归属，再逐级检查已存在路径分量，拒绝父链接、末端链接、重解析点和非目录父分量；保留未创建尾部及固定资料缺失时的等待原因。
+- 合法外部 Owner/deployment 引用、普通文件打开后的对象身份核验和内容摘要要求保持不变。
+
+### Testing
+- 最终共享读取、TRAIN 准入、生命周期和恢复联合回归：93 passed、1 skipped in 76.71s；跳过仍为本机创建符号链接权限，模拟链接及重解析分量拒绝测试通过。git diff --check 通过。
+- 此次最终提交须重新通过远端安全扫描和双平台矩阵；不引用旧提交的绿色状态替代。
+
+### Notes
+- 目录分量校验仍依赖既有受保护目录权限，不宣称替代操作系统目录句柄锁。没有修改撮合、账户算法、策略门槛或真实数据访问范围。
+- 回滚到合并前 78cfd99a489ecd450ce2fba27a2a6c99dd438e40 时继续保留授权、消费、回执和暴露原件。
+
+## 2026-10-10 - Task: 用同一份进度原件核对并记录恢复证据
+
+### What was done
+- 长周期恢复通过安全读取一次取得已归属任务的 checkpoint 或 feature 原件；只有文件确实缺失视为未产生，越界、目录及其他读取错误继续阻断。
+- 状态校验与 RESUME 摘要使用同一份原始字节，取消先查存在性再读取、随后另读文件算哈希的竞态。
+
+### Testing
+- 进度读取边界、账户恢复及长期故障恢复：23 passed in 66.95s。既有语义保留：未知消费沿原用途结清，不能免费重试或重置预算。
+- 最终远端安全与双平台检查需在此次提交重新验证；本条不声明提前通过。
+
+### Notes
+- 没有修改撮合、费用、策略规则或合格条件。恢复缺失原件和损坏原件仍是两种不同状态。
+- 回滚点与原件保留要求沿用合并前 78cfd99a489ecd450ce2fba27a2a6c99dd438e40。
+
+## 2026-10-10 - Task: 在原生文件打开前再次核对目录边界
+
+### What was done
+- 共享读取在最终 os.open 前对原生路径和固定目录规范化，按目录加分隔符核对归属，再打开同一已核验字符串；合法外部原件仍以已逐级核验的父目录为边界。
+- 保留原先词法归属先于文件系统探测、全部父分量链接拒绝和打开对象身份复核，未增加规则排除或跳过安全扫描。
+
+### Testing
+- 新增 5 项原生边界回归修前失败、修后通过；共享读取最终 38 passed、1 skipped，跳过为本机符号链接权限。中文空格路径、驱动器根目录及同前缀兄弟目录均有明确覆盖。
+- TRAIN 准入、生命周期与中断恢复联合回归正在同一冻结源码执行；最终远端安全扫描与双平台 CI 须在本次提交核对，尚未声明通过。
+
+### Notes
+- 未修改策略、撮合、费用或真实资料权限。主目录同步将保留原有未提交研究文件和完整进度字节。
+- 回滚点仍为合并前 78cfd99a489ecd450ce2fba27a2a6c99dd438e40，回滚保留全部授权、消费、未知请求和暴露原件。
+
+## 2026-10-10 - Task: 对齐旧资格加载测试的可选部署参数
+
+### What was done
+- 远端 Windows 全池 1,013 项测试发现旧内存释放测试替身未接受新增可选 expected_deployment 参数。替身补齐 keyword-only 参数，并明确断言旧路径仍为 None。
+- 原始 JSON 字节释放、父 bundle 弱引用及全池重算断言全部保留；未修改生产代码或账户算法。
+
+### Testing
+- 修复后完整 test_universe_qualified_submission_v2.py：20 passed in 106.19s；git diff --check 通过。全部测试搜索未发现其他同类旧替身。
+- 上一生产源码版本的原生读取/TRAIN/生命周期/恢复 108 passed、1 skipped，SonarCloud 通过且未解决漏洞告警为 0；最终提交仍需重新核对全部远端检查。
+
+### Notes
+- 首次远端失败原件保存在主目录 reports/continuous_universe_delivery_20261010/CI_JUNIT/windows-full-universe-first，未掩盖失败或削弱内存安全断言。
+- 回滚点和授权、消费及暴露原件保留要求沿用合并前 78cfd99a489ecd450ce2fba27a2a6c99dd438e40。
+
+## 2026-10-10 - Task: 保持未启用持续研究时的旧公共接口兼容
+
+### What was done
+- 修复远端旧流程回归发现的两处兼容问题：未配置 continuous 时保留原 operation_permissions 两键响应，部署构造也不传新增可选 continuous 参数。
+- 启用持续研究时继续明确返回 continuous_ids，并依据可信研究权限决定允许列表；新增 disabled/enabled 与 trusted/untrusted 四种组合测试，保留原有两项测试和原断言。
+
+### Testing
+- test_trusted_research_system_v1.py、test_lifecycle_ui_launch_v2.py、test_continuous_universe_lifecycle_v1.py 联合回归：30 passed, 1 warning in 87.13s；git diff --check 通过。
+- 首次 Linux workflow 493 项测试的两项失败原件保留在主目录 reports/continuous_universe_delivery_20261010/CI_JUNIT/ubuntu-workflow-first；最终远端双平台检查仍须在此次提交完成后核对。
+
+### Notes
+- 未扩大调用权限，未修改策略、记账或研究门槛。未启用该功能的既有部署继续遵循原合同。
+- 回滚点和全部授权、消费、未知请求及暴露原件保留要求沿用合并前 78cfd99a489ecd450ce2fba27a2a6c99dd438e40。
+
+## 2026-10-10 - Task: 补齐工作台真实宿主心跳展示
+
+### What was done
+- 逐项核对 U1–U8 后补齐 U7 展示尾项：工作台读取后端真实 host.heartbeat_at，以 time 显示原时间；缺失记录明确显示“暂无心跳”。
+- 移除把 background_enabled 直接描述为正在后台运行的表述，提示结合候选、任务阶段和执行回执判断实际进度。
+
+### Testing
+- 对应 lifecycle.test.ts 8 项通过，新增两项实际 Vue 模板渲染回归覆盖有心跳、缺失/null/空值及配置启用不等于有心跳。
+- vue-tsc 类型检查通过；复用首个工作区已安装依赖按原 Vue/Vite 配置生产构建通过（641 modules，6.30s，仅既有大 chunk 提示）；无依赖或 lock 修改，无残留链接。git diff --check 通过。
+- 最终完整双平台 CI 仍须在此次提交核对，工程测试不替代真实受限模型和真实策略验收。
+
+### Notes
+- 仅修改 LifecycleWorkbench.vue 和对应测试；不改变宿主运行、权限、研究或交易逻辑。
+- 回滚点与审计原件保留要求沿用合并前 78cfd99a489ecd450ce2fba27a2a6c99dd438e40。

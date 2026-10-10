@@ -13,7 +13,10 @@ import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
-from ..research.guard import ResearchDataAccessGuard
+from ..research.guard import (
+    ResearchDataAccessGuard, TrustedResearchDataAccessAuthorityV1, TrustedResearchDataAccessScopeV1,
+    configured_access_authority,
+)
 from .research_universe_v1 import ResearchUniverseV1, _day, canonical_symbol, identity
 from .tdx_research_adapter_v1 import DAILY_FIELDS, TdxResearchAdapterV1, merge_daily_sources, read_tdx_day_window
 
@@ -26,10 +29,47 @@ _KINDS = {'DAILY', 'REFERENCE_PRICES', 'STATES', 'EVENTS', 'CORPORATE_ACTION_COV
 _FORBIDDEN = ('label', 'return', 'factor_table')
 
 
-class UniverseDataProviderV1:
-    """只支持探索性研究；内容哈希与登记不代表独立验证或正式资格。"""
+def service_trusted_scope(service, request, authority):
+    """从固定服务部署及已解析的 parent authority 恢复独立读取能力。
 
-    def __init__(self, registered_roots: dict, access_recorder=None):
+    trusted_data_access 路线只能来自登记授权记录；request 不携带协议或
+    resolver 路径。worker 的 service 由已冻结 compute authority 构造。
+    """
+    if request.get('purpose') == 'EXPLORATORY':
+        return None
+    if (request.get('version') != 'FULL_UNIVERSE_SUBMISSION_V4'
+            or request.get('phase') != 'CONFIRMATION'
+            or request.get('purpose') != 'INDEPENDENT_BUSINESS_VALIDATION'):
+        raise ValueError('DATA_TRUSTED_PUBLIC_PHASE_REQUIRED')
+    expected = getattr(service, 'trusted_data_deployment', None)
+    route = authority.get('trusted_data_access')
+    if (not isinstance(expected, dict) or set(expected) != {'path', 'sha256'}
+            or authority.get('trusted_deployment') != expected
+            or not isinstance(route, dict)
+            or set(route) != {'authorization_ref', 'recipe_version', 'protocol_binding'}):
+        raise ValueError('DATA_TRUSTED_DEPLOYMENT_OR_ROUTE_REQUIRED')
+    authority = configured_access_authority(expected['path'], expected_sha256=expected['sha256'])
+    provider = service.provider
+    if not isinstance(provider, UniverseDataProviderV1):
+        raise ValueError('DATA_TRUSTED_REGISTERED_PROVIDER_REQUIRED')
+    if request['dataset_id'] not in provider._datasets:
+        raise ValueError('DATASET_NOT_REGISTERED')
+    _, manifest, digest, _ = provider._datasets[request['dataset_id']]
+    sources = {name: {'sha256': row['sha256'], 'physical_start': _day(row['start']),
+                      'physical_end': _day(row['end'])} for name, row in manifest['files'].items()}
+    return authority.authorize(route['authorization_ref'], purpose='INDEPENDENT_CONFIRMATION',
+        dataset_id=request['dataset_id'], manifest_sha256=digest, sources=sources,
+        output_start=_day(request['feature_start']), output_end=_day(request['account_end']),
+        recipe_version=route['recipe_version'], protocol_binding=route['protocol_binding'])
+
+
+class UniverseDataProviderV1:
+    """登记资料与用途限定读取；内容哈希与授权不代表独立验证或正式资格。"""
+
+    def __init__(self, registered_roots: dict, access_recorder=None, *, trusted_access_authority=None):
+        if trusted_access_authority is not None and not isinstance(trusted_access_authority, TrustedResearchDataAccessAuthorityV1):
+            raise ValueError('DATA_TRUSTED_AUTHORITY_INVALID')
+        self.trusted_access_authority = trusted_access_authority
         self.record = access_recorder or (lambda event: None)
         self.roots, self._datasets = {}, {}
         self._metadata_paths = {}
@@ -102,6 +142,10 @@ class UniverseDataProviderV1:
             master_source=master.get('source'), completeness_evidence=master.get('completeness_evidence'))
         if not universe.target_symbols:
             raise ValueError('DATA_UNIVERSE_EMPTY')
+        if 'projection' in manifest:
+            from .research_dataset_projection_v1 import validate_projection_registration
+            validate_projection_registration(self.roots[root_id], manifest,
+                                             hashlib.sha256(raw).hexdigest())
         scope = manifest.get('universe_scope')
         if scope is not None and (not isinstance(scope, dict)
                 or _day(scope.get('start')) is None or _day(scope.get('end')) is None
@@ -111,7 +155,17 @@ class UniverseDataProviderV1:
                                      hashlib.sha256(raw).hexdigest(), universe)
         self._metadata_paths[dataset_id] = metadata
 
-    def catalog(self):
+    def catalog(self, *, trusted_scope=None):
+        authorized_dataset = None
+        if trusted_scope is not None:
+            if not isinstance(trusted_scope, TrustedResearchDataAccessScopeV1):
+                raise ValueError('DATA_TRUSTED_SCOPE_REQUIRED')
+            binding = trusted_scope.binding
+            authorized_dataset = binding['dataset_id']
+            if (binding['purpose'] != 'INDEPENDENT_CONFIRMATION'
+                    or authorized_dataset not in self._datasets
+                    or self._datasets[authorized_dataset][2] != binding['manifest_sha256']):
+                raise ValueError('DATA_TRUSTED_SCOPE_BINDING_CONFLICT')
         rows = []
         for key, (_, manifest, digest, universe) in sorted(self._datasets.items()):
             snapshot = universe.snapshot()
@@ -124,28 +178,52 @@ class UniverseDataProviderV1:
                 'metadata_hash': digest, 'historical_independence': 'UNKNOWN',
                 'independent_confirmation_eligible': False, 'data_qualification': 'CONTENT_NOT_VALIDATED',
                 'limitations': ['历史清单、状态、公司行动与单位需要分别核验；登记不代表账户可执行。']})
+            if key == authorized_dataset:
+                rows[-1]['authorized_data_purpose'] = 'INDEPENDENT_BUSINESS_VALIDATION'
+                rows[-1]['trusted_data_access_reference'] = trusted_scope.reference
         return {'schema_version': PROVIDER_VERSION, 'content_read': False, 'datasets': rows}
+
+    def authorize_independent_scope(self, dataset_id, *, authorization_ref,
+                                    feature_start, account_end, recipe_version,
+                                    protocol_binding):
+        """固定部署服务解析登记引用；此操作不读取任何行情内容。"""
+        if self.trusted_access_authority is None:
+            raise ValueError('DATA_TRUSTED_AUTHORITY_NOT_CONFIGURED')
+        if dataset_id not in self._datasets:
+            raise ValueError('DATASET_NOT_REGISTERED')
+        _, manifest, digest, _ = self._datasets[dataset_id]
+        sources = {name: {'sha256': row['sha256'], 'physical_start': _day(row['start']),
+                          'physical_end': _day(row['end'])} for name, row in manifest['files'].items()}
+        return self.trusted_access_authority.authorize(authorization_ref,
+            purpose='INDEPENDENT_CONFIRMATION', dataset_id=dataset_id, manifest_sha256=digest,
+            sources=sources, output_start=_day(feature_start), output_end=_day(account_end),
+            recipe_version=recipe_version, protocol_binding=protocol_binding)
 
     def prepare(self, dataset_id, *, feature_start, account_start, account_end,
                 purpose='EXPLORATORY', required_fields=(), authorization=None,
-                stage='ACCOUNT', symbols=None, universe_id=None):
+                stage='ACCOUNT', symbols=None, universe_id=None, trusted_scope=None):
         prepared, _ = self._prepare_with_inputs(dataset_id,
             feature_start=feature_start, account_start=account_start, account_end=account_end,
             purpose=purpose, required_fields=required_fields, normalization_fields=required_fields,
-            authorization=authorization, stage=stage, symbols=symbols, universe_id=universe_id)
+            authorization=authorization, stage=stage, symbols=symbols, universe_id=universe_id,
+            trusted_scope=trusted_scope)
         return prepared
 
     def _prepare_with_inputs(self, dataset_id, *, feature_start, account_start, account_end,
                              purpose='EXPLORATORY', required_fields=(), normalization_fields=(),
                              warmup_bars=0, authorization=None, stage='ACCOUNT', symbols=None,
-                             universe_id=None):
+                             universe_id=None, trusted_scope=None):
         """受信 worker 复用本次验证对象；不把对象或缓存加入公开 prepared 字典。
 
         normalization_fields 保留原件规范化的硬校验；required_fields/warmup_bars
         在首次输入认证中检查实际策略，SCAN 的可选字段缺口仍保持 UNKNOWN。
         """
-        if purpose != 'EXPLORATORY':
+        independent = purpose == 'INDEPENDENT_BUSINESS_VALIDATION'
+        if purpose not in {'EXPLORATORY', 'INDEPENDENT_BUSINESS_VALIDATION'}:
             raise ValueError('DATA_PURPOSE_NOT_QUALIFIED')
+        if (independent and not isinstance(trusted_scope, TrustedResearchDataAccessScopeV1)
+                or not independent and trusted_scope is not None):
+            raise ValueError('DATA_TRUSTED_SCOPE_REQUIRED_OR_PURPOSE_CONFLICT')
         if not isinstance(dataset_id, str) or dataset_id not in self._datasets:
             raise ValueError('DATASET_NOT_REGISTERED')
         for fields in (required_fields, normalization_fields):
@@ -167,9 +245,20 @@ class UniverseDataProviderV1:
         start, account, end = map(_day, (feature_start, account_start, account_end))
         if any(value is None for value in (start, account, end)) or not start < account < end:
             raise ValueError('DATA_WINDOW_OR_WARMUP_INVALID')
-        guard = ResearchDataAccessGuard()
+        if independent:
+            binding = trusted_scope.binding
+            guard = trusted_scope.guard(purpose='INDEPENDENT_CONFIRMATION',
+                dataset_id=dataset_id, manifest_sha256=manifest_hash)
+            if (manifest['adapter'] != PROVIDER_VERSION
+                    or set(binding['sources']) != set(manifest['files'])
+                    or any(row['sha256'] != binding['sources'][name]['sha256']
+                           for name, row in manifest['files'].items())):
+                raise ValueError('DATA_TRUSTED_SOURCE_BINDING_CONFLICT')
+            authorization = {'authorization_id': binding['authorization_id'], 'purpose': purpose}
+        else:
+            guard = ResearchDataAccessGuard()
         guard.check_range(start, end, 'full universe request')
-        if (not isinstance(authorization, dict) or authorization.get('purpose') != purpose
+        if not independent and (not isinstance(authorization, dict) or authorization.get('purpose') != purpose
                 or dataset_id not in authorization.get('dataset_ids', [])
                 or not authorization.get('authorization_id')
                 or not authorization.get('start') or not authorization.get('end')
@@ -186,20 +275,29 @@ class UniverseDataProviderV1:
         frames, references, states, events, coverage, calendars, hashes, source_identities = [], [], [], [], [], [], {}, []
         calendar_sources = []
         source_qualification = None
+        if independent and sum(self._path(root, name).stat().st_size
+                               for name in manifest['files']) > binding['max_input_bytes']:
+            raise ValueError('DATA_TRUSTED_INPUT_BYTE_LIMIT_EXCEEDED')
         # 先逐文件检查全物理范围；一个缺授权时不先消费其它报价文件。
         for name, metadata in manifest['files'].items():
             lo, hi = _day(metadata['start']), _day(metadata['end'])
-            guard.check_range(lo, hi, 'full universe whole source')
-            if lo < _day(authorization['start']) or hi > _day(authorization['end']):
+            source_guard = (trusted_scope.guard(purpose='INDEPENDENT_CONFIRMATION', dataset_id=dataset_id,
+                            manifest_sha256=manifest_hash, source_name=name) if independent else guard)
+            source_guard.check_range(lo, hi, 'full universe whole source')
+            if not independent and (lo < _day(authorization['start']) or hi > _day(authorization['end'])):
                 raise ValueError('DATA_WHOLE_SOURCE_NOT_AUTHORIZED')
+            if independent and metadata['format'] not in {'PARQUET', 'JSON'}:
+                raise ValueError('DATA_INDEPENDENT_SOURCE_FORMAT_UNSUPPORTED')
             if metadata['format'] == 'PARQUET':
-                self._check_parquet_range(self._path(root, name), metadata, guard)
+                self._check_parquet_range(self._path(root, name), metadata, source_guard)
         if manifest['adapter'] == BAOSTOCK_PROVIDER_VERSION:
             return self._prepare_baostock(root, manifest, manifest_hash, universe,
                 dataset_id=dataset_id, start=start, account=account, end=end,
                 authorization=authorization, required_fields=required_fields,
                 stage=stage, warmup_bars=warmup_bars)
         for name, metadata in manifest['files'].items():
+            source_guard = (trusted_scope.guard(purpose='INDEPENDENT_CONFIRMATION', dataset_id=dataset_id,
+                            manifest_sha256=manifest_hash, source_name=name) if independent else guard)
             value = self._read(root, name, metadata, dataset_id, authorization)
             digest = metadata['sha256']
             if metadata['source_id'] in hashes and hashes[metadata['source_id']] != digest:
@@ -227,7 +325,7 @@ class UniverseDataProviderV1:
                         normalized_days[original] = _day(integer)
                 except (ValueError, TypeError, OverflowError) as exc:
                     raise ValueError('TDX_DATE_INVALID') from exc
-                guard.check_int_iterable(normalized_days.values(), 'full universe original daily date axis')
+                source_guard.check_int_iterable(normalized_days.values(), 'full universe original daily date axis')
                 value['date'] = value.date.map(normalized_days)
                 value['symbol'] = value.symbol.map({s: canonical_symbol(s) for s in value.symbol.unique()})
                 columns = ['symbol', 'date'] + [field for field in DAILY_FIELDS if field in value]
@@ -237,12 +335,17 @@ class UniverseDataProviderV1:
                     del value
                     continue
                 result = TdxResearchAdapterV1().normalize_daily(value, evidence=evidence,
-                    required_fields=[f for f in normalization_fields if f != 'prev_close'])
+                    required_fields=[f for f in normalization_fields if f != 'prev_close'],
+                    trusted_scope=trusted_scope)
                 frames.append(result['daily'])
                 source_identities.append(result['source_identity'])
                 # normalize_daily也返回turn副本；本入口只保留daily，最终统一构造turn。
                 del result
             elif kind == 'REFERENCE_PRICES':
+                if independent and isinstance(value, pd.DataFrame) and 'date' in value:
+                    source_guard.check_int_iterable((_day(d) for d in value.date.unique()),
+                                                    'independent original reference dates')
+                    value = value.loc[value.date.map(_day).between(start, end)]
                 references.append(value)
             elif kind == 'STATES':
                 if isinstance(value, pd.DataFrame) and 'symbol' in value:
@@ -252,7 +355,7 @@ class UniverseDataProviderV1:
                         state_days = {d: _day(d) for d in value.trade_date.unique()}
                         if any(d is None for d in state_days.values()):
                             raise ValueError('UNIVERSE_DATE_INVALID')
-                        guard.check_int_iterable(state_days.values(), 'full universe original state date axis')
+                        source_guard.check_int_iterable(state_days.values(), 'full universe original state date axis')
                         value['trade_date'] = value.trade_date.map(state_days)
                         selected &= value.trade_date.between(start, end)
                     elif {'effective_date', 'valid_to'} <= set(value):
@@ -260,23 +363,40 @@ class UniverseDataProviderV1:
                             state_days = {d: _day(d) for d in value[column].unique()}
                             if any(d is None for d in state_days.values()):
                                 raise ValueError('UNIVERSE_DATE_INVALID')
-                            guard.check_int_iterable(state_days.values(), 'full universe original state interval axis')
+                            source_guard.check_int_iterable(state_days.values(), 'full universe original state interval axis')
                             value[column] = value[column].map(state_days)
                         selected &= value.effective_date.le(end) & value.valid_to.ge(start)
+                        if independent:
+                            value['effective_date'] = value.effective_date.clip(lower=start)
+                            value['valid_to'] = value.valid_to.clip(upper=end)
                     if not selected.all():
                         value = value.loc[selected]
                     del selected
                 states.append(value)
             elif kind == 'EVENTS':
-                events.extend(value.to_dict('records') if isinstance(value, pd.DataFrame) else value)
+                rows = value.to_dict('records') if isinstance(value, pd.DataFrame) else value
+                if independent:
+                    relevant = []
+                    for row in rows:
+                        dates = [_day(row[key]) for key in ('effective_date', 'record_date', 'payment_date',
+                                 'share_credit_date', 'tradable_date') if row.get(key) is not None]
+                        source_guard.check_int_iterable(dates, 'independent original event terms')
+                        if dates and min(dates) <= end and max(dates) >= start:
+                            source_guard.check_event_metadata(row)
+                            relevant.append(row)
+                    rows = relevant
+                events.extend(rows)
             elif kind == 'CORPORATE_ACTION_COVERAGE':
                 coverage.extend(value.to_dict('records') if isinstance(value, pd.DataFrame) else value)
             elif kind == 'CALENDAR':
                 calendar_sources.append(metadata['source_id'])
                 if isinstance(value, pd.DataFrame):
-                    calendars.extend(value['date'].tolist())
+                    own_dates = value['date'].tolist()
                 else:
-                    calendars.extend(value)
+                    own_dates = value
+                if independent:
+                    source_guard.check_int_iterable((_day(day) for day in own_dates), 'independent calendar source')
+                calendars.extend(own_dates)
             elif kind == 'SOURCE_QUALIFICATION':
                 rows = value.to_dict('records') if isinstance(value, pd.DataFrame) else value
                 if not isinstance(rows, list) or any(not isinstance(row, dict) or 'symbol' not in row for row in rows):
@@ -309,8 +429,8 @@ class UniverseDataProviderV1:
         dates = [_day(d) for d in calendars]
         if not dates or dates != sorted(set(dates)):
             raise ValueError('DATA_CALENDAR_INVALID')
-        guard.check_int_iterable(dates, 'full universe calendar')
         calendar = [d for d in dates if start <= d <= end]
+        guard.check_int_iterable(calendar if independent else dates, 'full universe calendar')
         if (not calendar or calendar[0] != start or calendar[-1] != end or account not in calendar):
             raise ValueError('DATA_WINDOW_OR_WARMUP_INVALID')
         selected = daily.date.isin(calendar)
@@ -379,6 +499,12 @@ class UniverseDataProviderV1:
             'input_identity': inputs.input_identity, 'source_hashes': hashes, 'window': window})
         prepared = {'window': window, 'bundle': prepared_bundle, 'qualification': qualification,
                     'input_identity': inputs.input_identity}
+        if independent:
+            prepared['trusted_data_access'] = trusted_scope.frozen_binding
+            qualification.update(data_phase='CONFIRMATION',
+                independent_data_access_authorized=True,
+                independent_protocol_binding=deepcopy(trusted_scope.frozen_binding['expected_bindings']['protocol_binding']),
+                trusted_data_access_reference=trusted_scope.reference)
         return prepared, inputs
 
     def _prepare_baostock(self, root, manifest, manifest_hash, universe, *,

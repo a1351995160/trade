@@ -1,5 +1,7 @@
 """显式恢复未结算的全范围回测；沿用原 START、预算和时间上限。"""
 from datetime import datetime, timezone
+import hashlib
+import json
 import os
 from pathlib import Path
 import sys
@@ -9,6 +11,22 @@ from ..research_daemon_state import DaemonInstanceLockV1
 from .common import stable_hash
 from .engine_replay_recovery_v1 import _read_receipt
 from .mutation_boundary import ObjectiveMutationLock
+from .secure_file_reference_v1 import checked_directory_path, checked_file_path, read_file_bytes, validated_reference_path
+
+
+def _optional_progress_bytes(path, root):
+    """只读已归属任务的进度原件；缺失是合法状态，其他读取错误不降级。"""
+    try:
+        return read_file_bytes(path, root=root, error_code='UNIVERSE_RESUME_PROGRESS_REFERENCE_INVALID')
+    except ValueError as error:
+        cause = error
+        for _ in range(8):
+            if isinstance(cause, FileNotFoundError):
+                return None
+            cause = cause.__cause__
+            if cause is None:
+                break
+        raise
 
 
 def resume_universe_job(path):
@@ -101,13 +119,33 @@ def resume_universe_job(path):
     return runner.execute_accounts(path, recover=True)
 
 
-def resume_long_horizon_job(path,job):
+def resume_long_horizon_job(path,job,*,reconcile_only=False):
     """新语义只扣已运行段；未知崩溃扣该段上界，停机等待不免费重置。"""
     from scripts import run_strategy_account_v1 as runner
+    path = checked_file_path(path, error_code='UNIVERSE_RESUME_ROOT_CONFLICT')
+    root = path.parent
+    if Path(job['root']) != root:
+        raise PermissionError('UNIVERSE_RESUME_ROOT_CONFLICT')
+    root = checked_directory_path(root, error_code='UNIVERSE_RESUME_ROOT_CONFLICT')
+    checkpoints, feature_bindings = {}, {}
+    for name in job['plans']:
+        start = validated_reference_path(root / (name + '_START.json'), root=root,
+            error_code='UNIVERSE_RESUME_ROOT_CONFLICT')
+        if start.parent != root:
+            raise PermissionError('UNIVERSE_RESUME_ROOT_CONFLICT')
+        checkpoint = validated_reference_path(job['items'][name]['backend_options']['checkpoint_path'], root=root,
+            error_code='UNIVERSE_RESUME_CHECKPOINT_PATH_CONFLICT')
+        feature_binding = validated_reference_path(root /
+            (job['plans'][name]['strategy']['strategy_id'] + '_FEATURES') / 'PREPARATION_BINDING.json', root=root,
+            error_code='UNIVERSE_RESUME_CHECKPOINT_PATH_CONFLICT')
+        if checkpoint.parent != root or feature_binding.parent.parent != root:
+            raise PermissionError('UNIVERSE_RESUME_CHECKPOINT_PATH_CONFLICT')
+        checkpoints[name], feature_bindings[name] = checkpoint, feature_binding
+    runner.validate_sources(job)
     if (job['resources']['purpose'] != 'RESEARCH_ACCOUNT'
             or any(p['backend']['backend'] != 'UNIVERSE_ACCOUNT_BACKEND_V2' for p in job['plans'].values())):
         raise PermissionError('UNIVERSE_LONG_HORIZON_RESUME_VERSION_REQUIRED')
-    root=Path(job['root']);gov=runner.service(job)
+    gov=runner.service(job)
     with ObjectiveMutationLock.for_resource(root/'RESUME.lock'):
         for name in job['plans']:
             if not (root/(name+'_START.json')).exists():
@@ -119,6 +157,33 @@ def resume_long_horizon_job(path,job):
             gov.dispatched_execution(name); state=gov.segment_status(name)
             pending=state['pending']
             if pending is None:
+                if state['segments'] and state['segments'][-1]['charge']['outcome'] in ('COMPLETED','FAILED'):
+                    last=state['segments'][-1];prefix=runner.segment_prefix(name,last['dispatch']['segment_number'])
+                    outcome=last['charge']['outcome'];output=root/(name+'_RESULT.json')
+                    resource_path=root/(prefix+'_RESOURCE.json');failure_path=root/(prefix+'_FAILURE.json')
+                    evidence=resource_path if resource_path.exists() else failure_path
+                    if not evidence.is_file() or runner.sha(evidence)!=last['charge']['evidence_identity']:
+                        raise PermissionError('UNIVERSE_RESUME_CHARGED_EVIDENCE_CHANGED')
+                    if outcome=='COMPLETED':
+                        recorded=runner.read_json(root/(prefix+'_STATUS.json'))
+                        if (not output.is_file() or recorded.get('state')!='COMPLETED'
+                                or recorded.get('dispatch_id')!=last['dispatch']['dispatch_id']
+                                or recorded.get('result_sha256')!=runner.sha(output)):
+                            raise PermissionError('UNIVERSE_RESUME_COMPLETION_NOT_PROVEN')
+                    for suffix in ('_WORKER.json','_INPUT_ACCESS.json'):
+                        source=root/(prefix+suffix)
+                        if source.exists():runner.save(root/(name+suffix),runner.read_json(source))
+                    summary_path=root/(name+'_RESOURCE.json')
+                    if not summary_path.exists():
+                        resource=runner.read_json(resource_path) if resource_path.exists() else {}
+                        runner.save(summary_path,{**resource,'elapsed_wall_seconds':state['charged_seconds'],
+                            'segment_count':len(state['segments']),'active_metering':True,
+                            'segments':[row['charge']['charge_id'] for row in state['segments']]})
+                    elif runner.read_json(summary_path).get('elapsed_wall_seconds')!=state['charged_seconds']:
+                        raise PermissionError('UNIVERSE_RESUME_CUMULATIVE_RESOURCE_CONFLICT')
+                    gov.settle(name,completed=outcome=='COMPLETED',seconds=state['charged_seconds'],
+                        result_hash=runner.sha(output) if output.exists() else None,
+                        error=None if outcome=='COMPLETED' else 'KNOWN_WORKER_FAILURE')
                 continue
             number=pending['segment_number'];prefix=runner.segment_prefix(name,number)
             worker_path=root/(prefix+'_WORKER.json');access_path=root/(prefix+'_INPUT_ACCESS.json')
@@ -146,17 +211,16 @@ def resume_long_horizon_job(path,job):
                 if failure.get('dispatch_id')!=pending['dispatch_id'] or failure.get('scope_identity')!=runner.sha(path):
                     raise PermissionError('UNIVERSE_RESUME_FAILURE_DISPATCH_CONFLICT')
                 known_failure=True
-            checkpoint=Path(job['items'][name]['backend_options']['checkpoint_path'])
-            if checkpoint.parent != root or checkpoint.resolve() != checkpoint:
-                raise PermissionError('UNIVERSE_RESUME_CHECKPOINT_PATH_CONFLICT')
-            feature_binding=checkpoint.parent/(job['plans'][name]['strategy']['strategy_id']+'_FEATURES')/'PREPARATION_BINDING.json'
-            if checkpoint.exists():
-                value=runner.read_json(checkpoint)
+            checkpoint, feature_binding = checkpoints[name], feature_bindings[name]
+            checkpoint_raw = _optional_progress_bytes(checkpoint, root)
+            feature_raw = None if checkpoint_raw is not None else _optional_progress_bytes(feature_binding, root)
+            if checkpoint_raw is not None:
+                value=json.loads(checkpoint_raw)
                 from .universe_execution_state_v2 import VERSION
                 if value.get('version') != VERSION or value.get('state_identity') != stable_hash(
                         {k:v for k,v in value.items() if k!='state_identity'}):
                     raise PermissionError('UNIVERSE_RESUME_FULL_STATE_CHANGED')
-            elif not feature_binding.is_file() and not known_failure:
+            elif feature_raw is None and not known_failure:
                 raise PermissionError('UNIVERSE_RESUME_NO_COMMITTED_PROGRESS')
             resource_path=root/(prefix+'_RESOURCE.json');status_path=root/(prefix+'_STATUS.json')
             resource=runner.read_json(resource_path) if resource_path.exists() else None
@@ -179,8 +243,8 @@ def resume_long_horizon_job(path,job):
                     outcome='FAILED'
             gov.end_segment(name,number,seconds=measured,evidence_identity=evidence,outcome=outcome)
             runner.save(root/(prefix+'_RESUME.json'),{'dispatch_id':pending['dispatch_id'],
-                'state_identity':runner.sha(checkpoint) if checkpoint.exists() else
-                    runner.sha(feature_binding) if feature_binding.is_file() else None,
+                'state_identity':hashlib.sha256(checkpoint_raw).hexdigest() if checkpoint_raw is not None else
+                    hashlib.sha256(feature_raw).hexdigest() if feature_raw is not None else None,
                 'charge_basis':'MEASURED' if measured is not None else 'UNKNOWN_UPPER_BOUND',
                 'budget_reused':True,'resumed_at':datetime.now(timezone.utc).isoformat()})
             if outcome in ('COMPLETED','FAILED'):
@@ -197,4 +261,6 @@ def resume_long_horizon_job(path,job):
                     result_hash=runner.sha(output) if output.exists() else None,error=None if outcome=='COMPLETED' else 'KNOWN_WORKER_FAILURE')
                 if outcome=='FAILED':
                     raise PermissionError('UNIVERSE_KNOWN_FAILURE_NO_RETRY')
+    if reconcile_only:
+        return {'status':'RECONCILED','dispatched_segments':0,'items':runner.status(path)['items']}
     return runner.execute_accounts(path,recover=True)

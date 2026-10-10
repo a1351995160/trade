@@ -14,7 +14,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        suite: [workflow, formal-scope, full-universe, long-horizon]
+        suite: [workflow, formal-scope, full-universe, long-horizon, continuous]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 150
     env:
@@ -88,6 +88,34 @@ jobs:
           python -m pytest -q
           tests/research_factory/test_formal_rule_adapter_v2.py
           --basetemp=${{ runner.temp }}/formal-scope-tests
+          --junitxml=completion-tests.xml
+      - name: Verify continuous scope, two batches, public workers and independent boundary
+        if: matrix.suite == 'continuous'
+        env:
+          CHANLUN_PROCESS_EVIDENCE_DIR: ${{ runner.temp }}/continuous-resource-evidence
+        run: >-
+          python -m pytest -q
+          tests/research_factory/test_continuous_research_contract_v1.py
+          tests/research_factory/test_campaign_scope_v1.py
+          tests/research_factory/test_research_campaign_v1.py
+          tests/research_factory/test_research_dataset_projection_v1.py
+          tests/research_factory/test_train_projection_cli_v1.py
+          tests/research_factory/test_train_projection_admission_v1.py
+          tests/research_factory/test_bounded_model_v4.py
+          tests/research_factory/test_universe_bounded_segments_v1.py
+          tests/research_factory/test_continuous_submission_v1.py
+          tests/research_factory/test_diagnosis_research_v4.py
+          tests/research_factory/test_continuous_recovery_boundaries_v1.py
+          tests/research_factory/test_continuous_storage_v1.py
+          tests/research_factory/test_secure_file_reference_v1.py
+          tests/research_factory/test_continuous_final_feedback_v1.py
+          tests/research_factory/test_continuous_model_settlement_recovery_v1.py
+          tests/research_factory/test_continuous_public_settlement_recovery_v1.py
+          tests/research_factory/test_final_exploration_queue_v1.py
+          tests/research_factory/test_business_validation_protocol_v1.py
+          tests/research_factory/test_continuous_universe_lifecycle_v1.py
+          tests/research_factory/test_continuous_universe_acceptance_v1.py
+          --basetemp=${{ runner.temp }}/continuous-tests
           --junitxml=completion-tests.xml
       - name: Verify long-horizon public entry, continuation and independent evidence
         if: matrix.suite == 'long-horizon'

@@ -92,3 +92,8 @@ class CampaignConfirmationV1:
         return {'status': 'WAITING_DATA', 'route': 'FUTURE_OBSERVED',
                 'not_before': protocol['preview']['not_before'], 'strategy_qualified': False,
                 'requirements': 'QUALIFIED_FUTURE_CAPTURE_AND_CANONICAL_FORMAL_ASSESSMENT'}
+
+    def business_protocol(self, **trusted_dependencies):
+        """独立业务账户走新版协议；旧正式方法与 504 日要求保持原合同。"""
+        from .business_validation_protocol_v1 import BusinessValidationProtocolV1
+        return BusinessValidationProtocolV1(self.research, **trusted_dependencies)

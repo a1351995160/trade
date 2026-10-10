@@ -26,7 +26,8 @@ _BINDINGS = {
 
 
 class LifecycleServiceV2:
-    def __init__(self, root, bindings, *, research_loader=None, synthetic_clock=None, real_binding_ids=(), research_services=None):
+    def __init__(self, root, bindings, *, research_loader=None, synthetic_clock=None, real_binding_ids=(), research_services=None,
+                 continuous=None):
         self.root = Path(root).absolute()
         if self.root.resolve() != self.root or '..' in self.root.parts:
             raise ValueError('LIFECYCLE_ROOT_REDIRECTED')
@@ -39,6 +40,7 @@ class LifecycleServiceV2:
         self.research_loader = research_loader  # 仅部署注入；JSON、HTTP 均无法指定代码。
         self.synthetic_clock = synthetic_clock
         self.research_services = dict(research_services or {})
+        self.continuous = continuous  # 维护者固定装配；与旧有限阶段任务分别调度。
         for key, binding in self.bindings.items():
             _identity(key)
             paper_capture = isinstance(binding, dict) and binding.get('kind') == 'PAPER' and set(binding) == {'kind', 'root', 'snapshot_root', 'capture_jobs'}
@@ -254,9 +256,10 @@ class LifecycleServiceV2:
         from .trusted_research_host_v1 import TrustedResearchHostV1
         host = TrustedResearchHostV1(self).status()
         return {'version': 'LIFECYCLE_SERVICE_V2', 'bindings': views, 'jobs': jobs,
+                'continuous': self.continuous.inspect() if self.continuous is not None else {},
                 'binding_catalog': {key: {'kind': item['kind']} for key, item in self.bindings.items()},
                 'background_enabled': host['background_enabled'], 'host': host,
-                'real_execution_authorized': bool(self.real_binding_ids),
+                'real_execution_authorized': bool(self.real_binding_ids) or self.continuous is not None,
                 'completion': {'engineering': 'AVAILABLE', 'tests': 'SEE_DELIVERY_REPORT',
                                'real_data': 'PER_BINDING_EVIDENCE', 'strategy_effectiveness': 'PER_CANONICAL_ADMISSION'}}
 
@@ -282,7 +285,11 @@ class LifecycleServiceV2:
                     jobs.append(path.parent.name)
             except (ValueError, OSError, KeyError, PermissionError):
                 continue
-        return {'create_binding_ids': sorted(allowed), 'job_ids': jobs}
+        permissions = {'create_binding_ids': sorted(allowed), 'job_ids': jobs}
+        if self.continuous is not None:
+            permissions['continuous_ids'] = (sorted(self.continuous.researches)
+                if getattr(policy, 'trusted_research_allowed', False) else [])
+        return permissions
 
     def _snapshot(self, binding, stage):
         from .forward_snapshot_v1 import SnapshotStoreV1

@@ -733,6 +733,52 @@ def research_lifecycle_action(request: Request, payload: dict = Body(...)) -> di
         raise HTTPException(status_code=409, detail={'code': 'LIFECYCLE_NOT_READY', 'reason': str(exc)}) from exc
 
 
+def _continuous_lifecycle(request: Request):
+    controller = _lifecycle_service(request).continuous
+    if controller is None:
+        raise HTTPException(status_code=503, detail={'code': 'CONTINUOUS_DEPLOYMENT_REQUIRED'})
+    return controller
+
+
+@app.get('/api/research-lifecycle/continuous/{research_id}')
+def continuous_research_status(request: Request, research_id: str) -> dict:
+    try:
+        return _continuous_lifecycle(request).status(research_id)
+    except (ValueError, OSError, KeyError, TypeError, RuntimeError) as exc:
+        raise HTTPException(status_code=409, detail={'code': 'CONTINUOUS_NOT_READY', 'reason': str(exc)}) from exc
+
+
+@app.get('/api/research-lifecycle/continuous/{research_id}/preview')
+def continuous_research_preview(request: Request, research_id: str) -> dict:
+    try:
+        return _continuous_lifecycle(request).preview(research_id)
+    except (ValueError, OSError, KeyError, TypeError, RuntimeError) as exc:
+        raise HTTPException(status_code=409, detail={'code': 'CONTINUOUS_NOT_READY', 'reason': str(exc)}) from exc
+
+
+@app.get('/api/research-lifecycle/continuous/{research_id}/handover')
+def continuous_research_handover(request: Request, research_id: str) -> dict:
+    try:
+        return _continuous_lifecycle(request).perform(research_id, 'handover')
+    except (ValueError, OSError, KeyError, TypeError, RuntimeError) as exc:
+        raise HTTPException(status_code=409, detail={'code': 'CONTINUOUS_NOT_READY', 'reason': str(exc)}) from exc
+
+
+@app.post('/api/research-lifecycle/continuous/action')
+def continuous_research_action(request: Request, payload: dict = Body(...)) -> dict:
+    _require_local_console_request(request)
+    if not request.app.state.execution_policy.trusted_research_allowed:
+        raise HTTPException(status_code=403, detail={'code': 'CONTINUOUS_READ_ONLY'})
+    if set(payload) != {'research_id', 'action', 'payload'}:
+        raise HTTPException(status_code=400, detail={'code': 'CONTINUOUS_ACTION_FIELDS'})
+    try:
+        return _continuous_lifecycle(request).perform(payload['research_id'], payload['action'], payload['payload'])
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail={'code': 'CONTINUOUS_NOT_AUTHORIZED', 'reason': str(exc)}) from exc
+    except (ValueError, OSError, KeyError, TypeError, RuntimeError) as exc:
+        raise HTTPException(status_code=409, detail={'code': 'CONTINUOUS_NOT_READY', 'reason': str(exc)}) from exc
+
+
 @app.get("/api/research-engineering/workbench")
 def engineering_workbench_read(request: Request, plan_at: str | None = None) -> dict:
     service = _engineering_workbench(request)
@@ -1467,7 +1513,7 @@ def create_app(research_root: str | Path | None = None, execution_policy: Execut
                 except ValueError:
                     pass
             trusted_path = (path in {'/api/research-submission/preview', '/api/research-submission/diagnose', '/api/research-submission/scan', '/api/research-submission/freeze', '/api/research-submission/approve', '/api/research-submission/start', '/api/research-submission/pause', '/api/research-submission/resume'} and submission_service is not None
-                            or path in {'/api/research-lifecycle/preview', '/api/research-lifecycle/action'} and lifecycle_service is not None)
+                            or path in {'/api/research-lifecycle/preview', '/api/research-lifecycle/action', '/api/research-lifecycle/continuous/action'} and lifecycle_service is not None)
             if not policy.governance_allowed and not dry_tick and not (policy.trusted_research_allowed and trusted_path):
                 return deny("EXECUTION_POLICY_READ_ONLY")
             if "/predictive/trial/" in path and path.endswith(("/start", "/resume")):

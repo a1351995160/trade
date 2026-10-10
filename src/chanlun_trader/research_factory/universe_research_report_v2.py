@@ -262,8 +262,10 @@ def _account_episodes(result, inputs):
 def _account_report(result, inputs, summary=None):
     initial = float(result['account_policy']['initial_cash'])
     last, count, empty, occupied, cash_sum, exposure_sum, peak, drawdown = None, 0, 0, 0, 0., 0., initial, 0.
+    curve = []
     if summary is None:
         for day in result['daily_accounts']:
+            curve.append({'date': day['date'], 'equity': day['equity']})
             if not math.isfinite(day['cash']) or not math.isfinite(day['equity']) or day['equity'] <= 0:
                 raise ValueError('REPORT_ACCOUNT_VALUE_INVALID')
             last, count = day, count + 1
@@ -275,6 +277,7 @@ def _account_report(result, inputs, summary=None):
             peak = max(peak, day['equity'])
             drawdown = max(drawdown, 1 - day['equity'] / peak)
     else:
+        curve = summary.get('daily_equity', [])
         last, count, empty, occupied, cash_sum, exposure_sum, peak, drawdown = (
             summary[key] for key in ('last', 'count', 'empty', 'occupied', 'cash_sum', 'exposure_sum', 'peak', 'drawdown'))
     if last is None:
@@ -307,7 +310,46 @@ def _account_report(result, inputs, summary=None):
         'end_open_market_value_projection': market_value, 'end_open_cost_basis': open_cost,
         'end_open_unrealized_profit_projection': market_value - open_cost,
         'episodes': episodes, 'reconciliation': deepcopy(result.get('reconciliation', {})),
+        'business_diagnostics': _business_diagnostics(curve, initial, episodes),
         'qualification': 'NOT_ASSESSED', 'strategy_qualified': False}
+
+
+def _business_diagnostics(curve, initial, episodes):
+    """固定前后两半连续账户归因；未平仓权益保留，不是重新开两个账户。"""
+    if not curve:
+        raise ValueError('REPORT_BUSINESS_ACCOUNT_CURVE_REQUIRED')
+    periods = []
+    boundary = max(1, len(curve) // 2)
+    for name, start, end in (('FIRST_HALF', 0, boundary), ('SECOND_HALF', boundary, len(curve))):
+        rows = curve[start:end]
+        if not rows:
+            continue
+        opening = initial if start == 0 else curve[start - 1]['equity']
+        peak, drawdown = opening, 0.
+        for row in rows:
+            peak = max(peak, row['equity'])
+            drawdown = max(drawdown, 1 - row['equity'] / peak)
+        periods.append({'period': name, 'account_start': rows[0]['date'], 'account_end': rows[-1]['date'],
+            'sessions': len(rows), 'opening_equity': opening, 'closing_equity': rows[-1]['equity'],
+            'net_profit': rows[-1]['equity'] - opening,
+            'net_return': rows[-1]['equity'] / opening - 1, 'maximum_drawdown': drawdown})
+    closed = [row for row in episodes if row['status'] == 'CLOSED']
+    symbol = Counter()
+    for row in closed:
+        symbol[row['symbol']] += row['net_profit']
+    profits = sorted((row['net_profit'] for row in closed), reverse=True)
+    return {'version': 'CONTINUOUS_BUSINESS_DIAGNOSTICS_V1',
+        'account_dates': [row['date'] for row in curve],
+        'subperiod_policy': 'FROZEN_ACCOUNT_SESSION_HALVES_CONTINUOUS_EQUITY', 'subperiods': periods,
+        'concentration': {'symbol': dict(sorted(symbol.items())),
+            'complete_round_trip': {'count': len(closed), 'net_profit': sum(profits),
+                'without_best_1_profit': sum(profits[1:]), 'without_best_3_profit': sum(profits[3:]),
+                'policy': 'ATTRIBUTION_NOT_COUNTERFACTUAL_ACCOUNT'},
+            'time_period': periods},
+        'benchmarks': {'CASH': {'net_return': 0., 'interest_assumed': 0.},
+            'PRICE_REFERENCE': {'policy': 'SYSTEM_SUPPORTED_PRICE_REFERENCE_WITH_INVESTABILITY_DISCLOSED',
+                'metrics_source': 'PUBLIC_FINAL_REPORT_BENCHMARK', 'investable_claim': False}},
+        'equity_includes_open_positions': True}
 
 
 def _statistic():
@@ -380,7 +422,8 @@ def build_research_reports(result, inputs, observation_plan, *, event_sink=None,
                 'board_execution_policy_v1.py', 'common.py'))}
         initial = {'phase': 'ACCOUNT', 'account_cursor': 0,
             'account_summary': {'last': None, 'count': 0, 'empty': 0, 'occupied': 0, 'cash_sum': 0.,
-                'exposure_sum': 0., 'peak': float(result['account_policy']['initial_cash']), 'drawdown': 0.},
+                'exposure_sum': 0., 'peak': float(result['account_policy']['initial_cash']), 'drawdown': 0.,
+                'daily_equity': []},
             'account_report': None, 'observation_cursor': 0, 'statistics': statistics,
             'score_statistics': score_statistics, 'trackers': trackers, 'condition_counts': {},
             'score_unknown': 0, 'opportunities': 0, 'episode_count': 0, 'uncertain_episodes': [],
@@ -406,6 +449,7 @@ def build_research_reports(result, inputs, observation_plan, *, event_sink=None,
                     exposure_sum=summary['exposure_sum'] + max(0., (day['equity'] - day['cash']) / day['equity']),
                     peak=max(summary['peak'], day['equity']))
                 summary['drawdown'] = max(summary['drawdown'], 1 - day['equity'] / summary['peak'])
+                summary['daily_equity'].append({'date': day['date'], 'equity': day['equity']})
                 saved['account_cursor'] = index + 1
                 store.save()
                 at_boundary(limit, 'UNIVERSE_REPORT_NEXT_SEGMENT')

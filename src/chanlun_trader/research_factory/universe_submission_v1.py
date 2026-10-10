@@ -3,6 +3,7 @@ from copy import deepcopy
 import hashlib
 import json
 import math
+import os
 from pathlib import Path
 import re
 import shutil
@@ -11,7 +12,7 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from ..research.guard import ResearchDataAccessGuard
+from ..research.guard import ResearchDataAccessGuard, guard_from_frozen
 from .common import stable_hash
 from .exploration_governance import immutable
 from .research_data_provider_v1 import day
@@ -28,7 +29,8 @@ def validate_universe_freeze_scopes(config):
     for item in config['items']:
         options = item.get('backend_options', {})
         if options.get('backend_version') in {'UNIVERSE_ACCOUNT_BACKEND_V1','UNIVERSE_ACCOUNT_BACKEND_V2'}:
-            _validate_frozen_item_scope(item, config['input_identity'], options['window'])
+            _validate_frozen_item_scope(item, config['input_identity'], options['window'],
+                                       expected_deployment=config.get('trusted_deployment'))
 
 
 def validate_frozen_universe_scopes(job, *, include_archives=False):
@@ -39,13 +41,13 @@ def validate_frozen_universe_scopes(job, *, include_archives=False):
             continue
         _validate_frozen_item_scope(job['items'][name], job['input_identity'], plan['backend']['window'],
             source_hashes=job['source_hashes'], archive_root=Path(job['root']) if include_archives else None,
-            checked=checked)
+            checked=checked, expected_deployment=job.get('trusted_deployment'))
 
 
 def _validate_frozen_item_scope(item, input_identity, window, *, source_hashes=None,
-                                archive_root=None, checked=None):
+                                archive_root=None, checked=None, trusted_scope=None,
+                                expected_deployment=None):
     from .universe_data_provider_v1 import UniverseDataProviderV1
-    guard = ResearchDataAccessGuard()
     checked = set() if checked is None else checked
     qualified_loader = 'chanlun_trader.research_factory.strategy_submission_v1:load_frozen_qualified_bundle'
     if item['loader'] not in {'chanlun_trader.research_factory.strategy_submission_v1:load_frozen_bundle', qualified_loader}:
@@ -63,6 +65,8 @@ def _validate_frozen_item_scope(item, input_identity, window, *, source_hashes=N
             or value['input_identity'] != args['input_identity']
             or value['input_identity'] != input_identity or value['window'] != window):
         raise ValueError('UNIVERSE_FROZEN_SCOPE_CONFLICT')
+    guard = guard_from_frozen(value, trusted_scope=trusted_scope,
+                              expected_deployment=expected_deployment)
     guard.check_range(window['feature_start'], window['account_end'], 'frozen universe window')
     if item['loader'] == qualified_loader:
         parent = Path(args['parent_path']).absolute()
@@ -77,11 +81,10 @@ def _validate_frozen_item_scope(item, input_identity, window, *, source_hashes=N
             'loader_kwargs': {'path': str(parent), 'sha256': args['parent_sha256'],
                              'input_identity': parent_value['input_identity']}},
             parent_value['input_identity'], parent_value['window'], source_hashes=source_hashes,
-            archive_root=archive_root, checked=checked)
+            archive_root=archive_root, checked=checked, trusted_scope=trusted_scope,
+            expected_deployment=expected_deployment)
     for event in value['bundle'].get('events', []):
-        for key in ('effective_date', 'record_date', 'payment_date', 'share_credit_date', 'tradable_date'):
-            if event.get(key) is not None:
-                guard.check_range(event[key], event[key], 'frozen universe event')
+        guard.check_event_metadata(event)
     if set(value.get('frames', {})) != {'daily', 'turn', 'states'}:
         raise ValueError('UNIVERSE_FROZEN_FRAMES_INVALID')
     for key, info in value['frames'].items():
@@ -104,7 +107,7 @@ def _validate_frozen_item_scope(item, input_identity, window, *, source_hashes=N
                 checked.add(physical)
 
 
-def preview_universe(service, request):
+def preview_universe(service, request, *, trusted_scope=None):
     from .strategy_submission_v1 import REQUEST_FIELDS, public_rule_factory
     fields = (REQUEST_FIELDS - {'symbols'}) | {'version', 'universe_id'}
     if isinstance(request, dict) and request.get('version') in QUALIFIED_VERSIONS:
@@ -141,12 +144,24 @@ def preview_universe(service, request):
         request[key] = day(request[key])
     if not request['feature_start'] < request['account_start'] < request['account_end']:
         raise ValueError('SUBMISSION_WINDOW_INVALID')
-    ResearchDataAccessGuard().check_range(request['feature_start'], request['account_end'])
+    if trusted_scope is None:
+        guard = ResearchDataAccessGuard()
+    else:
+        from ..research.guard import TrustedResearchDataAccessScopeV1
+        if not isinstance(trusted_scope, TrustedResearchDataAccessScopeV1):
+            raise ValueError('UNIVERSE_PREVIEW_TRUSTED_SCOPE_REQUIRED')
+        registered = service.provider._datasets.get(request['dataset_id'])
+        if registered is None:
+            raise ValueError('DATASET_NOT_REGISTERED')
+        guard = trusted_scope.guard(purpose='INDEPENDENT_CONFIRMATION',
+            dataset_id=request['dataset_id'], manifest_sha256=registered[2])
+    guard.check_range(request['feature_start'], request['account_end'])
     if request['version'] == LONG_HORIZON_VERSION:
         from .universe_research_report_v2 import default_observation_plan
         if request['observation_plan'] != default_observation_plan(request):
             raise ValueError('UNIVERSE_OBSERVATION_PLAN_INVALID')
-    datasets = {item['dataset_id']: item for item in service.provider.catalog()['datasets']}
+    catalog = service.provider.catalog() if trusted_scope is None else service.provider.catalog(trusted_scope=trusted_scope)
+    datasets = {item['dataset_id']: item for item in catalog['datasets']}
     data = datasets.get(request['dataset_id'])
     from .universe_data_provider_v1 import PROVIDER_ADAPTERS
     if data is None or data.get('adapter') not in PROVIDER_ADAPTERS or data.get('universe_id') != request['universe_id']:
@@ -220,36 +235,66 @@ def _write_frame_in_batches(frame, path):
             del table, arrays
 
 
-def freeze_universe_bundle(prepared, root):
+def _check_frozen_output_limit(snapshot, guard, *, physical_paths=None):
+    """精确累计将发布的三份大表及 immutable 写法的 INPUT 字节。"""
+    paths = physical_paths if physical_paths is not None else [
+        Path(info['path']) for info in snapshot['frames'].values()]
+    metadata = json.dumps(snapshot, ensure_ascii=False, indent=2, allow_nan=False)
+    metadata_bytes = len(metadata.replace('\n', os.linesep).encode('utf-8'))
+    size = metadata_bytes + sum(Path(path).stat().st_size for path in paths)
+    guard.check_output_bytes(size, 'universe frozen bundle')
+    return size
+
+
+def _discard_unpublished_frames(paths):
+    for path in paths:
+        path.unlink(missing_ok=True)
+
+
+def freeze_universe_bundle(prepared, root, *, trusted_scope=None, expected_deployment=None):
     """大表保存为冻结 Parquet，避免 JSON 字典复制全市场行。"""
     snapshot = {key: deepcopy(value) for key, value in prepared.items() if key != 'bundle'}
     snapshot['snapshot_version'] = 'UNIVERSE_FROZEN_INPUT_V1'
     snapshot['bundle'] = {key: deepcopy(value) for key, value in prepared['bundle'].items()
                           if key not in {'daily', 'turn', 'states'}}
     snapshot['frames'] = {}
-    for key in ('daily', 'turn', 'states'):
-        frame = prepared['bundle'][key]
-        date_columns = (['effective_date', 'valid_to'] if 'effective_date' in frame
-                        else ['trade_date'] if key == 'states' else ['date'])
-        start = min(int(frame[name].min()) for name in date_columns) if len(frame) else prepared['window']['feature_start']
-        end = max(int(frame[name].max()) for name in date_columns) if len(frame) else prepared['window']['account_end']
-        ResearchDataAccessGuard().check_range(start, end, 'universe frozen frame')
-        path = root / (key + '.parquet')
-        if path.exists() or path.resolve() != path:
-            raise ValueError('UNIVERSE_FROZEN_FRAME_ALREADY_EXISTS_OR_REDIRECTED')
-        _write_frame_in_batches(frame, path)
-        info = {'path': str(path), 'rows': len(frame), 'kind': key.upper(),
-                'date_columns': date_columns, 'start': start, 'end': end}
-        from .universe_data_provider_v1 import UniverseDataProviderV1
-        UniverseDataProviderV1._check_parquet_range(path, info, ResearchDataAccessGuard())
-        with path.open('rb') as stream:
-            info['sha256'] = hashlib.file_digest(stream, 'sha256').hexdigest()
-        snapshot['frames'][key] = info
-    immutable(root / 'INPUT.json', snapshot)
+    guard = guard_from_frozen(prepared, trusted_scope=trusted_scope,
+                              expected_deployment=expected_deployment)
+    for event in snapshot['bundle'].get('events', []):
+        guard.check_event_metadata(event)
+    created = []
+    try:
+        for key in ('daily', 'turn', 'states'):
+            frame = prepared['bundle'][key]
+            date_columns = (['effective_date', 'valid_to'] if 'effective_date' in frame
+                            else ['trade_date'] if key == 'states' else ['date'])
+            start = min(int(frame[name].min()) for name in date_columns) if len(frame) else prepared['window']['feature_start']
+            end = max(int(frame[name].max()) for name in date_columns) if len(frame) else prepared['window']['account_end']
+            guard.check_range(start, end, 'universe frozen frame')
+            path = root / (key + '.parquet')
+            if path.exists() or path.resolve() != path:
+                raise ValueError('UNIVERSE_FROZEN_FRAME_ALREADY_EXISTS_OR_REDIRECTED')
+            created.append(path)
+            _write_frame_in_batches(frame, path)
+            guard.check_output_bytes(sum(item.stat().st_size for item in created), 'universe frozen frames')
+            info = {'path': str(path), 'rows': len(frame), 'kind': key.upper(),
+                    'date_columns': date_columns, 'start': start, 'end': end}
+            from .universe_data_provider_v1 import UniverseDataProviderV1
+            UniverseDataProviderV1._check_parquet_range(path, info, guard)
+            with path.open('rb') as stream:
+                info['sha256'] = hashlib.file_digest(stream, 'sha256').hexdigest()
+            snapshot['frames'][key] = info
+        _check_frozen_output_limit(snapshot, guard)
+        immutable(root / 'INPUT.json', snapshot)
+    except Exception:
+        if 'trusted_data_access' in prepared:
+            _discard_unpublished_frames(created)
+        raise
     return root / 'INPUT.json', [item['path'] for item in snapshot['frames'].values()]
 
 
-def adopt_frozen_universe_bundle(source, root, *, input_identity, snapshot_sha256):
+def adopt_frozen_universe_bundle(source, root, *, input_identity, snapshot_sha256,
+                                 trusted_scope=None, expected_deployment=None):
     """复用受限准备进程的冻结大表；主进程只读元数据并流式复制。"""
     from .universe_data_provider_v1 import UniverseDataProviderV1
     source, root = Path(source).absolute(), Path(root).absolute()
@@ -262,31 +307,50 @@ def adopt_frozen_universe_bundle(source, root, *, input_identity, snapshot_sha25
     item = {'loader': 'chanlun_trader.research_factory.strategy_submission_v1:load_frozen_bundle',
         'loader_kwargs': {'path': str(source), 'sha256': snapshot_sha256,
                           'input_identity': input_identity}}
-    _validate_frozen_item_scope(item, input_identity, snapshot['window'])
-    for key, info in snapshot['frames'].items():
-        path = root / (key + '.parquet')
+    _validate_frozen_item_scope(item, input_identity, snapshot['window'],
+        trusted_scope=trusted_scope, expected_deployment=expected_deployment)
+    guard = guard_from_frozen(snapshot, trusted_scope=trusted_scope,
+                              expected_deployment=expected_deployment)
+    source_paths = [Path(info['path']) for info in snapshot['frames'].values()]
+    destinations = {key: root / (key + '.parquet') for key in snapshot['frames']}
+    for key, path in destinations.items():
         if path.exists() or path.resolve() != path:
             raise ValueError('UNIVERSE_FROZEN_FRAME_ALREADY_EXISTS_OR_REDIRECTED')
-        shutil.copyfile(info['path'], path)
-        # 复制之后再检查物理范围，仍先于任何大表内容哈希。
-        UniverseDataProviderV1._check_parquet_range(path, info, ResearchDataAccessGuard())
-        with path.open('rb') as stream:
-            digest = hashlib.file_digest(stream, 'sha256').hexdigest()
-        if digest != info['sha256']:
-            raise ValueError('UNIVERSE_FROZEN_FRAME_CHANGED')
-        info['path'] = str(path)
-    immutable(root / 'INPUT.json', snapshot)
+        snapshot['frames'][key]['path'] = str(path)
+    # 目标路径会改变 JSON 长度；按目标 INPUT 精确预检，超限不复制大表。
+    _check_frozen_output_limit(snapshot, guard, physical_paths=source_paths)
+    created = []
+    try:
+        for (key, info), source_path in zip(snapshot['frames'].items(), source_paths):
+            path = destinations[key]
+            created.append(path)
+            shutil.copyfile(source_path, path)
+            # 复制之后再检查物理范围，仍先于任何大表内容哈希。
+            UniverseDataProviderV1._check_parquet_range(path, info, guard)
+            with path.open('rb') as stream:
+                digest = hashlib.file_digest(stream, 'sha256').hexdigest()
+            if digest != info['sha256']:
+                raise ValueError('UNIVERSE_FROZEN_FRAME_CHANGED')
+        _check_frozen_output_limit(snapshot, guard)
+        immutable(root / 'INPUT.json', snapshot)
+    except Exception:
+        if 'trusted_data_access' in snapshot:
+            _discard_unpublished_frames(created)
+        raise
     return snapshot, root / 'INPUT.json', [item['path'] for item in snapshot['frames'].values()]
 
 
-def restore_universe_bundle(value, input_path):
+def restore_universe_bundle(value, input_path, *, trusted_scope=None, expected_deployment=None):
     from .universe_account_inputs_v1 import universe_input_identity_v1
     from .universe_data_provider_v1 import UniverseDataProviderV1
-    guard = ResearchDataAccessGuard()
+    guard = guard_from_frozen(value, trusted_scope=trusted_scope,
+                              expected_deployment=expected_deployment)
     window = value['window']
     guard.check_range(window['feature_start'], window['account_end'], 'frozen universe window')
     folder = input_path.parent
     bundle = deepcopy(value['bundle'])
+    for event in bundle.get('events', []):
+        guard.check_event_metadata(event)
     if set(value.get('frames', {})) != {'daily', 'turn', 'states'}:
         raise ValueError('UNIVERSE_FROZEN_FRAMES_INVALID')
     for key, info in value['frames'].items():

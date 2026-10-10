@@ -12,7 +12,7 @@ if str(ROOT) not in sys.path:
 if str(ROOT / 'src') not in sys.path:
     sys.path.insert(0, str(ROOT / 'src'))
 
-from scripts.lifecycle_deployment_v2 import build_submission_service
+from scripts.lifecycle_deployment_v2 import approve_continuous_evidence, approve_continuous_scope, build_lifecycle_service, build_submission_service
 
 
 def parser():
@@ -20,6 +20,21 @@ def parser():
     commands = cli.add_subparsers(dest='operation', required=True)
     publication = commands.add_parser('publication', help='只读查询固定发布验收包，不加载数据或执行服务')
     publication.add_argument('--long-horizon', action='store_true', help='查询新版本252/504日工程验收；默认沿用旧凭证')
+    for action in ('preview', 'owner-approve', 'owner-approve-evidence', 'create', 'status', 'start', 'advance', 'pause', 'resume', 'revoke', 'grant', 'handover'):
+        command = commands.add_parser('continuous-' + action, help='固定部署的 V4 持续研究控制')
+        command.add_argument('--workspace-root', required=True)
+        command.add_argument('--deployment', required=True, help='维护者登记的统一生命周期 JSON')
+        command.add_argument('--research-id', required=True)
+        if action in {'create', 'grant'}:
+            command.add_argument('--approval-reference', required=True, help='Owner CLI 返回的 approval_ref JSON 文件')
+        if action in {'pause', 'resume', 'revoke'}:
+            command.add_argument('--reason', required=True)
+        if action in {'preview', 'owner-approve', 'grant'}:
+            command.add_argument('--grant', required=action == 'grant', help='增量授权 JSON；不提供时预览/批准原始总授权')
+        if action in {'owner-approve', 'owner-approve-evidence'}:
+            command.add_argument('--approver', required=True)
+        if action == 'owner-approve-evidence':
+            command.add_argument('--evidence', required=True, help='已经实际审核的固定schema原件JSON')
     for operation in ('capabilities', 'preview', 'diagnose', 'scan', 'freeze', 'approval', 'approve', 'start', 'pause', 'resume', 'status'):
         command = commands.add_parser(operation)
         command.add_argument('--workspace-root', required=True)
@@ -41,7 +56,37 @@ def main(argv=None):
         print(json.dumps(reader(), ensure_ascii=False, indent=2))
         return 0
     try:
-        config = json.loads(Path(args.deployment).read_text(encoding='utf-8-sig'))
+        from scripts.run_strategy_lifecycle_v1 import load_config
+        config = load_config(args.deployment, Path(args.workspace_root) / 'lifecycle_jobs')
+        if args.operation.startswith('continuous-'):
+            action = args.operation.removeprefix('continuous-')
+            grant = load_config(args.grant, Path(args.workspace_root) / 'lifecycle_jobs') if getattr(args, 'grant', None) else None
+            if action == 'owner-approve-evidence':
+                evidence = load_config(args.evidence, Path(args.workspace_root) / 'lifecycle_jobs')
+                result = approve_continuous_evidence(config, args.research_id, evidence, approver=args.approver)
+            elif action == 'owner-approve':
+                result = approve_continuous_scope(args.workspace_root, config, args.research_id,
+                    approver=args.approver, grant=grant)
+            else:
+                controller = build_lifecycle_service(args.workspace_root, config).continuous
+                if controller is None:
+                    raise ValueError('CONTINUOUS_DEPLOYMENT_REQUIRED')
+                if action == 'preview':
+                    result = controller.preview(args.research_id, grant=grant)
+                elif action == 'status':
+                    result = controller.status(args.research_id)
+                else:
+                    payload = {}
+                    if action in {'create', 'grant'}:
+                        reference = load_config(args.approval_reference, Path(args.workspace_root) / 'lifecycle_jobs')
+                        payload['approval_ref'] = reference.get('approval_ref', reference)
+                    if action in {'pause', 'resume', 'revoke'}:
+                        payload['reason'] = args.reason
+                    if action == 'grant':
+                        payload['grant'] = grant
+                    result = controller.perform(args.research_id, action, payload)
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0
         service = build_submission_service(args.workspace_root, config)
         if args.operation == 'capabilities':
             result = service.capabilities()

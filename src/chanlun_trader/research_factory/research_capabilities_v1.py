@@ -31,6 +31,8 @@ def capabilities(*, data_catalog=None):
              "public_entry": True, "evidence": "NOT_ACCEPTED"},
             {"id": "signal_account_dual_report", "name": "信号表现与实际账户分开报告", "engine": True,
              "public_entry": True, "evidence": "NOT_ACCEPTED"},
+            {"id": "continuous_universe_research", "name": "总授权内持续全池研究与批次接续", "engine": True,
+             "public_entry": True, "evidence": "NOT_ACCEPTED"},
         ],
         "data": deepcopy(data_catalog) if data_catalog is not None else {"status": "UNKNOWN"},
         "qualification": "EXPLORATORY_ONLY",
@@ -60,6 +62,14 @@ def capabilities(*, data_catalog=None):
     result['examples']['multi_indicator_ranked'] = ranked
     result['full_universe'] = full_universe_capabilities_v1(rules)
     result['long_horizon'] = long_horizon_capabilities_v1()
+    result['continuous_research'] = {'research_version': 'DIAGNOSIS_RESEARCH_V4',
+        'submission_version': 'FULL_UNIVERSE_SUBMISSION_V4', 'rule_version': 'RESEARCH_RULE_STRATEGY_V4',
+        'total_authorization': 'FINITE_OWNER_APPROVED_INCREMENTAL_CANONICAL_LEDGER',
+        'channels': ['EXPLORATION', 'CONFIRMATION'], 'maximum_workers_per_advance': 1,
+        'real_model_readiness': 'TRUSTED_HARD_TOKEN_AND_COST_BOUND_REQUIRED',
+        'final_sessions': {'EXPLORATION': 504, 'CONFIRMATION': 252},
+        'real_acceptance': 'NOT_ACCEPTED', 'formal_qualification': 'SEPARATE_NOT_GRANTED',
+        'guide': 'CONTINUOUS_UNIVERSE_RESEARCH_GUIDE.md'}
     result['acceptance'] = {'s1': 'EXTERNAL_PUBLICATION',
                             'meaning': '发布验收单独查询已有凭证；无有效发布凭证时保持未验收，入口可用不代表验收完成。'}
     result["fingerprint"] = stable_hash(result)
@@ -95,6 +105,10 @@ def render_markdown(snapshot=None):
               "范围依据数据资格确定，不依据收益、是否成交或信号次数；正常和压力成本共用同一范围。共同来源错误或没有合格股票仍阻断。",
               "补齐后生成新的范围证据，不改旧冻结记录；回顾性资料范围不等于当年完整可投资市场。",
               "`FULL_UNIVERSE_SUBMISSION_V3` 使用新长期执行规格，规则 V4 可事先声明评分与买入顺序；旧规则和旧任务保持原行为。",
+              "`DIAGNOSIS_RESEARCH_V4` 通过 `FULL_UNIVERSE_SUBMISSION_V4` 持续推进多指标提案、全池准备、双成本账户、核账和报告。批次结束不代表目标完成；总授权内自动接续。",
+              "探索与独立业务验证分别使用数据、阶段额度及状态。短探索不降低最终504日/252日标准；缺独立资料不会让合法探索停下来。",
+              "模型须有可核验的 token/费用硬上限；未部署可信保障时显示等待，不能宣称真实AI循环已经验收。维护者批准的授权增量累积到原账本，普通模型不能自行增额。",
+              "持续运行需要启动宿主；离线保留接续位置。完整方法见 [持续全池研究说明](CONTINUOUS_UNIVERSE_RESEARCH_GUIDE.md)。",
               "评分只使用当日已知价格或指标；收盘冻结排序，次日开盘按同一顺序分配共享资金。资料或评分未知不算信号失败。",
               "长期任务每段最多900秒、2048MiB、数值线程1；252账户日累计最多4小时，504账户日累计最多8小时。准备、核验、报告各自登记同类资源并单独列明累计耗时。",
               "账户日是观察长度，不是持有期限；每笔持仓仍由卖出信号、已声明止盈止损及最大持有期决定。",

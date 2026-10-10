@@ -45,10 +45,12 @@ class ResearchCampaignV1:
     @classmethod
     def create(cls, root, authorization):
         required = {'authorization_id', 'objective_id', 'resource_limits', 'stages', 'expires_at', *LIMIT_KEYS}
-        optional = {'execution_profiles', 'engineering_authorization'}
+        optional = {'execution_profiles', 'engineering_authorization', 'scope_policy', 'storage_limits'}
         if (not isinstance(authorization, dict) or not required <= set(authorization)
                 or set(authorization) - required - optional):
             raise ValueError('CAMPAIGN_AUTHORIZATION_FIELDS')
+        if 'storage_limits' in authorization and 'scope_policy' not in authorization:
+            raise ValueError('CONTINUOUS_STORAGE_SCOPE_REQUIRED')
         if 'engineering_authorization' in authorization and 'execution_profiles' not in authorization:
             raise ValueError('CAMPAIGN_EXECUTION_PROFILE_AUTHORIZATION_REQUIRED')
         if 'execution_profiles' in authorization:
@@ -76,6 +78,8 @@ class ResearchCampaignV1:
         service._units(authorization['resource_limits'], complete=True)
         _timestamp(authorization['expires_at'])
         normalized = {**deepcopy(authorization), 'root': os.path.normcase(str(service.root))}
+        from .campaign_scope_v1 import validate_scope_policy
+        validate_scope_policy(service.root, normalized)
         with service._lock():
             if service.authorization_path.exists():
                 if service._authorization() != normalized:
@@ -99,18 +103,21 @@ class ResearchCampaignV1:
         value = json.loads(self.authorization_path.read_text(encoding='utf-8'))
         if value.get('root') != os.path.normcase(str(self.root)) or value.get('authorization_id') != self.authorization_id:
             raise BudgetLedgerMismatchError('CAMPAIGN_REGISTERED_ROOT_CONFLICT')
+        from .campaign_scope_v1 import validate_scope_policy
+        validate_scope_policy(self.root, value)
         return value
 
-    def _budget(self, create=False):
+    def _budget(self, create=False, readonly=False):
         authorization = self._authorization()
         if not create and not self.budget_path.with_name('run_budget_events.jsonl').exists():
             raise BudgetLedgerMismatchError('CAMPAIGN_EVENT_HISTORY_MISSING')
         budget = AutonomousRunBudgetV2(run_id=self.authorization_id, objective_id=authorization['objective_id'],
-            path=self.budget_path, policy_hash=stable_hash(authorization), **{key: authorization[key] for key in LIMIT_KEYS})
-        if not create and budget.campaign_view()['authorization'] != authorization:
+            path=self.budget_path, policy_hash=stable_hash(authorization), readonly=readonly,
+            **{key: authorization[key] for key in LIMIT_KEYS})
+        if not create and budget.campaign_view()['base_authorization'] != authorization:
             raise BudgetLedgerMismatchError('CAMPAIGN_AUTHORIZATION_EVENT_CONFLICT')
         view = budget.campaign_view()
-        for operation in view['operations'].values():
+        for operation in (() if readonly else view['operations'].values()):
             if operation['kind'] in ('ACCOUNT', 'DATA'):
                 budget.reserve_trial(trial_id=operation['operation_id'], batch_id=operation['batch_id'],
                     candidate_id=operation['subject_identity'], candidate_hash=operation['subject_identity'], family_id=operation['kind'])
@@ -131,6 +138,8 @@ class ResearchCampaignV1:
 
     @staticmethod
     def _dispatchable(view, stage):
+        if view.get('revoked'):
+            raise PermissionError('CAMPAIGN_REVOKED')
         if view['paused']:
             raise PermissionError('CAMPAIGN_PAUSED')
         if datetime.now(timezone.utc) >= _timestamp(view['authorization']['expires_at']):
@@ -145,7 +154,42 @@ class ResearchCampaignV1:
             budget = self._budget()
             return {**budget.campaign_view(), 'trial_usage': budget.usage_state.to_dict(),
                     'batch_count': budget.batch_count_used,
-                    'expired': datetime.now(timezone.utc) >= _timestamp(self._authorization()['expires_at'])}
+                    'expired': datetime.now(timezone.utc) >= _timestamp(budget.campaign_view()['authorization']['expires_at'])}
+
+    def peek_status(self):
+        """只读重放；不修快照、不修镜像、不创建锁文件。"""
+        budget = self._budget(readonly=True)
+        view = budget.campaign_view()
+        return {**view, 'trial_usage': budget.usage_state.to_dict(), 'batch_count': budget.batch_count_used,
+                'expired': datetime.now(timezone.utc) >= _timestamp(view['authorization']['expires_at'])}
+
+    def add_grant(self, grant, *, approval_ref):
+        from .campaign_scope_v1 import grant_summary, OwnerApprovalStoreV1, replay_grant
+        with self._lock():
+            budget = self._budget()
+            view = budget.campaign_view()
+            base = self._authorization()
+            if not base.get('scope_policy') or view.get('revoked'):
+                raise PermissionError('CONTINUOUS_ACTIVE_SCOPE_REQUIRED')
+            summary = grant_summary(base, grant)
+            OwnerApprovalStoreV1(base['scope_policy']['approval_store']).require(approval_ref, summary)
+            item = {'grant': deepcopy(grant), 'approval_ref': deepcopy(approval_ref)}
+            existing = view['grants'].get(grant['grant_id'])
+            if existing is not None:
+                if existing != item:
+                    raise PermissionError('CAMPAIGN_GRANT_IDENTITY_CONFLICT')
+                return deepcopy(existing)
+            replay_grant(base, view['authorization'], item)
+            budget.campaign_event('CAMPAIGN_GRANT_ADDED', item)
+            return deepcopy(item)
+
+    def revoke(self, reason):
+        if not isinstance(reason, str) or not reason:
+            raise ValueError('CAMPAIGN_REVOKE_REASON_REQUIRED')
+        with self._lock():
+            budget = self._budget()
+            if not budget.campaign_view().get('revoked'):
+                budget.campaign_event('CAMPAIGN_REVOKED', {'reason': reason})
 
     def set_stage(self, stage, status, reason):
         if stage not in STAGES or status not in ('READY', 'WAITING') or not isinstance(reason, str) or not reason:
@@ -215,6 +259,8 @@ class ResearchCampaignV1:
                 raise BudgetLedgerMismatchError('CAMPAIGN_DUPLICATE_SUBJECT')
             if any(amount > view['remaining'][name] for name, amount in units.items()):
                 raise BudgetExhaustedError('CAMPAIGN_RESOURCE_LIMIT')
+            if view.get('stage_remaining') and any(amount > view['stage_remaining'][stage][name] for name, amount in units.items()):
+                raise BudgetExhaustedError('CAMPAIGN_STAGE_RESOURCE_LIMIT')
             prior = [old for old in view['operations'].values() if old['batch_id'] == batch_id]
             hypotheses = {old['hypothesis_identity'] for old in prior if old['kind'] == 'CANDIDATE'}
             if kind == 'CANDIDATE' and hypothesis_identity not in hypotheses and len(hypotheses) >= budget.max_hypotheses_per_batch:
@@ -345,4 +391,28 @@ class ResearchCampaignV1:
             if operation['kind'] in ('ACCOUNT', 'DATA'):
                 budget.complete_trial(operation_id)
             budget.campaign_event('CAMPAIGN_OPERATION_SETTLED', item)
+            return deepcopy(budget.campaign_view()['operations'][operation_id])
+
+    def settle_model_overrun(self, operation_id, *, receipt_path):
+        """已收到的模型账单超限仍记真实债务；这不扩大授权也不允许再次调用。"""
+        from .campaign_model_receipt_v1 import model_receipt_proof
+        path = Path(receipt_path).absolute()
+        with self._lock():
+            budget = self._budget()
+            operations = budget.campaign_view()['operations']
+            operation = operations[operation_id]
+            usage, digest = model_receipt_proof(self.directory, operation, path, operations)
+            actual = self._units({'model_calls': max(1, usage['model_calls']), 'model_tokens': usage['total_tokens'],
+                'model_cost_microunits': usage['cost_microunits'], 'wall_seconds': operation['upper_bounds']['wall_seconds']})
+            item = {'operation_id': operation_id, 'actual': actual, 'outcome': 'FAILED',
+                'evidence_identity': digest, 'usage_receipt': str(path),
+                'resource_overrun': {name: max(0, actual[name] - operation['upper_bounds'][name]) for name in actual}}
+            if operation['status'] == 'FAILED' and operation.get('usage_receipt') == str(path):
+                if any(operation.get(key) != value for key, value in item.items()):
+                    raise BudgetLedgerMismatchError('CAMPAIGN_MODEL_OVERRUN_SETTLEMENT_CHANGED')
+                return deepcopy(operation)
+            if operation['status'] not in ('RUNNING', 'UNKNOWN') or not any(item['resource_overrun'].values()):
+                raise PermissionError('CAMPAIGN_MODEL_OVERRUN_STATE_INVALID')
+            budget.campaign_event('CAMPAIGN_MODEL_RESOURCE_OVERRUN_SETTLED', item)
+            budget.campaign_event('CAMPAIGN_PAUSED', {'reason': 'MODEL_HARD_BUDGET_VIOLATION', 'operation_id': operation_id})
             return deepcopy(budget.campaign_view()['operations'][operation_id])

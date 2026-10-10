@@ -76,7 +76,7 @@ def _restore_frame(records, schema):
     return frame
 
 
-def load_frozen_bundle(path, sha256, input_identity):
+def load_frozen_bundle(path, sha256, input_identity, expected_deployment=None):
     """仅由公共服务生成的受冻结计划绑定参数调用；不重新查询供应商。"""
     source = Path(path).absolute()
     if source.resolve() != source or not source.is_file():
@@ -89,7 +89,7 @@ def load_frozen_bundle(path, sha256, input_identity):
         from .universe_submission_v1 import restore_universe_bundle
         if value['input_identity'] != input_identity:
             raise ValueError('SUBMISSION_INPUT_IDENTITY_CONFLICT')
-        return restore_universe_bundle(value, source)
+        return restore_universe_bundle(value, source, expected_deployment=expected_deployment)
     bundle = value['bundle']
     for key in ('daily','turn','states'):
         bundle[key] = _restore_frame(bundle[key], value.get('frame_schemas', {}).get(key))
@@ -99,7 +99,7 @@ def load_frozen_bundle(path, sha256, input_identity):
     return {'frame': bundle, 'actions': bundle['events'], 'input_identity': input_identity}
 
 
-def load_frozen_qualified_bundle(path, sha256, input_identity, parent_path, parent_sha256):
+def load_frozen_qualified_bundle(path, sha256, input_identity, parent_path, parent_sha256, expected_deployment=None):
     """从计划绑定的完整父输入重算资格，不能用自报排除名单绕过全池检查。"""
     from .universe_submission_v1 import restore_universe_bundle
     from .universe_qualified_scope_v1 import qualify_universe_bundle
@@ -115,7 +115,7 @@ def load_frozen_qualified_bundle(path, sha256, input_identity, parent_path, pare
     del raw
     parent_snapshot = json.loads(parent_raw)
     del parent_raw
-    restored = restore_universe_bundle(parent_snapshot, parent)
+    restored = restore_universe_bundle(parent_snapshot, parent, expected_deployment=expected_deployment)
     parent_prepared = {**parent_snapshot, 'bundle': restored['frame']}
     # 恢复已复制 bundle；完整父表资格检查只需 parent_prepared。
     del parent_snapshot
@@ -135,7 +135,7 @@ def load_frozen_qualified_bundle(path, sha256, input_identity, parent_path, pare
     del restored, parent_prepared, derived, owned_inputs
     import gc
     gc.collect()
-    formal = restore_universe_bundle(snapshot, source)
+    formal = restore_universe_bundle(snapshot, source, expected_deployment=expected_deployment)
     if (formal['input_identity'] != inputs.input_identity
             or formal['frame'].get('qualified_scope') != inputs.bundle['qualified_scope']
             or snapshot['window'] != inputs.window):
@@ -151,18 +151,24 @@ class StrategySubmissionV1:
 
     它不能由请求指定可执行模块。freeze 不创建批准；原治理批准完成后才能 start。
     """
-    def __init__(self, provider, authorization_resolver, output_root, capabilities_snapshot=None):
+    def __init__(self, provider, authorization_resolver, output_root, capabilities_snapshot=None,
+                 *, continuous_scope=None, trusted_data_deployment=None):
         self.provider = provider
         if not callable(authorization_resolver):
             raise ValueError('SUBMISSION_AUTHORITY_RESOLVER_REQUIRED')
         self.authority = authorization_resolver
+        self.continuous_scope = continuous_scope
+        self.trusted_data_deployment = deepcopy(trusted_data_deployment)
         self.root = Path(output_root).absolute()
         if self.root.resolve() != self.root:
             raise ValueError('SUBMISSION_ROOT_REDIRECTED')
         self.capabilities = capabilities_snapshot or (lambda: capabilities(data_catalog=self.provider.catalog()))
 
     def preview(self, request):
-        if isinstance(request, dict) and request.get('version') in {'FULL_UNIVERSE_SUBMISSION_V1', 'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3'}:
+        if isinstance(request, dict) and request.get('version') == 'FULL_UNIVERSE_SUBMISSION_V4':
+            from .continuous_submission_v1 import preview_continuous
+            return preview_continuous(self, request)
+        if isinstance(request, dict) and request.get('version') in {'FULL_UNIVERSE_SUBMISSION_V1', 'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3','FULL_UNIVERSE_SUBMISSION_V4'}:
             from .universe_submission_v1 import preview_universe
             return preview_universe(self, request)
         if not isinstance(request, dict) or set(request) != REQUEST_FIELDS:
@@ -218,6 +224,28 @@ class StrategySubmissionV1:
         return {**value, 'preview_identity': stable_hash(value)}
 
     def freeze(self, request, preview_identity):
+        if request.get('version') == 'FULL_UNIVERSE_SUBMISSION_V4':
+            from .continuous_submission_v1 import begin_freeze
+            return begin_freeze(self, request, preview_identity)
+        return self._freeze_prepared(request, preview_identity)
+
+    def bind_research_request(self, request, *, phase, candidate_identity, batch_id):
+        from .continuous_submission_v1 import bind_request
+        return bind_request(self, request, phase=phase, candidate_identity=candidate_identity, batch_id=batch_id)
+
+    def authority_for_request(self, request):
+        if request.get('version') == 'FULL_UNIVERSE_SUBMISSION_V4':
+            from .continuous_submission_v1 import continuous_authority
+            return continuous_authority(self, request)
+        return self.authority(request['authorization_ref'])
+
+    def advance(self, task_id):
+        if not isinstance(task_id, str) or not re.fullmatch(r'[0-9a-f]{64}', task_id):
+            raise ValueError('SUBMISSION_TASK_ID_INVALID')
+        from .continuous_submission_v1 import advance_submission
+        return advance_submission(self, task_id)
+
+    def _freeze_prepared(self, request, preview_identity):
         preview = self.preview(request)
         if preview['preview_identity'] != preview_identity:
             raise ValueError('SUBMISSION_PREVIEW_CHANGED')
@@ -229,7 +257,7 @@ class StrategySubmissionV1:
                 required.append(feature)
         if any(not features.get(key, {}).get('public_entry') for key in required):
             raise ValueError('SUBMISSION_PUBLIC_CAPABILITY_NOT_CONNECTED')
-        authority = self.authority(normalized['authorization_ref'])
+        authority = self.authority_for_request(normalized)
         if not isinstance(authority, dict) or not authority.get('objective_id') or not authority.get('budget_path'):
             raise ValueError('SUBMISSION_AUTHORITY_INVALID')
         task_id = stable_hash({'preview': preview_identity, 'objective_id': authority['objective_id']})
@@ -245,8 +273,8 @@ class StrategySubmissionV1:
         immutable(root / 'FREEZE_INTENT.json', {'task_id': task_id, 'preview_identity': preview_identity,
             'objective_id': authority['objective_id'], 'automatic_retry': False})
         try:
-            full_universe = normalized.get('version') in {'FULL_UNIVERSE_SUBMISSION_V1', 'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3'}
-            qualified_universe = normalized.get('version') in {'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3'}
+            full_universe = normalized.get('version') in {'FULL_UNIVERSE_SUBMISSION_V1', 'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3','FULL_UNIVERSE_SUBMISSION_V4'}
+            qualified_universe = normalized.get('version') in {'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3','FULL_UNIVERSE_SUBMISSION_V4'}
             if full_universe:
                 # 数据准备与必要条件计算全部由900秒/2048MiB受限进程完成。
                 # 此处只接收其固定元数据，不在宿主进程再次加载全市场表。
@@ -266,11 +294,11 @@ class StrategySubmissionV1:
                     _, parent_path, parent_dependencies = adopt_frozen_universe_bundle(
                         scanned_input['parent_path'], parent_root,
                         input_identity=scanned_input['parent_input_identity'],
-                        snapshot_sha256=scanned_input['parent_sha256'])
+                        snapshot_sha256=scanned_input['parent_sha256'], expected_deployment=self.trusted_data_deployment)
                     parent_dependencies.append(str(parent_path))
                 prepared, snapshot_path, frame_dependencies = adopt_frozen_universe_bundle(
                     scanned_input['path'], root, input_identity=scanned['input_identity'],
-                    snapshot_sha256=scanned_input['sha256'])
+                    snapshot_sha256=scanned_input['sha256'], expected_deployment=self.trusted_data_deployment)
                 if qualified_universe:
                     immutable(root / 'QUALIFICATION_SCOPE.json', prepared['bundle']['qualified_scope'])
                     import shutil
@@ -309,13 +337,18 @@ class StrategySubmissionV1:
                     'initial_cash': normalized['initial_cash'], 'max_positions': normalized['max_positions'],
                     'max_symbol_exposure_bps': normalized['max_symbol_exposure_bps']}})
             if full_universe:
+                if prepared['bundle'].get('trusted_data_access'):
+                    if authority.get('trusted_deployment') != self.trusted_data_deployment or self.trusted_data_deployment is None:
+                        raise PermissionError('CONTINUOUS_TRUSTED_DEPLOYMENT_REQUIRED')
+                    items[-1]['loader_kwargs']['expected_deployment'] = deepcopy(self.trusted_data_deployment)
+                    items[-1]['dependency_files'].append(self.trusted_data_deployment['path'])
                 if qualified_universe:
                     items[-1]['loader'] = MODULE + ':load_frozen_qualified_bundle'
                     items[-1]['loader_kwargs'].update(parent_path=str(parent_path),
                         parent_sha256=hashlib.sha256(parent_path.read_bytes()).hexdigest())
                     items[-1]['dependency_files'].extend(parent_dependencies)
                     items[-1]['dependency_files'].append(str(Path(__file__).with_name('universe_qualified_scope_v1.py')))
-                long_horizon=normalized.get('version') == 'FULL_UNIVERSE_SUBMISSION_V3'
+                long_horizon=normalized.get('version') in {'FULL_UNIVERSE_SUBMISSION_V3','FULL_UNIVERSE_SUBMISSION_V4'}
                 items[-1]['backend_options'].update(backend_version='UNIVERSE_ACCOUNT_BACKEND_V2' if long_horizon else 'UNIVERSE_ACCOUNT_BACKEND_V1',
                     checkpoint_path=str(root / 'account' / (normalized['strategy_id'] + '_' + cost + '_CHECKPOINT.json')))
                 if long_horizon:
@@ -341,8 +374,10 @@ class StrategySubmissionV1:
         config = {'objective_id': authority['objective_id'], 'budget_path': str(authority['budget_path']),
                   'input_identity': prepared['input_identity'], 'items': items, 'benchmark_id': benchmark_id}
         if full_universe:
+            if prepared['bundle'].get('trusted_data_access'):
+                config['trusted_deployment'] = deepcopy(self.trusted_data_deployment)
             config['benchmark_mode'] = normalized['benchmark']
-            if normalized['version'] == 'FULL_UNIVERSE_SUBMISSION_V3':
+            if normalized['version'] in {'FULL_UNIVERSE_SUBMISSION_V3','FULL_UNIVERSE_SUBMISSION_V4'}:
                 config['execution_profile']=deepcopy(normalized['execution_profile'])
                 config['observation_plan']=deepcopy(normalized['observation_plan'])
         immutable(root / 'PREVIEW.json', preview)
@@ -389,7 +424,7 @@ class StrategySubmissionV1:
                 stable_hash({k:v for k,v in preview.items() if k!='preview_identity'}) != task['preview_identity']):
             raise ValueError('SUBMISSION_FROZEN_PREVIEW_CHANGED')
         from .universe_status_v1 import universe_task_metadata_v1
-        metadata = universe_task_metadata_v1(self, task_id) if task.get('submission_version') in {'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3'} else {}
+        metadata = universe_task_metadata_v1(self, task_id) if task.get('submission_version') in {'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3','FULL_UNIVERSE_SUBMISSION_V4'} else {}
         return {**metadata, 'task_id':task_id,'preview_identity':task['preview_identity'],'plan_ids':plan_ids,
                 'request':preview['request'],'rule_identity':preview['rule_identity'],
                 'input_identity':task['input_identity'],'job_sha256':task['job_sha256']}
@@ -399,11 +434,11 @@ class StrategySubmissionV1:
         if summary['preview_identity'] != preview_identity:
             raise ValueError('SUBMISSION_APPROVAL_PREVIEW_CHANGED')
         request = summary['request']
-        authority = self.authority(request['authorization_ref'])
+        authority = self.authority_for_request(request)
         permit = authority.get('account_authorization')
         fields = {'purpose','rule_identity','initial_cash','symbols','feature_start','account_start','account_end',
                   'max_positions','max_symbol_exposure_bps','costs','benchmark','max_account_jobs'}
-        if request.get('version') == 'FULL_UNIVERSE_SUBMISSION_V3':
+        if request.get('version') in {'FULL_UNIVERSE_SUBMISSION_V3','FULL_UNIVERSE_SUBMISSION_V4'}:
             fields.update({'execution_profile','observation_plan'})
         campaign_ref = permit.get('campaign_ref') if isinstance(permit,dict) else None
         valid_fields = fields if campaign_ref is None else (fields - {'rule_identity'}) | {'campaign_ref'}
@@ -412,7 +447,7 @@ class StrategySubmissionV1:
         if campaign_ref is None and permit['rule_identity']!=summary['rule_identity']:
             raise PermissionError('SUBMISSION_ACCOUNT_RULE_OUTSIDE_AUTHORITY')
         exact = {'initial_cash','max_positions','max_symbol_exposure_bps','costs','benchmark'}
-        if request.get('version') == 'FULL_UNIVERSE_SUBMISSION_V3':
+        if request.get('version') in {'FULL_UNIVERSE_SUBMISSION_V3','FULL_UNIVERSE_SUBMISSION_V4'}:
             exact.update({'execution_profile','observation_plan'})
         if (any(permit[key]!=request[key] for key in exact)
                 or not isinstance(permit['symbols'],list) or sorted(permit['symbols'])!=request['symbols']
@@ -423,7 +458,9 @@ class StrategySubmissionV1:
         if expires.tzinfo is None or expires<=datetime.now(timezone.utc):
             raise PermissionError('SUBMISSION_ACCOUNT_AUTHORITY_EXPIRED')
         source = deepcopy(authority.get('source',{}))
-        if source.get('origin')!='USER_EXPLICIT_CURRENT_TASK' or not source.get('statement'):
+        continuous = request.get('version') == 'FULL_UNIVERSE_SUBMISSION_V4'
+        if ((not continuous and (source.get('origin')!='USER_EXPLICIT_CURRENT_TASK' or not source.get('statement')))
+                or (continuous and source.get('origin') != 'CONTINUOUS_CAMPAIGN_SCOPE_V1')):
             raise PermissionError('SUBMISSION_EXISTING_ACCOUNT_AUTHORITY_REQUIRED')
         task = self._task(task_id)
         from scripts.run_strategy_account_v1 import service
@@ -432,7 +469,7 @@ class StrategySubmissionV1:
             raise PermissionError('SUBMISSION_ACCOUNT_OBJECTIVE_OUTSIDE_AUTHORITY')
         source.update(expires_at=authority['expires_at'],approved_plan_ids=summary['plan_ids'],
             authorization_ref=request['authorization_ref'],authorization_identity=stable_hash(authority))
-        if request.get('version') in {'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3'}:
+        if request.get('version') in {'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3','FULL_UNIVERSE_SUBMISSION_V4'}:
             source['qualified_scope_identity'] = summary['qualification_scope']['scope_identity']
         inputs = {'input_identity':job['input_identity'],
                   'novelty':{name:{'allowed':True,'plan_id':value,'reason':'EXPLICIT_FROZEN_PUBLIC_PLAN'}
@@ -441,6 +478,17 @@ class StrategySubmissionV1:
         if campaign_ref is not None:
             if not isinstance(campaign_ref,dict) or set(campaign_ref)!={'root','authorization_id'}:
                 raise PermissionError('SUBMISSION_REGISTERED_CAMPAIGN_REQUIRED')
+            if continuous and operation_ids is None:
+                binding = self.continuous_scope.resolve(request['research_binding_ref'])
+                campaign = self.continuous_scope.campaign
+                operation_ids = {}
+                for name, plan in job['plans'].items():
+                    operation_id = 'account_' + stable_hash({'binding': binding['binding_id'], 'plan': plan['plan_id']})[:48]
+                    campaign.reserve_operation(operation_id=operation_id, batch_id=binding['batch_id'],
+                        stage=binding['phase'], kind='ACCOUNT', subject_identity=plan['plan_id'],
+                        upper_bounds={'account_jobs': 1, 'wall_seconds': request['execution_profile']['total_seconds']},
+                        execution_profile=request['execution_profile'])
+                    operation_ids[name] = operation_id
             if not isinstance(operation_ids,dict) or set(operation_ids)!=set(summary['plan_ids']):
                 raise PermissionError('SUBMISSION_CAMPAIGN_OPERATIONS_REQUIRED')
             from .research_campaign_v1 import ResearchCampaignV1
@@ -450,6 +498,10 @@ class StrategySubmissionV1:
                 expected_source = {'origin': 'CAMPAIGN_V1', 'campaign_root': str(campaign.root),
                     'authorization_id': campaign.authorization_id, 'operation_ids': operation_ids,
                     'expires_at': campaign.status()['authorization']['expires_at']}
+                if continuous:
+                    binding = self.continuous_scope.resolve(request['research_binding_ref'])
+                    expected_source.update(research_binding_ref=request['research_binding_ref'],
+                        phase=binding['phase'], batch_id=binding['batch_id'], expires_at=binding['expires_at'])
                 if receipt['source'] != expected_source or receipt['input_identity'] != inputs['input_identity'] or receipt['novelty'] != inputs['novelty']:
                     raise PermissionError('SUBMISSION_EXISTING_APPROVAL_CONFLICT')
                 from .budget import SearchBudgetRegistryV1
@@ -458,7 +510,8 @@ class StrategySubmissionV1:
                     for name in job['plans']:
                         budget.register(gov.budget_kind, receipt['receipt_id'] + ':' + name, 1)
             else:
-                receipt = gov.confirm_campaign_scope(campaign,operation_ids,inputs)
+                receipt = gov.confirm_campaign_scope(campaign,operation_ids,inputs,
+                    research_binding_ref=request['research_binding_ref'] if continuous else None)
             return {'task_id':task_id,'status':'APPROVED','receipt_id':receipt['receipt_id'],
                     'plan_ids':summary['plan_ids'],'strategy_qualified':False}
         if operation_ids is not None:
@@ -487,12 +540,14 @@ class StrategySubmissionV1:
                 'plan_ids':summary['plan_ids'],'strategy_qualified':False}
 
     def start(self, task_id):
+        if (self.root / 'continuous_intents' / (task_id + '.json')).is_file():
+            return self.advance(task_id)
         from scripts.run_strategy_account_v1 import execute_accounts, report_account_job
         from .research_evidence_v1 import verify_job_evidence
         task = self._task(task_id)
         path = Path(task['job_path'])
         metadata = {}
-        if task.get('submission_version') in {'FULL_UNIVERSE_SUBMISSION_V1', 'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3'}:
+        if task.get('submission_version') in {'FULL_UNIVERSE_SUBMISSION_V1', 'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3','FULL_UNIVERSE_SUBMISSION_V4'}:
             from .universe_status_v1 import universe_task_metadata_v1
             metadata = universe_task_metadata_v1(self, task_id)
             job = read_json(path)
@@ -502,11 +557,11 @@ class StrategySubmissionV1:
         if execution.get('status') == 'PAUSED':
             return {**metadata,'task_id':task_id,'status':'PAUSED','execution':execution,'strategy_qualified':False}
         job = read_json(path)
-        long_horizon=task.get('submission_version')=='FULL_UNIVERSE_SUBMISSION_V3'
+        long_horizon=task.get('submission_version')in {'FULL_UNIVERSE_SUBMISSION_V3','FULL_UNIVERSE_SUBMISSION_V4'}
         if long_horizon:
             from scripts.run_strategy_account_v1 import run_long_horizon_compute
             request=read_json(path.parent.parent/'PREVIEW.json')['request']
-            authority=self.authority(request['authorization_ref'])
+            authority=self.authority_for_request(request)
             evidence=run_long_horizon_compute(path,authority,request,'VERIFICATION')
             if evidence.get('status')=='PAUSED':
                 return {**metadata,'task_id':task_id,'status':'PAUSED','execution':evidence,'strategy_qualified':False}
@@ -537,11 +592,11 @@ class StrategySubmissionV1:
         task = self._task(task_id)
         if hashlib.sha256(Path(task['job_path']).read_bytes()).hexdigest() != task['job_sha256']:
             raise ValueError('SUBMISSION_FROZEN_JOB_CHANGED')
-        if task.get('submission_version') == 'FULL_UNIVERSE_SUBMISSION_V3':
+        if task.get('submission_version') in {'FULL_UNIVERSE_SUBMISSION_V3','FULL_UNIVERSE_SUBMISSION_V4'}:
             from scripts.run_strategy_account_v1 import control_job
             control_job(task['job_path'],'RESUME')
         resume_universe_job(task['job_path'])
-        if task.get('submission_version') == 'FULL_UNIVERSE_SUBMISSION_V3':
+        if task.get('submission_version') in {'FULL_UNIVERSE_SUBMISSION_V3','FULL_UNIVERSE_SUBMISSION_V4'}:
             from scripts.run_strategy_account_v1 import reconcile_long_horizon_compute
             for stage in ('VERIFICATION','REPORT'):
                 reconcile_long_horizon_compute(task['job_path'],stage)
@@ -549,7 +604,7 @@ class StrategySubmissionV1:
 
     def pause(self, task_id):
         task=self._task(task_id)
-        if task.get('submission_version') != 'FULL_UNIVERSE_SUBMISSION_V3':
+        if task.get('submission_version') not in {'FULL_UNIVERSE_SUBMISSION_V3','FULL_UNIVERSE_SUBMISSION_V4'}:
             raise PermissionError('SUBMISSION_LONG_HORIZON_PAUSE_REQUIRED')
         from scripts.run_strategy_account_v1 import control_job
         state=control_job(task['job_path'],'PAUSE')
@@ -557,6 +612,12 @@ class StrategySubmissionV1:
                 'strategy_qualified':False}
 
     def status(self, task_id):
+        if not isinstance(task_id,str) or not re.fullmatch(r'[0-9a-f]{64}',task_id):
+            raise ValueError('SUBMISSION_TASK_ID_INVALID')
+        if not (self.root / task_id / 'TASK.json').exists():
+            intent = read_json(self.root / 'continuous_intents' / (task_id + '.json'))
+            return {'task_id': task_id, 'status': 'PREPARING', 'preview_identity': intent['preview_identity'],
+                    'strategy_qualified': False, 'freshly_reverified': False}
         from scripts.run_strategy_account_v1 import status
         task = self._task(task_id)
         path = Path(task['job_path'])
@@ -568,7 +629,7 @@ class StrategySubmissionV1:
         if evidence is not None and evidence.get('job_sha256') != task['job_sha256']:
             raise ValueError('SUBMISSION_VERIFICATION_JOB_CHANGED')
         from .universe_status_v1 import universe_task_metadata_v1
-        metadata = universe_task_metadata_v1(self, task_id) if task.get('submission_version') in {'FULL_UNIVERSE_SUBMISSION_V1', 'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3'} else {}
+        metadata = universe_task_metadata_v1(self, task_id) if task.get('submission_version') in {'FULL_UNIVERSE_SUBMISSION_V1', 'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3','FULL_UNIVERSE_SUBMISSION_V4'} else {}
         return {**metadata, **state, 'task_id': task_id,
                 'recorded_verification': evidence, 'freshly_reverified': False,
                 'reports': {name: str(path.parent / (name + '_REPORT.md'))
