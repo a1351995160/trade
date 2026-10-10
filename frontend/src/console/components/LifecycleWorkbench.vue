@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import StrategySubmission from './StrategySubmission.vue'
-import { canCreateBinding, canOperate, dataSummary, lifecycleRequest, lifecycleState, objectStatus, observationDays, qualificationText, sourceText } from '../lifecycle'
+import { canCreateBinding, canOperate, canOperateContinuous, continuousResourceRows, dataSummary, lifecycleRequest, lifecycleState, objectStatus, observationDays, qualificationText, sourceText } from '../lifecycle'
 import type { LifecycleRecord, LifecycleView } from '../lifecycle'
 import { universeCoverage, universeRunState } from '../universe'
 
@@ -11,6 +11,8 @@ const busy = ref(false)
 const preview = ref<LifecycleRecord | null>(null)
 const pendingAction = ref('')
 const pendingPayload = ref<LifecycleRecord>({})
+const ownerReferences = ref<Record<string, string>>({})
+const handover = ref<LifecycleRecord | null>(null)
 const jobId = ref('')
 const bindingId = ref('')
 const startAt = ref('')
@@ -19,7 +21,9 @@ const tradeDate = ref('')
 const count = ref(1)
 const available = computed(() => Object.entries(view.value?.binding_catalog ?? {}).filter(([id]) =>
   view.value !== null && canCreateBinding(view.value, id)))
-const actionNames: Record<string, string> = { create: '创建有限任务', start: '启动任务', pause: '暂停任务', resume: '恢复任务', tick: '推进一个阶段' }
+const actionNames: Record<string, string> = { create: '创建有限任务', start: '启动任务', pause: '暂停任务', resume: '恢复任务', tick: '推进一个阶段',
+  'continuous:create': '登记持续研究', 'continuous:start': '启动持续研究', 'continuous:advance': '推进一个有界步骤',
+  'continuous:pause': '暂停持续研究', 'continuous:resume': '恢复持续研究', 'continuous:revoke': '撤销后续研究' }
 async function refresh() {
   busy.value = true; error.value = ''
   try { view.value = await lifecycleRequest() as unknown as LifecycleView }
@@ -48,10 +52,35 @@ async function confirm() {
   if (!preview.value) return
   busy.value = true; error.value = ''
   try {
-    await lifecycleRequest('/action', { action: pendingAction.value, payload: pendingPayload.value,
-      preview_hash: preview.value.preview_hash, confirmed: true })
+    if (pendingAction.value.startsWith('continuous:')) {
+      await lifecycleRequest('/continuous/action', pendingPayload.value)
+    } else {
+      await lifecycleRequest('/action', { action: pendingAction.value, payload: pendingPayload.value,
+        preview_hash: preview.value.preview_hash, confirmed: true })
+    }
     preview.value = null; await refresh()
   } catch (failure) { error.value = String(failure); preview.value = null }
+  finally { busy.value = false }
+}
+async function prepareContinuous(action: string, researchId: string) {
+  busy.value = true; error.value = ''; preview.value = null
+  try {
+    const payload: LifecycleRecord = {}
+    if (action === 'create') {
+      const reference = JSON.parse(ownerReferences.value[researchId] ?? '') as LifecycleRecord
+      payload.approval_ref = reference.approval_ref ?? reference
+    }
+    if (['pause', 'resume', 'revoke'].includes(action)) payload.reason = `用户从工作台请求${actionNames[`continuous:${action}`]}`
+    preview.value = await lifecycleRequest(`/continuous/${encodeURIComponent(researchId)}${action === 'create' ? '/preview' : ''}`)
+    pendingAction.value = `continuous:${action}`
+    pendingPayload.value = { research_id: researchId, action, payload }
+  } catch (failure) { error.value = String(failure) }
+  finally { busy.value = false }
+}
+async function readHandover(researchId: string) {
+  busy.value = true; error.value = ''
+  try { handover.value = await lifecycleRequest(`/continuous/${encodeURIComponent(researchId)}/handover`) }
+  catch (failure) { error.value = String(failure) }
   finally { busy.value = false }
 }
 function intents(record: LifecycleRecord): LifecycleRecord[] {
@@ -77,6 +106,29 @@ onMounted(refresh)
         <article><h3>策略有效性</h3><p>只认原资格服务</p><small>任务完成或回测盈利均不自动授予资格。</small></article>
       </div>
       <p class="notice">{{ view.actions_allowed ? '仅可操作维护者已登记且当前授权允许的对象；每次执行仍会重新核验。' : '当前为只读模式。刷新不会启动研究、采集或交易。' }} 后台自动运行：{{ view.background_enabled ? '已启用' : '未启用' }}。</p>
+      <section v-if="Object.keys(view.continuous ?? {}).length" aria-label="持续全范围研究">
+        <h3>持续全范围研究</h3><p>按批准的总范围与分阶段储备推进，每次只执行一个有界步骤。资源用完会等待追加批准；短轮次通过和账户完成均不等于最终目标达成。</p>
+        <article v-for="(record, id) in view.continuous" :key="id" class="object-card">
+          <h4>{{ id }} <span>{{ lifecycleState(record.status) }}</span></h4>
+          <p v-if="record.reason || record.stop_reason || record.waiting_reason">等待或停因：{{ record.reason ?? record.stop_reason ?? record.waiting_reason }}</p>
+          <p v-if="record.progress">已完成候选尝试 {{ (record.progress as LifecycleRecord).completed_attempts }} / {{ (record.progress as LifecycleRecord).authorized_attempts }}；最终目标{{ record.goal_complete === true ? '证据已满足' : '尚未完成' }}。</p>
+          <div v-if="record.channels"><p v-for="(channel, phase) in (record.channels as Record<string, LifecycleRecord>)" :key="phase">{{ phase === 'EXPLORATION' ? '探索' : phase === 'FINAL_EXPLORATION' ? '最终探索复核' : phase === 'CONFIRMATION' ? '独立确认' : phase }}：{{ lifecycleState(channel.status) }}<span v-if="channel.waiting_reason"> · {{ channel.waiting_reason }}</span></p></div>
+          <p v-if="record.model_readiness">模型：{{ lifecycleState(record.model_readiness) }}。已冻结账户仍按原授权与额度核验。</p>
+          <table v-if="continuousResourceRows(record).length"><caption>总研究额度，未知消费保留预留</caption>
+            <thead><tr><th>资源</th><th>已使用</th><th>已预留</th><th>剩余</th></tr></thead><tbody>
+              <tr v-for="row in continuousResourceRows(record)" :key="row.name"><td>{{ row.name }}</td><td>{{ row.used }}</td><td>{{ row.reserved }}</td><td>{{ row.remaining }}</td></tr>
+            </tbody></table>
+          <details v-if="record.scope_budget"><summary>核对探索与确认阶段剩余额度</summary><pre>{{ JSON.stringify((record.scope_budget as LifecycleRecord).stage_remaining, null, 2) }}</pre></details>
+          <div v-if="canOperateContinuous(view, String(id))" class="actions">
+            <template v-if="record.status === 'OWNER_APPROVAL_REQUIRED'"><label>维护者已批准引用 JSON<input v-model="ownerReferences[String(id)]" placeholder='{"approval_id":"…","summary_hash":"…"}' /></label>
+              <button :disabled="busy || !ownerReferences[String(id)]" @click="prepareContinuous('create', String(id))">核对总授权并登记</button></template>
+            <template v-else><button v-for="action in ['start', 'advance', 'pause', 'resume', 'revoke']" :key="action" :disabled="busy" @click="prepareContinuous(action, String(id))">{{ actionNames[`continuous:${action}`] }}</button></template>
+          </div>
+          <button v-if="record.status !== 'OWNER_APPROVAL_REQUIRED'" :disabled="busy" @click="readHandover(String(id))">读取接手包</button>
+          <details><summary>核对合同、候选与原始证据</summary><pre>{{ JSON.stringify(record, null, 2) }}</pre></details>
+        </article>
+        <details v-if="handover" open><summary>接手包（只读）</summary><pre>{{ JSON.stringify(handover, null, 2) }}</pre></details>
+      </section>
       <h3>业务对象</h3>
       <p v-if="!Object.keys(view.bindings).length">尚未配置研究或观察对象。</p>
       <article v-for="(record, id) in view.bindings" :key="id" class="object-card">
@@ -114,8 +166,8 @@ onMounted(refresh)
         <p>此表创建一个阶段；Paper 的已冻结快照映射需使用阶段名称 STAGE_1。不会新建研究授权。</p><button type="submit" :disabled="busy">预览任务</button>
       </form></details>
       <section v-if="preview" class="confirm-panel" role="dialog" aria-label="确认生命周期操作"><h3>确认{{ actionNames[pendingAction] }}</h3>
-        <p>对象：{{ pendingPayload.job_id }}。提交时会重新核对当前状态；变化后需要重新预览。</p>
-        <pre>{{ JSON.stringify(pendingPayload, null, 2) }}</pre><button :disabled="busy" @click="confirm">确认执行</button><button :disabled="busy" @click="preview = null">取消</button></section>
+        <p>对象：{{ pendingPayload.research_id ?? pendingPayload.job_id }}。提交时会重新核对当前授权与状态；按钮不能签发 Owner 批准。</p>
+        <pre>{{ JSON.stringify(pendingPayload, null, 2) }}</pre><details v-if="pendingAction.startsWith('continuous:')"><summary>本次预览证据</summary><pre>{{ JSON.stringify(preview, null, 2) }}</pre></details><button :disabled="busy" @click="confirm">确认执行</button><button :disabled="busy" @click="preview = null">取消</button></section>
     </template>
   </section>
 </template>

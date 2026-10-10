@@ -75,6 +75,22 @@ class TrustedResearchHostV1:
                 result[name] = self.service.jobs.tick(name)
             except (ValueError, OSError, RuntimeError) as exc:
                 result[name] = {'status': 'BLOCKED', 'reason': str(exc)}
+        continuous = getattr(self.service, 'continuous', None)
+        if continuous is not None:
+            for name in continuous.researches:
+                owner = getattr(self.lock, 'owner_id', None)
+                if ((owner and (self.root / ('STOP_' + owner + '.json')).exists())
+                        or (getattr(self, '_halt', None) is not None and self._halt.is_set())):
+                    break
+                try:
+                    status = continuous.status(name)
+                    if status.get('started') is True and status.get('status') not in {
+                            'PAUSED', 'REVOKED', 'GOAL_MET', 'BUSINESS_GOAL_MET', 'COMPLETED', 'OWNER_APPROVAL_REQUIRED'}:
+                        result['continuous:' + name] = continuous.perform(name, 'advance')
+                    else:
+                        result['continuous:' + name] = status
+                except (ValueError, OSError, KeyError, PermissionError, RuntimeError) as exc:
+                    result['continuous:' + name] = {'status': 'BLOCKED', 'reason': str(exc)}
         return result
 
     def run(self, *, once=False):

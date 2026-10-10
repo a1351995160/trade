@@ -147,9 +147,12 @@ def qualify_universe_bundle(prepared, required_fields=(), warmup_bars=0, *,
         "scope_identity": receipt["scope_identity"],
         "limitations": ["范围按整个窗口的数据完整性回顾性确定，不代表事前全市场可投资范围。",
                         "数据通过不授予策略、账户、预算或历史独立确认资格。"]}
-    return {"ready": inputs is not None, "bundle": child, "window": child_window,
+    result = {"ready": inputs is not None, "bundle": child, "window": child_window,
             "input_identity": input_identity, "qualification": qualification,
             "scope_receipt": receipt}
+    if 'trusted_data_access' in prepared:
+        result['trusted_data_access'] = deepcopy(prepared['trusted_data_access'])
+    return result
 
 
 def verify_qualified_scope_bundle(bundle, window, *, parent_prepared=None,

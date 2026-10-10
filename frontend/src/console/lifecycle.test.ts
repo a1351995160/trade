@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { canCreateBinding, canOperate, lifecycleState, observationDays, qualificationText, sourceText } from './lifecycle.ts'
+import { canCreateBinding, canOperate, canOperateContinuous, continuousResourceRows, lifecycleState, observationDays, qualificationText, sourceText } from './lifecycle.ts'
 
 test('completion never becomes effectiveness or real observation', () => {
   assert.equal(lifecycleState('COMPLETED'), '指定阶段已完成')
@@ -30,4 +30,23 @@ test('only server registered jobs and bindings gain browser actions', () => {
 
 test('exhausted research attempts have an explicit Chinese status', () => {
   assert.equal(lifecycleState('ATTEMPT_BUDGET_EXHAUSTED'), '研究尝试次数已用完')
+})
+
+test('continuous scope waits do not imply goal completion or reset unknown consumption', () => {
+  assert.match(lifecycleState('WAITING_RESOURCE'), /追加资源/)
+  assert.match(lifecycleState('HARD_BUDGET_UNSUPPORTED'), /硬上限/)
+  assert.match(lifecycleState('WAITING_MODEL_RECONCILIATION'), /原模型请求/)
+  assert.match(lifecycleState('GOAL_NOT_MET'), /尚未/)
+  const rows = continuousResourceRows({ scope_budget: { used: { model_calls: 1 },
+    reserved: { model_calls: 2 }, remaining: { model_calls: 0 } } })
+  assert.deepEqual(rows, [{ name: '模型调用', used: 1, reserved: 2, remaining: 0 }])
+  assert.deepEqual(continuousResourceRows({}), [])
+})
+
+test('continuous browser controls require the separately registered trusted scope', () => {
+  const view = { bindings: {}, binding_catalog: {}, jobs: {}, background_enabled: false, actions_allowed: true,
+    operation_permissions: { job_ids: [], create_binding_ids: [], continuous_ids: ['fixed'] } }
+  assert.equal(canOperateContinuous(view, 'fixed'), true)
+  assert.equal(canOperateContinuous(view, 'caller_chosen'), false)
+  assert.equal(canOperateContinuous({ ...view, actions_allowed: false }, 'fixed'), false)
 })

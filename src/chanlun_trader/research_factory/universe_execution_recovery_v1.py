@@ -101,13 +101,16 @@ def resume_universe_job(path):
     return runner.execute_accounts(path, recover=True)
 
 
-def resume_long_horizon_job(path,job):
+def resume_long_horizon_job(path,job,*,reconcile_only=False):
     """新语义只扣已运行段；未知崩溃扣该段上界，停机等待不免费重置。"""
     from scripts import run_strategy_account_v1 as runner
+    runner.validate_sources(job)
     if (job['resources']['purpose'] != 'RESEARCH_ACCOUNT'
             or any(p['backend']['backend'] != 'UNIVERSE_ACCOUNT_BACKEND_V2' for p in job['plans'].values())):
         raise PermissionError('UNIVERSE_LONG_HORIZON_RESUME_VERSION_REQUIRED')
     root=Path(job['root']);gov=runner.service(job)
+    if root.resolve()!=root or root!=Path(path).resolve().parent:
+        raise PermissionError('UNIVERSE_RESUME_ROOT_CONFLICT')
     with ObjectiveMutationLock.for_resource(root/'RESUME.lock'):
         for name in job['plans']:
             if not (root/(name+'_START.json')).exists():
@@ -119,6 +122,33 @@ def resume_long_horizon_job(path,job):
             gov.dispatched_execution(name); state=gov.segment_status(name)
             pending=state['pending']
             if pending is None:
+                if state['segments'] and state['segments'][-1]['charge']['outcome'] in ('COMPLETED','FAILED'):
+                    last=state['segments'][-1];prefix=runner.segment_prefix(name,last['dispatch']['segment_number'])
+                    outcome=last['charge']['outcome'];output=root/(name+'_RESULT.json')
+                    resource_path=root/(prefix+'_RESOURCE.json');failure_path=root/(prefix+'_FAILURE.json')
+                    evidence=resource_path if resource_path.exists() else failure_path
+                    if not evidence.is_file() or runner.sha(evidence)!=last['charge']['evidence_identity']:
+                        raise PermissionError('UNIVERSE_RESUME_CHARGED_EVIDENCE_CHANGED')
+                    if outcome=='COMPLETED':
+                        recorded=runner.read_json(root/(prefix+'_STATUS.json'))
+                        if (not output.is_file() or recorded.get('state')!='COMPLETED'
+                                or recorded.get('dispatch_id')!=last['dispatch']['dispatch_id']
+                                or recorded.get('result_sha256')!=runner.sha(output)):
+                            raise PermissionError('UNIVERSE_RESUME_COMPLETION_NOT_PROVEN')
+                    for suffix in ('_WORKER.json','_INPUT_ACCESS.json'):
+                        source=root/(prefix+suffix)
+                        if source.exists():runner.save(root/(name+suffix),runner.read_json(source))
+                    summary_path=root/(name+'_RESOURCE.json')
+                    if not summary_path.exists():
+                        resource=runner.read_json(resource_path) if resource_path.exists() else {}
+                        runner.save(summary_path,{**resource,'elapsed_wall_seconds':state['charged_seconds'],
+                            'segment_count':len(state['segments']),'active_metering':True,
+                            'segments':[row['charge']['charge_id'] for row in state['segments']]})
+                    elif runner.read_json(summary_path).get('elapsed_wall_seconds')!=state['charged_seconds']:
+                        raise PermissionError('UNIVERSE_RESUME_CUMULATIVE_RESOURCE_CONFLICT')
+                    gov.settle(name,completed=outcome=='COMPLETED',seconds=state['charged_seconds'],
+                        result_hash=runner.sha(output) if output.exists() else None,
+                        error=None if outcome=='COMPLETED' else 'KNOWN_WORKER_FAILURE')
                 continue
             number=pending['segment_number'];prefix=runner.segment_prefix(name,number)
             worker_path=root/(prefix+'_WORKER.json');access_path=root/(prefix+'_INPUT_ACCESS.json')
@@ -197,4 +227,6 @@ def resume_long_horizon_job(path,job):
                     result_hash=runner.sha(output) if output.exists() else None,error=None if outcome=='COMPLETED' else 'KNOWN_WORKER_FAILURE')
                 if outcome=='FAILED':
                     raise PermissionError('UNIVERSE_KNOWN_FAILURE_NO_RETRY')
+    if reconcile_only:
+        return {'status':'RECONCILED','dispatched_segments':0,'items':runner.status(path)['items']}
     return runner.execute_accounts(path,recover=True)

@@ -30,7 +30,10 @@ def authorized_compute_profile(authority, request, stage):
 
 
 class UniverseComputeGovernanceV1:
-    def __init__(self,root,authority,request,stage,*,campaign_operation=None):
+    def __init__(self,root,authority,request,stage,*,campaign_operation=None,for_dispatch=True):
+        if type(for_dispatch) is not bool:
+            raise ValueError('UNIVERSE_COMPUTE_DISPATCH_MODE_INVALID')
+        self.for_dispatch=for_dispatch
         self.root=Path(root).absolute(); self.authority=authority; self.request=request; self.stage=stage
         if self.root.resolve() != self.root:
             raise PermissionError('UNIVERSE_COMPUTE_ROOT_REDIRECTED')
@@ -46,8 +49,20 @@ class UniverseComputeGovernanceV1:
                     raise PermissionError('UNIVERSE_COMPUTE_CAMPAIGN_REFERENCE_INVALID')
                 campaign_operation={**campaign_ref,'operation_id':'compute_'+stage.lower()+'_'+stable_hash(request)[:48]}
         self.campaign_operation=campaign_operation
+        self.research_binding=None
+        if request.get('version') == 'FULL_UNIVERSE_SUBMISSION_V4':
+            if campaign_operation is None:
+                raise PermissionError('UNIVERSE_CONTINUOUS_CAMPAIGN_REQUIRED')
+            from .campaign_scope_v1 import CampaignScopeV1
+            from .research_campaign_v1 import ResearchCampaignV1
+            campaign=ResearchCampaignV1(campaign_operation['root'],campaign_operation['authorization_id'])
+            self.research_binding=CampaignScopeV1(campaign).resolve(request['research_binding_ref'],for_dispatch=for_dispatch)
+            if self.research_binding['phase'] != request['phase']:
+                raise PermissionError('UNIVERSE_COMPUTE_PHASE_CONFLICT')
         source=authority.get('source',{})
-        if source.get('origin') != 'USER_EXPLICIT_CURRENT_TASK' or not source.get('statement'):
+        if ((self.research_binding is None and (source.get('origin') != 'USER_EXPLICIT_CURRENT_TASK' or not source.get('statement')))
+                or (self.research_binding is not None and (source.get('origin') != 'CONTINUOUS_CAMPAIGN_SCOPE_V1'
+                    or source.get('research_binding_ref') != request['research_binding_ref']))):
             raise PermissionError('UNIVERSE_COMPUTE_APPROVAL_SOURCE_REQUIRED')
         self.binding={'stage':stage,'profile':self.profile,'authorization_identity':stable_hash(authority),
             'request_identity':stable_hash(request),'objective_id':authority['objective_id'],
@@ -60,6 +75,8 @@ class UniverseComputeGovernanceV1:
         return ObjectiveMutationLock.for_resource(self.budget_path)
 
     def active(self):
+        if not self.for_dispatch:
+            raise PermissionError('UNIVERSE_COMPUTE_RECONCILIATION_ONLY')
         if datetime.now(timezone.utc)>=datetime.fromisoformat(self.binding['expires_at']):
             raise PermissionError('UNIVERSE_COMPUTE_AUTHORIZATION_EXPIRED')
         if (self.root/'REVOKED.json').exists():
@@ -70,7 +87,8 @@ class UniverseComputeGovernanceV1:
             campaign=ResearchCampaignV1(ref['root'],ref['authorization_id'])
             view=campaign.status()
             operation=view['operations'].get(ref['operation_id'])
-            campaign._dispatchable(view,operation['stage'] if operation else 'EXPLORATION')
+            phase=self.research_binding['phase'] if self.research_binding else 'EXPLORATION'
+            campaign._dispatchable(view,operation['stage'] if operation else phase)
         return self.binding
 
     def start(self):
@@ -85,8 +103,10 @@ class UniverseComputeGovernanceV1:
                 from .research_campaign_v1 import ResearchCampaignV1
                 ref=self.campaign_operation; campaign=ResearchCampaignV1(ref['root'],ref['authorization_id'])
                 resource='data_experiments' if self.stage=='PREPARATION' else 'verification_jobs'
-                campaign.reserve_operation(operation_id=ref['operation_id'],batch_id='compute_'+stable_hash(self.request)[:48],
-                    stage='EXPLORATION',kind=STAGES[self.stage][2],subject_identity=self.binding['compute_identity'],
+                campaign.reserve_operation(operation_id=ref['operation_id'],
+                    batch_id=self.research_binding['batch_id'] if self.research_binding else 'compute_'+stable_hash(self.request)[:48],
+                    stage=self.research_binding['phase'] if self.research_binding else 'EXPLORATION',
+                    kind=STAGES[self.stage][2],subject_identity=self.binding['compute_identity'],
                     upper_bounds={resource:1,'wall_seconds':self.profile['total_seconds']},execution_profile=self.profile)
             budget.register(self.budget_kind,self.budget_key,self.authority['compute_authorization'][STAGES[self.stage][1]])
             reservation=budget.reserve(self.budget_kind,self.budget_key)
@@ -196,7 +216,8 @@ class UniverseComputeGovernanceV1:
             operation=campaign.status()['operations'][ref['operation_id']]
             if (operation['subject_identity']!=self.binding['compute_identity']
                     or operation.get('execution_profile')!=self.profile or operation['kind']!=STAGES[self.stage][2]
-                    or operation['stage']!='EXPLORATION'):
+                    or operation['stage']!=(self.research_binding['phase'] if self.research_binding else 'EXPLORATION')
+                    or (self.research_binding and operation['batch_id']!=self.research_binding['batch_id'])):
                 raise PermissionError('UNIVERSE_COMPUTE_CAMPAIGN_MIRROR_CONFLICT')
             start=read_json(self.root/'COMPUTE_START.json')
             if start['binding']!=self.binding:raise PermissionError('UNIVERSE_COMPUTE_START_IDENTITY_CONFLICT')

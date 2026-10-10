@@ -1111,11 +1111,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.lifecycle_bindings:
         from scripts.run_strategy_lifecycle_v1 import load_config
-        from scripts.lifecycle_deployment_v2 import qualified_research_loader
-        from .research_factory.lifecycle_service_v2 import LifecycleServiceV2
+        from scripts.lifecycle_deployment_v2 import build_lifecycle_service
         from .research_factory.trusted_research_host_v1 import TrustedResearchHostV1
         bindings = load_config(args.lifecycle_bindings, Path(args.root) / 'lifecycle_jobs')
-        service = LifecycleServiceV2(args.root, bindings, research_loader=qualified_research_loader(args.root))
+        service = build_lifecycle_service(args.root, bindings)
         host = TrustedResearchHostV1(service, interval=args.sleep_seconds)
         if args.command == 'status':
             status = host.status()

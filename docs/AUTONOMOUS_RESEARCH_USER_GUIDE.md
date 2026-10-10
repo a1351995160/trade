@@ -1,5 +1,7 @@
 # 自主研究系统：日常使用说明
 
+新增[持续全范围研究](CONTINUOUS_UNIVERSE_RESEARCH_GUIDE.md)通过固定部署、Owner 总范围审批和 V4 公共单步推进。总额度用完进入等待，不以默认轮数宣布完成；默认模型硬预算及未来独立资料的真实验收缺口在新指南中明确保留。
+
 新的[全池长期研究入口](LONG_HORIZON_UNIVERSE_RESEARCH_GUIDE.md)使用 `FULL_UNIVERSE_SUBMISSION_V3`：固定长期区间、同账户分段计算，分别报告账户收益与信号表现；需要排序选股时可使用 V4 评分规则。旧版本与新版本的授权、资源边界和验收证据分别保留。
 
 全范围账户现在可明确选择[先检查全池、回测全部资料合格股票、公布排除清单](QUALIFIED_UNIVERSE_RESEARCH.md)。公共请求使用 `FULL_UNIVERSE_SUBMISSION_V2` 加 `account_scope=DATA_QUALIFIED`，工作台也有同名选择；原严格全池和信号研究保留。范围由资料资格确定，策略随后按信号选股。

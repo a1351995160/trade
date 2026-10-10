@@ -142,11 +142,16 @@ class StrategyBatchGovernanceV1(ETFAccountGovernanceV1):
             raise PermissionError('EXACT_STRATEGY_PLANS_APPROVAL_REQUIRED')
         return self._confirm_validated(source,inputs)
 
-    def confirm_campaign_scope(self, campaign, operation_ids, inputs):
+    def confirm_campaign_scope(self, campaign, operation_ids, inputs, *, research_binding_ref=None):
         """已有总任务派生精确账户用途，不冒充新的逐候选用户确认。"""
         source = {'origin': 'CAMPAIGN_V1', 'campaign_root': str(campaign.root),
                   'authorization_id': campaign.authorization_id, 'operation_ids': operation_ids,
                   'expires_at': campaign.status()['authorization']['expires_at']}
+        if research_binding_ref is not None:
+            from .campaign_scope_v1 import CampaignScopeV1
+            binding = CampaignScopeV1(campaign).resolve(research_binding_ref)
+            source.update(research_binding_ref=research_binding_ref, phase=binding['phase'],
+                          batch_id=binding['batch_id'], expires_at=binding['expires_at'])
         validate_campaign_source(source, self.plans, self.objective_id)
         return self._confirm_validated(source, inputs)
 
@@ -447,18 +452,31 @@ class StrategyBatchGovernanceV1(ETFAccountGovernanceV1):
 def validate_campaign_source(source, plans, objective_id):
     """也供离线证据门核对父授权；历史核验不要求父授权仍未到期。"""
     from .research_campaign_v1 import ResearchCampaignV1
-    if set(source) != {'origin', 'campaign_root', 'authorization_id', 'operation_ids', 'expires_at'} or source['origin'] != 'CAMPAIGN_V1':
+    fields = {'origin', 'campaign_root', 'authorization_id', 'operation_ids', 'expires_at'}
+    continuous = 'research_binding_ref' in source
+    if continuous:
+        fields |= {'research_binding_ref', 'phase', 'batch_id'}
+    if set(source) != fields or source['origin'] != 'CAMPAIGN_V1':
         raise PermissionError('CAMPAIGN_ACCOUNT_SOURCE_INVALID')
     campaign = ResearchCampaignV1(source['campaign_root'], source['authorization_id'])
     current = campaign.status()
     authorization = current['authorization']
+    phase = 'EXPLORATION'
+    expiry = current['base_authorization']['expires_at']
+    if continuous:
+        from .campaign_scope_v1 import CampaignScopeV1
+        binding = CampaignScopeV1(campaign).resolve(source['research_binding_ref'], for_dispatch=False)
+        phase, expiry = binding['phase'], binding['expires_at']
+        if source['phase'] != phase or source['batch_id'] != binding['batch_id']:
+            raise PermissionError('CAMPAIGN_ACCOUNT_PHASE_CONFLICT')
     mapping = source['operation_ids']
-    if (authorization['objective_id'] != objective_id or source['expires_at'] != authorization['expires_at']
+    if (authorization['objective_id'] != objective_id or source['expires_at'] != expiry
             or not isinstance(mapping, dict) or set(mapping) != set(plans) or len(set(mapping.values())) != len(mapping)):
         raise PermissionError('CAMPAIGN_ACCOUNT_AUTHORITY_CONFLICT')
     for name, operation_id in mapping.items():
         operation = current['operations'].get(operation_id, {})
-        if (operation.get('kind') != 'ACCOUNT' or operation.get('stage') != 'EXPLORATION'
+        if (operation.get('kind') != 'ACCOUNT' or operation.get('stage') != phase
+                or (continuous and operation.get('batch_id') != binding['batch_id'])
                 or operation.get('subject_identity') != plans[name]['plan_id']
                 or operation.get('status') not in {'RESERVED', 'RUNNING', 'UNKNOWN', 'COMPLETED', 'FAILED'}):
             raise PermissionError('CAMPAIGN_ACCOUNT_OPERATION_CONFLICT')

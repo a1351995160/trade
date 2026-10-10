@@ -65,7 +65,7 @@ def _source_files(strategy) -> dict:
         "engine/individual_dividend_accounting_v1.py"))
     if strategy.payload.get('version') == 'RESEARCH_RULE_STRATEGY_V4':
         files.update(folder/name for name in ('universe_compute_governance_v1.py','universe_execution_profile_v1.py',
-            'research_campaign_v1.py','run_budget.py','universe_research_report_v2.py'))
+            'research_campaign_v1.py','campaign_scope_v1.py','run_budget.py','universe_research_report_v2.py'))
     return {str(_file(path, REPO)): _sha(path) for path in sorted(files)}
 
 
@@ -86,17 +86,47 @@ def _authorize(authority: dict, normalized: dict) -> dict:
                    and normalized["account_end"] <= day(authorization["end"]))
     except (KeyError, TypeError, ValueError):
         raise PermissionError("UNIVERSE_SCAN_AUTHORITY_INVALID") from None
-    if (not isinstance(source, dict) or source.get("origin") != "USER_EXPLICIT_CURRENT_TASK"
-            or not source.get("statement") or expiry.tzinfo is None
+    continuous = normalized.get('version') == 'FULL_UNIVERSE_SUBMISSION_V4'
+    if continuous:
+        from chanlun_trader.research_factory.campaign_scope_v1 import CampaignScopeV1
+        from chanlun_trader.research_factory.research_campaign_v1 import ResearchCampaignV1
+        campaign = ResearchCampaignV1(source['campaign_root'], source['authorization_id'])
+        binding = CampaignScopeV1(campaign).resolve(normalized['research_binding_ref'])
+        if (source.get('origin') != 'CONTINUOUS_CAMPAIGN_SCOPE_V1'
+                or source.get('research_binding_ref') != normalized['research_binding_ref']
+                or expiry.isoformat() != binding['expires_at']):
+            raise PermissionError('UNIVERSE_CONTINUOUS_SCAN_BINDING_INVALID')
+    if (not isinstance(source, dict)
+            or (not continuous and (source.get("origin") != "USER_EXPLICIT_CURRENT_TASK" or not source.get("statement")))
+            or expiry.tzinfo is None
             or expiry <= datetime.now(timezone.utc) or not covered
             or authorization.get("purpose") != normalized["purpose"]
             or not isinstance(authorization.get("dataset_ids"), list)
             or normalized["dataset_id"] not in authorization["dataset_ids"]
             or not authorization.get("authorization_id")):
         raise PermissionError("UNIVERSE_SCAN_DATA_SCOPE_NOT_AUTHORIZED")
-    return {"objective_id": authority["objective_id"], "budget_path": str(authority["budget_path"]),
+    approved = {"objective_id": authority["objective_id"], "budget_path": str(authority["budget_path"]),
             "expires_at": authority["expires_at"], "source": deepcopy(source),
             "data_authorization": deepcopy(authorization)}
+    for key in ('trusted_deployment', 'trusted_data_access'):
+        if key in authority:
+            approved[key] = deepcopy(authority[key])
+    return approved
+
+
+def _registered_worker_provider(intent, request):
+    from chanlun_trader.research.guard import configured_access_authority
+    from chanlun_trader.research_factory.universe_data_provider_v1 import UniverseDataProviderV1, service_trusted_scope
+    authority = intent.get('compute_authority', intent['authority'])
+    deployment = authority.get('trusted_deployment') if request.get('purpose') == 'INDEPENDENT_BUSINESS_VALIDATION' else None
+    trusted_authority = (configured_access_authority(deployment['path'], expected_sha256=deployment['sha256'])
+                         if deployment is not None else None)
+    provider = UniverseDataProviderV1({'registered': intent['registration']['root']},
+                                    trusted_access_authority=trusted_authority)
+    provider.register_manifest(request['dataset_id'], 'registered', intent['registration']['original_metadata_path'])
+    scope = service_trusted_scope(SimpleNamespace(provider=provider, trusted_data_deployment=deployment),
+                                  request, authority)
+    return provider, scope, deployment
 
 
 def _registration(provider, normalized: dict) -> dict:
@@ -313,9 +343,8 @@ def _worker(root: Path,phase=None,segment_number=None) -> int:
         from chanlun_trader.research_factory.universe_data_provider_v1 import UniverseDataProviderV1
         from chanlun_trader.research_factory.strategy_submission_v1 import public_rule_factory
         from chanlun_trader.research_factory.universe_submission_v1 import freeze_universe_bundle
-        provider = UniverseDataProviderV1({"registered": intent["registration"]["root"]})
+        provider, trusted_scope, deployment = _registered_worker_provider(intent, request)
         # 副本只作解析内容回执；来源身份必须沿用已核验的原登记文件字节哈希。
-        provider.register_manifest(request["dataset_id"], "registered", intent["registration"]["original_metadata_path"])
         _, registered, digest, _ = provider._datasets[request["dataset_id"]]
         if (digest != intent["registration"]["original_metadata_sha256"]
                 or registered != intent["registration"]["manifest"]):
@@ -328,15 +357,16 @@ def _worker(root: Path,phase=None,segment_number=None) -> int:
             account_start=request["account_start"], account_end=request["account_end"],
             purpose=request["purpose"], stage="SCAN", normalization_fields=(),
             required_fields=strategy.requirements.fields, warmup_bars=strategy.requirements.warmup_sessions,
-            authorization=intent["authority"]["data_authorization"])
+            authorization=intent["authority"]["data_authorization"], trusted_scope=trusted_scope)
         if sorted(prepared["window"]["symbols"]) != request["symbols"]:
             raise ValueError("UNIVERSE_SCAN_PROVIDER_SHRANK_TARGETS")
         _check_registration(intent["registration"])
-        qualified = request.get('version') in {'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3'}
+        qualified = request.get('version') in {'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3','FULL_UNIVERSE_SUBMISSION_V4'}
         if qualified:
             parent_root = root / 'PARENT'
             parent_root.mkdir()
-            freeze_universe_bundle(prepared, parent_root)
+            freeze_universe_bundle(prepared, parent_root, trusted_scope=trusted_scope,
+                                   expected_deployment=deployment)
             del inputs
             import gc
             gc.collect()
@@ -344,7 +374,8 @@ def _worker(root: Path,phase=None,segment_number=None) -> int:
             derived = qualify_universe_bundle(prepared, required_fields=strategy.requirements.fields,
                 warmup_bars=strategy.requirements.warmup_sessions)
             if derived['ready']:
-                freeze_universe_bundle(derived, root)
+                freeze_universe_bundle(derived, root, trusted_scope=trusted_scope,
+                                       expected_deployment=deployment)
             scope = derived['scope_receipt']
             excluded = {row['symbol']: row for row in scope['excluded']}
             evaluated = {'processed_target_count': len(request['symbols']), 'qualification_checked': True,
@@ -359,7 +390,8 @@ def _worker(root: Path,phase=None,segment_number=None) -> int:
             coverage = deepcopy(scope['account_audit']['coverage'])
             input_identity = derived['input_identity'] or prepared['input_identity']
         else:
-            freeze_universe_bundle(prepared, root)
+            freeze_universe_bundle(prepared, root, trusted_scope=trusted_scope,
+                                   expected_deployment=deployment)
             evaluated = _evaluate_conditions(strategy, inputs)
             coverage = deepcopy(inputs.coverage)
             input_identity = inputs.input_identity
@@ -409,7 +441,7 @@ def _long_prepare_worker_impl(root,phase,number):
             or HANDSHAKE['memory_mib'] != meter.profile['memory_mib']
             or not 0 < HANDSHAKE['wall_seconds'] <= pending['upper_bound_seconds']
             or intent['intent_identity'] != stable_hash({k:v for k,v in intent.items() if k!='intent_identity'})
-            or request['version'] != 'FULL_UNIVERSE_SUBMISSION_V3'):
+            or request['version'] not in {'FULL_UNIVERSE_SUBMISSION_V3','FULL_UNIVERSE_SUBMISSION_V4'}):
         raise PermissionError('UNIVERSE_PREPARATION_WORKER_SCOPE_CONFLICT')
     _check_code(intent['source_hashes']); _check_registration(intent['registration']); _authorize(intent['authority'],request)
     meter.active()
@@ -422,19 +454,19 @@ def _long_prepare_worker_impl(root,phase,number):
         raise PermissionError('UNIVERSE_SCAN_RULE_CHANGED')
     parent=root/'PARENT';parent_input=parent/'INPUT.json'
     if phase=='PREPARE':
-        provider=UniverseDataProviderV1({'registered':intent['registration']['root']})
-        provider.register_manifest(request['dataset_id'],'registered',intent['registration']['original_metadata_path'])
+        provider,trusted_scope,deployment=_registered_worker_provider(intent,request)
         prepared,inputs=provider._prepare_with_inputs(request['dataset_id'],symbols=request['symbols'],
             universe_id=request['universe_id'],feature_start=request['feature_start'],account_start=request['account_start'],
             account_end=request['account_end'],purpose=request['purpose'],stage='SCAN',normalization_fields=(),
             required_fields=strategy.requirements.fields,warmup_bars=strategy.requirements.warmup_sessions,
-            authorization=intent['authority']['data_authorization'])
+            authorization=intent['authority']['data_authorization'],trusted_scope=trusted_scope)
         if prepared['window']['symbols'] != request['symbols']:
             raise ValueError('UNIVERSE_SCAN_PROVIDER_SHRANK_TARGETS')
         actual=sum(d>=request['account_start'] for d in prepared['window']['calendar'])
         if actual != request['execution_profile']['account_sessions']:
             raise ValueError('UNIVERSE_EXECUTION_PROFILE_SESSION_CONFLICT')
-        parent.mkdir();freeze_universe_bundle(prepared,parent)
+        parent.mkdir();freeze_universe_bundle(prepared,parent,trusted_scope=trusted_scope,
+                                             expected_deployment=deployment)
         immutable(root/'PREPARED_PARENT.json',{'path':str(parent_input),'sha256':_sha(parent_input),
             'input_identity':prepared['input_identity'],'intent_identity':intent['intent_identity'],
             'account_sessions':actual})
@@ -444,12 +476,15 @@ def _long_prepare_worker_impl(root,phase,number):
     binding=read_json(root/'PREPARED_PARENT.json')
     if binding['intent_identity'] != intent['intent_identity'] or binding['sha256'] != _sha(parent_input):
         raise PermissionError('UNIVERSE_PREPARATION_PARENT_CHANGED')
-    snapshot=read_json(parent_input);restored=restore_universe_bundle(snapshot,parent_input)
+    snapshot=read_json(parent_input)
+    deployment=(intent['compute_authority'].get('trusted_deployment')
+                if request.get('purpose')=='INDEPENDENT_BUSINESS_VALIDATION' else None)
+    restored=restore_universe_bundle(snapshot,parent_input,expected_deployment=deployment)
     prepared={**snapshot,'bundle':restored['frame']}
     from chanlun_trader.research_factory.universe_qualified_scope_v1 import qualify_universe_bundle
     derived=qualify_universe_bundle(prepared,required_fields=strategy.requirements.fields,
         warmup_bars=strategy.requirements.warmup_sessions)
-    if derived['ready']:freeze_universe_bundle(derived,root)
+    if derived['ready']:freeze_universe_bundle(derived,root,expected_deployment=deployment)
     scope=derived['scope_receipt'];excluded={row['symbol']:row for row in scope['excluded']}
     coverage=deepcopy(scope['account_audit']['coverage'])
     coverage['completeness']=intent['preview']['data_metadata']['completeness']
@@ -469,15 +504,48 @@ def _long_prepare_worker_impl(root,phase,number):
     return 0
 
 
-def _run_long_preparation(root,intent):
+def _preparation_progress(root,intent,*,dispatched_segments=0,result=None):
+    """进度不把已完成 PREPARE 误称为已完成全池资格准备。"""
+    from .universe_compute_governance_v1 import UniverseComputeGovernanceV1
+    state=None
+    if (root/'COMPUTE'/'COMPUTE_START.json').exists():
+        state=UniverseComputeGovernanceV1(root/'COMPUTE',intent['compute_authority'],
+            intent['preview']['request'],'PREPARATION').status()
+    pending=state is not None and state['pending'] is not None
+    phases=('PREPARE','QUALIFY')
+    count=len(state['segments']) if state is not None else 0
+    return {'status':'PREPARATION_COMPLETED' if result is not None else
+                'PREPARATION_RECONCILIATION_REQUIRED' if pending else 'PREPARATION_CONTINUE',
+            'complete':result is not None,'scan_id':intent['scan_id'],'root':str(root),
+            'dispatched_segments':dispatched_segments,'next_phase':None if result is not None or pending else
+                phases[count] if count<len(phases) else None,
+            'charged_seconds':state['charged_seconds'] if state is not None else 0,
+            **({'result':result} if result is not None else {})}
+
+
+def _run_long_preparation(root,intent,*,step=False):
+    """同一个准备用途的实际分段器；step 只运行 PREPARE 或 QUALIFY 之一。"""
     import time
     from .universe_execution_profile_v1 import worker_wall_seconds
     from .universe_compute_governance_v1 import UniverseComputeGovernanceV1
     meter=UniverseComputeGovernanceV1(root/'COMPUTE',intent['compute_authority'],intent['preview']['request'],'PREPARATION')
-    meter.start()
-    resources=[]
-    for phase in ('PREPARE','QUALIFY'):
+    if not (root/'COMPUTE'/'COMPUTE_START.json').exists():meter.start()
+    state=meter.status()
+    if state['pending'] is not None:
+        raise PermissionError('UNIVERSE_PREPARATION_INTERRUPTED_RECONCILIATION_REQUIRED')
+    resources=[];phases=('PREPARE','QUALIFY');dispatched_segments=0
+    for index,row in enumerate(state['segments']):
+        resource_path=root/('PREPARE_'+str(row['dispatch']['number']).zfill(6)+'_RESOURCE.json')
+        resource=read_json(_file(resource_path,root))
+        if (index>=len(phases) or resource.get('phase')!=phases[index]
+                or resource.get('dispatch_id')!=row['dispatch']['dispatch_id']
+                or row['charge']['evidence_identity']!=_sha(resource_path)):
+            raise PermissionError('UNIVERSE_PREPARATION_RESOURCE_CHAIN_CONFLICT')
+        resources.append(resource)
+    failed=bool(state['segments'] and state['segments'][-1]['charge']['outcome']=='FAILED')
+    for phase in (() if failed else phases[len(resources):]):
         dispatch=meter.dispatch();number=dispatch['number'];prefix='PREPARE_'+str(number).zfill(6)
+        dispatched_segments+=1
         env={**os.environ,'PYTHONPATH':os.pathsep.join((str(REPO/'src'),str(REPO))),'PYTHONDONTWRITEBYTECODE':'1',
              **{name:'1' for name in ('OMP_NUM_THREADS','OPENBLAS_NUM_THREADS','MKL_NUM_THREADS','NUMEXPR_NUM_THREADS')}}
         env.pop('CHANLUN_TEST_ISOLATION',None);begin=time.monotonic()
@@ -501,11 +569,16 @@ def _run_long_preparation(root,intent):
             if not (root/'RESULT.json').exists():
                 _write_result(root,_blocked_result(intent,'UNIVERSE_PREPARATION_WORKER_FAILED'))
             break
+        if step and phase=='PREPARE':
+            return _preparation_progress(root,intent,dispatched_segments=dispatched_segments)
+    if not resources:
+        raise PermissionError('UNIVERSE_PREPARATION_TERMINAL_EVIDENCE_REQUIRED')
     summary={**resources[-1],'elapsed_wall_seconds':meter.status()['charged_seconds'],
              'segment_count':len(resources),'preparation_profile':meter.profile,'active_metering':True}
     immutable(root/'RESOURCE.json',summary)
     result=_receipt(root,intent,summary)
-    return {**result,'recorded_only':False,'content_reread':True,'freshly_scanned':True}
+    result={**result,'recorded_only':False,'content_reread':bool(dispatched_segments),'freshly_scanned':bool(dispatched_segments)}
+    return _preparation_progress(root,intent,dispatched_segments=dispatched_segments,result=result) if step else result
 
 
 def reconcile_long_preparation(root):
@@ -514,10 +587,11 @@ def reconcile_long_preparation(root):
     from ..research_daemon_state import DaemonInstanceLockV1
     root=Path(root).absolute();intent=read_json(_file(root/'SCAN_INTENT.json',root))
     if (intent['intent_identity']!=stable_hash({k:v for k,v in intent.items() if k!='intent_identity'})
-            or intent['preview']['request']['version']!='FULL_UNIVERSE_SUBMISSION_V3'):
+            or intent['preview']['request']['version'] not in {'FULL_UNIVERSE_SUBMISSION_V3','FULL_UNIVERSE_SUBMISSION_V4'}):
         raise PermissionError('UNIVERSE_PREPARATION_SCOPE_CHANGED')
     _check_code(intent['source_hashes'])
-    meter=UniverseComputeGovernanceV1(root/'COMPUTE',intent['compute_authority'],intent['preview']['request'],'PREPARATION')
+    meter=UniverseComputeGovernanceV1(root/'COMPUTE',intent['compute_authority'],intent['preview']['request'],
+        'PREPARATION',for_dispatch=False)
     state=meter.reconcile_segment_mirrors();pending=state['pending']
     if pending:
         prefix='PREPARE_'+str(pending['number']).zfill(6);worker=root/(prefix+'_WORKER.json')
@@ -537,26 +611,35 @@ def reconcile_long_preparation(root):
         if resource and resource.get('dispatch_id')!=pending['dispatch_id']:
             raise PermissionError('UNIVERSE_PREPARATION_RESOURCE_DISPATCH_CONFLICT')
         seconds=resource.get('elapsed_wall_seconds')
-        failed=bool(failure) or resource.get('timed_out') or resource.get('returncode') not in (0,75) or seconds>pending['upper_bound_seconds']
-        if not failed:
-            raise PermissionError('UNIVERSE_PREPARATION_CONTINUATION_REQUIRES_RECONCILIATION')
+        phase='PREPARE' if pending['number']==1 else 'QUALIFY' if pending['number']==2 else None
+        failed=(bool(failure) or phase is None or resource.get('timed_out')
+            or resource.get('phase')!=phase or resource.get('returncode')!=(75 if phase=='PREPARE' else 0)
+            or type(seconds) not in (int,float) or (seconds is not None and seconds>pending['upper_bound_seconds']))
+        if not failed and (root/('PARENT/INPUT.json' if phase=='PREPARE' else 'RESULT.json')).is_file() is not True:
+            raise PermissionError('UNIVERSE_PREPARATION_COMMITTED_OUTPUT_REQUIRED')
         meter.charge(pending['number'],seconds=seconds,
-            evidence_identity=_sha(resource_path) if resource_path.exists() else _sha(failure_path),outcome='FAILED')
+            evidence_identity=_sha(resource_path) if resource_path.exists() else _sha(failure_path),
+            outcome='FAILED' if failed else 'CONTINUE' if phase=='PREPARE' else 'COMPLETED')
         state=meter.status()
-    if not state['segments'] or state['segments'][-1]['charge']['outcome']!='FAILED':
-        raise PermissionError('UNIVERSE_PREPARATION_TERMINAL_FAILURE_REQUIRED')
-    if not (root/'RESULT.json').exists():
+    if not state['segments']:
+        return {'status':'PREPARATION_RECONCILED','complete':False,'dispatched_segments':0}
+    terminal=state['segments'][-1]['charge']['outcome']
+    if terminal=='CONTINUE':
+        return {'status':'PREPARATION_RECONCILED','complete':False,'dispatched_segments':0,
+            'charged_seconds':state['charged_seconds']}
+    if terminal=='FAILED' and not (root/'RESULT.json').exists():
         _write_result(root,_blocked_result(intent,'UNIVERSE_PREPARATION_KNOWN_FAILURE_NO_RETRY'))
     last=state['segments'][-1];prefix='PREPARE_'+str(last['dispatch']['number']).zfill(6)
     resource_path=root/(prefix+'_RESOURCE.json')
     summary={**(read_json(resource_path) if resource_path.exists() else {}),
-        'returncode':1,'elapsed_wall_seconds':state['charged_seconds'],'segment_count':len(state['segments']),
-        'preparation_profile':meter.profile,'active_metering':True,'known_failure':True}
+        'returncode':1 if terminal=='FAILED' else 0,'elapsed_wall_seconds':state['charged_seconds'],
+        'segment_count':len(state['segments']),'preparation_profile':meter.profile,'active_metering':True,
+        **({'known_failure':True} if terminal=='FAILED' else {})}
     immutable(root/'RESOURCE.json',summary)
-    return _receipt(root,intent,summary)
+    return _receipt(root,intent,summary,for_dispatch=False)
 
 
-def _receipt(root: Path, intent: dict, resource: dict) -> dict:
+def _receipt(root: Path, intent: dict, resource: dict,*,for_dispatch=True) -> dict:
     result_path, resource_path = _file(root / "RESULT.json", root), _file(root / "RESOURCE.json", root)
     result = read_json(result_path)
     if (result.get("scan_identity") != stable_hash({k: v for k, v in result.items() if k != "scan_identity"})
@@ -569,9 +652,10 @@ def _receipt(root: Path, intent: dict, resource: dict) -> dict:
         raise ValueError("UNIVERSE_SCAN_RESOURCE_RESULT_CONFLICT")
     artifacts = {str(path): {"sha256": _sha(path), "physical_signature": _signature(path)}
                  for path in (result_path, resource_path, _file(root / "REPORT_CN.md", root))}
-    if intent['preview']['request']['version']=='FULL_UNIVERSE_SUBMISSION_V3':
+    if intent['preview']['request']['version'] in {'FULL_UNIVERSE_SUBMISSION_V3','FULL_UNIVERSE_SUBMISSION_V4'}:
         from .universe_compute_governance_v1 import UniverseComputeGovernanceV1
-        meter=UniverseComputeGovernanceV1(root/'COMPUTE',intent['compute_authority'],intent['preview']['request'],'PREPARATION')
+        meter=UniverseComputeGovernanceV1(root/'COMPUTE',intent['compute_authority'],intent['preview']['request'],
+            'PREPARATION',for_dispatch=for_dispatch)
         state=meter.status()
         if state['pending'] is not None or resource.get('elapsed_wall_seconds')!=state['charged_seconds']:
             raise PermissionError('UNIVERSE_PREPARATION_RESOURCE_CHAIN_CONFLICT')
@@ -632,20 +716,45 @@ def _archived(root: Path, intent: dict) -> dict:
 
 def scan_universe(service, request: dict, preview_identity: str) -> dict:
     """受既有数据授权执行一次公共全范围检查，不创建或消费账户预算。"""
-    if not isinstance(request, dict) or request.get("version") not in {'FULL_UNIVERSE_SUBMISSION_V1', 'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3'}:
+    return _scan_universe(service,request,preview_identity,mode='BLOCKING')
+
+
+def begin_universe_preparation(service,request:dict,preview_identity:str)->dict:
+    """冻结长期准备意图及来源；不派发 worker，不读取行情内容。"""
+    return _scan_universe(service,request,preview_identity,mode='BEGIN')
+
+
+def advance_universe_preparation(service,request:dict,preview_identity:str)->dict:
+    """同一准备意图每次最多派发一个真实受限进程。"""
+    return _scan_universe(service,request,preview_identity,mode='ADVANCE')
+
+
+def finalize_universe_preparation(service,scanned:dict)->dict:
+    """只从完整资源回执提取冻结快照；不派发任何准备或账户进程。"""
+    if 'complete' in scanned:
+        if scanned.get('complete') is not True:
+            raise PermissionError('UNIVERSE_PREPARATION_NOT_COMPLETED')
+        scanned=scanned['result']
+    return validated_scan_snapshot(service,scanned)
+
+
+def _scan_universe(service, request: dict, preview_identity: str,*,mode:str) -> dict:
+    if not isinstance(request, dict) or request.get("version") not in {'FULL_UNIVERSE_SUBMISSION_V1', 'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3','FULL_UNIVERSE_SUBMISSION_V4'}:
         raise ValueError("UNIVERSE_SCAN_REQUEST_REQUIRED")
+    if mode not in {'BLOCKING','BEGIN','ADVANCE'} or (mode!='BLOCKING' and request['version'] not in {'FULL_UNIVERSE_SUBMISSION_V3','FULL_UNIVERSE_SUBMISSION_V4'}):
+        raise ValueError('UNIVERSE_LONG_PREPARATION_REQUEST_REQUIRED')
     preview = service.preview(request)
     if preview["preview_identity"] != preview_identity:
         raise ValueError("SUBMISSION_PREVIEW_CHANGED")
     normalized = preview["request"]
-    authority = service.authority(normalized["authorization_ref"])
+    authority = service.authority_for_request(normalized)
     approved = _authorize(authority, normalized)
     from chanlun_trader.research_factory.strategy_submission_v1 import public_rule_factory
     strategy = public_rule_factory(normalized["rule"], normalized["strategy_id"])
     identity_scope = {"objective_id": approved["objective_id"], "dataset_id": normalized["dataset_id"],
         "universe_id": normalized["universe_id"], "rule_identity": strategy.rule_identity,
         **{name: normalized[name] for name in ("feature_start", "account_start", "account_end")}}
-    if normalized['version'] in {'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3'}:
+    if normalized['version'] in {'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3','FULL_UNIVERSE_SUBMISSION_V4'}:
         # V2只审核资料，不计算信号或绩效；修正资金/持仓请求须有独立预览绑定。
         identity_scope['qualified_preview_identity'] = preview_identity
     key = stable_hash(identity_scope)
@@ -662,7 +771,7 @@ def scan_universe(service, request: dict, preview_identity: str) -> dict:
             "authority": approved, "authorization_identity": stable_hash(authority),
             "registration": registration, "registration_snapshot_sha256": _sha(metadata_path),
             "source_hashes": hashes, "limits": deepcopy(LIMITS)}
-        long_horizon=normalized['version']=='FULL_UNIVERSE_SUBMISSION_V3'
+        long_horizon=normalized['version'] in {'FULL_UNIVERSE_SUBMISSION_V3','FULL_UNIVERSE_SUBMISSION_V4'}
         if long_horizon:
             from .universe_compute_governance_v1 import authorized_compute_profile
             for stage in ('PREPARATION','VERIFICATION','REPORT'):
@@ -680,10 +789,18 @@ def scan_universe(service, request: dict, preview_identity: str) -> dict:
             raise ValueError("UNIVERSE_SCAN_INTENT_CHANGED_REQUIRES_RECONCILIATION")
         immutable(path, intent)
         if (root / "SCAN_RECEIPT.json").exists():
-            return _archived(root, intent)
+            result=_archived(root, intent)
+            return result if mode=='BLOCKING' else _preparation_progress(root,intent,result=result)
         if (root / "START.json").exists():
             if long_horizon:
-                return {**reconcile_long_preparation(root),'recorded_only':True,'content_reread':False,'freshly_scanned':False}
+                if mode=='BEGIN':return _preparation_progress(root,intent)
+                if mode=='ADVANCE':return _run_long_preparation(root,intent,step=True)
+                if (root/'COMPUTE'/'COMPUTE_START.json').exists():
+                    from .universe_compute_governance_v1 import UniverseComputeGovernanceV1
+                    state=UniverseComputeGovernanceV1(root/'COMPUTE',intent['compute_authority'],normalized,'PREPARATION').status()
+                    if state['pending'] is not None or (state['segments'] and state['segments'][-1]['charge']['outcome']=='FAILED'):
+                        return {**reconcile_long_preparation(root),'recorded_only':True,'content_reread':False,'freshly_scanned':False}
+                return _run_long_preparation(root,intent)
             raise ValueError("UNIVERSE_SCAN_INTERRUPTED_REQUIRES_RECONCILIATION")
         remaining = (datetime.fromisoformat(approved["expires_at"]) - datetime.now(timezone.utc)).total_seconds()
         if remaining <= 0:
@@ -691,7 +808,7 @@ def scan_universe(service, request: dict, preview_identity: str) -> dict:
         immutable(root / "START.json", {"intent_identity": intent["intent_identity"],
                                       "started_at": datetime.now(timezone.utc).isoformat()})
         if long_horizon:
-            return _run_long_preparation(root,intent)
+            return _preparation_progress(root,intent) if mode=='BEGIN' else _run_long_preparation(root,intent,step=mode=='ADVANCE')
         env = os.environ.copy()
         env.update(PYTHONPATH=os.pathsep.join((str(REPO / "src"), str(REPO))), PYTHONDONTWRITEBYTECODE="1")
         env.pop("CHANLUN_TEST_ISOLATION", None)
@@ -745,11 +862,19 @@ def validated_scan_snapshot(service, scanned: dict) -> dict:
             or snapshot.get("input_identity") != archived["input_identity"]
             or sorted(snapshot.get("window", {}).get("symbols", [])) !=
                 (archived.get('qualification_scope', {}).get('qualified_symbols', [])
-                 if intent['preview']['request']['version'] in {'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3'}
+                 if intent['preview']['request']['version'] in {'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3','FULL_UNIVERSE_SUBMISSION_V4'}
                  else intent["preview"]["request"]["symbols"])):
         raise ValueError("UNIVERSE_SCAN_SNAPSHOT_BINDING_CONFLICT")
+    if intent['preview']['request'].get('purpose') == 'INDEPENDENT_BUSINESS_VALIDATION':
+        from .universe_data_provider_v1 import service_trusted_scope
+        from ..research.guard import guard_from_frozen
+        request = intent['preview']['request']
+        authority = service.authority_for_request(request)
+        trusted_scope = service_trusted_scope(service, request, authority)
+        guard_from_frozen(snapshot, trusted_scope=trusted_scope,
+                          expected_deployment=service.trusted_data_deployment)
     parent_reference = {}
-    if intent['preview']['request']['version'] in {'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3'}:
+    if intent['preview']['request']['version'] in {'FULL_UNIVERSE_SUBMISSION_V2','FULL_UNIVERSE_SUBMISSION_V3','FULL_UNIVERSE_SUBMISSION_V4'}:
         parent = _file(root / 'PARENT' / 'INPUT.json', root)
         parent_value = read_json(parent)
         scope = archived['qualification_scope']

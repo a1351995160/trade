@@ -3,8 +3,9 @@ export interface LifecycleView {
   bindings: Record<string, LifecycleRecord>
   binding_catalog: Record<string, { kind: string }>
   jobs: Record<string, LifecycleRecord>
+  continuous?: Record<string, LifecycleRecord>
   actions_allowed?: boolean
-  operation_permissions?: { create_binding_ids: string[]; job_ids: string[] }
+  operation_permissions?: { create_binding_ids: string[]; job_ids: string[]; continuous_ids?: string[] }
   background_enabled: boolean
 }
 
@@ -21,6 +22,24 @@ const labels: Record<string, string> = {
   NO_CANDIDATE_PASSED: '本轮没有通过初筛的策略', ADAPTER_NOT_BOUND: '尚未接入执行服务',
   MISSED_WINDOW: '错过采集时段', CAPTURE_CONFIGURED: '采集范围已配置',
   PORTFOLIO_READINESS: '组合准备核验', STRATEGY_ADMISSIONS: '策略资格核验',
+  OWNER_APPROVAL_REQUIRED: '等待维护者批准总范围与预算', WAITING_MODEL: '等待有可信硬预算的模型',
+  HARD_BUDGET_UNSUPPORTED: '当前模型没有可信费用硬上限', WAITING_MODEL_RECONCILIATION: '等待核对原模型请求消费',
+  WAITING_RESOURCE: '等待明确追加资源批准', PAUSED_OR_SCOPE_WAITING: '已暂停或等待授权范围',
+  WAITING_SCOPE: '等待范围授权', GOAL_MET: '最终业务目标证据已满足', GOAL_NOT_MET: '最终业务目标尚未满足',
+  CONFIGURED: '已登记，尚未启动', PREPARATION_CONTINUE: '资料准备分段进行中',
+  RECONCILIATION_REQUIRED: '需要核对原工作进程与消费', WAITING_FINAL_EVIDENCE: '等待最终标准所需证据',
+  WAITING_TOTAL_AUTHORIZATION: '等待明确追加总范围或额度', WAITING_PERMISSION_OR_MODEL: '等待原授权或可信模型',
+  BUSINESS_GOAL_MET: '最终业务目标证据已满足', WAITING_OR_IN_PROGRESS: '独立验证等待或推进中',
+  BUSINESS_EVIDENCE_RECORDED: '独立业务证据已记录，仍须核对最终标准',
+  DEPLOYED_GATEWAY_EVIDENCE_REQUIRED: '等待部署网关的硬限制证据核验',
+  WAITING_PUBLIC_DEPENDENCY: '等待公共资料或权限依赖', WAITING_STORAGE: '等待证据存储恢复',
+  WAITING_FINAL_EXPLORATION_DATA: '等待504日最终探索资料',
+  WAITING_FINAL_EXPLORATION_AUTHORIZATION: '等待最终探索原范围额度',
+  FINAL_EXPLORATION_PREPARING: '最终探索资料准备中',
+  FINAL_EXPLORATION_REPORT_COMPLETED: '最终探索报告已完成，等待复核',
+  FINAL_EXPLORATION_READY: '最终探索标准已满足，等待独立验证',
+  FINAL_EXPLORATION_FAILED: '最终探索未满足业务标准',
+  NO_FINAL_EXPLORATION_PENDING: '当前无待晋级候选',
 }
 export function lifecycleState(value: unknown): string {
   if (typeof value !== 'string' || !value) return '尚未提供状态'
@@ -58,6 +77,20 @@ export function canOperate(view: LifecycleView, job: LifecycleRecord, jobId = ''
 export function canCreateBinding(view: LifecycleView, bindingId: string): boolean {
   return view.actions_allowed === true
     && view.operation_permissions?.create_binding_ids.includes(bindingId) === true
+}
+export function canOperateContinuous(view: LifecycleView, researchId: string): boolean {
+  return view.actions_allowed === true && view.operation_permissions?.continuous_ids?.includes(researchId) === true
+}
+export function continuousResourceRows(record: LifecycleRecord): { name: string; used: unknown; reserved: unknown; remaining: unknown }[] {
+  const budget = record.scope_budget as LifecycleRecord | undefined
+  const remaining = budget?.remaining as LifecycleRecord | undefined
+  if (!remaining || typeof remaining !== 'object') return []
+  const names: Record<string, string> = { candidate_attempts: '候选尝试', data_experiments: '资料实验',
+    account_jobs: '账户用途', model_calls: '模型调用', model_tokens: '模型 token',
+    model_cost_microunits: '模型费用（微美元）', verification_jobs: '核验用途', wall_seconds: '活动计算秒' }
+  const used = budget?.used as LifecycleRecord | undefined, reserved = budget?.reserved as LifecycleRecord | undefined
+  return Object.entries(remaining).map(([key, value]) => ({ name: names[key] ?? key,
+    used: used?.[key] ?? '—', reserved: reserved?.[key] ?? '—', remaining: value }))
 }
 export async function lifecycleRequest(path = '', body?: unknown): Promise<LifecycleRecord> {
   const response = await fetch(`/api/research-lifecycle${path}`, body === undefined ? undefined : {

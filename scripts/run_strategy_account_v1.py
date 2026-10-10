@@ -138,6 +138,8 @@ def freeze_config(config,root):
         if config['benchmark_mode'] not in {'NONE', 'CASH_AND_PRICE_REFERENCE'}:
             raise ValueError('JOB_UNIVERSE_BENCHMARK_MODE_INVALID')
         job['benchmark_mode'] = config['benchmark_mode']
+    if 'trusted_deployment' in config:
+        job['trusted_deployment'] = config['trusted_deployment']
     save(root/'JOB.json',job)
     for path,digest in sources.items():
         target=root/'source-archive'/(digest+'_'+Path(path).name);target.parent.mkdir(parents=True,exist_ok=True)
@@ -151,6 +153,9 @@ def service(job):return StrategyBatchGovernanceV1(job['root'],job['budget_path']
 def validate_sources(job):
     if set(job['items'])!=set(job['plans']) or any(job['items'][k]!=job['plans'][k]['runtime'] for k in job['plans']):
         raise PermissionError('JOB_RUNTIME_PLAN_CONFLICT')
+    if any(item.get('loader_kwargs', {}).get('expected_deployment') != job.get('trusted_deployment')
+           for item in job['items'].values()):
+        raise PermissionError('JOB_TRUSTED_DEPLOYMENT_CONFLICT')
     if any(item.get('benchmark_id')!=job.get('benchmark_id') for item in job['items'].values()):
         raise PermissionError('JOB_BENCHMARK_CONFLICT')
     if any(item.get('benchmark_mode') != job.get('benchmark_mode', 'NONE')
@@ -451,13 +456,15 @@ def completion_tail_result(job,name,state):
     raise PermissionError('JOB_COMPLETION_TAIL_ORIGINAL_STATUS_NOT_PROVEN')
 
 
-def execute_long_horizon_accounts(path,*,recover=False):
+def execute_long_horizon_accounts(path,*,recover=False,step=False):
+    """step 一次至多派发一个真实 worker；默认保持原阻塞入口。"""
     from chanlun_trader.synthetic_batch_resources import run_bounded_worker
     from chanlun_trader.research_factory.universe_execution_profile_v1 import worker_wall_seconds
     from chanlun_trader.research_factory.mutation_boundary import ObjectiveMutationLock
     job=read_json(path);validate_sources(job);gov=service(job);root=Path(job['root'])
     if root.resolve() != Path(path).resolve().parent:
         raise PermissionError('JOB_ROOT_IDENTITY_CONFLICT')
+    dispatched_segments=0
     with ObjectiveMutationLock.for_resource(root/'LONG_EXECUTION.lock'):
         if not recover and any((root/(name+'_START.json')).exists() for name in job['plans']):
             raise PermissionError('JOB_ALREADY_ATTEMPTED_RECONCILE_NO_REPLAY')
@@ -465,8 +472,12 @@ def execute_long_horizon_accounts(path,*,recover=False):
             if (root/(name+'_SETTLEMENT.json')).exists():
                 validated_settlement(job,name)
                 continue
+            if step and dispatched_segments:
+                return {'status':'CONTINUE','stage':'ACCOUNT','dispatched_segments':dispatched_segments,
+                        'next_purpose':name,'items':status(path)['items']}
             if control_state(job)['paused']:
-                return {'status':'PAUSED','items':status(path)['items']}
+                return {'status':'PAUSED','items':status(path)['items'],
+                        **({'stage':'ACCOUNT','dispatched_segments':dispatched_segments} if step else {})}
             if not (root/(name+'_START.json')).exists():
                 gov.start(name)
             state=gov.segment_status(name)
@@ -488,6 +499,7 @@ def execute_long_horizon_accounts(path,*,recover=False):
                 completion_tail_result(job,name,state)
             while True:
                 dispatch=gov.start_segment(name);number=dispatch['segment_number'];prefix=segment_prefix(name,number)
+                dispatched_segments+=1
                 env={**os.environ,'PYTHONDONTWRITEBYTECODE':'1',
                     **{key:'1' for key in ('OMP_NUM_THREADS','OPENBLAS_NUM_THREADS','MKL_NUM_THREADS','NUMEXPR_NUM_THREADS')}}
                 env['PYTHONPATH']=str(REPO/'src')+os.pathsep+str(REPO)
@@ -522,8 +534,12 @@ def execute_long_horizon_accounts(path,*,recover=False):
                 gov.end_segment(name,number,seconds=elapsed,evidence_identity=sha(resource_path),outcome=outcome)
                 state=gov.segment_status(name)
                 if paused:
-                    return {'status':'PAUSED','items':status(path)['items']}
+                    return {'status':'PAUSED','items':status(path)['items'],
+                            **({'stage':'ACCOUNT','dispatched_segments':dispatched_segments} if step else {})}
                 if continuation:
+                    if step:
+                        return {'status':'CONTINUE','stage':'ACCOUNT','dispatched_segments':dispatched_segments,
+                                'next_purpose':name,'items':status(path)['items']}
                     continue
                 # 历史公共证据消费者得到末段访问绑定和整个用途的真实累计耗时。
                 for suffix in ('_WORKER.json','_INPUT_ACCESS.json'):
@@ -542,7 +558,7 @@ def execute_long_horizon_accounts(path,*,recover=False):
         save(root/'RESULTS_INDEX.json',{'items':index,
             'worker_seconds':sum(gov.segment_status(name)['charged_seconds'] for name in job['plans']),
             'exposures':len(index),'repair_exposures':0})
-        return index
+        return {'status':'COMPLETED','stage':'ACCOUNT','dispatched_segments':dispatched_segments,'items':index} if step else index
 
 
 def validated_settlement(job, name):
@@ -717,7 +733,8 @@ def proven_compute_result(folder,member,state):
     return False
 
 
-def run_long_horizon_compute(path,authority,request,stage):
+def run_long_horizon_compute(path,authority,request,stage,*,step=False):
+    """账户公共计算复用同一段循环；step 不会继续派发下一个报告成员。"""
     from chanlun_trader.synthetic_batch_resources import run_bounded_worker
     from chanlun_trader.research_factory.universe_execution_profile_v1 import worker_wall_seconds
     from chanlun_trader.research_factory.universe_compute_governance_v1 import UniverseComputeGovernanceV1
@@ -726,6 +743,7 @@ def run_long_horizon_compute(path,authority,request,stage):
     if stage not in ('VERIFICATION','REPORT') or 'profile_id' not in job.get('resources', {}):
         raise PermissionError('JOB_LONG_HORIZON_COMPUTE_REQUIRED')
     scope={'job_sha256':sha(path),'authority':authority,'request':request,'stage':stage}
+    dispatched_segments=0
     with ObjectiveMutationLock.for_resource(folder/'EXECUTE.lock'):
         save(folder/'SCOPE.json',scope)
         meter=UniverseComputeGovernanceV1(folder,authority,request,stage)
@@ -737,8 +755,9 @@ def run_long_horizon_compute(path,authority,request,stage):
                 expected_members=list(job['plans']) if stage=='REPORT' else [None]
                 if any(not proven_compute_result(folder,name,previous) for name in expected_members):
                     raise PermissionError('JOB_COMPUTE_COMPLETED_RESULT_NOT_PROVEN')
-                if stage=='VERIFICATION':return read_json(folder/'RESULT.json')
-                return {name:read_json(folder/('RESULT_'+name+'.json')) for name in job['plans']}
+                result=read_json(folder/'RESULT.json') if stage=='VERIFICATION' else report_result_references(root, folder, job['plans'])
+                return {'status':'COMPLETED','stage':stage,'dispatched_segments':0,'result':result,
+                        'charged_seconds':previous['charged_seconds']} if step else result
             if previous['segments'] and previous['segments'][-1]['charge']['outcome']=='FAILED':
                 raise PermissionError('JOB_COMPUTE_FAILED_NO_AUTOMATIC_RETRY')
         meter.start();members=list(job['plans']) if stage=='REPORT' else [None]
@@ -748,10 +767,15 @@ def run_long_horizon_compute(path,authority,request,stage):
             if proven_compute_result(folder,member,meter.status()):
                 outputs[member]=read_json(output_path)
                 continue
+            if step and dispatched_segments:
+                return {'status':'CONTINUE','stage':stage,'dispatched_segments':dispatched_segments,
+                        'next_member':member,'charged_seconds':meter.status()['charged_seconds']}
             while True:
                 if control_state(job)['paused']:
-                    return {'status':'PAUSED','stage':stage,'charged_seconds':meter.status()['charged_seconds']}
+                    return {'status':'PAUSED','stage':stage,'charged_seconds':meter.status()['charged_seconds'],
+                            **({'dispatched_segments':dispatched_segments} if step else {})}
                 dispatch=meter.dispatch();number=dispatch['number'];prefix='SEGMENT_'+str(number).zfill(6)
+                dispatched_segments+=1
                 env={**os.environ,'PYTHONPATH':str(REPO/'src')+os.pathsep+str(REPO),'PYTHONDONTWRITEBYTECODE':'1',
                     **{name:'1' for name in ('OMP_NUM_THREADS','OPENBLAS_NUM_THREADS','MKL_NUM_THREADS','NUMEXPR_NUM_THREADS')}}
                 env.pop('CHANLUN_TEST_ISOLATION',None);begin=time.monotonic()
@@ -779,13 +803,31 @@ def run_long_horizon_compute(path,authority,request,stage):
                 continuation=continuation and recorded.get('dispatch_id')==dispatch['dispatch_id'] and recorded.get('state')=='CONTINUE'
                 meter.charge(number,seconds=elapsed,evidence_identity=sha(resource_path),
                     outcome='COMPLETED' if complete and index==len(members)-1 else 'CONTINUE' if complete or continuation else 'FAILED')
-                if continuation:continue
+                if continuation:
+                    if step:
+                        return {'status':'CONTINUE','stage':stage,'dispatched_segments':dispatched_segments,
+                                'next_member':member,'charged_seconds':meter.status()['charged_seconds']}
+                    continue
                 if not complete:
                     raise RuntimeError('JOB_COMPUTE_WORKER_FAILED_NO_RETRY:'+stage)
                 outputs[member]=read_json(output_path);break
         save(folder/'RESOURCE_TOTAL.json',{'charged_seconds':meter.status()['charged_seconds'],
             'profile':meter.profile,'compute_identity':meter.binding['compute_identity']})
-        return outputs[None] if stage=='VERIFICATION' else outputs
+        result=outputs[None] if stage=='VERIFICATION' else report_result_references(root, folder, job['plans'])
+        return {'status':'COMPLETED','stage':stage,'dispatched_segments':dispatched_segments,'result':result,
+                'charged_seconds':meter.status()['charged_seconds']} if step else result
+
+
+def report_result_references(root, folder, plans):
+    # 不回写先前已被 segment SHA 绑定的成员结果；统一报告只在两成员完成后存在。
+    values = {}
+    for name in plans:
+        value = read_json(folder / ('RESULT_' + name + '.json'))
+        final = root / (name + '_REPORT.json')
+        if not final.is_file():
+            raise PermissionError('JOB_FINAL_REPORT_NOT_PRODUCED')
+        values[name] = {**value, 'final_report': str(final), 'final_report_sha256': sha(final)}
+    return values
 
 
 def reconcile_long_horizon_compute(path,stage):
@@ -798,7 +840,7 @@ def reconcile_long_horizon_compute(path,stage):
     scope=read_json(folder/'SCOPE.json')
     if scope['job_sha256']!=sha(path) or scope['stage']!=stage:
         raise PermissionError('JOB_COMPUTE_SCOPE_CHANGED')
-    meter=UniverseComputeGovernanceV1(folder,scope['authority'],scope['request'],stage)
+    meter=UniverseComputeGovernanceV1(folder,scope['authority'],scope['request'],stage,for_dispatch=False)
     with ObjectiveMutationLock.for_resource(folder/'EXECUTE.lock'):
         meter.reconcile_segment_mirrors()
         state=meter.status();pending=state['pending']
@@ -816,6 +858,8 @@ def reconcile_long_horizon_compute(path,stage):
                 return
             raise PermissionError('JOB_COMPUTE_WORKER_START_UNKNOWN')
         pids=[read_json(worker)['pid']]
+        if read_json(worker).get('dispatch_id')!=pending['dispatch_id']:
+            raise PermissionError('JOB_COMPUTE_WORKER_DISPATCH_CONFLICT')
         if access.exists():pids.append(read_json(access)['reader_pid'])
         if any(DaemonInstanceLockV1._pid_alive(int(pid)) for pid in pids):
             raise PermissionError('JOB_COMPUTE_WORKER_STILL_ACTIVE')
@@ -1029,7 +1073,7 @@ def status(path):
             if (folder/'COMPUTE_START.json').exists():
                 scope=read_json(folder/'SCOPE.json')
                 if scope['job_sha256']!=sha(path):raise PermissionError('JOB_COMPUTE_SCOPE_CHANGED')
-                meter=UniverseComputeGovernanceV1(folder,scope['authority'],scope['request'],stage)
+                meter=UniverseComputeGovernanceV1(folder,scope['authority'],scope['request'],stage,for_dispatch=False)
                 state=meter.status();last=state['segments'][-1] if state['segments'] else None
                 row.update(charged_seconds=state['charged_seconds'],profile=meter.profile,
                     remaining_seconds=state['remaining_seconds'],resource_overrun=state['resource_overrun'],

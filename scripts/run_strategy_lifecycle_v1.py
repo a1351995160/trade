@@ -79,11 +79,9 @@ def parser():
 
 def execute(args):
     if args.operation.startswith('lifecycle-'):
-        from chanlun_trader.research_factory.lifecycle_service_v2 import LifecycleServiceV2
+        from scripts.lifecycle_deployment_v2 import build_lifecycle_service
         bindings = load_config(args.bindings, Path(args.workspace_root) / 'lifecycle_jobs')
-        from scripts.lifecycle_deployment_v2 import qualified_research_loader
-        service = LifecycleServiceV2(args.workspace_root, bindings,
-                                     research_loader=qualified_research_loader(args.workspace_root))
+        service = build_lifecycle_service(args.workspace_root, bindings)
         action = args.operation.removeprefix('lifecycle-')
         if action == 'preview':
             return service.inspect()

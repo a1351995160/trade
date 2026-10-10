@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from copy import deepcopy
 from pathlib import Path
 import json
+import hashlib
 import math
 import os
 from typing import Any, Iterable, Mapping
@@ -74,7 +76,8 @@ class AutonomousRunBudgetV1:
 
     schema_version = "autonomous-run-budget-v2"
 
-    def __init__(self, *, run_id: str, objective_id: str, path: str | Path | None = None, max_batches: int, max_total_predictive_trials: int, max_trials_per_batch: int, max_hypotheses_per_batch: int, max_candidates_per_batch: int, policy_hash: str = "", objective_hash: str = ""):
+    def __init__(self, *, run_id: str, objective_id: str, path: str | Path | None = None, max_batches: int, max_total_predictive_trials: int, max_trials_per_batch: int, max_hypotheses_per_batch: int, max_candidates_per_batch: int, policy_hash: str = "", objective_hash: str = "", readonly: bool = False):
+        self.readonly = readonly
         self.run_id = str(run_id)
         self.objective_id = str(objective_id)
         self.path = Path(path) if path else None
@@ -496,6 +499,8 @@ class AutonomousRunBudgetV1:
                 self._completed_batch_ids.add(str(payload["batch_id"]))
 
     def _append_event(self, event_type: str, payload: Mapping[str, Any]) -> None:
+        if self.readonly:
+            raise PermissionError('RUN_BUDGET_READ_ONLY')
         event_payload = dict(payload)
         event_id = stable_hash({"run_id": self.run_id, "event_type": event_type, "payload": event_payload})
         if event_id in self._event_ids:
@@ -511,7 +516,7 @@ class AutonomousRunBudgetV1:
             os.replace(temporary, path)
 
     def _persist(self) -> None:
-        if self.path is None:
+        if self.path is None or self.readonly:
             return
         self.path.parent.mkdir(parents=True, exist_ok=True)
         temporary = self.path.with_name(self.path.name + ".tmp")
@@ -531,7 +536,13 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
             stored = json.loads(self.path.read_text(encoding="utf-8"))
             if stored.get("schema_version") != self.schema_version:
                 raise BudgetLedgerMismatchError("LEGACY_RESOURCE_USAGE_UNKNOWN")
-        super()._load()
+        # 增量可令累计使用超过最初合同；先校验快照身份，随后由权威事件重建有效上限。
+        original = self.max_total_predictive_trials
+        try:
+            self.max_total_predictive_trials = 2**63 - 1
+            super()._load()
+        finally:
+            self.max_total_predictive_trials = original
 
     def to_dict(self):
         result = super().to_dict()
@@ -551,6 +562,10 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
                 raise BudgetLedgerMismatchError("CAMPAIGN_EVENT_HASH_CONFLICT")
         if self.path is not None and self.path.exists() and not self._events:
             raise BudgetLedgerMismatchError("CAMPAIGN_EVENT_HISTORY_MISSING")
+        view = self.campaign_view()
+        if view['authorization'] is not None:
+            self.max_batches = view['authorization']['max_batches']
+            self.max_total_predictive_trials = view['authorization']['max_total_predictive_trials']
 
     def _replay_events_if_state_is_empty(self):
         # V2 的事件是权威；快照可落后于最后一次持久化事件。
@@ -564,16 +579,33 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
                 trial_id = event['payload']['trial_id']
                 if trial_id not in self._used_trial_ids:
                     self._reservations.pop(trial_id, None)
+        if len(self._used_trial_ids) + len(self._reservations) > self.max_total_predictive_trials:
+            raise BudgetLedgerMismatchError('CAMPAIGN_TRIAL_USAGE_EXCEEDS_EFFECTIVE_GRANT')
 
     def campaign_view(self):
-        authorization, operations, stages = None, {}, {}
-        paused = False
+        authorization, base_authorization, operations, stages = None, None, {}, {}
+        paused, revoked, grants = False, False, {}
         for event in self._events:
             kind, item = event['event_type'], event['payload']
             if kind == 'CAMPAIGN_AUTHORIZED':
                 if authorization is not None:
                     raise BudgetLedgerMismatchError('CAMPAIGN_AUTHORIZATION_DUPLICATED')
-                authorization = dict(item)
+                authorization = deepcopy(item)
+                base_authorization = deepcopy(item)
+                if authorization.get('scope_policy'):
+                    from .campaign_scope_v1 import validate_scope_policy
+                    validate_scope_policy(authorization['root'], authorization)
+            elif kind == 'CAMPAIGN_GRANT_ADDED':
+                if authorization is None or not authorization.get('scope_policy') or revoked:
+                    raise BudgetLedgerMismatchError('CAMPAIGN_GRANT_EVENT_ORDER')
+                grant_id = item['grant']['grant_id']
+                if grant_id in grants:
+                    raise BudgetLedgerMismatchError('CAMPAIGN_GRANT_DUPLICATED')
+                from .campaign_scope_v1 import replay_grant
+                authorization = replay_grant(base_authorization, authorization, item)
+                grants[grant_id] = deepcopy(item)
+            elif kind == 'CAMPAIGN_REVOKED':
+                revoked = True
             elif kind == 'CAMPAIGN_PAUSED':
                 paused = True
             elif kind == 'CAMPAIGN_RESUMED':
@@ -591,6 +623,31 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
                 operation.update(item)
                 operation['status'] = {'CAMPAIGN_OPERATION_STARTED': 'RUNNING', 'CAMPAIGN_OPERATION_UNKNOWN': 'UNKNOWN',
                                        'CAMPAIGN_OPERATION_SETTLED': item.get('outcome')}[kind]
+            elif kind == 'CAMPAIGN_MODEL_RESOURCE_OVERRUN_SETTLED':
+                operation = operations.get(item['operation_id'])
+                actual = item.get('actual', {})
+                receipt_path = Path(item.get('usage_receipt', '')).absolute()
+                if (operation is None or operation['kind'] != 'MODEL' or operation['status'] not in ('RUNNING', 'UNKNOWN')
+                        or not receipt_path.is_relative_to(Path(authorization['root']) / 'reports' / 'research_campaigns' / stable_hash(authorization['authorization_id']) / 'diagnosis_v4')
+                        or receipt_path.resolve() != receipt_path or not receipt_path.is_file()
+                        or receipt_path.name != 'INVOCATION.json'
+                        or hashlib.sha256(receipt_path.read_bytes()).hexdigest() != item.get('evidence_identity')):
+                    raise BudgetLedgerMismatchError('CAMPAIGN_MODEL_OVERRUN_PROOF_INVALID')
+                usage = json.loads(receipt_path.read_text(encoding='utf-8'))['usage']
+                from .campaign_model_receipt_v1 import model_receipt_proof
+                try:
+                    model_receipt_proof(receipt_path.parent.parent.parent.parent, operation, receipt_path, operations)
+                except (PermissionError, ValueError, KeyError) as exc:
+                    raise BudgetLedgerMismatchError('CAMPAIGN_MODEL_OVERRUN_PROOF_INVALID') from exc
+                expected = dict.fromkeys(self.resource_names, 0)
+                expected.update(model_calls=max(1, usage['model_calls']), model_tokens=usage['total_tokens'],
+                    model_cost_microunits=usage['cost_microunits'], wall_seconds=operation['upper_bounds']['wall_seconds'])
+                if (actual != expected or item.get('outcome') != 'FAILED'
+                        or item.get('resource_overrun') != {name: max(0, actual[name]-operation['upper_bounds'][name]) for name in actual}
+                        or not any(item['resource_overrun'].values())):
+                    raise BudgetLedgerMismatchError('CAMPAIGN_MODEL_OVERRUN_PROOF_INVALID')
+                operation.update(item)
+                operation['status'] = 'FAILED'
             elif kind=='CAMPAIGN_OPERATION_RESOURCE_OVERRUN_SETTLED':
                 operation=operations.get(item['operation_id']);segments=operation.get('segments',[]) if operation else []
                 actual=item.get('actual',{})
@@ -652,8 +709,14 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
         violations=[op for op in operations.values() if op.get('resource_overrun')]
         if min(remaining.values()) < 0 and not violations:
             raise BudgetLedgerMismatchError('CAMPAIGN_RESOURCE_USAGE_EXCEEDS_LIMIT')
-        result={'authorization': authorization, 'operations': operations, 'stages': stages, 'paused': paused,
+        result={'authorization': authorization, 'base_authorization': base_authorization,
+                'grants': grants, 'revoked': revoked, 'operations': operations, 'stages': stages, 'paused': paused,
                 'used': used, 'reserved': reserved, 'remaining': remaining}
+        if authorization.get('scope_policy'):
+            from .campaign_scope_v1 import stage_remaining
+            result['stage_remaining'] = stage_remaining(result)
+            if any(value < 0 for units in result['stage_remaining'].values() for value in units.values()) and not violations:
+                raise BudgetLedgerMismatchError('CAMPAIGN_STAGE_USAGE_EXCEEDS_LIMIT')
         if violations:
             # 精确披露债务；冻结授权不变，后续派发一直暂停。
             result.update(paused=True,resource_overrun={name:max(0,-remaining[name]) for name in remaining},
