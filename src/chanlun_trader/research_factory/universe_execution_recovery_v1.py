@@ -106,9 +106,10 @@ def resume_long_horizon_job(path,job,*,reconcile_only=False):
     """新语义只扣已运行段；未知崩溃扣该段上界，停机等待不免费重置。"""
     from scripts import run_strategy_account_v1 as runner
     path = checked_file_path(path, error_code='UNIVERSE_RESUME_ROOT_CONFLICT')
-    root = checked_directory_path(job['root'], error_code='UNIVERSE_RESUME_ROOT_CONFLICT')
-    if root != path.parent:
+    root = path.parent
+    if Path(job['root']) != root:
         raise PermissionError('UNIVERSE_RESUME_ROOT_CONFLICT')
+    root = checked_directory_path(root, error_code='UNIVERSE_RESUME_ROOT_CONFLICT')
     checkpoints, feature_bindings = {}, {}
     for name in job['plans']:
         start = validated_reference_path(root / (name + '_START.json'), root=root,

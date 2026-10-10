@@ -8,28 +8,36 @@ import re
 import stat
 
 
+def _lexical_reference_path(value):
+    if not isinstance(value, (str, Path)):
+        raise ValueError
+    text = str(value)
+    path, windows = Path(text), PureWindowsPath(text)
+    if (not text or '\x00' in text or not path.is_absolute()
+            or '..' in path.parts or '..' in windows.parts
+            or (windows.drive and not re.fullmatch(r'[A-Za-z]:', windows.drive))):
+        raise ValueError
+    for part in windows.parts[1:] if windows.anchor else windows.parts:
+        if (':' in part or part.endswith((' ', '.'))
+                or re.fullmatch(r'(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])', part.split('.')[0], re.I)):
+            raise ValueError
+    return path
+
+
 def validated_reference_path(value, *, error_code, root=None):
     """外部部署可显式引用绝对路径；任务工件须另传固定归属 root。"""
     try:
-        if not isinstance(value, (str, Path)):
-            raise ValueError
-        text = str(value)
-        path, windows = Path(text), PureWindowsPath(text)
-        if (not text or '\x00' in text or not path.is_absolute()
-                or '..' in path.parts or '..' in windows.parts
-                or (windows.drive and not re.fullmatch(r'[A-Za-z]:', windows.drive))):
-            raise ValueError
-        for part in windows.parts[1:] if windows.anchor else windows.parts:
-            if (':' in part or part.endswith((' ', '.'))
-                    or re.fullmatch(r'(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])', part.split('.')[0], re.I)):
+        path = _lexical_reference_path(value)
+        if root is not None:
+            boundary = _lexical_reference_path(root)
+            # 先做纯词法归属检查；越界输入不得触发任何文件系统探测。
+            if not path.is_relative_to(boundary):
+                raise ValueError
+            if boundary.resolve() != boundary:
                 raise ValueError
         # resolve 仅用于拒绝别名；绝不把未经核对的路径解析结果作为可信新路径。
         if path.resolve() != path:
             raise ValueError
-        if root is not None:
-            boundary = validated_reference_path(root, error_code=error_code)
-            if not path.is_relative_to(boundary):
-                raise ValueError
         return path
     except (OSError, RuntimeError, TypeError, ValueError) as exc:
         raise ValueError(error_code) from exc

@@ -76,6 +76,28 @@ def test_relative_path_and_bad_hash_are_rejected_without_filesystem_probe(monkey
         read_pinned_json({'path': '/somewhere/secret.json', 'sha256': 'invalid'}, error_code=CODE)
 
 
+@pytest.mark.parametrize('reader', ['validate', 'bytes', 'hash', 'json'])
+def test_outside_task_root_is_rejected_before_any_filesystem_probe(tmp_path, monkeypatch, reader):
+    root = tmp_path / 'task'
+    outside = tmp_path / 'task-other' / 'checkpoint.json'
+
+    def forbidden(*_args, **_kwargs):
+        pytest.fail('out-of-root reference must not probe the filesystem')
+
+    monkeypatch.setattr(Path, 'resolve', forbidden)
+    monkeypatch.setattr(Path, 'lstat', forbidden)
+    monkeypatch.setattr(os, 'open', forbidden)
+    functions = {
+        'validate': lambda: validated_reference_path(outside, error_code=CODE, root=root),
+        'bytes': lambda: read_file_bytes(outside, error_code=CODE, root=root),
+        'hash': lambda: file_sha256(outside, error_code=CODE, root=root),
+        'json': lambda: read_pinned_json({'path': str(outside), 'sha256': '0' * 64},
+                                       error_code=CODE, root=root),
+    }
+    with pytest.raises(ValueError, match='^' + CODE + '$'):
+        functions[reader]()
+
+
 def test_file_and_parent_symlinks_are_rejected(tmp_path):
     original, alias = tmp_path / 'original', tmp_path / 'alias'
     original.mkdir()
