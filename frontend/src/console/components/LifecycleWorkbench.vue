@@ -5,7 +5,7 @@ import { canCreateBinding, canOperate, canOperateContinuous, continuousResourceR
 import type { LifecycleRecord, LifecycleView } from '../lifecycle'
 import { universeCoverage, universeRunState } from '../universe'
 
-const view = ref<LifecycleView | null>(null)
+const view = ref<(LifecycleView & { host?: { heartbeat_at?: string | null } }) | null>(null)
 const error = ref('')
 const busy = ref(false)
 const preview = ref<LifecycleRecord | null>(null)
@@ -105,7 +105,8 @@ onMounted(refresh)
         <article><h3>真实观察</h3><p>按各账户分别记录</p><small>不合计独立账户，不把合成天数算入。</small></article>
         <article><h3>策略有效性</h3><p>只认原资格服务</p><small>任务完成或回测盈利均不自动授予资格。</small></article>
       </div>
-      <p class="notice">{{ view.actions_allowed ? '仅可操作维护者已登记且当前授权允许的对象；每次执行仍会重新核验。' : '当前为只读模式。刷新不会启动研究、采集或交易。' }} 后台自动运行：{{ view.background_enabled ? '已启用' : '未启用' }}。</p>
+      <p class="notice">{{ view.actions_allowed ? '仅可操作维护者已登记且当前授权允许的对象；每次执行仍会重新核验。' : '当前为只读模式。刷新不会启动研究、采集或交易。' }}</p>
+      <p class="notice" aria-label="研究服务心跳">研究服务最近心跳：<time v-if="view.host?.heartbeat_at" :datetime="view.host.heartbeat_at">{{ view.host.heartbeat_at }}</time><span v-else>暂无心跳</span>。实际研究进度请以候选、任务阶段和执行回执为准。</p>
       <section v-if="Object.keys(view.continuous ?? {}).length" aria-label="持续全范围研究">
         <h3>持续全范围研究</h3><p>按批准的总范围与分阶段储备推进，每次只执行一个有界步骤。资源用完会等待追加批准；短轮次通过和账户完成均不等于最终目标达成。</p>
         <article v-for="(record, id) in view.continuous" :key="id" class="object-card">

@@ -1,5 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { canCreateBinding, canOperate, canOperateContinuous, continuousResourceRows, lifecycleState, observationDays, qualificationText, sourceText } from './lifecycle.ts'
 
 test('completion never becomes effectiveness or real observation', () => {
@@ -49,4 +51,31 @@ test('continuous browser controls require the separately registered trusted scop
   assert.equal(canOperateContinuous(view, 'fixed'), true)
   assert.equal(canOperateContinuous(view, 'caller_chosen'), false)
   assert.equal(canOperateContinuous({ ...view, actions_allowed: false }, 'fixed'), false)
+})
+
+async function renderHostHeartbeat(view: Record<string, unknown>) {
+  const require = createRequire(import.meta.url)
+  const Vue = require('vue')
+  const { renderToString } = require('vue/server-renderer')
+  const source = readFileSync(new URL('./components/LifecycleWorkbench.vue', import.meta.url), 'utf8')
+  const paragraph = source.match(/<p[^>]*aria-label="研究服务心跳"[^>]*>[\s\S]*?<\/p>/)?.[0]
+  assert.ok(paragraph, '工作台必须呈现真实研究服务心跳')
+  const render = Vue.compile(paragraph, { prefixIdentifiers: true })
+  return renderToString(Vue.createSSRApp({ data: () => ({ view }), render }))
+}
+
+test('workbench renders the actual server heartbeat even when background is disabled', async () => {
+  const heartbeat = '2026-10-10T10:15:30+00:00'
+  const html = await renderHostHeartbeat({ background_enabled: false, host: { heartbeat_at: heartbeat } })
+  assert.ok(html.includes(`<time datetime="${heartbeat}">${heartbeat}</time>`))
+  assert.doesNotMatch(html, /暂无心跳|正在运行|后台自动运行|已启用/)
+  assert.match(html, /实际研究进度请以候选、任务阶段和执行回执为准/)
+})
+
+test('workbench never substitutes enabled background for a missing heartbeat', async () => {
+  for (const host of [undefined, {}, { heartbeat_at: null }, { heartbeat_at: '' }]) {
+    const html = await renderHostHeartbeat({ background_enabled: true, host })
+    assert.match(html, /暂无心跳/)
+    assert.doesNotMatch(html, /<time|正在运行|后台自动运行|已启用/)
+  }
 })
