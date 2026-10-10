@@ -470,7 +470,8 @@ def test_qualified_loader_releases_raw_and_duplicate_parent_metadata_before_full
             parent_bundle_refs.append(weakref.ref(value['bundle']))
         return value
 
-    def restore(value, path):
+    def restore(value, path, *, expected_deployment=None):
+        assert expected_deployment is None
         assert released == {'child', 'parent'}, '原始JSON字节不得与大表恢复同时存活'
         restores.append(path)
         return {'frame': deepcopy(value['bundle']), 'input_identity': value.get('input_identity')}

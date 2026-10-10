@@ -3910,3 +3910,17 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 ### Notes
 - 未修改策略、撮合、费用或真实资料权限。主目录同步将保留原有未提交研究文件和完整进度字节。
 - 回滚点仍为合并前 78cfd99a489ecd450ce2fba27a2a6c99dd438e40，回滚保留全部授权、消费、未知请求和暴露原件。
+
+## 2026-10-10 - Task: 对齐旧资格加载测试的可选部署参数
+
+### What was done
+- 远端 Windows 全池 1,013 项测试发现旧内存释放测试替身未接受新增可选 expected_deployment 参数。替身补齐 keyword-only 参数，并明确断言旧路径仍为 None。
+- 原始 JSON 字节释放、父 bundle 弱引用及全池重算断言全部保留；未修改生产代码或账户算法。
+
+### Testing
+- 修复后完整 test_universe_qualified_submission_v2.py：20 passed in 106.19s；git diff --check 通过。全部测试搜索未发现其他同类旧替身。
+- 上一生产源码版本的原生读取/TRAIN/生命周期/恢复 108 passed、1 skipped，SonarCloud 通过且未解决漏洞告警为 0；最终提交仍需重新核对全部远端检查。
+
+### Notes
+- 首次远端失败原件保存在主目录 reports/continuous_universe_delivery_20261010/CI_JUNIT/windows-full-universe-first，未掩盖失败或削弱内存安全断言。
+- 回滚点和授权、消费及暴露原件保留要求沿用合并前 78cfd99a489ecd450ce2fba27a2a6c99dd438e40。
