@@ -353,22 +353,21 @@ def configured_access_authority(deployment_config_path, *, expected_sha256):
     授权记录逐份绑定完整文件 SHA 和受保护 OwnerApprovalStore 回执，不执行
     配置指定模块或 URL。每次重新解析时再次核对配置、记录及 owner 批准。
     """
-    path = Path(deployment_config_path).absolute()
-    if path.resolve() != path or not path.is_file():
-        raise ValueError('TRUSTED_DATA_DEPLOYMENT_PATH_INVALID')
+    from ..research_factory.secure_file_reference_v1 import (
+        checked_directory_path, read_pinned_json, validated_reference_path,
+    )
+    path = validated_reference_path(deployment_config_path,
+        error_code='TRUSTED_DATA_DEPLOYMENT_PATH_INVALID')
 
     def load_config():
-        raw = path.read_bytes()
-        if hashlib.sha256(raw).hexdigest() != expected_sha256:
-            raise ValueError('TRUSTED_DATA_DEPLOYMENT_IDENTITY_CONFLICT')
-        value = json.loads(raw)
+        value = read_pinned_json({'path': str(path), 'sha256': expected_sha256},
+            error_code='TRUSTED_DATA_DEPLOYMENT_IDENTITY_CONFLICT')
         if (not isinstance(value, dict) or set(value) != {'schema_version', 'owner_approval_store_root', 'records'}
                 or value['schema_version'] != 'TRUSTED_RESEARCH_DATA_DEPLOYMENT_V1'
                 or not isinstance(value['records'], dict)):
             raise ValueError('TRUSTED_DATA_DEPLOYMENT_SCHEMA_INVALID')
-        store = Path(value['owner_approval_store_root'])
-        if not store.is_absolute() or store.resolve() != store or not store.is_dir():
-            raise ValueError('TRUSTED_DATA_APPROVAL_STORE_INVALID')
+        checked_directory_path(value['owner_approval_store_root'],
+            error_code='TRUSTED_DATA_APPROVAL_STORE_INVALID')
         return value
 
     load_config()
@@ -378,13 +377,8 @@ def configured_access_authority(deployment_config_path, *, expected_sha256):
         record = config['records'].get(reference)
         if (not isinstance(record, dict) or set(record) != {'path', 'sha256', 'approval_reference'}):
             raise ValueError('TRUSTED_DATA_REFERENCE_NOT_REGISTERED')
-        source = Path(record['path'])
-        if not source.is_absolute() or source.resolve() != source or not source.is_file():
-            raise ValueError('TRUSTED_DATA_AUTHORIZATION_PATH_INVALID')
-        raw = source.read_bytes()
-        if hashlib.sha256(raw).hexdigest() != record['sha256']:
-            raise ValueError('TRUSTED_DATA_AUTHORIZATION_IDENTITY_CONFLICT')
-        value = json.loads(raw)
+        value = read_pinned_json({key: record[key] for key in ('path', 'sha256')},
+            error_code='TRUSTED_DATA_AUTHORIZATION_IDENTITY_CONFLICT')
         from ..research_factory.campaign_scope_v1 import OwnerApprovalStoreV1
         approval = OwnerApprovalStoreV1(config['owner_approval_store_root']).require(record['approval_reference'], value)
         # 回执身份来自受保护批准记录；授权文件无需自引用其尚未生成的批准哈希。

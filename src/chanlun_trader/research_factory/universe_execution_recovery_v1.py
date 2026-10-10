@@ -9,6 +9,7 @@ from ..research_daemon_state import DaemonInstanceLockV1
 from .common import stable_hash
 from .engine_replay_recovery_v1 import _read_receipt
 from .mutation_boundary import ObjectiveMutationLock
+from .secure_file_reference_v1 import checked_directory_path, checked_file_path, validated_reference_path
 
 
 def resume_universe_job(path):
@@ -104,13 +105,29 @@ def resume_universe_job(path):
 def resume_long_horizon_job(path,job,*,reconcile_only=False):
     """新语义只扣已运行段；未知崩溃扣该段上界，停机等待不免费重置。"""
     from scripts import run_strategy_account_v1 as runner
+    path = checked_file_path(path, error_code='UNIVERSE_RESUME_ROOT_CONFLICT')
+    root = checked_directory_path(job['root'], error_code='UNIVERSE_RESUME_ROOT_CONFLICT')
+    if root != path.parent:
+        raise PermissionError('UNIVERSE_RESUME_ROOT_CONFLICT')
+    checkpoints, feature_bindings = {}, {}
+    for name in job['plans']:
+        start = validated_reference_path(root / (name + '_START.json'), root=root,
+            error_code='UNIVERSE_RESUME_ROOT_CONFLICT')
+        if start.parent != root:
+            raise PermissionError('UNIVERSE_RESUME_ROOT_CONFLICT')
+        checkpoint = validated_reference_path(job['items'][name]['backend_options']['checkpoint_path'], root=root,
+            error_code='UNIVERSE_RESUME_CHECKPOINT_PATH_CONFLICT')
+        feature_binding = validated_reference_path(root /
+            (job['plans'][name]['strategy']['strategy_id'] + '_FEATURES') / 'PREPARATION_BINDING.json', root=root,
+            error_code='UNIVERSE_RESUME_CHECKPOINT_PATH_CONFLICT')
+        if checkpoint.parent != root or feature_binding.parent.parent != root:
+            raise PermissionError('UNIVERSE_RESUME_CHECKPOINT_PATH_CONFLICT')
+        checkpoints[name], feature_bindings[name] = checkpoint, feature_binding
     runner.validate_sources(job)
     if (job['resources']['purpose'] != 'RESEARCH_ACCOUNT'
             or any(p['backend']['backend'] != 'UNIVERSE_ACCOUNT_BACKEND_V2' for p in job['plans'].values())):
         raise PermissionError('UNIVERSE_LONG_HORIZON_RESUME_VERSION_REQUIRED')
-    root=Path(job['root']);gov=runner.service(job)
-    if root.resolve()!=root or root!=Path(path).resolve().parent:
-        raise PermissionError('UNIVERSE_RESUME_ROOT_CONFLICT')
+    gov=runner.service(job)
     with ObjectiveMutationLock.for_resource(root/'RESUME.lock'):
         for name in job['plans']:
             if not (root/(name+'_START.json')).exists():
@@ -176,10 +193,7 @@ def resume_long_horizon_job(path,job,*,reconcile_only=False):
                 if failure.get('dispatch_id')!=pending['dispatch_id'] or failure.get('scope_identity')!=runner.sha(path):
                     raise PermissionError('UNIVERSE_RESUME_FAILURE_DISPATCH_CONFLICT')
                 known_failure=True
-            checkpoint=Path(job['items'][name]['backend_options']['checkpoint_path'])
-            if checkpoint.parent != root or checkpoint.resolve() != checkpoint:
-                raise PermissionError('UNIVERSE_RESUME_CHECKPOINT_PATH_CONFLICT')
-            feature_binding=checkpoint.parent/(job['plans'][name]['strategy']['strategy_id']+'_FEATURES')/'PREPARATION_BINDING.json'
+            checkpoint, feature_binding = checkpoints[name], feature_bindings[name]
             if checkpoint.exists():
                 value=runner.read_json(checkpoint)
                 from .universe_execution_state_v2 import VERSION

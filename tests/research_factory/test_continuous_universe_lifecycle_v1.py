@@ -315,3 +315,79 @@ def test_ui_cli_and_http_use_same_registered_controller(tmp_path, monkeypatch, c
     assert client.post('/api/research-lifecycle/continuous/action', json={
         'research_id': 'fixed', 'action': 'start', 'payload': {}}).status_code == 403
     assert files(tmp_path) == before
+
+
+def test_pinned_external_owner_artifact_is_digest_bound_without_workspace_restriction(tmp_path):
+    from chanlun_trader.research_factory.continuous_universe_lifecycle_v1 import _pinned_json
+    external = tmp_path / 'external_owner' / 'DEPLOYMENT.json'
+    external.parent.mkdir()
+    raw = b'{"schema_version":"OWNER_DEPLOYMENT_FIXTURE"}'
+    external.write_bytes(raw)
+    reference = {'path': str(external), 'sha256': hashlib.sha256(raw).hexdigest(),
+                 'approval_ref': {'approval_id': '1' * 64, 'summary_hash': '2' * 64}}
+    before = files(tmp_path)
+    assert _pinned_json(reference) == {'schema_version': 'OWNER_DEPLOYMENT_FIXTURE'}
+    assert files(tmp_path) == before
+
+
+@pytest.mark.parametrize('failure', ['missing', 'directory', 'changed', 'invalid_json'])
+def test_pinned_artifact_read_failures_use_one_error_without_path_disclosure(tmp_path, failure):
+    from chanlun_trader.research_factory.continuous_universe_lifecycle_v1 import _pinned_json
+    path = tmp_path / 'PRIVATE_ARTIFACT.json'
+    raw = b'not JSON' if failure == 'invalid_json' else b'{}'
+    if failure == 'directory':
+        path.mkdir()
+    elif failure != 'missing':
+        path.write_bytes(raw)
+    reference = {'path': str(path), 'sha256': 'f' * 64 if failure == 'changed' else hashlib.sha256(raw).hexdigest()}
+    before = files(tmp_path)
+    with pytest.raises(ValueError) as error:
+        _pinned_json(reference)
+    assert str(error.value) == 'CONTINUOUS_ARTIFACT_IDENTITY_CHANGED'
+    assert str(path) not in str(error.value)
+    assert files(tmp_path) == before
+
+
+@pytest.mark.parametrize('alias', ['parent', 'device', 'stream'])
+def test_pinned_reference_rejects_alias_before_reading_any_file(tmp_path, monkeypatch, alias):
+    from chanlun_trader.research_factory.continuous_universe_lifecycle_v1 import _pinned_reference
+    from pathlib import Path
+    paths = {'parent': str(tmp_path / 'not_deployed' / '..' / 'OWNER.json'),
+             'device': str(tmp_path / 'NUL.json'), 'stream': str(tmp_path / 'OWNER.json:private')}
+    def forbidden_read(*args, **kwargs):
+        raise AssertionError('invalid reference must not be opened')
+    monkeypatch.setattr(Path, 'read_bytes', forbidden_read)
+    with pytest.raises(ValueError, match='CONTINUOUS_ARTIFACT_PIN_INVALID'):
+        _pinned_reference({'path': paths[alias], 'sha256': 'f' * 64})
+
+
+@pytest.mark.parametrize('location', ['outside', 'missing', 'parent_alias'])
+def test_snapshot_store_boundary_is_checked_before_data_scope_authorization(tmp_path, location):
+    from types import SimpleNamespace
+    from chanlun_trader.research_factory.continuous_universe_lifecycle_v1 import PinnedIndependentAdmissionV1
+    workspace = tmp_path / 'workspace'
+    workspace.mkdir()
+    external = tmp_path / 'external_store'
+    external.mkdir()
+    targets = {'outside': external, 'missing': workspace / 'not_deployed_store',
+               'parent_alias': workspace / 'not_deployed' / '..' / 'store'}
+    value = {'schema_version': 'PINNED_INDEPENDENT_ADMISSION_V1', 'snapshot_store_root': str(targets[location]),
+        'snapshot_ids': [], 'calendar': [], 'request_fields': {}, 'qualification': {}, 'trusted_data_access': {}}
+    path = tmp_path / 'external_owner_admission.json'
+    raw = json.dumps(value).encode()
+    path.write_bytes(raw)
+    capability = object()
+    owner = OwnerApprovalStoreV1(tmp_path / 'external_owner_store', owner_capability=capability)
+    reference = {'path': str(path), 'sha256': hashlib.sha256(raw).hexdigest(),
+        'approval_ref': owner.approve(value, approver='isolated_owner', capability=capability)}
+    data_scope_calls = []
+    provider = SimpleNamespace(authorize_independent_scope=lambda *args, **kwargs: data_scope_calls.append(kwargs))
+    admission = PinnedIndependentAdmissionV1(workspace, reference, approvals=OwnerApprovalStoreV1(owner.directory),
+        submission=SimpleNamespace(provider=provider), protocol_path=workspace / 'PROTOCOL.json')
+    before = files(tmp_path)
+    with pytest.raises(ValueError) as error:
+        admission({})
+    assert str(error.value) == 'CONTINUOUS_SNAPSHOT_STORE_OUTSIDE_WORKSPACE'
+    assert str(targets[location]) not in str(error.value)
+    assert data_scope_calls == []
+    assert files(tmp_path) == before

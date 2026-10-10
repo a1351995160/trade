@@ -1,7 +1,6 @@
 """持续全池研究的只读分层验收；显式 --run 才推进既有受信任务。"""
 from collections import Counter
 import argparse
-import hashlib
 import json
 from pathlib import Path
 import re
@@ -19,6 +18,9 @@ from chanlun_trader.research_factory.business_validation_protocol_v1 import (
 )
 from chanlun_trader.research_factory.exploration_governance import read_json
 from chanlun_trader.research_factory.strategy_submission_v1 import public_rule_factory
+from chanlun_trader.research_factory.secure_file_reference_v1 import (
+    checked_file_path, file_sha256, read_pinned_json,
+)
 from chanlun_trader.presentation import ZhCNPresentation
 
 
@@ -35,12 +37,8 @@ def _error_code(exc):
     return message if isinstance(exc, (ValueError, PermissionError)) and re.fullmatch(r'[A-Z0-9_]+', message) else type(exc).__name__
 
 
-def _digest(path):
-    digest = hashlib.sha256()
-    with Path(path).open('rb') as stream:
-        for chunk in iter(lambda: stream.read(1024 * 1024), b''):
-            digest.update(chunk)
-    return digest.hexdigest()
+def _digest(path, *, root=None):
+    return file_sha256(path, root=root, error_code='ACCEPTANCE_ARTIFACT_REFERENCE_INVALID')
 
 
 def _identity(value, key):
@@ -158,14 +156,13 @@ def _independent_proof(service, protocol, admission):
     def approved(reference):
         _require(isinstance(reference, dict) and set(reference) == {'path', 'sha256', 'approval_ref'},
                  'INDEPENDENT_OWNER_ARTIFACT_REFERENCE_INVALID')
-        path = Path(reference['path'])
-        _require(path.is_absolute() and path.resolve() == path and _digest(path) == reference['sha256'],
-                 'INDEPENDENT_OWNER_ARTIFACT_CHANGED')
-        value = read_json(path)
+        value = read_pinned_json({key: reference[key] for key in ('path', 'sha256')},
+            error_code='INDEPENDENT_OWNER_ARTIFACT_CHANGED')
         loader.approvals.require(reference['approval_ref'], value)
         return value
     config = approved(loader.reference)
     reference = admission.get('prior_access_review_ref')
+    _require(reference == config.get('prior_access_review'), 'INDEPENDENT_OWNER_ARTIFACT_REFERENCE_INVALID')
     review = approved(reference)
     binding = config.get('trusted_data_access', {}).get('protocol_binding', {})
     projection = admission.get('snapshot_projection', {})
@@ -221,9 +218,12 @@ def _public_proof(research, directory, row, contract):
     verify_exploration_binding(research.submission, request, contract,
         candidate_identity=strategy.rule_identity, batch_id=row['batch_id'])
     task = research.submission._task(task_ref['task_id'])
-    job = Path(task['job_path'])
+    from chanlun_trader.research_factory.continuous_submission_v1 import submission_job_path
+    job = submission_job_path(research.submission, task_ref['task_id'], task)
+    job = checked_file_path(job, root=research.submission.root,
+        error_code='ORIGINAL_PUBLIC_ACCOUNT_VERIFICATION_REQUIRED')
     _require(task.get('submission_version') == 'FULL_UNIVERSE_SUBMISSION_V4'
-        and _digest(job) == task.get('job_sha256') and outcome.get('task_id') == task['task_id']
+        and _digest(job, root=job.parent) == task.get('job_sha256') and outcome.get('task_id') == task['task_id']
         and outcome.get('status') == 'ACCOUNT_VERIFIED'
         and outcome.get('verification', {}).get('advance_allowed') is True
         and outcome['verification'].get('job_sha256') == task['job_sha256']
@@ -259,7 +259,7 @@ def _public_proof(research, directory, row, contract):
         cost = 'STRESS' if name.endswith('STRESS') else 'BASE' if name.endswith('BASE') else None
         path = Path(reference['research_report'])
         _require(cost and cost not in accounts and path.resolve() == path.absolute()
-            and path.parent == job.parent and _digest(path) == reference['research_report_sha256'],
+            and path.parent == job.parent and _digest(path, root=job.parent) == reference['research_report_sha256'],
             'ORIGINAL_RESEARCH_REPORT_CHANGED')
         report = read_json(path)
         _require(_identity(report, 'report_identity') and report.get('input_identity') == task['input_identity']
@@ -268,7 +268,7 @@ def _public_proof(research, directory, row, contract):
             and report['signal'].get('account_independent_denominator') is True,
             'REPORT_IDENTITY_OR_INDEPENDENT_SIGNAL_DENOMINATOR_INVALID')
         funnel_path = Path(reference['funnel'])
-        _require(funnel_path.parent == job.parent and _digest(funnel_path) == reference['funnel_sha256'],
+        _require(funnel_path.parent == job.parent and _digest(funnel_path, root=job.parent) == reference['funnel_sha256'],
                  'ORIGINAL_SIGNAL_FUNNEL_CHANGED')
         funnel = read_json(funnel_path)
         _require(_identity(funnel, 'identity') and funnel.get('rule_identity') == strategy.rule_identity,

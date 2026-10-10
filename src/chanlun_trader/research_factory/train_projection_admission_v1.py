@@ -1,7 +1,6 @@
 """固定 Owner 入场证明：绑定 TRAIN 投影元信息，不授予账户资格或独立性。"""
 from copy import deepcopy
 import hashlib
-import json
 from pathlib import Path, PureWindowsPath
 import re
 
@@ -10,6 +9,7 @@ from .campaign_scope_v1 import OwnerApprovalStoreV1
 from . import research_dataset_projection_v1 as projection
 from .research_universe_v1 import _day, identity
 from .universe_data_provider_v1 import UniverseDataProviderV1
+from .secure_file_reference_v1 import read_pinned_json
 
 
 VERSION = 'VERIFIED_TRAIN_PROJECTION_ADMISSION_V1'
@@ -21,16 +21,7 @@ def _hash(value):
 
 
 def _pinned_json(reference, label):
-    if (not isinstance(reference, dict) or set(reference) != {'path', 'sha256'}
-            or not isinstance(reference['path'], str) or not _hash(reference['sha256'])):
-        raise ValueError('TRAIN_ADMISSION_REFERENCE_INVALID:' + label)
-    path = Path(reference['path'])
-    if not path.is_absolute() or path.resolve() != path:
-        raise ValueError('TRAIN_ADMISSION_PATH_INVALID:' + label)
-    raw = path.read_bytes()
-    if hashlib.sha256(raw).hexdigest() != reference['sha256']:
-        raise ValueError('TRAIN_ADMISSION_IDENTITY_CONFLICT:' + label)
-    return json.loads(raw)
+    return read_pinned_json(reference, error_code='TRAIN_ADMISSION_REFERENCE_INVALID:' + label)
 
 
 def _iso_day(value):

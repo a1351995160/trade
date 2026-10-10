@@ -9,6 +9,9 @@ from .campaign_scope_v1 import (CampaignScopeV1, OwnerApprovalStoreV1,
                                 bind_campaign_scope, grant_summary, scope_summary)
 from .common import stable_hash
 from .research_campaign_v1 import ResearchCampaignV1
+from .secure_file_reference_v1 import (
+    checked_directory_path, file_sha256, read_file_bytes, read_pinned_json, validated_reference_path,
+)
 
 
 class ContinuousUniverseLifecycleV1:
@@ -281,19 +284,16 @@ def _pinned_reference(reference, *, owner_approval=False):
     fields = {'path', 'sha256'} | ({'approval_ref'} if owner_approval else set())
     if not isinstance(reference, dict) or set(reference) != fields:
         raise ValueError('CONTINUOUS_ARTIFACT_REFERENCE_INVALID')
-    path = Path(reference['path'])
-    if (not path.is_absolute() or path.resolve() != path
-            or not isinstance(reference['sha256'], str) or not re.fullmatch(r'[a-f0-9]{64}', reference['sha256'])):
+    path = validated_reference_path(reference['path'], error_code='CONTINUOUS_ARTIFACT_PIN_INVALID')
+    if not isinstance(reference['sha256'], str) or not re.fullmatch(r'[a-f0-9]{64}', reference['sha256']):
         raise ValueError('CONTINUOUS_ARTIFACT_PIN_INVALID')
     return path
 
 
 def _pinned_json(reference):
-    path = _pinned_reference(reference, owner_approval='approval_ref' in reference)
-    raw = path.read_bytes()
-    if hashlib.sha256(raw).hexdigest() != reference['sha256']:
-        raise PermissionError('CONTINUOUS_ARTIFACT_IDENTITY_CHANGED')
-    return json.loads(raw)
+    _pinned_reference(reference, owner_approval=isinstance(reference, dict) and 'approval_ref' in reference)
+    return read_pinned_json({key: reference[key] for key in ('path', 'sha256')},
+                            error_code='CONTINUOUS_ARTIFACT_IDENTITY_CHANGED')
 
 
 class PinnedIndependentAdmissionV1:
@@ -304,9 +304,11 @@ class PinnedIndependentAdmissionV1:
     """
     def __init__(self, workspace_root, reference, *, approvals, submission, protocol_path):
         _pinned_reference(reference, owner_approval=True)
-        self.root, self.reference = Path(workspace_root), deepcopy(reference)
+        self.root = validated_reference_path(workspace_root, error_code='CONTINUOUS_DEPLOYMENT_INVALID')
+        self.reference = deepcopy(reference)
         self.approvals, self.submission = approvals, submission
-        self.protocol_path = Path(protocol_path)
+        self.protocol_path = validated_reference_path(protocol_path, root=self.root,
+            error_code='CONTINUOUS_ADMISSION_PROTOCOL_BINDING_CONFLICT')
         self.last_waiting_reason = None
 
     def __call__(self, protocol):
@@ -319,13 +321,21 @@ class PinnedIndependentAdmissionV1:
 
     def _load(self, protocol):
         from .forward_snapshot_v1 import SnapshotStoreV1, universe_snapshot_projection
-        value = _pinned_json(self.reference)
+        try:
+            value = _pinned_json(self.reference)
+        except ValueError as exc:
+            # 唯有维护者事前固定的部署引用尚未落地可等待；不探测调用者任意路径。
+            if isinstance(exc.__cause__, FileNotFoundError):
+                raise FileNotFoundError('PINNED_INDEPENDENT_ARTIFACT_NOT_DEPLOYED') from exc
+            raise
         self.approvals.require(self.reference['approval_ref'], value)
         fields = {'schema_version', 'snapshot_store_root', 'snapshot_ids', 'calendar',
                   'request_fields', 'qualification', 'trusted_data_access'}
         if (not isinstance(value, dict) or not fields <= set(value) or set(value) - fields - {'prior_access_review'}
                 or value['schema_version'] != 'PINNED_INDEPENDENT_ADMISSION_V1'):
             raise ValueError('CONTINUOUS_ADMISSION_SCHEMA_INVALID')
+        store_root = checked_directory_path(value['snapshot_store_root'], root=self.root,
+            error_code='CONTINUOUS_SNAPSHOT_STORE_OUTSIDE_WORKSPACE')
         request = value['request_fields']
         if not isinstance(request, dict) or set(request) != {'dataset_id', 'feature_start', 'account_start',
                 'account_end', 'execution_profile', 'observation_plan', 'universe_id'}:
@@ -335,7 +345,8 @@ class PinnedIndependentAdmissionV1:
             raise ValueError('CONTINUOUS_ADMISSION_DATA_SCOPE_INVALID')
         binding = route['protocol_binding']
         # 协议身份由已冻结原件提供；data scope 必须绑定同一协议和审核原件字节。
-        protocol_raw = self.protocol_path.read_bytes()
+        protocol_raw = read_file_bytes(self.protocol_path, root=self.root, maximum_bytes=20 * 1024 * 1024,
+            error_code='CONTINUOUS_ADMISSION_PROTOCOL_BINDING_CONFLICT')
         if (json.loads(protocol_raw) != {key: item for key, item in protocol.items() if key != 'frozen_admission'}
                 or binding.get('protocol_id') != protocol['protocol_identity']
                 or binding.get('protocol_sha256') != hashlib.sha256(protocol_raw).hexdigest()
@@ -348,9 +359,6 @@ class PinnedIndependentAdmissionV1:
         registered = next((row for row in catalog['datasets'] if row['dataset_id'] == request['dataset_id']), None)
         if registered is None:
             raise PermissionError('CONTINUOUS_ADMISSION_DATASET_NOT_REGISTERED')
-        store_root = Path(value['snapshot_store_root'])
-        if not store_root.is_absolute() or store_root.resolve() != store_root or not store_root.is_relative_to(self.root):
-            raise ValueError('CONTINUOUS_SNAPSHOT_STORE_OUTSIDE_WORKSPACE')
         projection = universe_snapshot_projection(SnapshotStoreV1(store_root), value['snapshot_ids'],
             target_symbols=registered['target_symbols'], calendar=value['calendar'],
             feature_start=request['feature_start'], account_start=request['account_start'],
@@ -409,8 +417,9 @@ class PinnedIndependentAdmissionV1:
                 raise PermissionError('CONTINUOUS_SOURCE_PROVENANCE_EVIDENCE_REQUIRED')
             for evidence in review['evidence_refs']:
                 path = _pinned_reference(evidence)
-                if not path.is_relative_to(self.root) or hashlib.sha256(path.read_bytes()).hexdigest() != evidence['sha256']:
-                    raise PermissionError('CONTINUOUS_SOURCE_PROVENANCE_EVIDENCE_CHANGED')
+                if file_sha256(path, root=self.root,
+                        error_code='CONTINUOUS_SOURCE_PROVENANCE_EVIDENCE_CHANGED') != evidence['sha256']:
+                    raise ValueError('CONTINUOUS_SOURCE_PROVENANCE_EVIDENCE_CHANGED')
             admission.update(source_authenticated=(projection['source_authentication'] == 'CANONICAL_SNAPSHOT_STORE'
                 and projection['profile'] == 'REAL_OBSERVED'),
                 prior_access_review_passed=True,

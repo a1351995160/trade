@@ -3,6 +3,7 @@ from copy import deepcopy
 from datetime import datetime, timezone
 import hashlib
 from pathlib import Path
+import re
 
 from .common import stable_hash
 from .exploration_governance import immutable, read_json
@@ -11,6 +12,17 @@ from .research_data_provider_v1 import day
 
 VERSION = 'FULL_UNIVERSE_SUBMISSION_V4'
 LONG_VERSIONS = {'FULL_UNIVERSE_SUBMISSION_V3', VERSION}
+
+
+def submission_job_path(service, task_id, task):
+    """账户原件只能位于已校验任务的固定目录，不能使用回执自报路径。"""
+    if not isinstance(task_id, str) or not re.fullmatch(r'[a-f0-9]{64}', task_id):
+        raise ValueError('SUBMISSION_TASK_ID_INVALID')
+    path = service.root / task_id / 'account' / 'JOB.json'
+    if (task.get('task_id') != task_id or Path(task.get('job_path', '')) != path
+            or path.resolve() != path):
+        raise ValueError('CONTINUOUS_FROZEN_JOB_PATH_CHANGED')
+    return path
 
 
 def request_scope(request, contract, dataset):
@@ -227,6 +239,8 @@ def begin_freeze(service, request, preview_identity):
 
 def advance_submission(service, task_id):
     from .mutation_boundary import ObjectiveMutationLock
+    if not isinstance(task_id, str) or not re.fullmatch(r'[a-f0-9]{64}', task_id):
+        raise ValueError('SUBMISSION_TASK_ID_INVALID')
     with ObjectiveMutationLock.for_resource(service.root / ('advance_' + task_id)):
         task_root = service.root / task_id
         if not (task_root / 'TASK.json').exists():
@@ -242,7 +256,7 @@ def advance_submission(service, task_id):
                 return {**task, 'status': 'FROZEN', 'dispatched_segments': prepared['dispatched_segments']}
             return {**prepared, 'task_id': task_id, 'status': 'PREPARING', 'strategy_qualified': False}
         task = service._task(task_id)
-        path = Path(task['job_path'])
+        path = submission_job_path(service, task_id, task)
         if hashlib.sha256(path.read_bytes()).hexdigest() != task['job_sha256']:
             raise ValueError('CONTINUOUS_FROZEN_JOB_CHANGED')
         preview = read_json(task_root / 'PREVIEW.json')
@@ -317,7 +331,7 @@ def reconcile_submission(service, task_id):
             return {'task_id':task_id,'status':'PUBLIC_RECONCILED','stage':'PREPARATION',
                     'result':result,'dispatched_segments':0}
         task=service._task(task_id)
-        path=Path(task['job_path'])
+        path=submission_job_path(service, task_id, task)
         if hashlib.sha256(path.read_bytes()).hexdigest()!=task['job_sha256']:
             raise PermissionError('CONTINUOUS_FROZEN_JOB_CHANGED')
         from scripts import run_strategy_account_v1 as runner

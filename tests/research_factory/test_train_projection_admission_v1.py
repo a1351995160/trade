@@ -209,11 +209,12 @@ def test_admission_checks_actual_child_output_byte_limit_using_stat(tmp_path):
         verify_train_projection_admission(ref, **args)
 
 
-def test_missing_admission_is_waitable_file_missing_not_self_approval(tmp_path):
+def test_missing_admission_has_uniform_error_and_private_waitable_cause(tmp_path):
     ref, args, _, _, _, _, _, _ = admission_case(tmp_path)
     Path(ref['path']).unlink()
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(ValueError, match='^TRAIN_ADMISSION_REFERENCE_INVALID:admission$') as error:
         verify_train_projection_admission(ref, **args)
+    assert isinstance(error.value.__cause__, FileNotFoundError)
 
 
 def test_actual_verified_projection_proof_delegates_legal_child_window_only(tmp_path):

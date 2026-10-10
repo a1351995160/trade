@@ -19,6 +19,30 @@ from test_long_horizon_public_submission_v1 import long_public_case
 from test_strategy_submission_v1 import connected, node
 
 
+@pytest.mark.parametrize('task_id', ['../outside', '..\\outside', 'A' * 64, 'a' * 63])
+def test_continuous_advance_rejects_invalid_task_before_filesystem_mutation(tmp_path, task_id):
+    from types import SimpleNamespace
+    from chanlun_trader.research_factory.continuous_submission_v1 import advance_submission
+    service = SimpleNamespace(root=tmp_path / 'public')
+    with pytest.raises(ValueError, match='SUBMISSION_TASK_ID_INVALID'):
+        advance_submission(service, task_id)
+    assert not service.root.exists()
+
+
+def test_continuous_job_reference_cannot_redirect_to_matching_external_original(tmp_path):
+    from types import SimpleNamespace
+    from chanlun_trader.research_factory.continuous_submission_v1 import submission_job_path
+    task_id = 'a' * 64
+    service = SimpleNamespace(root=tmp_path / 'public')
+    external = tmp_path / 'outside' / 'JOB.json'
+    external.parent.mkdir()
+    external.write_text('{}', encoding='utf-8')
+    with pytest.raises(ValueError, match='CONTINUOUS_FROZEN_JOB_PATH_CHANGED'):
+        submission_job_path(service, task_id, {'task_id': task_id, 'job_path': str(external)})
+    canonical = service.root / task_id / 'account' / 'JOB.json'
+    assert submission_job_path(service, task_id, {'task_id': task_id, 'job_path': str(canonical)}) == canonical
+
+
 def continuous_public_case(tmp_path, *, exploration_minimum_sessions=252, candidates_budget=2):
     legacy, request, parent_authority, accesses = long_public_case(tmp_path)
     request['rule'].update(version='RESEARCH_RULE_STRATEGY_V4',

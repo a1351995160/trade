@@ -177,18 +177,19 @@ class PublicServiceSpy:
 
     def freeze(self, request, preview_identity):
         self.calls.append('freeze')
-        job = self.root / 'public_task' / 'JOB.json'
+        task_id = stable_hash([request, preview_identity])
+        job = self.root / task_id / 'account' / 'JOB.json'
         job.parent.mkdir(parents=True, exist_ok=True)
         plans = {cost: stable_hash(cost) for cost in ('BASE', 'STRESS')}
         job.write_text(json.dumps({'request': request, 'input_identity': stable_hash('confirmation_input'),
             'plans': {cost: {'plan_id': value} for cost, value in plans.items()},
             'items': {cost: {'backend_options': {'costs': cost},
                 'factory_kwargs': {'payload': request['rule']}} for cost in plans}}), encoding='utf-8')
-        self.task = {'task_id': stable_hash([request, preview_identity]), 'job_path': str(job),
+        self.task = {'task_id': task_id, 'job_path': str(job),
             'plan_ids': plans, 'preview_identity': preview_identity,
             'submission_version': 'FULL_UNIVERSE_SUBMISSION_V4',
             'job_sha256': hashlib.sha256(job.read_bytes()).hexdigest(), 'input_identity': stable_hash('confirmation_input')}
-        (self.root / 'PREVIEW.json').write_text(json.dumps(self.preview_value), encoding='utf-8')
+        (job.parent.parent / 'PREVIEW.json').write_text(json.dumps(self.preview_value), encoding='utf-8')
         return deepcopy(self.task)
 
     def _task(self, task_id):
@@ -213,12 +214,12 @@ class PublicServiceSpy:
                 'signal': {'account_independent_denominator': True, 'statistics': {'5': {}},
                     'limitations': ['合成价格对照，不是可投资账户。']}, 'strategy_qualified': False}
             report['report_identity'] = stable_hash(report)
-            path = self.root / 'public_task' / (cost + '_RESEARCH_REPORT.json')
+            path = Path(self.task['job_path']).parent / (cost + '_RESEARCH_REPORT.json')
             path.write_text(json.dumps(report), encoding='utf-8')
-            source_path = self.root / 'public_task' / (cost + '_RESULT.json')
+            source_path = Path(self.task['job_path']).parent / (cost + '_RESULT.json')
             source_path.write_text(json.dumps({'SYNTHETIC_TEST': True, 'cost': cost}), encoding='utf-8')
             digest = hashlib.sha256(source_path.read_bytes()).hexdigest()
-            (self.root / 'public_task' / (cost + '_SETTLEMENT.json')).write_text(
+            (Path(self.task['job_path']).parent / (cost + '_SETTLEMENT.json')).write_text(
                 json.dumps({'result_sha256': digest}), encoding='utf-8')
             final = {'artifacts': {'source_result': {'path': str(source_path), 'sha256': digest}},
                 'research': {'source_result_sha256': digest, 'account_and_signal': report},
@@ -226,7 +227,7 @@ class PublicServiceSpy:
                     'input_identity': self.task['input_identity'], 'status': 'AVAILABLE_NONINVESTABLE',
                     'investable': False, 'formal_qualification': False, 'metrics': {'net_return': .05},
                     'limitations': ['合成不可投资价格篮子。'], 'cash': {'net_return': 0., 'initial_cash': 50000.}}}
-            final_path = self.root / 'public_task' / (cost + '_REPORT.json')
+            final_path = Path(self.task['job_path']).parent / (cost + '_REPORT.json')
             final_path.write_text(json.dumps(final), encoding='utf-8')
             refs[cost] = {'research_report': str(path), 'final_report': str(final_path),
                 'final_report_sha256': hashlib.sha256(final_path.read_bytes()).hexdigest(),
@@ -237,7 +238,7 @@ class PublicServiceSpy:
             'rule_identity': public_rule_factory(self.request['rule'], self.request['strategy_id']).rule_identity,
             'verification': {'advance_allowed': True, 'job_sha256': self.task['job_sha256']},
             'reports': refs, 'strategy_qualified': False}
-        (self.root / 'public_task' / 'VERIFICATION.json').write_text(json.dumps(result['verification']), encoding='utf-8')
+        (Path(self.task['job_path']).parent / 'VERIFICATION.json').write_text(json.dumps(result['verification']), encoding='utf-8')
         return result
 
 
@@ -364,7 +365,7 @@ def test_report_original_tamper_is_not_accepted_as_business_evidence(tmp_path, s
     wire(service, protocol, tmp_path)
     for _ in range(4):
         service.advance()
-    report = tmp_path / 'public_task' / 'BASE_RESEARCH_REPORT.json'
+    report = Path(service.submission.task['job_path']).parent / 'BASE_RESEARCH_REPORT.json'
     report.write_text('{}', encoding='utf-8')
     with pytest.raises(ValueError, match='REPORT_ORIGINAL_CHANGED'):
         service.human_results()
@@ -457,7 +458,7 @@ def test_async_public_freeze_recovers_canonical_account_task_without_refreezing(
     # 公共批准先于账户完成；本地TASK仍是PREPARING时也要识别原任务的合法暴露。
     own = {'content_hash': evidence['metadata']['content_hash'], 'window': evidence['metadata']['window'],
         'symbols': SYMBOLS, 'purpose': 'ACCOUNT_AUTHORIZED_POSSIBLE_EXPOSURE',
-        'evidence_ref': {'receipt_path': str(tmp_path / 'public_task' / 'CONFIRMATION.json')}}
+        'evidence_ref': {'receipt_path': str(Path(service.submission.task['job_path']).parent / 'CONFIRMATION.json')}}
     service.exposures = lambda: [own]
     assert service.advance()['public_stage_status'] == 'ACCOUNT_VERIFIED'
     assert service.human_results()['passed']['business_validation']['thresholds_passed'] is True
@@ -512,7 +513,7 @@ def test_promoted_queue_evidence_replaces_short_screen_without_changing_record(t
     promoted['status'] = 'FINAL_EXPLORATION_FAILED'
     assert verified_final_exploration_evidence(service.research, 'passed', arguments['contract']) is None
     promoted['status'] = 'FINAL_EXPLORATION_READY'
-    (source.root / 'public_task' / 'BASE_RESEARCH_REPORT.json').write_text('{}', encoding='utf-8')
+    (Path(source.task['job_path']).parent / 'BASE_RESEARCH_REPORT.json').write_text('{}', encoding='utf-8')
     with pytest.raises(ValueError, match='REPORT_ORIGINAL_CHANGED'):
         verified_final_exploration_evidence(service.research, 'passed', arguments['contract'])
 

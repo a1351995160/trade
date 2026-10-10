@@ -25,7 +25,7 @@ def implementation_identity():
         'campaign_model_receipt_v1.py', 'research_campaign_v1.py', 'run_budget.py',
         'budget_gateway_model_v1.py', 'business_validation_protocol_v1.py',
         'final_exploration_queue_v1.py', 'research_dataset_projection_v1.py', 'continuous_storage_v1.py',
-        'train_projection_admission_v1.py', 'continuous_universe_lifecycle_v1.py',
+        'train_projection_admission_v1.py', 'continuous_universe_lifecycle_v1.py', 'secure_file_reference_v1.py',
         'strategy_submission_v1.py', 'universe_compute_governance_v1.py', 'universe_scan_service_v1.py')
     return {name: _digest(Path(__file__).parent / name) for name in names}
 
@@ -206,10 +206,14 @@ class DiagnosisResearchV4:
             'coverage_policy': 'ROTATING_FROZEN_MECHANISM_ALLOCATION_NOT_PARAMETER_EXHAUSTION',
             'evidence_boundary': 'EXPLORATION_QUALITATIVE_ONLY_NO_CONFIRMATION_RESULTS_OR_DATA'}
         maximum = config['model_limits']['context_max_bytes']
-        while len(json.dumps(context, ensure_ascii=False, sort_keys=True).encode('utf-8')) > maximum and history['recent_records']:
+        for _ in tuple(history['recent_records']):
+            if len(json.dumps(context, ensure_ascii=False, sort_keys=True).encode('utf-8')) <= maximum:
+                break
             history['recent_records'].pop(0)
             history['omitted_record_count'] = len(records) - len(history['recent_records'])
-        while len(json.dumps(context, ensure_ascii=False, sort_keys=True).encode('utf-8')) > maximum and final['recent_evidence']:
+        for _ in tuple(final['recent_evidence']):
+            if len(json.dumps(context, ensure_ascii=False, sort_keys=True).encode('utf-8')) <= maximum:
+                break
             final['recent_evidence'].pop(0)
             final['omitted_evidence_count'] = final['total_evidence'] - len(final['recent_evidence'])
         if len(json.dumps(context, ensure_ascii=False, sort_keys=True).encode('utf-8')) > maximum:

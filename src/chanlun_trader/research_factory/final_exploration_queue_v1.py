@@ -5,6 +5,7 @@ from pathlib import Path
 
 from .budget import BudgetExhaustedError
 from .common import stable_hash
+from .continuous_submission_v1 import submission_job_path
 from .exploration_governance import immutable, read_json
 from .mutation_boundary import ObjectiveMutationLock
 from .research_data_provider_v1 import day
@@ -101,9 +102,10 @@ class FinalExplorationQueueV1:
             outcome = read_json(path.parent / 'PUBLIC_RESULT.json')
             reference = read_json(path.parent / 'TASK.json')
             task = self.submission._task(reference['task_id'])
+            job_path = submission_job_path(self.submission, reference['task_id'], task)
             if (task['task_id'] != value['task_id'] or task['input_identity'] != value['input_identity']
                     or task['job_path'] != value['job_path']
-                    or hashlib.sha256(Path(task['job_path']).read_bytes()).hexdigest() != task['job_sha256']
+                    or hashlib.sha256(job_path.read_bytes()).hexdigest() != task['job_sha256']
                     or request['rule'] != self._source(record)
                     or any(request.get(key) != item for key, item in template.items())
                     or outcome.get('input_identity') != task['input_identity']

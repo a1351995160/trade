@@ -60,7 +60,8 @@ def synthetic_research(tmp_path, *, count=1, ready=False):
     research.config = lambda: deepcopy(config)
     research.campaign = SimpleNamespace(peek_status=lambda: {'operations': {}})
     tasks = {}
-    research.submission = SimpleNamespace(_task=lambda task_id: deepcopy(tasks[task_id]))
+    research.submission = SimpleNamespace(root=tmp_path / 'synthetic_public',
+        _task=lambda task_id: deepcopy(tasks[task_id]))
     def confirmation_read_forbidden(*args, **kwargs):
         raise AssertionError('CONFIRMATION must not be read by design context')
     research.confirmation = SimpleNamespace(status=confirmation_read_forbidden,
@@ -83,7 +84,7 @@ def synthetic_research(tmp_path, *, count=1, ready=False):
         write(source / 'RECORD.json', record)
         request = {**deepcopy(final_template), 'rule': proposal, 'strategy_id': candidate,
             'research_binding_ref': {'binding_id': stable_hash(['SYNTHETIC_ONLY', candidate])}}
-        public = PublicServiceSpy(tmp_path / 'synthetic_public' / candidate, sessions=504)
+        public = PublicServiceSpy(research.submission.root, sessions=504)
         preview = public.preview(request)
         task = public.freeze(request, preview['preview_identity'])
         outcome = public.advance(task['task_id'])

@@ -107,6 +107,7 @@ jobs:
           tests/research_factory/test_diagnosis_research_v4.py
           tests/research_factory/test_continuous_recovery_boundaries_v1.py
           tests/research_factory/test_continuous_storage_v1.py
+          tests/research_factory/test_secure_file_reference_v1.py
           tests/research_factory/test_continuous_final_feedback_v1.py
           tests/research_factory/test_continuous_model_settlement_recovery_v1.py
           tests/research_factory/test_continuous_public_settlement_recovery_v1.py
