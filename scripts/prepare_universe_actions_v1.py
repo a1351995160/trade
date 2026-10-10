@@ -149,6 +149,8 @@ def _read_response(item, audit):
         parent_batch_status=item.get('parent_batch_status'),
         parent_batch_result_sha256=item.get('parent_batch_result_sha256'),
         request_verification_witness=item.get('request_verification_witness'))
+    evidence.update({key: item[key] for key in ('operation_identity', 'collection_root',
+        'batch_id', 'result_path', 'start_sha256') if key in item})
     _append(audit, {'event': 'ACTION_RAW_READ_VERIFIED', **evidence})
     return normalized, evidence
 
@@ -162,6 +164,8 @@ def _collector_sources(root):
         return [], {'status': 'NO_FROZEN_COLLECTION', 'root': str(root)}
     frozen = _load(root / 'FROZEN_COLLECTION.json')
     raw, queue = collector._load_queue(root / 'ACQUISITION_BATCHES.json')
+    if queue.get('continuation') is not None:
+        return _continuation_sources(root)
     if (hashlib.sha256(raw).hexdigest() != frozen.get('queue_sha256')
             or {p['batch_id']: collector._hash(p) for p in queue['batches']} != frozen.get('batch_hashes')):
         raise ValueError('ACTION_FROZEN_COLLECTION_SCOPE_CHANGED')
@@ -232,6 +236,39 @@ def _collector_sources(root):
         'verified_journal_events': len(events), 'completed_batch_count': len(completed),
         'blocked_batch_count': len(blocked),
         'partial_verified_request_count': sum(not source['batch_completed'] for source in sources)}
+
+
+def _continuation_sources(root):
+    """沿已登记续采链继承成功原件；祖先失败批仍明确保持 BLOCKED。"""
+    view = collector.verified_collection_successes_v1(root)
+    sources = []
+    for reference in view['sources']:
+        item, response = reference['request_item'], reference['result_row']
+        if item['api'] not in {'query_dividend_data', 'query_adjust_factor'}:
+            continue
+        query, witness = item['request'], reference['request_verification_witness']
+        sources.append({'symbol': canonical_symbol(query['code']),
+            'kind': 'DIVIDEND' if item['api'] == 'query_dividend_data' else 'ADJUST',
+            'year': int(query['year']) if item['api'] == 'query_dividend_data' else None,
+            'api': item['api'], 'request': query, 'path': Path(witness['source_path']),
+            'sha256': response['sha256'], 'row_count': response['row_count'],
+            'origin': 'FROZEN_COLLECTOR_RESPONSE', 'requested_at_utc': witness['requested_at_utc'],
+            'request_verified': True, 'request_verification_witness': witness,
+            'verification_status': 'COMPLETE_BATCH_SOURCE' if reference['batch_completed']
+                else 'BATCH_PARTIAL_REQUEST_VERIFIED',
+            'parent_batch_status': reference['parent_batch_status'],
+            'parent_batch_result_sha256': reference['result_sha256'],
+            **{key: reference[key] for key in ('operation_identity', 'collection_root',
+                'batch_id', 'result_path', 'batch_completed')}, 'start_sha256': witness['start_sha256']})
+    leaf = view['collections'][-1]
+    return sources, {'root': str(root), **{key: leaf[key] for key in (
+        'queue_sha256', 'frozen_collection_sha256', 'verified_journal_events',
+        'completed_batch_count', 'blocked_batch_count')},
+        'partial_verified_request_count': sum(not source['batch_completed'] for source in sources),
+        'collections': view['collections'], 'request_count': view['request_count'],
+        'success_count': view['success_count'], 'root_planned_request_count': view['root_planned_request_count'],
+        'generation': view['generation'], 'retry_counts_by_operation': view['retry_counts_by_operation'],
+        'complete': view['complete']}
 
 
 def _legacy_sources(catalog_path):
@@ -392,9 +429,13 @@ def prepare_universe_actions_v1(*, manifest, acquisition_root, output_dir,
     acquisition_roots = [acquisition_root, *(additional_acquisition_root or [])]
     if len({str(Path(root).absolute()) for root in acquisition_roots}) != len(acquisition_roots):
         raise ValueError('ACTION_DUPLICATE_ACQUISITION_ROOT')
-    collected, collection_evidence = [], []
+    collected, collection_evidence, seen_collections = [], [], set()
     for root in acquisition_roots:
         rows, evidence = _collector_sources(root)
+        inherited_roots = {row['root'] for row in evidence.get('collections', [evidence])}
+        if inherited_roots & seen_collections:
+            raise ValueError('ACTION_DUPLICATE_COLLECTION_LINEAGE')
+        seen_collections.update(inherited_roots)
         collected.extend(rows)
         collection_evidence.append(evidence)
     legacy, skipped_sources = _legacy_sources(legacy_catalog)

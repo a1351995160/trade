@@ -532,3 +532,53 @@ def test_tampered_success_in_blocked_batch_is_not_requalified(tmp_path):
     with pytest.raises(ValueError, match='COLLECTOR_RESPONSE_CONTENT_CHANGED'):
         prepare(manifest, acquisition)
     assert not (manifest.parent / 'actions').exists()
+
+
+def test_action_preparation_inherits_two_generation_successes_and_preserves_blocked_status(tmp_path):
+    from scripts import prepare_universe_collection_continuation_v1 as continuation
+    manifest, original = blocked_collection(tmp_path)
+    roots, source = [original, tmp_path / 'continued_1', tmp_path / 'continued_2'], original
+    for index in range(2):
+        plan = tmp_path / f'continuation_{index + 1}'
+        continuation.prepare_continuation(source, plan,
+            collection_output_root=roots[index + 1], reason='合成公司行动续采回归')
+        client = FakeClient({})
+        if index == 0:
+            def failed_adjust(**query):
+                response = Response([], [])
+                response.error_code, response.error_msg = '10002007', 'synthetic receive failure'
+                return response
+            client.query_adjust_factor = failed_adjust
+            with pytest.raises(RuntimeError, match='BAOSTOCK_RESPONSE_FAILED'):
+                collector.collect(plan / 'ACQUISITION_BATCHES.json', roots[index + 1], client=client)
+        else:
+            collector.collect(plan / 'ACQUISITION_BATCHES.json', roots[index + 1], client=client)
+        source = roots[index + 1]
+    originals = {path: path.read_bytes() for root in roots for path in root.rglob('*') if path.is_file()}
+    result = prepare(manifest, roots[-1])
+    events, coverage, gaps, catalog = reports(manifest)
+    assert result['source_count'] == 4 and result['corporate_actions_complete']
+    assert len(events) == 1 and all(row['complete'] for row in coverage) and not gaps
+    proof = catalog['collections'][0]
+    assert proof['request_count'] == 6 and proof['success_count'] == 4 and proof['generation'] == 2
+    assert len(proof['collections']) == 3 and proof['partial_verified_request_count'] == 3
+    parent_sources = [s for s in catalog['sources'] if s['collection_root'] == str(original)]
+    assert len(parent_sources) == 3
+    assert all(s['parent_batch_status'] == 'BLOCKED' and s['batch_completed'] is False for s in parent_sources)
+    for row in catalog['sources']:
+        assert sha(Path(row['result_path'])) == row['parent_batch_result_sha256']
+        assert sha(Path(row['path'] + '.START.json')) == row['start_sha256']
+        assert row['request_verification_witness']['source_sha256'] == row['sha256']
+    assert all(path.read_bytes() == content for path, content in originals.items())
+
+
+def test_action_preparation_rejects_same_ancestor_supplied_again_as_additional_root(tmp_path):
+    from scripts import prepare_universe_collection_continuation_v1 as continuation
+    manifest, original = blocked_collection(tmp_path)
+    plan, target = tmp_path / 'continuation', tmp_path / 'continued'
+    continuation.prepare_continuation(original, plan, collection_output_root=target,
+        reason='合成重复谱系回归')
+    collector.collect(plan / 'ACQUISITION_BATCHES.json', target, client=FakeClient({}))
+    with pytest.raises(ValueError, match='ACTION_DUPLICATE_COLLECTION_LINEAGE'):
+        prepare(manifest, target, additional_acquisition_root=[original])
+    assert not (manifest.parent / 'actions').exists()

@@ -3953,3 +3953,18 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 ### Notes
 - 仅修改 LifecycleWorkbench.vue 和对应测试；不改变宿主运行、权限、研究或交易逻辑。
 - 回滚点与审计原件保留要求沿用合并前 78cfd99a489ecd450ce2fba27a2a6c99dd438e40。
+
+## 2026-10-10 - Task: 真实验收中修复续采原件继承与补充股息登记
+### What was done
+- 修复长期资料与公司行动准备遗漏 canonical 续采祖先成功原件的问题，保留 BLOCKED 批成功请求的原 root、批次、result/START 哈希和累计实际请求数；未完成叶仍阻断长期准备。
+- 长期资料准备可通过 --additional-legacy-catalog 接入已登记的新原件，保留跨年度物理日期与目录身份，相同来源去重、冲突/变更阻断。
+- 明确用户通过当前 Codex 会话设计和提交策略不需要额外模型 API；会话执行与后台 HTTP gateway 验收分开报告，不补造模型回执。
+### Testing
+- 委派执行四个聚焦模块 92 passed in 18.42s；主代理扩展五模块 48 passed in 14.84s；语法与 diff 检查通过。独立只读对抗审查未发现高置信新增 P1/P2。
+- 扩展检查首轮因 .tmp 父目录不存在而 7 passed/41 setup errors；创建测试临时父目录后同五模块完整重跑通过，未改断言或生产逻辑。
+- 真实只读核验两代采集原件：554 次实际请求、552 项唯一成功（276 RAW + 276 ADJUST），包含 12 项 BLOCKED 批成功原件；原冻结/日志/状态哈希前后一致，未完成叶返回 LONG_DATA_COLLECTION_NOT_COMPLETE。
+### Notes
+- 修改 scripts/collect_universe_gaps_v1.py：导出完整已验证成功来源视图；scripts/prepare_long_horizon_data_v1.py：继承祖先及补充 legacy catalog；scripts/prepare_universe_actions_v1.py：继承公司行动原件并拒绝重复谱系。
+- 对应三份 tests/research_factory 测试补充多代/篡改/重复/物理跨年回归；docs/CONTINUOUS_UNIVERSE_RESEARCH_GUIDE.md 和 docs/LONG_HORIZON_UNIVERSE_RESEARCH_GUIDE.md 同步实际入口与使用边界。
+- 本轮证据存 reports/continuous_universe_real_acceptance_20261010/SOURCE_FIX_VALIDATION.json 与 READONLY_COLLECTION_LINEAGE_CHECK.json。全 4607 登记池的 504 TRAIN 配套仍在真实采集，账户与独立 252 验证未执行，不能称整个目标已完成。
+- 回滚：仅 revert 本次修复提交；保留所有采集原件、续采失败回执、授权及消费账本，不删除旧研究记录。原用户未提交内容保持原样，仅追加本段。

@@ -188,9 +188,10 @@ def _verify_continuation_registration(raw, queue, root):
         raise ValueError('COLLECTOR_CONTINUATION_ALREADY_REGISTERED_ELSEWHERE')
 
 
-def verify_continuation_lineage_v1(raw, queue, root):
+def verify_continuation_lineage_v1(raw, queue, root, *, include_sources=False):
     """只读核对已登记的父链、成功来源和累计计数；不重新发起任何请求。"""
     nodes, seen = [], set()
+    source_view, collection_view = [], []
     while queue.get('continuation') is not None:
         _verify_continuation_registration(raw, queue, root)
         binding = queue['continuation']
@@ -222,10 +223,16 @@ def verify_continuation_lineage_v1(raw, queue, root):
             proof = expected_complete[name]
             if proof['event_hash'] != event['event_hash'] or proof['result_sha256'] != event['result_sha256']:
                 raise ValueError('COLLECTOR_CONTINUATION_COMPLETED_PROOF_CONFLICT')
-            verified = _verify_success(original, plans[name], event)
+            verified = _verify_success(original, plans[name], event,
+                include_witnesses=include_sources)
             local_count += verified['request_count']
             successes.update(_hash({'api': item['api'], 'request': item['request']})
                 for item in plans[name]['requests'])
+            if include_sources:
+                rows = {row['file']: row for row in verified['responses']}
+                source_view.extend(_success_reference(original, name, item, rows[item['file']],
+                    verified['result_sha256'], verified['witnesses'][item['file']], True)
+                    for item in plans[name]['requests'])
         partial = {row['operation_identity']: row for row in receipt['partial_success_witnesses']}
         failures = {row['operation_identity']: row for row in receipt['failed_request_retries']}
         observed_partial, observed_failures = set(), set()
@@ -255,6 +262,9 @@ def verify_continuation_lineage_v1(raw, queue, root):
                         raise ValueError('COLLECTOR_CONTINUATION_PARTIAL_SOURCE_CONFLICT')
                     observed_partial.add(operation)
                     successes.add(operation)
+                    if include_sources:
+                        source_view.append(_success_reference(original, name, item, row,
+                            proof['result_sha256'], witness, False))
                 else:
                     declared = failures.get(operation, {})
                     start_path = directory / (filename + '.START.json')
@@ -279,6 +289,9 @@ def verify_continuation_lineage_v1(raw, queue, root):
                 or (parent is None and receipt.get('parent_receipt_sha256') is not None)):
             raise ValueError('COLLECTOR_CONTINUATION_PARENT_OR_SCOPE_CONFLICT')
         nodes.append((receipt, local_count, len(successes), set(failures)))
+        if include_sources:
+            collection_view.append(_collection_reference(original, frozen, events,
+                local_count, len(successes), len(observed_partial)))
         raw, queue, root = source_raw, source_queue, original
     count, success_count, retry_counts = 0, 0, {}
     root_planned = queue['request_count']
@@ -299,9 +312,12 @@ def verify_continuation_lineage_v1(raw, queue, root):
                 or receipt['retry_counts_by_operation'] != retry_counts
                 or receipt['explicit_operation_retry_limit'] != MAX_EXPLICIT_OPERATION_RETRIES):
             raise ValueError('COLLECTOR_CONTINUATION_CHAIN_COUNTS_CONFLICT')
-    return {'request_count': count, 'success_count': success_count,
+    result = {'request_count': count, 'success_count': success_count,
         'root_planned_request_count': root_planned, 'retry_counts_by_operation': retry_counts,
         'generation': len(nodes)}
+    if include_sources:
+        result.update(sources=source_view, collections=list(reversed(collection_view)))
+    return result
 
 
 def _initialize(root, raw, queue):
@@ -417,7 +433,7 @@ def verify_collected_response_v1(directory, item, resultrow):
         'row_count': len(value['raw_rows']), 'independent_confirmation_eligible': False}
 
 
-def _verify_success(root, plan, completed=None):
+def _verify_success(root, plan, completed=None, *, include_witnesses=False):
     directory = root / 'batches' / plan['batch_id']
     if directory.resolve() != directory:
         raise ValueError('COLLECTOR_BATCH_PATH_REDIRECTED')
@@ -437,11 +453,126 @@ def _verify_success(root, plan, completed=None):
         raise ValueError('COLLECTOR_BATCH_NOT_COMPLETED')
     acquisition.validate_plan(plan)
     expected_items = {item['file']: item for item in plan['requests']}
+    if include_witnesses and {path.name[:-len('.START.json')]
+            for path in directory.glob('*.START.json')} != expected:
+        raise ValueError('COLLECTOR_COMPLETED_REQUEST_START_SET_CONFLICT')
+    witnesses = {}
     for row in responses:
-        verify_collected_response_v1(directory, expected_items[row['file']], row)
+        witness = verify_collected_response_v1(directory, expected_items[row['file']], row)
+        if include_witnesses:
+            witnesses[row['file']] = witness
     if completed is not None and completed.get('responses') != responses:
         raise ValueError('COLLECTOR_RESPONSE_IDENTITY_CONFLICT')
-    return {'result_sha256': result_hash, 'responses': responses, 'request_count': len(expected)}
+    result = {'result_sha256': result_hash, 'responses': responses, 'request_count': len(expected)}
+    if include_witnesses:
+        result['witnesses'] = witnesses
+    return result
+
+
+def _success_reference(root, batch, item, row, result_hash, witness, completed):
+    return {'operation_identity': _hash({'api': item['api'], 'request': item['request']}),
+        'collection_root': str(root), 'batch_id': batch, 'request_item': item,
+        'result_row': row, 'result_path': str(root / 'batches' / batch / 'ACQUISITION_RESULT.json'),
+        'result_sha256': result_hash, 'batch_completed': completed,
+        'parent_batch_status': 'COMPLETED' if completed else 'BLOCKED',
+        'request_verification_witness': witness}
+
+
+def _collection_reference(root, frozen, events, request_count, success_count, partial_count):
+    journal = root / 'COLLECTION_JOURNAL.jsonl'
+    return {'root': str(root), 'queue_sha256': frozen['queue_sha256'],
+        'frozen_collection_sha256': _file_hash(root / 'FROZEN_COLLECTION.json'),
+        'journal_sha256': _file_hash(journal) if journal.is_file() else None,
+        'verified_journal_events': len(events),
+        'completed_batch_count': sum(e['event'] == 'BATCH_COMPLETED' for e in events),
+        'blocked_batch_count': sum(e['event'] == 'BATCH_BLOCKED' for e in events),
+        'request_count': request_count, 'success_count': success_count,
+        'partial_verified_request_count': partial_count}
+
+
+def verified_collection_successes_v1(root, *, require_complete=False):
+    """只读投影完整已校验父链及本叶的成功原件；不合并或改写采集日志。"""
+    root = Path(root).absolute()
+    if root.resolve() != root:
+        raise ValueError('COLLECTOR_OUTPUT_REDIRECTED')
+    raw, queue = _load_queue(root / 'ACQUISITION_BATCHES.json')
+    frozen = json.loads((root / 'FROZEN_COLLECTION.json').read_text(encoding='utf-8'))
+    if frozen != _collection_scope(raw, queue):
+        raise ValueError('COLLECTOR_FROZEN_QUEUE_OR_SCOPE_CHANGED')
+    events = _read_events(root, frozen)
+    completed, blocked = {}, {}
+    for event in events:
+        if event['event'] not in {'BATCH_COMPLETED', 'BATCH_BLOCKED'}:
+            continue
+        name = event['batch_id']
+        if name in completed or name in blocked:
+            raise ValueError('COLLECTOR_DUPLICATE_TERMINAL_BATCH')
+        (completed if event['event'] == 'BATCH_COMPLETED' else blocked)[name] = event
+    complete = (len(completed) == len(queue['batches']) and not blocked
+        and not any(e['event'] == 'LOGIN_BLOCKED' for e in events))
+    if require_complete and not complete:
+        raise ValueError('COLLECTOR_COLLECTION_NOT_COMPLETE')
+    lineage = verify_continuation_lineage_v1(raw, queue, root, include_sources=True)
+    sources, local_count, partial_count = list(lineage['sources']), 0, 0
+    local_successes, local_failures = 0, set()
+    for plan in queue['batches']:
+        name = plan['batch_id']
+        if name in completed:
+            proof = _verify_success(root, plan, completed[name], include_witnesses=True)
+            rows = {row['file']: row for row in proof['responses']}
+            local_count += proof['request_count']
+            for item in plan['requests']:
+                sources.append(_success_reference(root, name, item, rows[item['file']],
+                    proof['result_sha256'], proof['witnesses'][item['file']], True))
+                local_successes += 1
+        elif name in blocked:
+            directory = root / 'batches' / name
+            if _hash(json.loads((directory / 'ACQUISITION_PLAN.json').read_text(encoding='utf-8'))) != _hash(plan):
+                raise ValueError('COLLECTOR_BATCH_PLAN_CHANGED')
+            result_path = directory / 'ACQUISITION_RESULT.json'
+            result_hash = _file_hash(result_path)
+            result = json.loads(result_path.read_text(encoding='utf-8'))
+            responses = result.get('responses', [])
+            rows = {row['file']: row for row in responses}
+            items = {item['file']: item for item in plan['requests']}
+            starts = {path.name[:-len('.START.json')] for path in directory.glob('*.START.json')}
+            if (result.get('completed') is not False or not starts <= set(items)
+                    or not set(rows) <= starts or len(rows) != len(responses)
+                    or result.get('request_count') != len(starts)
+                    or blocked[name].get('request_count') != len(starts)):
+                raise ValueError('COLLECTOR_CONTINUATION_PARTIAL_COUNT_CONFLICT')
+            local_count += len(starts)
+            for filename in sorted(starts):
+                item, row = items[filename], rows.get(filename)
+                start_path = directory / (filename + '.START.json')
+                _file_hash(start_path)
+                start = json.loads(start_path.read_text(encoding='utf-8'))
+                if {key: start.get(key) for key in item} != item or not start.get('started_at'):
+                    raise ValueError('COLLECTOR_REQUEST_START_IDENTITY_CONFLICT')
+                if row is not None and row.get('error_code') == '0':
+                    witness = verify_collected_response_v1(directory, item, row)
+                    sources.append(_success_reference(root, name, item, row, result_hash, witness, False))
+                    partial_count += 1
+                    local_successes += 1
+                else:
+                    local_failures.add(_hash({'api': item['api'], 'request': item['request']}))
+    collections = [*lineage['collections'], _collection_reference(root, frozen, events,
+        local_count, local_successes, partial_count)]
+    operations = [source['operation_identity'] for source in sources]
+    if (len(set(operations)) != len(operations)
+            or len(sources) != lineage['success_count'] + local_successes):
+        raise ValueError('COLLECTOR_CONTINUATION_SUCCESS_SET_CONFLICT')
+    if complete and len(sources) != lineage['root_planned_request_count']:
+        raise ValueError('COLLECTOR_CONTINUATION_SUCCESS_COUNT_CONFLICT')
+    order = {entry['root']: index for index, entry in enumerate(collections)}
+    sources.sort(key=lambda source: (order[source['collection_root']],
+        source['batch_id'], source['request_item']['file']))
+    retry_counts = dict(lineage['retry_counts_by_operation'])
+    for operation in local_failures:
+        retry_counts[operation] = retry_counts.get(operation, 0) + 1
+    return {**lineage, 'sources': sources, 'collections': collections,
+        'request_count': lineage['request_count'] + local_count,
+        'success_count': len(sources), 'retry_counts_by_operation': retry_counts, 'complete': complete}
 
 
 def _write_state(root, frozen, queue, events, status):

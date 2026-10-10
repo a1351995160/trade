@@ -1,5 +1,7 @@
 """续采只排入失败与未开始请求，保留原计数和失败批次证据；不访问网络。"""
+import hashlib
 import json
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -296,3 +298,136 @@ def test_existing_first_generation_receipt_without_new_chain_fields_remains_usab
     assert new_receipt['original_request_count'] == 7 and new_receipt['already_success_count'] == 5
     assert new_receipt['root_planned_request_count'] == 6
     assert sorted(new_receipt['retry_counts_by_operation'].values()) == [1, 1]
+
+
+def completed_success_chain(tmp_path):
+    root, original = blocked_collection(tmp_path)
+    first_plan, first_target = tmp_path / 'first-plan', tmp_path / 'first-target'
+    continuation.prepare_continuation(root, first_plan,
+        collection_output_root=first_target, reason='只读成功视图的第一代合成续采')
+    with pytest.raises(RuntimeError, match='BAOSTOCK_RESPONSE_FAILED'):
+        collector.collect(first_plan / 'ACQUISITION_BATCHES.json', first_target,
+            client=ResponseFailureClient(fail_at=2))
+    second_plan, second_target = tmp_path / 'second-plan', tmp_path / 'second-target'
+    continuation.prepare_continuation(first_target, second_plan,
+        collection_output_root=second_target, reason='只读成功视图的第二代合成续采')
+    state = collector.collect(second_plan / 'ACQUISITION_BATCHES.json', second_target,
+        client=FakeClient())
+    assert state['status'] == 'COMPLETED' and state['request_count'] == 8
+    return (root, first_target, second_target), (first_plan, second_plan), original
+
+
+def test_verified_successes_include_completed_and_partial_sources_across_two_generations(tmp_path):
+    roots, plans, original = completed_success_chain(tmp_path)
+    before = {path: snapshot(path) for path in (*roots, *plans)}
+    view = collector.verified_collection_successes_v1(roots[-1], require_complete=True)
+    assert view['complete'] is True and view['generation'] == 2
+    assert view['request_count'] == 8 and view['success_count'] == 6
+    assert view['root_planned_request_count'] == 6
+    assert sorted(view['retry_counts_by_operation'].values()) == [1, 1]
+    sources = view['sources']
+    identities = [row['operation_identity'] for row in sources]
+    expected = {collector._hash({'api': item['api'], 'request': item['request']})
+        for plan in original['batches'] for item in plan['requests']}
+    assert len(identities) == len(set(identities)) == 6 and set(identities) == expected
+    by_root = {str(root): [row for row in sources if row['collection_root'] == str(root)]
+        for root in roots}
+    assert [len(by_root[str(root)]) for root in roots] == [4, 1, 1]
+    assert sum(row['batch_completed'] for row in by_root[str(roots[0])]) == 3
+    partial = [row for row in sources if not row['batch_completed']]
+    assert len(partial) == 2
+    assert all(row['batch_completed'] is False for row in partial)
+    assert all(row['parent_batch_status'] == 'BLOCKED' for row in partial)
+    assert {row['collection_root'] for row in partial} == {str(root) for root in roots[:2]}
+    for source in sources:
+        directory = Path(source['collection_root']) / 'batches' / source['batch_id']
+        result_path = directory / 'ACQUISITION_RESULT.json'
+        result = json.loads(result_path.read_text(encoding='utf-8'))
+        assert source['result_path'] == str(result_path)
+        assert source['result_sha256'] == hashlib.sha256(result_path.read_bytes()).hexdigest()
+        assert source['result_row'] in result['responses']
+        item, row = source['request_item'], source['result_row']
+        plan = json.loads((directory / 'ACQUISITION_PLAN.json').read_text(encoding='utf-8'))
+        assert item in plan['requests'] and row['file'] == item['file']
+        assert row['error_code'] == '0'
+        witness = source['request_verification_witness']
+        raw_path, start_path = directory / item['file'], directory / (item['file'] + '.START.json')
+        assert witness['request_verified'] is True
+        assert witness['source_path'] == str(raw_path)
+        assert witness['source_sha256'] == row['sha256'] == hashlib.sha256(raw_path.read_bytes()).hexdigest()
+        assert witness['start_sha256'] == hashlib.sha256(start_path.read_bytes()).hexdigest()
+        assert witness['api'] == item['api'] and witness['request'] == item['request']
+    collections = {row['root']: row for row in view['collections']}
+    assert set(collections) == {str(root) for root in roots}
+    expected_counts = [(1, 1, 5, 4, 1), (0, 1, 2, 1, 1), (1, 0, 1, 1, 0)]
+    for root, counts in zip(roots, expected_counts):
+        row = collections[str(root)]
+        assert tuple(row[key] for key in ('completed_batch_count', 'blocked_batch_count',
+            'request_count', 'success_count', 'partial_verified_request_count')) == counts
+        for key, name in [('queue_sha256', 'ACQUISITION_BATCHES.json'),
+                ('frozen_collection_sha256', 'FROZEN_COLLECTION.json'),
+                ('journal_sha256', 'COLLECTION_JOURNAL.jsonl')]:
+            assert row[key] == hashlib.sha256((root / name).read_bytes()).hexdigest()
+    assert {path: snapshot(path) for path in (*roots, *plans)} == before
+
+
+def test_verified_successes_require_complete_rejects_a_blocked_leaf(tmp_path):
+    root, _ = blocked_collection(tmp_path)
+    before = snapshot(root)
+    view = collector.verified_collection_successes_v1(root)
+    assert view['complete'] is False
+    assert view['request_count'] == 5 and view['success_count'] == 4
+    with pytest.raises(ValueError, match='NOT_COMPLETE|INCOMPLETE'):
+        collector.verified_collection_successes_v1(root, require_complete=True)
+    assert snapshot(root) == before
+
+
+@pytest.mark.parametrize('batch_number, request_number', [(0, 0), (1, 0)])
+@pytest.mark.parametrize('changed', ['raw', 'start'])
+def test_verified_successes_rejects_tampered_ancestor_completed_or_partial_source(
+        tmp_path, batch_number, request_number, changed):
+    roots, plans, original = completed_success_chain(tmp_path)
+    plan = original['batches'][batch_number]
+    item = plan['requests'][request_number]
+    directory = roots[0] / 'batches' / plan['batch_id']
+    path = directory / (item['file'] + ('.START.json' if changed == 'start' else ''))
+    if changed == 'raw':
+        path.write_bytes(path.read_bytes() + b' ')
+    else:
+        record = json.loads(path.read_text(encoding='utf-8'))
+        record['request']['code'] = 'sz.300999'
+        path.write_text(json.dumps(record), encoding='utf-8')
+    before = {root: snapshot(root) for root in (*roots, *plans)}
+    with pytest.raises(ValueError, match='CONTENT_CHANGED|START_IDENTITY_CONFLICT'):
+        collector.verified_collection_successes_v1(roots[-1], require_complete=True)
+    assert {root: snapshot(root) for root in (*roots, *plans)} == before
+
+
+@pytest.mark.parametrize('source_root', ['ancestor', 'leaf'])
+@pytest.mark.parametrize('missing', ['raw', 'start'])
+def test_verified_successes_rejects_missing_ancestor_or_leaf_success(tmp_path, source_root, missing):
+    roots, plans, original = completed_success_chain(tmp_path)
+    root = roots[0] if source_root == 'ancestor' else roots[-1]
+    queued = json.loads((root / 'ACQUISITION_BATCHES.json').read_text(encoding='utf-8'))
+    plan = original['batches'][1] if source_root == 'ancestor' else queued['batches'][0]
+    item = plan['requests'][0]
+    directory = root / 'batches' / plan['batch_id']
+    path = directory / (item['file'] + ('.START.json' if missing == 'start' else ''))
+    path.unlink()
+    before = {root: snapshot(root) for root in (*roots, *plans)}
+    with pytest.raises((ValueError, FileNotFoundError)):
+        collector.verified_collection_successes_v1(roots[-1], require_complete=True)
+    assert {root: snapshot(root) for root in (*roots, *plans)} == before
+
+
+def test_verified_successes_rejects_duplicate_operation_in_canonical_queue(tmp_path):
+    path, value = queue(tmp_path)
+    root = tmp_path / 'completed'
+    collector.collect(path, root, client=FakeClient())
+    # 只破坏合成冻结队列；沿用真实 canonical 校验，不重写哈希或放宽身份检查。
+    value['batches'][1]['requests'][0]['request'] = value['batches'][0]['requests'][0]['request']
+    (root / 'ACQUISITION_BATCHES.json').write_bytes(collector._canonical(value))
+    before = snapshot(root)
+    with pytest.raises(ValueError, match='DUPLICATE_OPERATION'):
+        collector.verified_collection_successes_v1(root, require_complete=True)
+    assert snapshot(root) == before
