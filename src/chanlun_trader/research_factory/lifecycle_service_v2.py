@@ -285,9 +285,11 @@ class LifecycleServiceV2:
                     jobs.append(path.parent.name)
             except (ValueError, OSError, KeyError, PermissionError):
                 continue
-        return {'create_binding_ids': sorted(allowed), 'job_ids': jobs,
-                'continuous_ids': sorted(self.continuous.researches)
-                if self.continuous is not None and getattr(policy, 'trusted_research_allowed', False) else []}
+        permissions = {'create_binding_ids': sorted(allowed), 'job_ids': jobs}
+        if self.continuous is not None:
+            permissions['continuous_ids'] = (sorted(self.continuous.researches)
+                if getattr(policy, 'trusted_research_allowed', False) else [])
+        return permissions
 
     def _snapshot(self, binding, stage):
         from .forward_snapshot_v1 import SnapshotStoreV1

@@ -169,9 +169,11 @@ def build_lifecycle_service(workspace_root, config):
             approvals=OwnerApprovalStoreV1(owner['store_root']), invoker_factory=invoker_factory,
             invoker_deployment_identity=invoker_identity,
             submission_factory=lambda scope: build_submission_service(workspace_root, deployment['submission'], continuous_scope=scope))
-    return LifecycleServiceV2(workspace_root, config.get('bindings', {}),
-        research_loader=qualified_research_loader(workspace_root), real_binding_ids=config.get('real_binding_ids', ()),
-        continuous=continuous)
+    service_options = {'research_loader': qualified_research_loader(workspace_root),
+                       'real_binding_ids': config.get('real_binding_ids', ())}
+    if continuous is not None:
+        service_options['continuous'] = continuous
+    return LifecycleServiceV2(workspace_root, config.get('bindings', {}), **service_options)
 
 
 def _environment_name(value):

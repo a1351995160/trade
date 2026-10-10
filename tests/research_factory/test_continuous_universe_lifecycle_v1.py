@@ -61,6 +61,22 @@ def files(root):
     return {str(path.relative_to(root)): path.read_bytes() for path in root.rglob('*') if path.is_file()}
 
 
+@pytest.mark.parametrize('enabled', [False, True])
+@pytest.mark.parametrize('trusted', [False, True])
+def test_continuous_permissions_match_deployed_feature(tmp_path, enabled, trusted):
+    from chanlun_trader.execution_policy import ExecutionPolicy
+    config = deployment(tmp_path) if enabled else {'bindings': {}}
+    service = build_lifecycle_service(tmp_path, config)
+    assert (service.continuous is not None) is enabled
+    policy = ExecutionPolicy(mode='GOVERNED', workspace_kind='EXTERNAL', allow_trusted_research=trusted)
+    expected = {'create_binding_ids': [], 'job_ids': []}
+    if enabled:
+        expected['continuous_ids'] = ['fixed'] if trusted else []
+    before = files(tmp_path)
+    assert service.operation_permissions(policy) == expected
+    assert files(tmp_path) == before
+
+
 def test_no_owner_capability_no_authorization_and_read_only_status(tmp_path, monkeypatch):
     config = deployment(tmp_path)
     monkeypatch.delenv('FIXTURE_OWNER_TOKEN', raising=False)

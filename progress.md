@@ -3924,3 +3924,17 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 ### Notes
 - 首次远端失败原件保存在主目录 reports/continuous_universe_delivery_20261010/CI_JUNIT/windows-full-universe-first，未掩盖失败或削弱内存安全断言。
 - 回滚点和授权、消费及暴露原件保留要求沿用合并前 78cfd99a489ecd450ce2fba27a2a6c99dd438e40。
+
+## 2026-10-10 - Task: 保持未启用持续研究时的旧公共接口兼容
+
+### What was done
+- 修复远端旧流程回归发现的两处兼容问题：未配置 continuous 时保留原 operation_permissions 两键响应，部署构造也不传新增可选 continuous 参数。
+- 启用持续研究时继续明确返回 continuous_ids，并依据可信研究权限决定允许列表；新增 disabled/enabled 与 trusted/untrusted 四种组合测试，保留原有两项测试和原断言。
+
+### Testing
+- test_trusted_research_system_v1.py、test_lifecycle_ui_launch_v2.py、test_continuous_universe_lifecycle_v1.py 联合回归：30 passed, 1 warning in 87.13s；git diff --check 通过。
+- 首次 Linux workflow 493 项测试的两项失败原件保留在主目录 reports/continuous_universe_delivery_20261010/CI_JUNIT/ubuntu-workflow-first；最终远端双平台检查仍须在此次提交完成后核对。
+
+### Notes
+- 未扩大调用权限，未修改策略、记账或研究门槛。未启用该功能的既有部署继续遵循原合同。
+- 回滚点和全部授权、消费、未知请求及暴露原件保留要求沿用合并前 78cfd99a489ecd450ce2fba27a2a6c99dd438e40。
