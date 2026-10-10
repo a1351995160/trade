@@ -3,6 +3,8 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import stat
+from types import SimpleNamespace
 
 import pytest
 
@@ -110,6 +112,74 @@ def test_file_and_parent_symlinks_are_rejected(tmp_path):
     for path in (alias / 'fixed.json', tmp_path / 'file-alias.json'):
         with pytest.raises(ValueError, match='^' + CODE + '$'):
             read_file_bytes(path, error_code=CODE)
+
+
+@pytest.mark.parametrize('component', ['parent', 'file'])
+@pytest.mark.parametrize('link_type', ['symlink', 'reparse'])
+@pytest.mark.parametrize('bounded', [False, True])
+def test_each_link_component_is_rejected_before_read(tmp_path, monkeypatch, component, link_type, bounded):
+    parent = tmp_path / 'parent'
+    parent.mkdir()
+    target = parent / 'fixed.json'
+    target.write_bytes(b'{}')
+    linked = parent if component == 'parent' else target
+    original_lstat = Path.lstat
+    visited = []
+
+    def lstat(path):
+        visited.append(path)
+        if path == linked:
+            return SimpleNamespace(st_mode=stat.S_IFLNK if link_type == 'symlink' else stat.S_IFDIR,
+                                   st_file_attributes=0x400 if link_type == 'reparse' else 0)
+        return original_lstat(path)
+
+    def forbidden(*_args, **_kwargs):
+        pytest.fail('link rejection must not resolve or open the target')
+
+    monkeypatch.setattr(Path, 'lstat', lstat)
+    monkeypatch.setattr(Path, 'resolve', forbidden)
+    monkeypatch.setattr(os, 'open', forbidden)
+    with pytest.raises(ValueError, match='^' + CODE + '$'):
+        read_file_bytes(target, error_code=CODE, root=tmp_path if bounded else None)
+    assert linked in visited
+    if component == 'parent':
+        assert target not in visited
+
+
+@pytest.mark.parametrize('bounded', [False, True])
+def test_pending_multilevel_tail_stops_at_first_missing_component(tmp_path, monkeypatch, bounded):
+    missing = tmp_path / 'pending'
+    target = missing / 'nested' / 'checkpoint.json'
+    original_lstat = Path.lstat
+    visited = []
+
+    def lstat(path):
+        visited.append(path)
+        return original_lstat(path)
+
+    def forbidden(*_args, **_kwargs):
+        pytest.fail('pending reference must not resolve or open the target')
+
+    monkeypatch.setattr(Path, 'lstat', lstat)
+    monkeypatch.setattr(Path, 'resolve', forbidden)
+    monkeypatch.setattr(os, 'open', forbidden)
+    assert validated_reference_path(target, error_code=CODE, root=tmp_path if bounded else None) == target
+    assert visited[-1] == missing
+    assert target not in visited
+
+
+def test_existing_parent_file_cannot_be_treated_as_missing_tail(tmp_path):
+    parent = tmp_path / 'not-a-directory'
+    parent.write_bytes(b'{}')
+    with pytest.raises(ValueError, match='^' + CODE + '$'):
+        validated_reference_path(parent / 'checkpoint.json', error_code=CODE, root=tmp_path)
+
+
+def test_missing_fixed_reference_keeps_private_waiting_cause(tmp_path):
+    reference = {'path': str(tmp_path / 'pending' / 'registration.json'), 'sha256': '0' * 64}
+    with pytest.raises(ValueError, match='^' + CODE + '$') as error:
+        read_pinned_json(reference, error_code=CODE)
+    assert isinstance(error.value.__cause__, FileNotFoundError)
 
 
 def test_opened_file_must_match_checked_object(tmp_path, monkeypatch):

@@ -24,8 +24,21 @@ def _lexical_reference_path(value):
     return path
 
 
+def _reject_link_components(path):
+    for component in (*reversed(path.parents), path):
+        try:
+            metadata = component.lstat()
+        except FileNotFoundError:
+            # 创建前的 checkpoint 可有尚不存在的尾部；不再探测其后分量。
+            return
+        if (stat.S_ISLNK(metadata.st_mode)
+                or getattr(metadata, 'st_file_attributes', 0) & 0x400
+                or (component != path and not stat.S_ISDIR(metadata.st_mode))):
+            raise ValueError
+
+
 def validated_reference_path(value, *, error_code, root=None):
-    """外部部署可显式引用绝对路径；任务工件须另传固定归属 root。"""
+    """固定外部部署引用可省略 root；任务工件须传固定归属 root。"""
     try:
         path = _lexical_reference_path(value)
         if root is not None:
@@ -33,11 +46,8 @@ def validated_reference_path(value, *, error_code, root=None):
             # 先做纯词法归属检查；越界输入不得触发任何文件系统探测。
             if not path.is_relative_to(boundary):
                 raise ValueError
-            if boundary.resolve() != boundary:
-                raise ValueError
-        # resolve 仅用于拒绝别名；绝不把未经核对的路径解析结果作为可信新路径。
-        if path.resolve() != path:
-            raise ValueError
+        # 逐级检查固定路径，包括 root 的父目录；不跟随任意父链接或重解析点。
+        _reject_link_components(path)
         return path
     except (OSError, RuntimeError, TypeError, ValueError) as exc:
         raise ValueError(error_code) from exc
