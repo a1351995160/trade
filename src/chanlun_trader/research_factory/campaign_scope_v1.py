@@ -92,9 +92,9 @@ class OwnerApprovalStoreV1:
         return deepcopy(record)
 
 
-def scope_summary(root, authorization, contract, stage_limits):
+def scope_summary(root, authorization, contract, stage_limits, *, capabilities_snapshot=None):
     from .continuous_research_contract_v1 import validate_continuous_research_contract
-    contract = validate_continuous_research_contract(contract)
+    contract = validate_continuous_research_contract(contract, capabilities_snapshot=capabilities_snapshot)
     value = deepcopy(authorization)
     value.pop('scope_policy', None)
     value.pop('root', None)
@@ -132,7 +132,15 @@ def validate_scope_policy(root, authorization):
     if (policy.get('schema_version') != VERSION
             or policy.get('scope_hash') != stable_hash({key: item for key, item in policy.items() if key != 'scope_hash'})):
         raise PermissionError('CAMPAIGN_SCOPE_IDENTITY_CONFLICT')
-    summary = scope_summary(root, authorization, policy['summary']['contract'], policy['summary']['stage_limits'])
+    try:
+        summary = scope_summary(root, authorization, policy['summary']['contract'], policy['summary']['stage_limits'])
+    except ValueError as exc:
+        if str(exc) != 'CONTINUOUS_CAPABILITIES_CHANGED_NEW_VERSION_REQUIRED':
+            raise
+        from .report_repair_capability_bridge_v1 import ReportRepairCapabilityBridgeV1
+        bridge = ReportRepairCapabilityBridgeV1.read(root, authorization)
+        summary = scope_summary(root, authorization, policy['summary']['contract'], policy['summary']['stage_limits'],
+            capabilities_snapshot=bridge['capabilities_snapshot'])
     if policy['summary'] != summary:
         raise PermissionError('CAMPAIGN_SCOPE_AUTHORIZATION_CONFLICT')
     OwnerApprovalStoreV1(policy['approval_store']).require(policy['approval_ref'], summary)
