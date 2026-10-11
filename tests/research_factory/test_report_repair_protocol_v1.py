@@ -12,7 +12,8 @@ from chanlun_trader.research_factory.campaign_scope_v1 import (
 )
 from chanlun_trader.research_factory.common import stable_hash
 from chanlun_trader.research_factory.report_repair_protocol_v1 import (
-    PROTOCOL_SOURCE, REQUIRED_RUNTIME_PATHS, ReportRepairV1,
+    MAX_REPAIR_EVIDENCE_BYTES, PROTOCOL_SOURCE, REQUIRED_RUNTIME_PATHS, ReportRepairV1,
+    _read, _read_evidence,
 )
 from chanlun_trader.research_factory.research_campaign_v1 import ResearchCampaignV1
 from chanlun_trader.research_factory.research_capabilities_v1 import capabilities
@@ -113,6 +114,8 @@ def case(tmp_path, request):
         'input_identity': job['input_identity'], 'plan_ids': {name: plan['plan_id'] for name, plan in plans.items()},
         'submission_version': 'FULL_UNIVERSE_SUBMISSION_V4', 'preview_identity': preview['preview_identity']}
     task_ref = write(task_root / 'TASK.json', task)
+    if variant == 'large_verification':
+        checks[next(iter(checks))]['account_audit']['synthetic_evidence_padding'] = 'x' * (21 * 1024 * 1024)
     verification_ref = write(account / 'VERIFICATION.json', {
         'job_sha256': job_ref['sha256'], 'advance_allowed': True, 'items': checks})
     write(account / 'RESULTS_INDEX.json', {'items': index})
@@ -374,6 +377,7 @@ def test_real_chain_refuses_nonpass_incomplete_or_under_504_accounts(case):
         ReportRepairV1.summary(case['root'], **case['args'])
 
 
+@pytest.mark.parametrize('case', [None, 'large_verification'], indirect=True)
 def test_receipt_requires_completed_meter_and_fixed_dual_reports(case):
     context, _, _ = approve(case)
     meter = context.meter(); meter.start()
@@ -418,6 +422,9 @@ def test_receipt_requires_completed_meter_and_fixed_dual_reports(case):
             context.receipt(changed)
     record = context.receipt(outcome)
     assert context.verify_receipt() == record
+    if 'synthetic_evidence_padding' in next(iter(outcome['verification']['items'].values()))['account_audit']:
+        assert Path(context.summary['original']['verification']['path']).stat().st_size > 20 * 1024 * 1024
+        assert 20 * 1024 * 1024 < (context.output_root / 'REPAIR_COMPLETION.json').stat().st_size <= MAX_REPAIR_EVIDENCE_BYTES
     assert record['status'] == 'REPORT_REPAIRED'
     assert record['compute']['operation']['actual']['verification_jobs'] == 1
     assert case['campaign'].peek_status()['operations']['SYNTHETIC_CANDIDATE_CANDIDATE']['status'] == 'FAILED'
@@ -436,3 +443,29 @@ def test_receipt_requires_completed_meter_and_fixed_dual_reports(case):
         context.receipt(changed)
     with pytest.raises(PermissionError, match='REPORT_CHANGED'):
         context.verify_receipt()
+
+
+def test_repair_evidence_has_explicit_finite_limit_and_preserves_metadata_and_hash_boundaries(tmp_path):
+    path = tmp_path / 'SYNTHETIC_EVIDENCE.json'
+    with path.open('wb') as stream:
+        stream.write(b'{}')
+        remaining = MAX_REPAIR_EVIDENCE_BYTES - 2
+        padding = b' ' * (1024 * 1024)
+        while remaining:
+            chunk = padding[:min(len(padding), remaining)]
+            stream.write(chunk)
+            remaining -= len(chunk)
+    reference = ref(path)
+    assert path.stat().st_size == MAX_REPAIR_EVIDENCE_BYTES
+    assert _read_evidence(reference, tmp_path) == {}
+    with pytest.raises(ValueError, match='REPORT_REPAIR_ORIGINAL_CHANGED'):
+        _read(reference, tmp_path)
+    with path.open('r+b') as stream:
+        stream.write(b'[]')
+    with pytest.raises(ValueError, match='REPORT_REPAIR_ORIGINAL_CHANGED'):
+        _read_evidence(reference, tmp_path)
+    with path.open('ab') as stream:
+        stream.write(b' ')
+    assert path.stat().st_size == MAX_REPAIR_EVIDENCE_BYTES + 1
+    with pytest.raises(ValueError, match='REPORT_REPAIR_ORIGINAL_CHANGED'):
+        _read_evidence(ref(path), tmp_path)
