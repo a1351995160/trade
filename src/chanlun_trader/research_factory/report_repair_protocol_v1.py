@@ -225,7 +225,7 @@ class ReportRepairV1:
             for path_key, sha_key in (('path', 'sha256'), ('parent_path', 'parent_sha256')):
                 if path_key in args:
                     reference = {'path': args[path_key], 'sha256': args[sha_key]}
-                    _read(reference, root)
+                    _read_evidence(reference, root)
                     inputs[reference['path']] = reference
         _require(costs == {'BASE', 'STRESS'} and inputs, 'FROZEN_INPUT_REQUIRED')
         original['inputs'] = [inputs[key] for key in sorted(inputs)]

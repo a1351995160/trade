@@ -33,6 +33,18 @@ def ref(path):
     return {'path': str(path), 'sha256': hashlib.sha256(path.read_bytes()).hexdigest()}
 
 
+def pad_synthetic_json(path, byte_count):
+    remaining = byte_count - path.stat().st_size
+    assert remaining >= 0
+    with path.open('ab') as stream:
+        padding = b' ' * (1024 * 1024)
+        while remaining:
+            chunk = padding[:min(len(padding), remaining)]
+            stream.write(chunk)
+            remaining -= len(chunk)
+    return ref(path)
+
+
 @pytest.fixture
 def case(tmp_path, request):
     root = tmp_path.resolve()
@@ -78,6 +90,14 @@ def case(tmp_path, request):
     account.mkdir(parents=True)
     write(task_root / 'PREVIEW.json', preview)
     inputs_ref = write(task_root / 'INPUT.json', {'synthetic': True, 'input_identity': stable_hash('synthetic input')})
+    if variant in ('large_bound_evidence', 'oversized_input'):
+        size = 21 * 1024 * 1024 if variant == 'large_bound_evidence' else MAX_REPAIR_EVIDENCE_BYTES + 1
+        inputs_ref = pad_synthetic_json(Path(inputs_ref['path']), size)
+    parent_inputs_ref = None
+    if variant in ('large_bound_evidence', 'oversized_parent_input'):
+        parent_inputs_ref = write(task_root / 'PARENT_INPUT.json', {'synthetic_parent': True})
+        size = 21 * 1024 * 1024 if variant == 'large_bound_evidence' else MAX_REPAIR_EVIDENCE_BYTES + 1
+        parent_inputs_ref = pad_synthetic_json(Path(parent_inputs_ref['path']), size)
     sources = {}
     for relative in ('scripts/run_strategy_account_v1.py',
                      'src/chanlun_trader/research_factory/universe_account_inputs_v1.py',
@@ -96,6 +116,9 @@ def case(tmp_path, request):
         name = candidate + '_' + cost
         items[name] = {'backend_options': {'costs': cost}, 'factory_kwargs': {'payload': rule},
             'loader_kwargs': {**inputs_ref, 'input_identity': stable_hash('synthetic input')}}
+        if parent_inputs_ref is not None:
+            items[name]['loader_kwargs'].update(parent_path=parent_inputs_ref['path'],
+                                                parent_sha256=parent_inputs_ref['sha256'])
         plans[name] = {'plan_id': stable_hash(name), 'runtime': deepcopy(items[name]), 'backend': {'initial_cash': 50000}}
         result_ref = write(account / (name + '_RESULT.json'), {'synthetic': True, 'sessions': 504})
         settlement_ref = write(account / (name + '_SETTLEMENT.json'), {
@@ -114,8 +137,8 @@ def case(tmp_path, request):
         'input_identity': job['input_identity'], 'plan_ids': {name: plan['plan_id'] for name, plan in plans.items()},
         'submission_version': 'FULL_UNIVERSE_SUBMISSION_V4', 'preview_identity': preview['preview_identity']}
     task_ref = write(task_root / 'TASK.json', task)
-    if variant == 'large_verification':
-        checks[next(iter(checks))]['account_audit']['synthetic_evidence_padding'] = 'x' * (21 * 1024 * 1024)
+    if variant == 'large_bound_evidence':
+        checks[next(iter(checks))]['account_audit']['synthetic_evidence_padding'] = 'x' * (33 * 1024 * 1024)
     verification_ref = write(account / 'VERIFICATION.json', {
         'job_sha256': job_ref['sha256'], 'advance_allowed': True, 'items': checks})
     write(account / 'RESULTS_INDEX.json', {'items': index})
@@ -377,7 +400,7 @@ def test_real_chain_refuses_nonpass_incomplete_or_under_504_accounts(case):
         ReportRepairV1.summary(case['root'], **case['args'])
 
 
-@pytest.mark.parametrize('case', [None, 'large_verification'], indirect=True)
+@pytest.mark.parametrize('case', [None, 'large_bound_evidence'], indirect=True)
 def test_receipt_requires_completed_meter_and_fixed_dual_reports(case):
     context, _, _ = approve(case)
     meter = context.meter(); meter.start()
@@ -423,8 +446,11 @@ def test_receipt_requires_completed_meter_and_fixed_dual_reports(case):
     record = context.receipt(outcome)
     assert context.verify_receipt() == record
     if 'synthetic_evidence_padding' in next(iter(outcome['verification']['items'].values()))['account_audit']:
+        assert len(context.summary['original']['inputs']) == 2
+        assert all(Path(item['path']).stat().st_size == 21 * 1024 * 1024
+                   for item in context.summary['original']['inputs'])
         assert Path(context.summary['original']['verification']['path']).stat().st_size > 20 * 1024 * 1024
-        assert 20 * 1024 * 1024 < (context.output_root / 'REPAIR_COMPLETION.json').stat().st_size <= MAX_REPAIR_EVIDENCE_BYTES
+        assert 32 * 1024 * 1024 < (context.output_root / 'REPAIR_COMPLETION.json').stat().st_size <= MAX_REPAIR_EVIDENCE_BYTES
     assert record['status'] == 'REPORT_REPAIRED'
     assert record['compute']['operation']['actual']['verification_jobs'] == 1
     assert case['campaign'].peek_status()['operations']['SYNTHETIC_CANDIDATE_CANDIDATE']['status'] == 'FAILED'
@@ -443,6 +469,33 @@ def test_receipt_requires_completed_meter_and_fixed_dual_reports(case):
         context.receipt(changed)
     with pytest.raises(PermissionError, match='REPORT_CHANGED'):
         context.verify_receipt()
+
+
+@pytest.mark.parametrize('case', ['oversized_input', 'oversized_parent_input'], indirect=True)
+def test_summary_rejects_bound_input_over_evidence_limit(case):
+    with pytest.raises(ValueError, match='REPORT_REPAIR_ORIGINAL_CHANGED'):
+        ReportRepairV1.summary(case['root'], **case['args'])
+    task_root = Path(case['task']['job_path']).parent.parent
+    assert any(path.stat().st_size == MAX_REPAIR_EVIDENCE_BYTES + 1
+               for path in task_root.glob('*INPUT.json'))
+    assert not (task_root / 'report-repairs').exists()
+
+
+@pytest.mark.parametrize('case', ['large_bound_evidence'], indirect=True)
+def test_large_bound_input_hash_change_blocks_summary_and_frozen_validation(case):
+    context, _, _ = approve(case)
+    for reference in context.summary['original']['inputs']:
+        path = Path(reference['path'])
+        size = path.stat().st_size
+        with path.open('ab') as stream:
+            stream.write(b' ')
+        with pytest.raises(ValueError, match='REPORT_REPAIR_ORIGINAL_CHANGED'):
+            ReportRepairV1.summary(case['root'], **case['args'])
+        with pytest.raises(PermissionError, match='REPORT_REPAIR_ORIGINAL_CHANGED'):
+            context.validate()
+        with path.open('r+b') as stream:
+            stream.truncate(size)
+        assert ref(path) == reference
 
 
 def test_repair_evidence_has_explicit_finite_limit_and_preserves_metadata_and_hash_boundaries(tmp_path):
