@@ -137,8 +137,12 @@ def validate_scope_policy(root, authorization):
     except ValueError as exc:
         if str(exc) != 'CONTINUOUS_CAPABILITIES_CHANGED_NEW_VERSION_REQUIRED':
             raise
-        from .report_repair_capability_bridge_v1 import ReportRepairCapabilityBridgeV1
-        bridge = ReportRepairCapabilityBridgeV1.read(root, authorization)
+        from .report_recovery_capability_bridge_v2 import ReportRecoveryCapabilityBridgeV2
+        if ReportRecoveryCapabilityBridgeV2.is_registered(root, authorization):
+            bridge = ReportRecoveryCapabilityBridgeV2.read(root, authorization)
+        else:
+            from .report_repair_capability_bridge_v1 import ReportRepairCapabilityBridgeV1
+            bridge = ReportRepairCapabilityBridgeV1.read(root, authorization)
         summary = scope_summary(root, authorization, policy['summary']['contract'], policy['summary']['stage_limits'],
             capabilities_snapshot=bridge['capabilities_snapshot'])
     if policy['summary'] != summary:
