@@ -97,6 +97,9 @@ jobs:
           python -m pytest -q
           tests/research_factory/test_continuous_research_contract_v1.py
           tests/research_factory/test_campaign_scope_v1.py
+          tests/research_factory/test_report_repair_capability_bridge_v1.py
+          tests/research_factory/test_report_repair_protocol_v1.py
+          tests/research_factory/test_report_repair_runner_v1.py
           tests/research_factory/test_research_campaign_v1.py
           tests/research_factory/test_research_dataset_projection_v1.py
           tests/research_factory/test_train_projection_cli_v1.py
@@ -194,6 +197,7 @@ jobs:
           tests/research_factory/test_universe_corporate_accounting_v2.py
           tests/research_factory/test_prepare_full_universe_states_v1.py
           tests/research_factory/test_universe_account_inputs_v1.py
+          tests/research_factory/test_universe_frame_identity_memory_v1.py
           tests/research_factory/test_universe_dividend_accounting_v1.py
           tests/research_factory/test_board_execution_policy_v1.py
           tests/research_factory/test_universe_signal_scan_v1.py

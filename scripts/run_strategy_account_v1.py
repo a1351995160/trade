@@ -150,7 +150,7 @@ def freeze_config(config,root):
 def service(job):return StrategyBatchGovernanceV1(job['root'],job['budget_path'],job['objective_id'],job['plans'])
 
 
-def validate_sources(job):
+def validate_sources(job,*,_report_repair=None):
     if set(job['items'])!=set(job['plans']) or any(job['items'][k]!=job['plans'][k]['runtime'] for k in job['plans']):
         raise PermissionError('JOB_RUNTIME_PLAN_CONFLICT')
     if any(item.get('loader_kwargs', {}).get('expected_deployment') != job.get('trusted_deployment')
@@ -178,8 +178,14 @@ def validate_sources(job):
                     or plan['runtime'].get('observation_plan') != job.get('observation_plan')
                     for plan in job['plans'].values())):
             raise PermissionError('JOB_FROZEN_EXECUTION_PROFILE_CONFLICT')
-    for path,digest in job['source_hashes'].items():
-        if sha(path)!=digest:raise PermissionError('JOB_FROZEN_SOURCE_CHANGED:'+path)
+    if _report_repair is None:
+        for path,digest in job['source_hashes'].items():
+            if sha(path)!=digest:raise PermissionError('JOB_FROZEN_SOURCE_CHANGED:'+path)
+    else:
+        from chanlun_trader.research_factory.report_repair_protocol_v1 import ReportRepairV1
+        if type(_report_repair) is not ReportRepairV1:
+            raise PermissionError('JOB_REPORT_REPAIR_CONTEXT_REQUIRED')
+        _report_repair.validate_sources(job)
 
 
 def worker(path,name,segment_number=None):
@@ -588,27 +594,45 @@ def validated_settlement(job, name):
     return settled
 
 
-def long_horizon_compute_worker(path,stage,number,member=None):
+def report_repair_context(path,stage,reference,*,for_dispatch=True):
+    if reference is None:return None
+    if stage!='REPORT':raise PermissionError('JOB_REPORT_REPAIR_STAGE_REQUIRED')
+    from chanlun_trader.research_factory.report_repair_protocol_v1 import ReportRepairV1
+    context=ReportRepairV1(REPO,reference).validate(for_dispatch=for_dispatch)
+    if context.job_path!=Path(path).resolve():
+        raise PermissionError('JOB_REPORT_REPAIR_ORIGINAL_JOB_CONFLICT')
+    return context
+
+
+def long_horizon_compute_worker(path,stage,number,member=None,*,_report_repair_ref=None):
     from chanlun_trader.research_factory.universe_compute_governance_v1 import UniverseComputeGovernanceV1
-    job=read_json(path);folder=Path(job['root'])/('COMPUTE_'+stage);scope=read_json(folder/'SCOPE.json')
-    pending=UniverseComputeGovernanceV1(folder,scope['authority'],scope['request'],stage).status()['pending']
+    repair=report_repair_context(path,stage,_report_repair_ref)
+    job=read_json(path);folder=repair.compute_root if repair else Path(job['root'])/('COMPUTE_'+stage)
+    scope=read_json(folder/'SCOPE.json')
+    meter=repair.meter() if repair else UniverseComputeGovernanceV1(folder,scope['authority'],scope['request'],stage)
+    pending=meter.status()['pending']
     try:
-        return _long_horizon_compute_worker(path,stage,number,member)
+        return _long_horizon_compute_worker(path,stage,number,member,_report_repair_ref=_report_repair_ref)
     except Exception as exc:
         if pending and pending['number']==number:
             record_segment_failure(folder,'SEGMENT_'+str(number).zfill(6),pending['dispatch_id'],sha(folder/'SCOPE.json'),exc)
         raise
 
 
-def _long_horizon_compute_worker(path,stage,number,member=None):
+def _long_horizon_compute_worker(path,stage,number,member=None,*,_report_repair_ref=None):
     """核验和信号标签只在已授权受限评价进程中读取。"""
     from chanlun_trader.research_factory.universe_compute_governance_v1 import UniverseComputeGovernanceV1
     begin=time.monotonic()
-    job=read_json(path);validate_sources(job);root=Path(job['root']);folder=root/('COMPUTE_'+stage)
+    repair=report_repair_context(path,stage,_report_repair_ref)
+    job=read_json(path)
+    validate_sources(job,**({'_report_repair':repair} if repair else {}))
+    original_root=Path(job['root']);root=repair.output_root if repair else original_root
+    folder=repair.compute_root if repair else root/('COMPUTE_'+stage)
     scope=read_json(folder/'SCOPE.json')
-    if scope['job_sha256'] != sha(path) or scope['stage'] != stage:
+    if (scope['job_sha256'] != sha(path) or scope['stage'] != stage
+            or scope.get('repair_ref')!=_report_repair_ref):
         raise PermissionError('JOB_COMPUTE_SCOPE_CHANGED')
-    meter=UniverseComputeGovernanceV1(folder,scope['authority'],scope['request'],stage)
+    meter=repair.meter() if repair else UniverseComputeGovernanceV1(folder,scope['authority'],scope['request'],stage)
     state=meter.status();pending=state['pending']
     expected={'purpose':stage,'compute_identity':meter.binding['compute_identity'],'segment_number':number,
         'dispatch_id':pending['dispatch_id'] if pending else None,'scope_sha256':sha(folder/'SCOPE.json'),'member':member}
@@ -661,7 +685,7 @@ def _long_horizon_compute_worker(path,stage,number,member=None):
         return 0
     if stage!='REPORT' or member not in job['plans']:
         raise PermissionError('JOB_COMPUTE_REPORT_MEMBER_INVALID')
-    verification=read_json(root/'VERIFICATION.json')
+    verification=read_json(original_root/'VERIFICATION.json')
     if verification['job_sha256'] != sha(path) or not verification['advance_allowed']:
         raise PermissionError('JOB_REPORT_RECONCILIATION_REQUIRED')
     from chanlun_trader.research_factory.universe_account_inputs_v1 import _prepare_owned_universe_account_inputs_v1
@@ -675,7 +699,7 @@ def _long_horizon_compute_worker(path,stage,number,member=None):
         strategy=resolve(item['factory'])(**item['factory_kwargs'])
         inputs=_prepare_owned_universe_account_inputs_v1(data['frame'],item['backend_options']['window'],
             required_fields=strategy.requirements.fields,warmup_bars=strategy.requirements.warmup_sessions)
-        source=root/(member+'_RESULT.json');raw=read_json(source);result=hydrated_result(raw)
+        source=original_root/(member+'_RESULT.json');raw=read_json(source);result=hydrated_result(raw)
         if verification['items'][member]['result_sha256'] != sha(source):
             raise PermissionError('JOB_REPORT_VERIFIED_RESULT_CHANGED')
         dual=build_research_reports(result,inputs,job['observation_plan'],
@@ -700,17 +724,25 @@ def _long_horizon_compute_worker(path,stage,number,member=None):
         'research_report_sha256':sha(root/(member+'_RESEARCH_REPORT.json')),'funnel':str(root/(member+'_SIGNAL_FUNNEL.json')),
         'funnel_sha256':sha(root/(member+'_SIGNAL_FUNNEL.json'))}
     output_path=folder/('RESULT_'+member+'.json');save(output_path,value)
+    final_reports_sha256=None
     if all((root/(name+'_RESEARCH_REPORT.json')).exists() for name in job['plans']):
         try:
             cooperative_remaining(deadline,profile_id)
-            report_account_job(path,_universe_inputs=inputs,_deadline=deadline)
+            report_account_job(path,_universe_inputs=inputs,_deadline=deadline,_report_repair_ref=_report_repair_ref)
             cooperative_remaining(deadline,profile_id)
+            if repair:
+                # 修复反馈的双成员汇总必须同样由成功受限进程的状态回执锚定。
+                save(folder/'FINAL_REPORTS.json',{'job_sha256':sha(path),'repair_id':repair.repair_id,
+                    'reports':{name:{'final_report':str(root/(name+'_REPORT.json')),
+                        'final_report_sha256':sha(root/(name+'_REPORT.json'))} for name in job['plans']}})
+                final_reports_sha256=sha(folder/'FINAL_REPORTS.json')
         except SegmentBoundary:
             save(folder/('SEGMENT_'+str(number).zfill(6)+'_STATUS.json'),{'state':'CONTINUE',
                 'dispatch_id':pending['dispatch_id'],'phase':'REPORT_RENDER','member':member})
             return 75
     save(folder/('SEGMENT_'+str(number).zfill(6)+'_STATUS.json'),{'state':'COMPLETED',
-        'dispatch_id':pending['dispatch_id'],'member':member,'result_sha256':sha(output_path)})
+        'dispatch_id':pending['dispatch_id'],'member':member,'result_sha256':sha(output_path),
+        **({'final_reports_sha256':final_reports_sha256} if final_reports_sha256 else {})})
     return 0
 
 
@@ -733,20 +765,27 @@ def proven_compute_result(folder,member,state):
     return False
 
 
-def run_long_horizon_compute(path,authority,request,stage,*,step=False):
+def run_long_horizon_compute(path,authority,request,stage,*,step=False,_report_repair_ref=None):
     """账户公共计算复用同一段循环；step 不会继续派发下一个报告成员。"""
     from chanlun_trader.synthetic_batch_resources import run_bounded_worker
     from chanlun_trader.research_factory.universe_execution_profile_v1 import worker_wall_seconds
     from chanlun_trader.research_factory.universe_compute_governance_v1 import UniverseComputeGovernanceV1
     from chanlun_trader.research_factory.mutation_boundary import ObjectiveMutationLock
-    job=read_json(path);validate_sources(job);root=Path(job['root']);folder=root/('COMPUTE_'+stage)
+    repair=report_repair_context(path,stage,_report_repair_ref)
+    job=read_json(path)
+    validate_sources(job,**({'_report_repair':repair} if repair else {}))
+    root=repair.output_root if repair else Path(job['root'])
+    folder=repair.compute_root if repair else root/('COMPUTE_'+stage)
+    if repair and (authority!=repair.authority or request!=repair.request):
+        raise PermissionError('JOB_REPORT_REPAIR_AUTHORITY_CONFLICT')
     if stage not in ('VERIFICATION','REPORT') or 'profile_id' not in job.get('resources', {}):
         raise PermissionError('JOB_LONG_HORIZON_COMPUTE_REQUIRED')
     scope={'job_sha256':sha(path),'authority':authority,'request':request,'stage':stage}
+    if repair:scope['repair_ref']=_report_repair_ref
     dispatched_segments=0
     with ObjectiveMutationLock.for_resource(folder/'EXECUTE.lock'):
         save(folder/'SCOPE.json',scope)
-        meter=UniverseComputeGovernanceV1(folder,authority,request,stage)
+        meter=repair.meter() if repair else UniverseComputeGovernanceV1(folder,authority,request,stage)
         if (folder/'COMPUTE_START.json').exists():
             previous=meter.status()
             if previous['pending'] is not None:
@@ -781,6 +820,8 @@ def run_long_horizon_compute(path,authority,request,stage,*,step=False):
                 env.pop('CHANLUN_TEST_ISOLATION',None);begin=time.monotonic()
                 command=[sys.executable,str(Path(__file__).resolve()),'--compute',stage,'--job',str(Path(path).resolve()),'--segment',str(number)]
                 if member is not None:command.extend(['--member',member])
+                if repair:command.extend(['--report-repair-manifest',_report_repair_ref['path'],
+                    '--report-repair-sha256',_report_repair_ref['sha256']])
                 try:
                     resource=run_bounded_worker(command,root=REPO,memory_mib=meter.profile['memory_mib'],measure_peak_memory=True,
                         wall_seconds=worker_wall_seconds(dispatch['upper_bound_seconds']),environment=env,
@@ -830,17 +871,20 @@ def report_result_references(root, folder, plans):
     return values
 
 
-def reconcile_long_horizon_compute(path,stage):
+def reconcile_long_horizon_compute(path,stage,*,_report_repair_ref=None):
     """明确恢复时先证明旧进程已退出；同一用途保守结算未知段。"""
     from chanlun_trader.research_factory.universe_compute_governance_v1 import UniverseComputeGovernanceV1
     from chanlun_trader.research_factory.mutation_boundary import ObjectiveMutationLock
     from chanlun_trader.research_daemon_state import DaemonInstanceLockV1
-    job=read_json(path);validate_sources(job);folder=Path(job['root'])/('COMPUTE_'+stage)
+    repair=report_repair_context(path,stage,_report_repair_ref,for_dispatch=False)
+    job=read_json(path)
+    validate_sources(job,**({'_report_repair':repair} if repair else {}))
+    folder=repair.compute_root if repair else Path(job['root'])/('COMPUTE_'+stage)
     if not (folder/'COMPUTE_START.json').exists():return
     scope=read_json(folder/'SCOPE.json')
-    if scope['job_sha256']!=sha(path) or scope['stage']!=stage:
+    if scope['job_sha256']!=sha(path) or scope['stage']!=stage or scope.get('repair_ref')!=_report_repair_ref:
         raise PermissionError('JOB_COMPUTE_SCOPE_CHANGED')
-    meter=UniverseComputeGovernanceV1(folder,scope['authority'],scope['request'],stage,for_dispatch=False)
+    meter=repair.meter(for_dispatch=False) if repair else UniverseComputeGovernanceV1(folder,scope['authority'],scope['request'],stage,for_dispatch=False)
     with ObjectiveMutationLock.for_resource(folder/'EXECUTE.lock'):
         meter.reconcile_segment_mirrors()
         state=meter.status();pending=state['pending']
@@ -929,10 +973,13 @@ def reconcile_account(path, name):
     return service(job).settle(name,completed=True,seconds=seconds,result_hash=sha(required[3]),error=None)
 
 
-def report_account_job(path,*,_universe_inputs=None,_deadline=None):
-    job=read_json(path);validate_sources(job)
+def report_account_job(path,*,_universe_inputs=None,_deadline=None,_report_repair_ref=None):
+    repair=report_repair_context(path,'REPORT',_report_repair_ref)
+    job=read_json(path)
+    validate_sources(job,**({'_report_repair':repair} if repair else {}))
     index=read_json(Path(job['root'])/'RESULTS_INDEX.json')['items']
-    write_reports(job,index,_universe_inputs=_universe_inputs,_deadline=_deadline)
+    write_reports(job,index,_universe_inputs=_universe_inputs,_deadline=_deadline,
+        _report_repair=repair)
     return index
 
 
@@ -942,10 +989,15 @@ def execute(path):
     return report_account_job(path)
 
 
-def write_reports(job,index,*,_universe_inputs=None,_deadline=None):
+def write_reports(job,index,*,_universe_inputs=None,_deadline=None,_report_repair=None):
     from copy import deepcopy
     from chanlun_trader.research_factory.strategy_report_v1 import render_markdown
-    root=Path(job['root']);results={name:read_json(item['result']) for name,item in index.items()}
+    if _report_repair is not None:
+        from chanlun_trader.research_factory.report_repair_protocol_v1 import ReportRepairV1
+        if type(_report_repair) is not ReportRepairV1:
+            raise PermissionError('JOB_REPORT_REPAIR_CONTEXT_REQUIRED')
+    root=Path(job['root']) if _report_repair is None else _report_repair.output_root
+    results={name:read_json(item['result']) for name,item in index.items()}
     def dates(result):
         if 'daily' in result:return [str(row['date']) for row in result['daily']]
         if 'daily_accounts' in result:return [str(row['date']).replace('-', '') for row in result['daily_accounts']]
@@ -1094,7 +1146,13 @@ if __name__=='__main__':
     parser=argparse.ArgumentParser();group=parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--prepare');group.add_argument('--execute',action='store_true');group.add_argument('--worker');group.add_argument('--status',action='store_true')
     group.add_argument('--capabilities', action='store_true');group.add_argument('--compute',choices=('VERIFICATION','REPORT'))
-    parser.add_argument('--root');parser.add_argument('--job');parser.add_argument('--segment',type=int);parser.add_argument('--member');args=parser.parse_args()
+    parser.add_argument('--root');parser.add_argument('--job');parser.add_argument('--segment',type=int);parser.add_argument('--member')
+    parser.add_argument('--report-repair-manifest');parser.add_argument('--report-repair-sha256');args=parser.parse_args()
+    repair_ref=None
+    if args.report_repair_manifest is not None or args.report_repair_sha256 is not None:
+        if args.compute!='REPORT' or not args.report_repair_manifest or not args.report_repair_sha256:
+            parser.error('report repair requires --compute REPORT and both manifest reference fields')
+        repair_ref={'path':args.report_repair_manifest,'sha256':args.report_repair_sha256}
     if args.capabilities:
         from chanlun_trader.research_factory.research_capabilities_v1 import capabilities
         print(json.dumps(capabilities(), ensure_ascii=False))
@@ -1102,6 +1160,7 @@ if __name__=='__main__':
         if not args.root:parser.error('--root required')
         freeze_config(read_json(args.prepare),args.root)
     elif args.worker:raise SystemExit(worker(args.job,args.worker,args.segment))
-    elif args.compute:raise SystemExit(long_horizon_compute_worker(args.job,args.compute,args.segment,args.member))
+    elif args.compute:raise SystemExit(long_horizon_compute_worker(args.job,args.compute,args.segment,args.member,
+        _report_repair_ref=repair_ref))
     elif args.status:print(json.dumps(status(args.job),ensure_ascii=False))
     else:print(json.dumps(execute(args.job),ensure_ascii=False))

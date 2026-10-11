@@ -470,7 +470,18 @@ class BusinessValidationProtocolV1:
         return admission, reasons
 
     @staticmethod
-    def verify_report_refs(task, outcome, *, minimum_sessions):
+    def verify_report_repair_refs(task, outcome, *, root, manifest_ref, minimum_sessions):
+        """修复报告须先证明专门批准、原失败及单独计费的完成链。"""
+        from .report_repair_protocol_v1 import ReportRepairV1
+        context=ReportRepairV1(root,manifest_ref).validate(for_dispatch=False)
+        record=context.verify_receipt()
+        _require(record.get('outcome')==outcome and context.job_path==Path(task['job_path']).absolute(),
+                 'BUSINESS_VALIDATION_REPORT_REPAIR_OUTCOME_CONFLICT')
+        return BusinessValidationProtocolV1.verify_report_refs(task,outcome,
+            minimum_sessions=minimum_sessions,_report_repair=context)
+
+    @staticmethod
+    def verify_report_refs(task, outcome, *, minimum_sessions, _report_repair=None):
         """公共核账通过之外，再核对返回的真实报告原件及实际账户日数。"""
         _require(outcome.get('status') == 'ACCOUNT_VERIFIED'
             and outcome.get('verification', {}).get('advance_allowed') is True
@@ -478,6 +489,14 @@ class BusinessValidationProtocolV1:
             and outcome.get('strategy_qualified') is not True,
             'BUSINESS_VALIDATION_PUBLIC_VERIFICATION_REQUIRED')
         path = Path(task['job_path']).absolute()
+        report_parent=path.parent
+        if _report_repair is not None:
+            from .report_repair_protocol_v1 import ReportRepairV1
+            _require(type(_report_repair) is ReportRepairV1 and _report_repair.job_path==path,
+                     'BUSINESS_VALIDATION_REPORT_REPAIR_CONTEXT_REQUIRED')
+            _require(_report_repair.verify_receipt().get('outcome')==outcome,
+                     'BUSINESS_VALIDATION_REPORT_REPAIR_RECEIPT_REQUIRED')
+            report_parent=_report_repair.output_root
         _require(path.resolve() == path and path.is_file()
             and _file_hash(path) == task['job_sha256'],
             'BUSINESS_VALIDATION_FROZEN_JOB_CHANGED')
@@ -502,7 +521,7 @@ class BusinessValidationProtocolV1:
             _require(job.get('items', {}).get(name, {}).get('backend_options', {}).get('costs') == cost,
                      'BUSINESS_VALIDATION_FROZEN_COST_CONFLICT')
             report_path = Path(reference['research_report']).absolute()
-            _require(report_path.resolve() == report_path and report_path.parent == path.parent
+            _require(report_path.resolve() == report_path and report_path.parent == report_parent
                 and report_path.name == name + '_RESEARCH_REPORT.json',
                      'BUSINESS_VALIDATION_REPORT_PATH_CONFLICT')
             raw = report_path.read_bytes()
@@ -513,7 +532,7 @@ class BusinessValidationProtocolV1:
                 if key != 'report_identity'}) and report.get('input_identity') == task['input_identity'],
                 'BUSINESS_VALIDATION_REPORT_IDENTITY_CONFLICT')
             final_path = Path(reference.get('final_report', '')).absolute()
-            _require(final_path.resolve() == final_path and final_path.parent == path.parent
+            _require(final_path.resolve() == final_path and final_path.parent == report_parent
                 and final_path.name == name + '_REPORT.json'
                 and _file_hash(final_path) == reference.get('final_report_sha256'),
                 'BUSINESS_VALIDATION_FINAL_REPORT_ORIGINAL_CHANGED')

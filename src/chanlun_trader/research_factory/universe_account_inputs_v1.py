@@ -29,6 +29,7 @@ _SYMBOL = re.compile(r"(?:00\d{4}\.SZ|60\d{4}\.SH|30\d{4}\.SZ)")
 _HASH = re.compile(r"[0-9a-f]{64}")
 _RAW_PRICES = ("open", "high", "low", "close")
 _RAW_ACTIVITY = ("volume", "amount")
+_IDENTITY_HASH_ROWS = 65536
 _STATE_FIELDS = (
     "listed", "delisted", "universe_member", "eligibility_status", "st_status",
     "suspension_status", "board",
@@ -93,7 +94,29 @@ def _frame_identity(frame: pd.DataFrame, sort: list[str]) -> str:
             if name in object_columns and not text_only:
                 series = series.map(lambda value: canonical_json(value)
                     if isinstance(value, (dict, list, tuple, set, frozenset)) else value)
-            yield pd.util.hash_pandas_object(series, index=False).to_numpy(copy=False)
+            arrow_values = None
+            if isinstance(series.dtype, pd.ArrowDtype) and not pd.api.types.is_string_dtype(series.dtype):
+                # Arrow 整列带空值的整数/布尔转换与无空值切片不同，保留旧哈希使用的整列表示。
+                arrow_values, _ = series.array._values_for_factorize()
+            # 异类 object 的 1/True/1.0 等相等值按整列首个代表归类，跨块不能重新选择代表。
+            # 仅此兼容分支保留旧全列语义；行情数值及纯文本状态列不进入它。
+            if arrow_values is not None and arrow_values.dtype == object and pd.api.types.infer_dtype(
+                    arrow_values, skipna=True) != "string":
+                yield pd.util.hash_array(arrow_values)
+                continue
+            if (arrow_values is None and pd.api.types.is_object_dtype(series.dtype)
+                    and pd.api.types.infer_dtype(series.to_numpy(copy=False), skipna=True) != "string"):
+                yield pd.util.hash_pandas_object(series, index=False).to_numpy(copy=False)
+                continue
+            # 原列映射及 dtype 推断保持不变；只限制 pandas 原生 factorize 的单次规模。
+            # 组合器仍接收原长度的 uint64 列，行顺序、列顺序及冻结身份算法不变。
+            hashes = np.empty(len(series), dtype=np.uint64)
+            for start in range(0, len(series), _IDENTITY_HASH_ROWS):
+                end = start + _IDENTITY_HASH_ROWS
+                hashes[start:end] = (pd.util.hash_array(arrow_values[start:end])
+                    if arrow_values is not None else pd.util.hash_pandas_object(
+                        series.iloc[start:end], index=False).to_numpy(copy=False))
+            yield hashes
 
     # 与 pandas DataFrame/index=False 相同的列顺序和组合过程。
     hashes = combine_hash_arrays(column_hashes(), len(selected.columns))
