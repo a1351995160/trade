@@ -1026,7 +1026,8 @@ def write_reports(job,index,*,_universe_inputs=None,_deadline=None,_report_repai
             validate_execution_profile(job['resources'])
             _universe_inputs.assert_unchanged()
             universe_reference = _universe_price_reference_from_inputs(_universe_inputs,
-                initial_cash=options['initial_cash'],deadline=_deadline)
+                initial_cash=options['initial_cash'],deadline=_deadline,
+                report_checkpoint_path=root/'PRICE_REFERENCE_CHECKPOINT.json')
     for name,result in results.items():
         if sha(index[name]['result'])!=index[name]['sha256'] or read_json(index[name]['settlement'])['result_sha256']!=index[name]['sha256']:
             raise PermissionError('REPORT_SETTLEMENT_CONFLICT')

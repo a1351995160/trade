@@ -140,3 +140,60 @@ def test_public_renderer_without_prepared_input_keeps_existing_loader_path(tmp_p
     runner.report_account_job(path)
     assert observed['loader_calls'] == 1
     assert runner.read_json(path.parent / (member + '_REPORT.json'))['benchmark']['investable'] is False
+
+
+def test_report_render_price_reference_advances_across_worker_segments(tmp_path, monkeypatch):
+    from chanlun_trader.research_factory.universe_benchmark_v1 import _universe_price_reference_from_inputs
+    path, member, observed, inputs, timer = final_report_worker(tmp_path, monkeypatch)
+    expected = _universe_price_reference_from_inputs(inputs, initial_cash=50000)
+    original_state = inputs.state
+    visits = []
+
+    def state(symbol, day):
+        value = original_state(symbol, day)
+        if day >= inputs.window['account_start']:
+            visits.append((symbol, day))
+            timer.now += 100
+        return value
+
+    def loader():
+        observed['loader_calls'] += 1
+        timer.now += 570
+        return {'frame': inputs.bundle}
+
+    strategy = SimpleNamespace(rule_identity='RULE', requirements=SimpleNamespace(fields=[], warmup_sessions=0))
+    monkeypatch.setattr(inputs, 'state', state)
+    monkeypatch.setattr(runner, 'resolve', lambda name: {
+        'fixture:loader': loader, 'fixture:strategy': lambda: strategy}[name])
+    folder = path.parent / 'COMPUTE_REPORT'
+    originals = {file: runner.sha(path.parent / file) for file in (
+        member + '_RESULT.json', member + '_SETTLEMENT.json', 'VERIFICATION.json')}
+    count = len(inputs.calendar) - inputs.calendar.index(inputs.window['account_start'])
+    statuses, prefix = [], []
+    for number in range(1, count + 2):
+        timer.now = 0.
+        dispatch_id = 'DISPATCH_' + str(number)
+        observed['pending'].update(number=number, dispatch_id=dispatch_id)
+        runner.HANDSHAKE['execution'].update(segment_number=number, dispatch_id=dispatch_id)
+        code = runner._long_horizon_compute_worker(path, 'REPORT', number, member)
+        statuses.append(code)
+        status = runner.read_json(folder / ('SEGMENT_' + str(number).zfill(6) + '_STATUS.json'))
+        assert status['dispatch_id'] == dispatch_id
+        if code == 0:
+            assert status['state'] == 'COMPLETED'
+            checkpoint = runner.read_json(path.parent / 'PRICE_REFERENCE_CHECKPOINT.json')
+            assert checkpoint['complete'] is True and checkpoint['output'] == expected
+            break
+        assert code == 75 and status['state'] == 'CONTINUE' and status['phase'] == 'REPORT_RENDER'
+        assert not (path.parent / (member + '_REPORT.json')).exists()
+        checkpoint = runner.read_json(path.parent / 'PRICE_REFERENCE_CHECKPOINT.json')
+        assert checkpoint['state']['daily'][:-1] == prefix
+        prefix = checkpoint['state']['daily']
+        assert prefix == expected['daily'][:len(prefix)]
+        assert checkpoint['state']['cursor'] == len(prefix) and checkpoint['complete'] is False
+    assert statuses[-1] == 0, 'REPORT_RENDER must retain completed benchmark days between workers'
+    assert all(code == 75 for code in statuses[:-1])
+    assert observed['loader_calls'] == len(statuses)
+    assert len(visits) == len(set(visits)) == count * len(inputs.symbols)
+    assert runner.read_json(path.parent / (member + '_REPORT.json'))['benchmark'] == expected
+    assert {file: runner.sha(path.parent / file) for file in originals} == originals
