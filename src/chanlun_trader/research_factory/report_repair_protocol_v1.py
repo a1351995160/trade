@@ -19,6 +19,7 @@ from .universe_execution_profile_v1 import SEGMENTED_PROFILE, execution_profile
 VERSION = 'REPORT_REPAIR_MANIFEST_V1'
 SUMMARY_VERSION = 'OWNER_REPORT_REPAIR_SUMMARY_V1'
 RECEIPT_VERSION = 'REPORT_REPAIR_COMPLETION_V1'
+MAX_REPAIR_EVIDENCE_BYTES = 64 * 1024 * 1024
 PROTOCOL_SOURCE = 'src/chanlun_trader/research_factory/report_repair_protocol_v1.py'
 REPLACEMENT_PATHS = frozenset({
     'scripts/run_strategy_account_v1.py',
@@ -55,6 +56,11 @@ def _reference(path, root):
 
 def _read(reference, root):
     return read_pinned_json(reference, root=root, error_code='REPORT_REPAIR_ORIGINAL_CHANGED')
+
+
+def _read_evidence(reference, root):
+    return read_pinned_json(reference, root=root, maximum_bytes=MAX_REPAIR_EVIDENCE_BYTES,
+                            error_code='REPORT_REPAIR_ORIGINAL_CHANGED')
 
 
 def _identity(value, key='identity'):
@@ -183,7 +189,7 @@ class ReportRepairV1:
                     'verification': _reference(job_path.parent / 'VERIFICATION.json', root),
                     'results_index': _reference(job_path.parent / 'RESULTS_INDEX.json', root),
                     'inputs': [], 'accounts': {}}
-        verification = _read(original['verification'], root)
+        verification = _read_evidence(original['verification'], root)
         index = _read(original['results_index'], root)
         _require(verification.get('job_sha256') == job_ref['sha256']
                  and verification.get('advance_allowed') is True
@@ -433,7 +439,7 @@ class ReportRepairV1:
                  and outcome.get('rule_identity') == self.summary_value['rule_identity']
                  and outcome.get('phase') == 'EXPLORATION'
                  and outcome.get('strategy_qualified') is not True
-                 and outcome.get('verification') == _read(self.summary_value['original']['verification'], self.root)
+                 and outcome.get('verification') == _read_evidence(self.summary_value['original']['verification'], self.root)
                  and set(reports) == set(self.summary_value['original']['accounts']), 'OUTCOME_CONFLICT')
         report_refs = {}
         for name, reference in reports.items():
@@ -509,7 +515,7 @@ class ReportRepairV1:
     def verify_receipt(self):
         self.validate(for_dispatch=False)
         path = self.output_root / 'REPAIR_COMPLETION.json'
-        record = _read(_reference(path, self.root), self.root)
+        record = _read_evidence(_reference(path, self.root), self.root)
         _require(_identity(record), 'RECEIPT_IDENTITY_CONFLICT')
         expected = self._completion(record.get('outcome', {}))
         expected['identity'] = stable_hash(expected)

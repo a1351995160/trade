@@ -29,6 +29,8 @@ python scripts/run_report_repair_v1.py feedback --manifest <清单路径> --mani
 
 修复报告、检查点、资源、完成回执及反馈位于原任务的 `report-repairs/<repair_id>/`。原账户结果和结算不复制为新账户，也不改变原核验绑定。旧报告检查点保留，新版本重新聚合报告。
 
+核账原件及包含核账内容的完成回执可能超过普通配置大小。修复协议仅对这两类证据使用64MiB有限读取上限；普通元信息仍为20MiB，路径、文件哈希和读取一致性检查不变。第二批准备器使用相同证据上限，不修改旧固定runner的32MiB读取规则。
+
 ## 完成和接续的含义
 
 `REPAIR_COMPLETION.json` 证明专门批准、原失败、新报告、受限执行和实际收费完整相连。`BusinessValidationProtocolV1.verify_report_repair_refs()` 重新检查两份账户及报告的日期、资金、输入身份和来源。通过后才能生成修复反馈，作为下一批策略设计的依据。
