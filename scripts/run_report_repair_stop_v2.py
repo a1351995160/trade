@@ -24,7 +24,8 @@ def main(argv=None):
     if args.action == 'request':
         if not args.approval_id or not args.summary_hash:
             cli.error('request requires dedicated Owner approval reference')
-        result = ReportRepairStopV2.request(ROOT, read_pinned_json(reference, root=ROOT), approval_ref={
+        summary = read_pinned_json(reference, root=ROOT, error_code='REPORT_REPAIR_STOP_SOURCE_CHANGED')
+        result = ReportRepairStopV2.request(ROOT, summary, approval_ref={
             'approval_id': args.approval_id, 'summary_hash': args.summary_hash})
     elif args.action == 'settle':
         result = ReportRepairStopV2.settle(ROOT, reference)

@@ -179,3 +179,32 @@ def test_create_installs_exact_owner_bridge_before_live_campaign_capability_vali
         {'path': str(tmp_path / 'MANIFEST.json'), 'sha256': '4' * 64})
     assert module.create()['status'] == 'REPORT_RECOVERY_SETUP_READY_NO_DISPATCH'
     assert events == ['bridge-installed', 'campaign-peek']
+
+
+@pytest.mark.parametrize('changed', [False, True])
+def test_stop_cli_request_reads_pinned_summary_before_owner_dispatch(monkeypatch, tmp_path, capsys, changed):
+    import hashlib
+    import json
+    from scripts import run_report_repair_stop_v2 as cli
+    from chanlun_trader.research_factory.report_repair_stop_v2 import ReportRepairStopV2
+    summary = {'schema_version': 'SYNTHETIC_STOP_SUMMARY'}
+    path = tmp_path / 'SUMMARY.json'
+    path.write_text(json.dumps(summary), encoding='utf-8')
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    if changed:
+        path.write_text('{}', encoding='utf-8')
+    calls = []
+    monkeypatch.setattr(cli, 'ROOT', tmp_path)
+    monkeypatch.setattr(ReportRepairStopV2, 'request', lambda root, value, *, approval_ref:
+        calls.append((root, value, approval_ref)) or {'path': 'synthetic-stop-request'})
+    args = ['request', '--reference', str(path), '--sha256', digest,
+            '--approval-id', 'SYNTHETIC_APPROVAL', '--summary-hash', '1' * 64]
+    if changed:
+        with pytest.raises(ValueError, match='REPORT_REPAIR_STOP_SOURCE_CHANGED'):
+            cli.main(args)
+        assert calls == []
+    else:
+        assert cli.main(args) == 0
+        assert calls == [(tmp_path, summary, {
+            'approval_id': 'SYNTHETIC_APPROVAL', 'summary_hash': '1' * 64})]
+        assert json.loads(capsys.readouterr().out) == {'path': 'synthetic-stop-request'}
