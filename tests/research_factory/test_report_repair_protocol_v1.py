@@ -49,6 +49,7 @@ def pad_synthetic_json(path, byte_count):
 def case(tmp_path, request):
     root = tmp_path.resolve()
     variant = getattr(request, 'param', None)
+    recovery_chain = variant in ('recovery_chain', 'recovery_large_chain', 'recovery_public_chain')
     snapshot = capabilities()
     frozen_scope = scope(snapshot, confirmation=False)
     profiles = [execution_profile(SEGMENTED_PROFILE, 504, purpose) for purpose in (
@@ -90,8 +91,8 @@ def case(tmp_path, request):
     account.mkdir(parents=True)
     write(task_root / 'PREVIEW.json', preview)
     inputs_ref = write(task_root / 'INPUT.json', {'synthetic': True, 'input_identity': stable_hash('synthetic input')})
-    if variant in ('large_bound_evidence', 'oversized_input'):
-        size = 21 * 1024 * 1024 if variant == 'large_bound_evidence' else MAX_REPAIR_EVIDENCE_BYTES + 1
+    if variant in ('large_bound_evidence', 'oversized_input', 'recovery_large_chain'):
+        size = MAX_REPAIR_EVIDENCE_BYTES + 1 if variant == 'oversized_input' else 21 * 1024 * 1024
         inputs_ref = pad_synthetic_json(Path(inputs_ref['path']), size)
     parent_inputs_ref = None
     if variant in ('large_bound_evidence', 'oversized_parent_input'):
@@ -101,13 +102,25 @@ def case(tmp_path, request):
     sources = {}
     for relative in ('scripts/run_strategy_account_v1.py',
                      'src/chanlun_trader/research_factory/universe_account_inputs_v1.py',
-                     'src/chanlun_trader/research_factory/universe_research_report_v2.py'):
+                     'src/chanlun_trader/research_factory/universe_research_report_v2.py',
+                     *(('src/chanlun_trader/research_factory/universe_benchmark_v1.py',) if recovery_chain else ())):
         path = root / relative
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(b'# SYNTHETIC old source\n')
+        if recovery_chain and path.name == 'universe_account_inputs_v1.py':
+            from chanlun_trader.research_factory import universe_account_inputs_v1
+            path.write_bytes(Path(universe_account_inputs_v1.__file__).read_bytes())
+        else:
+            path.write_bytes(b'# SYNTHETIC old source\n')
         digest = ref(path)['sha256']; sources[str(path)] = digest
         archive = account / 'source-archive' / (digest + '_' + path.name)
         archive.parent.mkdir(parents=True, exist_ok=True); archive.write_bytes(path.read_bytes())
+    if variant == 'recovery_large_chain':
+        data_path = task_root / 'SYNTHETIC_DATA.parquet'
+        data_path.write_bytes(b'x' * (21 * 1024 * 1024))
+        for data_reference in (inputs_ref, ref(data_path)):
+            sources[data_reference['path']] = data_reference['sha256']
+            target = account / 'source-archive' / (data_reference['sha256'] + '_' + Path(data_reference['path']).name)
+            target.write_bytes(Path(data_reference['path']).read_bytes())
     for relative in REQUIRED_RUNTIME_PATHS:
         path = root / relative
         path.parent.mkdir(parents=True, exist_ok=True); path.write_bytes(b'# SYNTHETIC new runtime\n')
@@ -132,6 +145,9 @@ def case(tmp_path, request):
             checks[name]['status'] = 'FAIL'
     job = {'root': str(account), 'objective_id': contract['objective_id'], 'plans': plans, 'items': items,
         'input_identity': stable_hash('synthetic input'), 'source_hashes': sources, 'resources': profiles[0]}
+    if variant == 'recovery_public_chain':
+        from test_report_recovery_protocol_v2 import configure_public_report_fixture
+        configure_public_report_fixture(job, checks, index, root)
     job_ref = write(account / 'JOB.json', job)
     task = {'task_id': task_id, 'job_path': job_ref['path'], 'job_sha256': job_ref['sha256'],
         'input_identity': job['input_identity'], 'plan_ids': {name: plan['plan_id'] for name, plan in plans.items()},
@@ -170,7 +186,7 @@ def case(tmp_path, request):
                              outcome='FAILED', evidence_identity=attempt['identity'])
     base = campaign.peek_status()['base_authorization']
     delta = dict.fromkeys(RESOURCES, 0); delta['verification_jobs'] = 1
-    grant = {'grant_id': 'SYNTHETIC_ONE_REPORT_REPAIR', 'base_authorization_hash': stable_hash(base),
+    grant = {'grant_id': ('SESSION_B001_REPORT_REPAIR_20261011' if variant == 'recovery_public_chain' else 'SYNTHETIC_ONE_REPORT_REPAIR'), 'base_authorization_hash': stable_hash(base),
         'resource_limits_delta': delta, 'stage_limits_delta': {'EXPLORATION': delta},
         'max_batches_delta': 0, 'max_total_predictive_trials_delta': 0, 'expires_at': base['expires_at']}
     grant_approval = approvals.approve(grant_summary(base, grant), approver='SYNTHETIC_OWNER', capability=capability)

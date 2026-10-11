@@ -100,6 +100,9 @@ jobs:
           tests/research_factory/test_report_repair_capability_bridge_v1.py
           tests/research_factory/test_report_repair_protocol_v1.py
           tests/research_factory/test_report_repair_runner_v1.py
+          tests/research_factory/test_report_recovery_protocol_v2.py
+          tests/research_factory/test_report_recovery_capability_bridge_v2.py
+          tests/research_factory/test_session_report_recovery_helpers_v2.py
           tests/research_factory/test_research_campaign_v1.py
           tests/research_factory/test_research_dataset_projection_v1.py
           tests/research_factory/test_train_projection_cli_v1.py

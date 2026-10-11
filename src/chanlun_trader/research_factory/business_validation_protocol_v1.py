@@ -472,8 +472,8 @@ class BusinessValidationProtocolV1:
     @staticmethod
     def verify_report_repair_refs(task, outcome, *, root, manifest_ref, minimum_sessions):
         """修复报告须先证明专门批准、原失败及单独计费的完成链。"""
-        from .report_repair_protocol_v1 import ReportRepairV1
-        context=ReportRepairV1(root,manifest_ref).validate(for_dispatch=False)
+        from .report_repair_protocol_v1 import resolve_report_repair_context
+        context=resolve_report_repair_context(root,manifest_ref,for_dispatch=False)
         record=context.verify_receipt()
         _require(record.get('outcome')==outcome and context.job_path==Path(task['job_path']).absolute(),
                  'BUSINESS_VALIDATION_REPORT_REPAIR_OUTCOME_CONFLICT')
@@ -491,8 +491,8 @@ class BusinessValidationProtocolV1:
         path = Path(task['job_path']).absolute()
         report_parent=path.parent
         if _report_repair is not None:
-            from .report_repair_protocol_v1 import ReportRepairV1
-            _require(type(_report_repair) is ReportRepairV1 and _report_repair.job_path==path,
+            from .report_repair_protocol_v1 import is_report_repair_context
+            _require(is_report_repair_context(_report_repair) and _report_repair.job_path==path,
                      'BUSINESS_VALIDATION_REPORT_REPAIR_CONTEXT_REQUIRED')
             _require(_report_repair.verify_receipt().get('outcome')==outcome,
                      'BUSINESS_VALIDATION_REPORT_REPAIR_RECEIPT_REQUIRED')

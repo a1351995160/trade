@@ -90,6 +90,10 @@ def _parent_mirror(meter, state, operation):
 class ReportRepairV1:
     """只有明确 freeze 写新批准上下文；构造和 validate 都只读。"""
 
+    replacement_paths = REPLACEMENT_PATHS
+    runtime_paths = RUNTIME_PATHS
+    required_runtime_paths = REQUIRED_RUNTIME_PATHS
+
     def __init__(self, root, manifest_ref):
         self.root = Path(root).resolve(strict=True)
         self.scope_reference = deepcopy(manifest_ref)
@@ -230,20 +234,9 @@ class ReportRepairV1:
         _require(costs == {'BASE', 'STRESS'} and inputs, 'FROZEN_INPUT_REQUIRED')
         original['inputs'] = [inputs[key] for key in sorted(inputs)]
         replacements = cls._sources(root, job, source_replacements)
-        from .research_capabilities_v1 import capabilities
-        bridge_reference = None
-        if capability_bridge_ref is not None or (
-                base['scope_policy']['summary']['contract']['capabilities_fingerprint'] != capabilities()['fingerprint']):
-            from .report_repair_capability_bridge_v1 import ReportRepairCapabilityBridgeV1
-            bridge = ReportRepairCapabilityBridgeV1.read(root, base, reference=capability_bridge_ref)
-            replacement = bridge['record']['summary']['source_replacements'][0]
-            _require({key: replacement[key] for key in ('path', 'old_sha256', 'new_sha256')} in replacements
-                     and replacement['archive_ref'] == _reference(Path(job['root']) / 'source-archive' /
-                         (replacement['old_sha256'] + '_' + Path(replacement['path']).name), root),
-                     'CAPABILITY_BRIDGE_SOURCE_CONFLICT')
-            bridge_reference = deepcopy(bridge['reference'])
+        bridge_reference = cls._capability_bridge_reference(root, base, job, replacements, capability_bridge_ref)
         runtime = runtime_source_refs if runtime_source_refs is not None else [
-            _reference(root / path, root) for path in sorted(REQUIRED_RUNTIME_PATHS)]
+            _reference(root / path, root) for path in sorted(cls.required_runtime_paths)]
         runtime = cls._runtime_sources(root, runtime)
         grant_item = view['grants'].get(grant_id)
         _require(grant_item is not None, 'REGISTERED_INCREMENT_REQUIRED')
@@ -282,15 +275,29 @@ class ReportRepairV1:
                  and grant.get('expires_at') == base['expires_at'], 'INCREMENT_SCOPE_CONFLICT')
         OwnerApprovalStoreV1(base['scope_policy']['approval_store']).require(item['approval_ref'], grant_summary(base, grant))
 
-    @staticmethod
-    def _sources(root, job, replacements):
+    @classmethod
+    def _capability_bridge_reference(cls, root, base, job, replacements, reference):
+        from .research_capabilities_v1 import capabilities
+        if reference is None and base['scope_policy']['summary']['contract']['capabilities_fingerprint'] == capabilities()['fingerprint']:
+            return None
+        from .report_repair_capability_bridge_v1 import ReportRepairCapabilityBridgeV1
+        bridge = ReportRepairCapabilityBridgeV1.read(root, base, reference=reference)
+        replacement = bridge['record']['summary']['source_replacements'][0]
+        _require({key: replacement[key] for key in ('path', 'old_sha256', 'new_sha256')} in replacements
+                 and replacement['archive_ref'] == _reference(Path(job['root']) / 'source-archive' /
+                     (replacement['old_sha256'] + '_' + Path(replacement['path']).name), root),
+                 'CAPABILITY_BRIDGE_SOURCE_CONFLICT')
+        return deepcopy(bridge['reference'])
+
+    @classmethod
+    def _sources(cls, root, job, replacements):
         _require(isinstance(replacements, list), 'SOURCE_REPLACEMENTS_INVALID')
         allowed, seen = {}, set()
         for item in replacements:
             _require(isinstance(item, dict) and set(item) == {'path', 'old_sha256', 'new_sha256'},
                      'SOURCE_REPLACEMENTS_INVALID')
             path = _path(item['path'], root)
-            _require(path.relative_to(root).as_posix() in REPLACEMENT_PATHS
+            _require(path.relative_to(root).as_posix() in cls.replacement_paths
                      and str(path) not in seen and _hash(item['new_sha256'])
                      and item['new_sha256'] != item['old_sha256']
                      and job['source_hashes'].get(str(path)) == item['old_sha256'], 'SOURCE_REPLACEMENT_OUTSIDE_ALLOWLIST')
@@ -305,17 +312,17 @@ class ReportRepairV1:
             _require(_reference(path, root)['sha256'] == allowed.get(source, digest), 'UNAPPROVED_SOURCE_CHANGED')
         return sorted(deepcopy(replacements), key=lambda item: item['path'])
 
-    @staticmethod
-    def _runtime_sources(root, references):
+    @classmethod
+    def _runtime_sources(cls, root, references):
         _require(isinstance(references, list) and references, 'RUNTIME_SOURCE_PINS_REQUIRED')
         paths = set()
         for reference in references:
             _require(isinstance(reference, dict), 'RUNTIME_SOURCE_CHANGED')
             path = _path(reference.get('path', ''), root)
-            _require(set(reference) == {'path', 'sha256'} and path.relative_to(root).as_posix() in RUNTIME_PATHS
+            _require(set(reference) == {'path', 'sha256'} and path.relative_to(root).as_posix() in cls.runtime_paths
                      and str(path) not in paths and reference == _reference(path, root), 'RUNTIME_SOURCE_CHANGED')
             paths.add(str(path))
-        _require(all(str(root / path) in paths for path in REQUIRED_RUNTIME_PATHS),
+        _require(all(str(root / path) in paths for path in cls.required_runtime_paths),
             'PROTOCOL_SOURCE_PIN_REQUIRED')
         return sorted(deepcopy(references), key=lambda item: item['path'])
 
@@ -521,3 +528,20 @@ class ReportRepairV1:
         expected['identity'] = stable_hash(expected)
         _require(record == expected, 'RECEIPT_CONFLICT')
         return record
+
+
+def resolve_report_repair_context(root, manifest_ref, *, for_dispatch=True):
+    """只接受两个明确版本；旧V1的白名单和一次名额保持不变。"""
+    value = _read(manifest_ref, root)
+    if value.get('schema_version') == VERSION:
+        return ReportRepairV1(root, manifest_ref).validate(for_dispatch=for_dispatch)
+    from .report_recovery_protocol_v2 import ReportRecoveryV2, VERSION as RECOVERY_VERSION
+    _require(value.get('schema_version') == RECOVERY_VERSION, 'MANIFEST_VERSION_UNSUPPORTED')
+    return ReportRecoveryV2(root, manifest_ref).validate(for_dispatch=for_dispatch)
+
+
+def is_report_repair_context(value):
+    if type(value) is ReportRepairV1:
+        return True
+    from .report_recovery_protocol_v2 import ReportRecoveryV2
+    return type(value) is ReportRecoveryV2

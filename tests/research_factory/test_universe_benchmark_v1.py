@@ -1,4 +1,6 @@
 from copy import deepcopy
+import json
+from types import SimpleNamespace
 
 import pytest
 import pandas as pd
@@ -148,7 +150,7 @@ def test_prepared_reference_obeys_existing_worker_deadline(monkeypatch):
     from chanlun_trader.research_factory.universe_account_backend_v2 import SegmentBoundary
     window, bundle = fixture()
     inputs = prepare_universe_account_inputs_v1(bundle, window)
-    monkeypatch.setattr('chanlun_trader.research_factory.universe_benchmark_v1.time.monotonic', lambda: 830.)
+    monkeypatch.setattr('chanlun_trader.research_factory.universe_report_state_v1.time.monotonic', lambda: 830.)
     with pytest.raises(SegmentBoundary, match='UNIVERSE_PRICE_REFERENCE_COOPERATIVE_DEADLINE'):
         _universe_price_reference_from_inputs(inputs, initial_cash=50000, deadline=830.)
 
@@ -160,3 +162,108 @@ def test_strategy_warmup_does_not_change_price_reference_members():
     assert not inputs.scan_status(inputs.symbols[0], inputs.calendar[59])['entry_eligible']
     assert _universe_price_reference_from_inputs(inputs, initial_cash=50000) == expected
     assert inputs.warmup_bars == 100 and inputs.required_fields == frozenset({'turn'})
+
+
+@pytest.mark.parametrize('scenario', ['ordinary', 'bonus_cash', 'capitalization_cash', 'suspension',
+                                     'weekend_payment', 'unpaid'])
+def test_daily_checkpoint_preserves_every_reference_field(tmp_path, monkeypatch, scenario):
+    from chanlun_trader.research_factory.universe_account_backend_v2 import SegmentBoundary
+    from chanlun_trader.research_factory.common import canonical_json, stable_hash
+    if scenario in ('bonus_cash', 'capitalization_cash'):
+        from test_universe_evidence_v1 import share_case
+        bundle, window, _, _ = share_case(cash=True, taxable=scenario == 'bonus_cash')
+    else:
+        window, bundle = fixture(prices=None if scenario in ('weekend_payment', 'unpaid') else [12., 13., 13.])
+    days, symbol = window['calendar'], '300001.SZ'
+    if scenario == 'suspension':
+        original = deepcopy(bundle['states'].loc[bundle['states'].symbol == symbol].iloc[0].to_dict())
+        before, halt, after = (deepcopy(original) for _ in range(3))
+        before['valid_to'] = days[61]
+        halt.update(effective_date=days[62], valid_to=days[62], suspension_status='SUSPENDED')
+        after['effective_date'] = days[63]
+        bundle['states'] = pd.concat([bundle['states'].loc[bundle['states'].symbol != symbol],
+            pd.DataFrame([before, halt, after])], ignore_index=True)
+        bundle['daily'] = bundle['daily'].loc[~((bundle['daily'].symbol == symbol)
+                                               & (bundle['daily'].date == days[62]))].copy()
+    elif scenario in ('weekend_payment', 'unpaid'):
+        bundle['events'] = [{'event_id': 'SYNTHETIC_DIVIDEND', 'symbol': symbol,
+            'event_type': 'CASH_DIVIDEND', 'record_date': 20220329, 'effective_date': 20220330,
+            'payment_date': 20220402 if scenario == 'weekend_payment' else 20220501,
+            'source': 'synthetic', 'source_published_at': '2022-01-03', 'units': 'CNY_PER_SHARE',
+            'terms': {'cash_per_share': .6, 'tax_rule': {'kind': 'DEFERRED_INDIVIDUAL_2015_101',
+                                                      'source': 'synthetic'}}}]
+        later = (bundle['daily'].symbol == symbol) & (bundle['daily'].date >= 20220330)
+        bundle['daily'].loc[later, ['open', 'high', 'low', 'close', 'prev_close']] -= .6
+    inputs = prepare_universe_account_inputs_v1(bundle, window)
+    expected = _universe_price_reference_from_inputs(inputs, initial_cash=50000)
+    daily_frame = inputs.daily
+    timer = SimpleNamespace(now=0.)
+    monkeypatch.setattr('chanlun_trader.research_factory.universe_report_state_v1.time.monotonic', lambda: timer.now)
+    original_state, visits = inputs.state, []
+
+    def state(symbol, day):
+        value = original_state(symbol, day)
+        if day >= inputs.window['account_start']:
+            visits.append((symbol, day))
+            if symbol == inputs.symbols[-1]:
+                timer.now += 1.
+        return value
+
+    monkeypatch.setattr(inputs, 'state', state)
+    path = tmp_path / 'PRICE_REFERENCE_CHECKPOINT.json'
+    first = inputs.calendar.index(inputs.window['account_start'])
+    count = len(inputs.calendar) - first
+    prefix = []
+    for _ in range(count + 1):
+        timer.now = 0.
+        try:
+            actual = _universe_price_reference_from_inputs(inputs, initial_cash=50000,
+                deadline=.5, report_checkpoint_path=path)
+        except SegmentBoundary:
+            saved = json.loads(path.read_text(encoding='utf-8'))
+            assert saved['state']['daily'][:-1] == prefix
+            prefix = saved['state']['daily']
+            assert prefix == expected['daily'][:len(prefix)]
+            assert saved['state']['cursor'] == len(prefix) and saved['complete'] is False
+        else:
+            assert actual == expected
+            assert canonical_json(actual) == canonical_json(expected)
+            assert stable_hash(actual) == stable_hash(expected)
+            assert json.loads(path.read_text(encoding='utf-8'))['complete'] is True
+            break
+    else:
+        pytest.fail('checkpoint failed to advance')
+    assert len(visits) == len(set(visits)) == count * len(inputs.symbols)
+    assert inputs.daily is daily_frame
+    inputs.assert_unchanged()
+
+
+@pytest.mark.parametrize('conflict', ['capital', 'input', 'window', 'source', 'tamper', 'cursor'])
+def test_reference_checkpoint_rejects_identity_and_state_changes(tmp_path, monkeypatch, conflict):
+    from chanlun_trader.research_factory import universe_benchmark_v1 as benchmark
+    from chanlun_trader.research_factory.common import stable_hash
+    window, bundle = fixture()
+    inputs = prepare_universe_account_inputs_v1(bundle, window)
+    path = tmp_path / 'PRICE_REFERENCE_CHECKPOINT.json'
+    _universe_price_reference_from_inputs(inputs, initial_cash=50000, report_checkpoint_path=path)
+    capital = 50000
+    if conflict == 'capital':
+        capital = 100000
+    elif conflict == 'input':
+        changed = deepcopy(bundle)
+        changed['daily'].loc[changed['daily'].date == window['account_start'], 'high'] += .1
+        inputs = prepare_universe_account_inputs_v1(changed, window)
+    elif conflict == 'window':
+        inputs.window = {**inputs.window, 'account_end': inputs.calendar[-2]}
+    elif conflict == 'source':
+        monkeypatch.setattr(benchmark, 'source_identity', lambda names: {'synthetic_changed_source': 'f' * 64})
+    else:
+        saved = json.loads(path.read_text(encoding='utf-8'))
+        saved['state']['cursor'] -= 1
+        if conflict == 'cursor':
+            saved['checkpoint_hash'] = stable_hash({key: value for key, value in saved.items() if key != 'checkpoint_hash'})
+        path.write_text(json.dumps(saved), encoding='utf-8')
+    before = path.read_bytes()
+    with pytest.raises(ValueError, match='CHECKPOINT'):
+        _universe_price_reference_from_inputs(inputs, initial_cash=capital, report_checkpoint_path=path)
+    assert path.read_bytes() == before

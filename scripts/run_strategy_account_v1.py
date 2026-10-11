@@ -182,8 +182,8 @@ def validate_sources(job,*,_report_repair=None):
         for path,digest in job['source_hashes'].items():
             if sha(path)!=digest:raise PermissionError('JOB_FROZEN_SOURCE_CHANGED:'+path)
     else:
-        from chanlun_trader.research_factory.report_repair_protocol_v1 import ReportRepairV1
-        if type(_report_repair) is not ReportRepairV1:
+        from chanlun_trader.research_factory.report_repair_protocol_v1 import is_report_repair_context
+        if not is_report_repair_context(_report_repair):
             raise PermissionError('JOB_REPORT_REPAIR_CONTEXT_REQUIRED')
         _report_repair.validate_sources(job)
 
@@ -597,8 +597,8 @@ def validated_settlement(job, name):
 def report_repair_context(path,stage,reference,*,for_dispatch=True):
     if reference is None:return None
     if stage!='REPORT':raise PermissionError('JOB_REPORT_REPAIR_STAGE_REQUIRED')
-    from chanlun_trader.research_factory.report_repair_protocol_v1 import ReportRepairV1
-    context=ReportRepairV1(REPO,reference).validate(for_dispatch=for_dispatch)
+    from chanlun_trader.research_factory.report_repair_protocol_v1 import resolve_report_repair_context
+    context=resolve_report_repair_context(REPO,reference,for_dispatch=for_dispatch)
     if context.job_path!=Path(path).resolve():
         raise PermissionError('JOB_REPORT_REPAIR_ORIGINAL_JOB_CONFLICT')
     return context
@@ -810,7 +810,7 @@ def run_long_horizon_compute(path,authority,request,stage,*,step=False,_report_r
                 return {'status':'CONTINUE','stage':stage,'dispatched_segments':dispatched_segments,
                         'next_member':member,'charged_seconds':meter.status()['charged_seconds']}
             while True:
-                if control_state(job)['paused']:
+                if (repair.control_paused() if repair and hasattr(repair,'control_paused') else control_state(job)['paused']):
                     return {'status':'PAUSED','stage':stage,'charged_seconds':meter.status()['charged_seconds'],
                             **({'dispatched_segments':dispatched_segments} if step else {})}
                 dispatch=meter.dispatch();number=dispatch['number'];prefix='SEGMENT_'+str(number).zfill(6)
@@ -993,8 +993,8 @@ def write_reports(job,index,*,_universe_inputs=None,_deadline=None,_report_repai
     from copy import deepcopy
     from chanlun_trader.research_factory.strategy_report_v1 import render_markdown
     if _report_repair is not None:
-        from chanlun_trader.research_factory.report_repair_protocol_v1 import ReportRepairV1
-        if type(_report_repair) is not ReportRepairV1:
+        from chanlun_trader.research_factory.report_repair_protocol_v1 import is_report_repair_context
+        if not is_report_repair_context(_report_repair):
             raise PermissionError('JOB_REPORT_REPAIR_CONTEXT_REQUIRED')
     root=Path(job['root']) if _report_repair is None else _report_repair.output_root
     results={name:read_json(item['result']) for name,item in index.items()}
@@ -1026,7 +1026,8 @@ def write_reports(job,index,*,_universe_inputs=None,_deadline=None,_report_repai
             validate_execution_profile(job['resources'])
             _universe_inputs.assert_unchanged()
             universe_reference = _universe_price_reference_from_inputs(_universe_inputs,
-                initial_cash=options['initial_cash'],deadline=_deadline)
+                initial_cash=options['initial_cash'],deadline=_deadline,
+                report_checkpoint_path=root/'PRICE_REFERENCE_CHECKPOINT.json')
     for name,result in results.items():
         if sha(index[name]['result'])!=index[name]['sha256'] or read_json(index[name]['settlement'])['result_sha256']!=index[name]['sha256']:
             raise PermissionError('REPORT_SETTLEMENT_CONFLICT')

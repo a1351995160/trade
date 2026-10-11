@@ -1,9 +1,9 @@
 """全范围公开对照：现金与不可投资的期初等权价格篮子。"""
 from copy import copy
-import time
 
 from .common import stable_hash
 from .universe_account_inputs_v1 import UniverseAccountInputsV1, prepare_universe_account_inputs_v1
+from .universe_report_state_v1 import OwnReportState, at_boundary, source_identity
 
 
 VERSION = 'UNIVERSE_PRICE_REFERENCE_V1'
@@ -18,7 +18,7 @@ def universe_price_reference(bundle, window, *, initial_cash):
     return _universe_price_reference_from_inputs(inputs, initial_cash=initial_cash)
 
 
-def _universe_price_reference_from_inputs(inputs, *, initial_cash, deadline=None):
+def _universe_price_reference_from_inputs(inputs, *, initial_cash, deadline=None, report_checkpoint_path=None):
     """受限报告复用已认证输入；计算口径与公共价格对照相同。"""
     if type(inputs) is not UniverseAccountInputsV1:
         raise ValueError('PRICE_REFERENCE_PREPARED_INPUT_REQUIRED')
@@ -54,10 +54,30 @@ def _universe_price_reference_from_inputs(inputs, *, initial_cash, deadline=None
         and all(inputs.bar(s, days[first]) is not None
                 and float(inputs.bar(s, days[first])['open']) * 100 <= initial_cash / len(members)
                 for s in members))
-    for day in days[first:]:
-        if deadline is not None and time.monotonic() >= deadline:
-            from .universe_account_backend_v2 import SegmentBoundary
-            raise SegmentBoundary('UNIVERSE_PRICE_REFERENCE_COOPERATIVE_DEADLINE')
+    cursor, store = 0, None
+    if report_checkpoint_path is not None:
+        binding = {'input_identity': inputs.input_identity, 'window': inputs.window,
+            'initial_cash': float(initial_cash), 'initial_members': members,
+            'source': source_identity(('universe_benchmark_v1.py', 'universe_report_state_v1.py',
+                'universe_account_inputs_v1.py', 'universe_execution_artifacts_v1.py',
+                'board_execution_policy_v1.py', 'common.py'))}
+        initial = {'cursor': 0, 'quantity': quantity, 'marks': marks, 'cash': cash,
+            'entitlements': entitlements, 'paid': [], 'credited': [], 'daily': daily, 'stale': stale}
+        store = OwnReportState(report_checkpoint_path, kind=VERSION, binding=binding, initial=initial)
+        saved = store.state
+        cursor = saved['cursor']
+        if (type(cursor) is not int or not 0 <= cursor <= len(days) - first
+                or len(saved['daily']) != cursor
+                or [row['date'] for row in saved['daily']] != list(days[first:first + cursor])):
+            raise ValueError('PRICE_REFERENCE_CHECKPOINT_CURSOR_CONFLICT')
+        at_boundary(deadline, 'UNIVERSE_PRICE_REFERENCE_COOPERATIVE_DEADLINE')
+        if store.complete:
+            return store.output
+        quantity, marks, cash, entitlements, daily, stale = (saved[key] for key in (
+            'quantity', 'marks', 'cash', 'entitlements', 'daily', 'stale'))
+        paid, credited = set(saved['paid']), set(saved['credited'])
+    for index, day in enumerate(days[first + cursor:], start=cursor):
+        at_boundary(deadline, 'UNIVERSE_PRICE_REFERENCE_COOPERATIVE_DEADLINE')
         for symbol in members:
             state, bar = inputs.state(symbol, day), inputs.bar(symbol, day)
             if not state['state_known'] or state['delisted']:
@@ -92,11 +112,20 @@ def _universe_price_reference_from_inputs(inputs, *, initial_cash, deadline=None
                 paid.add(key)
         value = sum(cash[s] + quantity.get(s, 0.) * marks.get(s, 0.) for s in members)
         daily.append({'date': day, 'relative_value': value, 'net_return': value - 1.})
+        if store is not None:
+            store.state.update(cursor=index + 1, quantity=quantity, marks=marks, cash=cash,
+                entitlements=entitlements, paid=sorted(paid), credited=sorted(credited), daily=daily, stale=stale)
+            store.save()
+            at_boundary(deadline, 'UNIVERSE_PRICE_REFERENCE_COOPERATIVE_DEADLINE')
     peak, drawdown = 1., 0.
     for row in daily:
         peak = max(peak, row['relative_value'])
         drawdown = max(drawdown, 1 - row['relative_value'] / peak)
-    return {**common, 'status': 'AVAILABLE_NONINVESTABLE', 'reasons': [], 'daily': daily,
+    output = {**common, 'status': 'AVAILABLE_NONINVESTABLE', 'reasons': [], 'daily': daily,
         'stale_valuations': stale, 'whole_pool_minimum_lot_cost': initial_lot_cost,
         'whole_pool_lot_allocation_feasible': whole_pool_lots_feasible,
         'metrics': {'net_return': daily[-1]['net_return'], 'max_drawdown': drawdown}}
+    if store is not None:
+        at_boundary(deadline, 'UNIVERSE_PRICE_REFERENCE_COOPERATIVE_DEADLINE')
+        return store.finish(output)
+    return output
