@@ -146,3 +146,9 @@
 /src/chanlun_trader/research_factory/universe_dividend_accounting_v1.py text eol=crlf
 /src/chanlun_trader/research_factory/universe_qualified_scope_v1.py text eol=crlf
 /src/chanlun_trader/research_factory/universe_rule_exit_v1.py text eol=crlf
+
+# 本次有限账户版本接续绑定新增公共源码字节，跨平台检出保持一致。
+/src/chanlun_trader/research_factory/account_version_capability_bridge_v1.py text eol=lf
+/src/chanlun_trader/research_factory/account_version_continuation_v1.py text eol=lf
+/scripts/run_account_version_session_resume_v1.py text eol=lf
+/scripts/setup_account_version_continuation_v1.py text eol=lf

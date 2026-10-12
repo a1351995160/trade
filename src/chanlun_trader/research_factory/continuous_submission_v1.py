@@ -262,9 +262,15 @@ def advance_submission(service, task_id):
         preview = read_json(task_root / 'PREVIEW.json')
         request = {key: value for key, value in preview['request'].items() if key != 'symbols'}
         authority = continuous_authority(service, request)
+        from .account_version_continuation_v1 import AccountVersionContinuationV1
+        continuation = AccountVersionContinuationV1.from_job(read_json(path), for_dispatch=False)
+        version_proof = continuation.proof() if continuation else None
         result_path = task_root / 'PUBLIC_RESULT.json'
         if result_path.exists():
-            return read_json(result_path)
+            result = read_json(result_path)
+            if result.get('account_version_continuation') != version_proof:
+                raise PermissionError('CONTINUOUS_ACCOUNT_VERSION_RESULT_CONFLICT')
+            return result
         if not (path.parent / 'CONFIRMATION.json').exists():
             service.approve(task_id, task['preview_identity'])
             return {'task_id': task_id, 'status': 'APPROVED', 'dispatched_segments': 0, 'strategy_qualified': False}
@@ -276,6 +282,8 @@ def advance_submission(service, task_id):
         if verification['status'] != 'COMPLETED':
             return {**verification, 'task_id': task_id, 'strategy_qualified': False}
         evidence = verification['result']
+        if evidence.get('account_version_continuation') != version_proof:
+            raise PermissionError('CONTINUOUS_ACCOUNT_VERSION_VERIFICATION_CONFLICT')
         immutable(path.parent / 'VERIFICATION.json', evidence)
         if not evidence['advance_allowed']:
             return {'task_id': task_id, 'status': 'EVIDENCE_BLOCKED', 'verification': evidence,
@@ -289,6 +297,8 @@ def advance_submission(service, task_id):
             'reports': reports['result'], 'dispatched_segments': reports['dispatched_segments'],
             'input_identity': task['input_identity'], 'rule_identity': preview['rule_identity'],
             'phase': request['phase'], 'strategy_qualified': False}
+        if continuation:
+            result['account_version_continuation'] = version_proof
         immutable(result_path, {**result, 'dispatched_segments': 0})
         return result
 
@@ -335,7 +345,9 @@ def reconcile_submission(service, task_id):
         if hashlib.sha256(path.read_bytes()).hexdigest()!=task['job_sha256']:
             raise PermissionError('CONTINUOUS_FROZEN_JOB_CHANGED')
         from scripts import run_strategy_account_v1 as runner
-        job=read_json(path);runner.validate_sources(job)
+        job=read_json(path)
+        runner.reconcile_account_version_prefix(job)
+        runner.validate_sources(job)
         preview=read_json(task_root/'PREVIEW.json')
         if (preview['preview_identity']!=task['preview_identity']
                 or stable_hash({key:item for key,item in preview.items() if key!='preview_identity'})!=task['preview_identity']):
