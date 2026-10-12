@@ -150,6 +150,20 @@ def freeze_config(config,root):
 def service(job):return StrategyBatchGovernanceV1(job['root'],job['budget_path'],job['objective_id'],job['plans'])
 
 
+def account_version_context(job):
+    from chanlun_trader.research_factory.account_version_continuation_v1 import AccountVersionContinuationV1
+    return AccountVersionContinuationV1.from_job(job)
+
+
+def reconcile_account_version_prefix(job):
+    """仅补原父事件证明的镜像；完整派发校验仍在恢复后执行。"""
+    from chanlun_trader.research_factory.account_version_continuation_v1 import AccountVersionContinuationV1
+    context = AccountVersionContinuationV1.from_job(job, for_reconcile=True)
+    if context is not None:
+        context.reconcile_segment_mirrors()
+    return context
+
+
 def validate_sources(job,*,_report_repair=None):
     if set(job['items'])!=set(job['plans']) or any(job['items'][k]!=job['plans'][k]['runtime'] for k in job['plans']):
         raise PermissionError('JOB_RUNTIME_PLAN_CONFLICT')
@@ -178,7 +192,12 @@ def validate_sources(job,*,_report_repair=None):
                     or plan['runtime'].get('observation_plan') != job.get('observation_plan')
                     for plan in job['plans'].values())):
             raise PermissionError('JOB_FROZEN_EXECUTION_PROFILE_CONFLICT')
-    if _report_repair is None:
+    continuation=account_version_context(job)
+    if continuation is not None:
+        if _report_repair is not None:
+            raise PermissionError('JOB_ACCOUNT_VERSION_REPORT_REPAIR_CONFLICT')
+        continuation.validate_sources(job)
+    elif _report_repair is None:
         for path,digest in job['source_hashes'].items():
             if sha(path)!=digest:raise PermissionError('JOB_FROZEN_SOURCE_CHANGED:'+path)
     else:
@@ -186,6 +205,7 @@ def validate_sources(job,*,_report_repair=None):
         if type(_report_repair) is not ReportRepairV1:
             raise PermissionError('JOB_REPORT_REPAIR_CONTEXT_REQUIRED')
         _report_repair.validate_sources(job)
+    return continuation
 
 
 def worker(path,name,segment_number=None):
@@ -361,7 +381,7 @@ def cooperative_remaining(deadline,profile_id):
 
 def _long_horizon_worker(path,name,number):
     from chanlun_trader.research_factory.universe_account_backend_v2 import SegmentBoundary
-    job=read_json(path);validate_sources(job);gov=service(job);root=Path(job['root'])
+    job=read_json(path);account_version=validate_sources(job);gov=service(job);root=Path(job['root'])
     state=gov.segment_status(name);dispatch=state['pending'];prefix=segment_prefix(name,number)
     expected={'purpose':name,'segment_number':number,'dispatch_id':dispatch['dispatch_id'] if dispatch else None}
     if (dispatch is None or dispatch['segment_number'] != number or HANDSHAKE is None
@@ -370,16 +390,21 @@ def _long_horizon_worker(path,name,number):
             or not 0 < HANDSHAKE['wall_seconds'] <= dispatch['upper_bound_seconds']):
         raise PermissionError('JOB_LONG_HORIZON_WORKER_SCOPE_CONFLICT')
     gov.active_execution(name)
-    item=job['items'][name];strategy=resolve(item['factory'])(**item.get('factory_kwargs',{}))
+    if account_version is not None:
+        account_version.validate_dispatch(name,number)
+    item=account_version.active_item(name) if account_version is not None else job['items'][name]
+    plan=account_version.active_plan(name) if account_version is not None else job['plans'][name]
+    proof={'account_version_continuation':account_version.proof(name)} if account_version is not None else {}
+    strategy=resolve(item['factory'])(**item.get('factory_kwargs',{}))
     backend=backend_for(strategy,item['backend_options'])
-    if prepare(strategy,backend,item) != job['plans'][name]:
+    if prepare(strategy,backend,item) != plan:
         raise PermissionError('WORKER_PLAN_CONFLICT')
     save(root/(prefix+'_INPUT_ACCESS.json'),{'reader_pid':os.getpid(),'reader_parent_pid':os.getppid(),
         'launcher_pid':HANDSHAKE.get('launcher_pid'),'resource_platform':os.name,
         'windows_job_verified':HANDSHAKE.get('windows_job_verified',False),'input_identity':job['input_identity'],
         'loader':item['loader'],'loader_kwargs':item['loader_kwargs'],'purpose':name,
         'segment_number':number,'dispatch_id':dispatch['dispatch_id'],
-        'accessed_at':datetime.now(timezone.utc).isoformat()})
+        'accessed_at':datetime.now(timezone.utc).isoformat(),**proof})
     begin=time.monotonic()
     try:
         deadline=(None if job['resources']['purpose']=='ENGINEERING_CONTINUOUS_REFERENCE'
@@ -395,6 +420,8 @@ def _long_horizon_worker(path,name,number):
         def active():
             nonlocal first_active
             receipt={**gov.active_execution(name),'execution_pause_requested':control_state(job)['paused']}
+            if account_version is not None:
+                receipt=account_version.project_receipt(receipt,name)
             # 公共 prepare 后的首次 guard 仍在引擎之前；日内 guard 不新增中断点。
             if first_active and deadline is not None:
                 backend.segment_seconds=cooperative_remaining(deadline,job['resources']['profile_id'])
@@ -419,9 +446,10 @@ def _long_horizon_worker(path,name,number):
         else:
             result=run(strategy,backend,frame=data['frame'],actions=data['actions'],input_identity=data['input_identity'],
                 active_check=active,runtime=item)
+            result.update(proof)
             save(output,result)
         save(root/(prefix+'_STATUS.json'),{'state':'COMPLETED','dispatch_id':dispatch['dispatch_id'],
-            'result_sha256':sha(root/(name+'_RESULT.json'))})
+            'result_sha256':sha(root/(name+'_RESULT.json')),**proof})
         return 0
     except SegmentBoundary as exc:
         checkpoint=Path(item['backend_options']['checkpoint_path'])
@@ -437,12 +465,16 @@ def completion_tail_result(job,name,state):
     """宿主回执丢失后的最终快照只核验，不重放交易日，也不改原 RESULT。"""
     from chanlun_trader.research_factory.common import stable_hash
     root=Path(job['root']);output=root/(name+'_RESULT.json');result=read_json(output)
+    continuation=account_version_context(job)
+    plan=continuation.active_plan(name) if continuation is not None else job['plans'][name]
+    if continuation is not None and result.get('account_version_continuation')!=continuation.proof(name):
+        raise PermissionError('JOB_COMPLETION_TAIL_VERSION_CONFLICT')
     checkpoint=Path(job['items'][name]['backend_options']['checkpoint_path'])
     snapshot=read_json(checkpoint)
     if (snapshot.get('state_identity')!=stable_hash({k:v for k,v in snapshot.items() if k!='state_identity'})
             or snapshot.get('last_day')!=job['plans'][name]['backend']['window']['account_end']
             or result.get('input_identity')!=job['input_identity']
-            or result.get('execution_description')!=job['plans'][name]['backend']
+            or result.get('execution_description')!=plan['backend']
             or result.get('execution_identity')!=snapshot.get('execution_identity')
             or result.get('artifacts')!=snapshot.get('artifacts')
             or not result.get('reconciliation',{}).get('passed')):
@@ -467,7 +499,7 @@ def execute_long_horizon_accounts(path,*,recover=False,step=False):
     from chanlun_trader.synthetic_batch_resources import run_bounded_worker
     from chanlun_trader.research_factory.universe_execution_profile_v1 import worker_wall_seconds
     from chanlun_trader.research_factory.mutation_boundary import ObjectiveMutationLock
-    job=read_json(path);validate_sources(job);gov=service(job);root=Path(job['root'])
+    job=read_json(path);account_version=validate_sources(job);gov=service(job);root=Path(job['root'])
     if root.resolve() != Path(path).resolve().parent:
         raise PermissionError('JOB_ROOT_IDENTITY_CONFLICT')
     dispatched_segments=0
@@ -504,7 +536,11 @@ def execute_long_horizon_accounts(path,*,recover=False,step=False):
                     continue
                 completion_tail_result(job,name,state)
             while True:
+                if account_version is not None:
+                    account_version.validate(for_dispatch=True,name=name)
                 dispatch=gov.start_segment(name);number=dispatch['segment_number'];prefix=segment_prefix(name,number)
+                if account_version is not None:
+                    account_version.record_dispatch(name,dispatch)
                 dispatched_segments+=1
                 env={**os.environ,'PYTHONDONTWRITEBYTECODE':'1',
                     **{key:'1' for key in ('OMP_NUM_THREADS','OPENBLAS_NUM_THREADS','MKL_NUM_THREADS','NUMEXPR_NUM_THREADS')}}
@@ -518,7 +554,8 @@ def execute_long_horizon_accounts(path,*,recover=False,step=False):
                         measure_peak_memory=True,
                         environment=env,execution={'purpose':name,'segment_number':number,'dispatch_id':dispatch['dispatch_id']},
                         on_started=lambda pid:save(root/(prefix+'_WORKER.json'),{'pid':pid,'purpose':name,
-                            'segment_number':number,'dispatch_id':dispatch['dispatch_id']}))
+                            'segment_number':number,'dispatch_id':dispatch['dispatch_id'],
+                            **({'account_version_continuation':account_version.proof(name)} if account_version is not None else {})}))
                 except Exception as exc:
                     resource={'returncode':None,'timed_out':False,'error_type':type(exc).__name__,'error':str(exc)}
                 elapsed=time.monotonic()-begin
@@ -625,12 +662,14 @@ def _long_horizon_compute_worker(path,stage,number,member=None,*,_report_repair_
     begin=time.monotonic()
     repair=report_repair_context(path,stage,_report_repair_ref)
     job=read_json(path)
-    validate_sources(job,**({'_report_repair':repair} if repair else {}))
+    account_version=validate_sources(job,**({'_report_repair':repair} if repair else {}))
+    proof={'account_version_continuation':account_version.proof()} if account_version is not None else {}
     original_root=Path(job['root']);root=repair.output_root if repair else original_root
     folder=repair.compute_root if repair else root/('COMPUTE_'+stage)
     scope=read_json(folder/'SCOPE.json')
     if (scope['job_sha256'] != sha(path) or scope['stage'] != stage
-            or scope.get('repair_ref')!=_report_repair_ref):
+            or scope.get('repair_ref')!=_report_repair_ref
+            or scope.get('account_version_continuation')!=proof.get('account_version_continuation')):
         raise PermissionError('JOB_COMPUTE_SCOPE_CHANGED')
     meter=repair.meter() if repair else UniverseComputeGovernanceV1(folder,scope['authority'],scope['request'],stage)
     state=meter.status();pending=state['pending']
@@ -646,7 +685,7 @@ def _long_horizon_compute_worker(path,stage,number,member=None,*,_report_repair_
         'resource_platform':os.name,'windows_job_verified':HANDSHAKE.get('windows_job_verified',False),
         'compute_identity':meter.binding['compute_identity'],'stage':stage,'member':member,
         'purpose':'AUTHORIZED_POST_ACCOUNT_EVALUATION','input_identity':job['input_identity'],
-        'observation_plan':job['observation_plan'],'accessed_at':datetime.now(timezone.utc).isoformat()})
+        'observation_plan':job['observation_plan'],'accessed_at':datetime.now(timezone.utc).isoformat(),**proof})
     profile_id=meter.profile['profile_id']
     deadline=cooperative_deadline(profile_id,pending['upper_bound_seconds'],begin)
     if stage=='VERIFICATION':
@@ -678,7 +717,7 @@ def _long_horizon_compute_worker(path,stage,number,member=None,*,_report_repair_
             save(verified,{'job_sha256':sha(path),'source_result_sha256':sha(root/(name+'_RESULT.json')),
                            'verification':checks[name]})
             verified_one=True
-        value={'job_sha256':sha(path),'items':checks,'advance_allowed':all(row.get('advance_allowed') is True for row in checks.values())}
+        value={'job_sha256':sha(path),'items':checks,'advance_allowed':all(row.get('advance_allowed') is True for row in checks.values()),**proof}
         save(folder/'RESULT.json',value)
         save(folder/('SEGMENT_'+str(number).zfill(6)+'_STATUS.json'),{'state':'COMPLETED',
             'dispatch_id':pending['dispatch_id'],'member':member,'result_sha256':sha(folder/'RESULT.json')})
@@ -719,7 +758,8 @@ def _long_horizon_compute_worker(path,stage,number,member=None,*,_report_repair_
     save(root/(member+'_RESEARCH_DETAILS.json'),{'job_sha256':sha(path),'result_sha256':sha(source),
         'observation_plan':job['observation_plan'],'signal_details':dual['details_manifest'],
         'funnel_details':funnel['details_manifest'],'report_identity':dual['report_identity'],
-        'funnel_identity':funnel['identity'],'compute_identity':meter.binding['compute_identity']})
+        'funnel_identity':funnel['identity'],'compute_identity':meter.binding['compute_identity'],
+        **({'account_version_continuation':account_version.proof(member)} if account_version is not None else {})})
     value={'member':member,'research_report':str(root/(member+'_RESEARCH_REPORT.json')),
         'research_report_sha256':sha(root/(member+'_RESEARCH_REPORT.json')),'funnel':str(root/(member+'_SIGNAL_FUNNEL.json')),
         'funnel_sha256':sha(root/(member+'_SIGNAL_FUNNEL.json'))}
@@ -773,7 +813,7 @@ def run_long_horizon_compute(path,authority,request,stage,*,step=False,_report_r
     from chanlun_trader.research_factory.mutation_boundary import ObjectiveMutationLock
     repair=report_repair_context(path,stage,_report_repair_ref)
     job=read_json(path)
-    validate_sources(job,**({'_report_repair':repair} if repair else {}))
+    account_version=validate_sources(job,**({'_report_repair':repair} if repair else {}))
     root=repair.output_root if repair else Path(job['root'])
     folder=repair.compute_root if repair else root/('COMPUTE_'+stage)
     if repair and (authority!=repair.authority or request!=repair.request):
@@ -782,6 +822,7 @@ def run_long_horizon_compute(path,authority,request,stage,*,step=False,_report_r
         raise PermissionError('JOB_LONG_HORIZON_COMPUTE_REQUIRED')
     scope={'job_sha256':sha(path),'authority':authority,'request':request,'stage':stage}
     if repair:scope['repair_ref']=_report_repair_ref
+    if account_version is not None:scope['account_version_continuation']=account_version.proof()
     dispatched_segments=0
     with ObjectiveMutationLock.for_resource(folder/'EXECUTE.lock'):
         save(folder/'SCOPE.json',scope)
@@ -813,6 +854,8 @@ def run_long_horizon_compute(path,authority,request,stage,*,step=False,_report_r
                 if control_state(job)['paused']:
                     return {'status':'PAUSED','stage':stage,'charged_seconds':meter.status()['charged_seconds'],
                             **({'dispatched_segments':dispatched_segments} if step else {})}
+                if account_version is not None:
+                    account_version.validate(for_dispatch=True)
                 dispatch=meter.dispatch();number=dispatch['number'];prefix='SEGMENT_'+str(number).zfill(6)
                 dispatched_segments+=1
                 env={**os.environ,'PYTHONPATH':str(REPO/'src')+os.pathsep+str(REPO),'PYTHONDONTWRITEBYTECODE':'1',
@@ -878,11 +921,12 @@ def reconcile_long_horizon_compute(path,stage,*,_report_repair_ref=None):
     from chanlun_trader.research_daemon_state import DaemonInstanceLockV1
     repair=report_repair_context(path,stage,_report_repair_ref,for_dispatch=False)
     job=read_json(path)
-    validate_sources(job,**({'_report_repair':repair} if repair else {}))
+    account_version=validate_sources(job,**({'_report_repair':repair} if repair else {}))
     folder=repair.compute_root if repair else Path(job['root'])/('COMPUTE_'+stage)
     if not (folder/'COMPUTE_START.json').exists():return
     scope=read_json(folder/'SCOPE.json')
-    if scope['job_sha256']!=sha(path) or scope['stage']!=stage or scope.get('repair_ref')!=_report_repair_ref:
+    if (scope['job_sha256']!=sha(path) or scope['stage']!=stage or scope.get('repair_ref')!=_report_repair_ref
+            or scope.get('account_version_continuation')!=(account_version.proof() if account_version is not None else None)):
         raise PermissionError('JOB_COMPUTE_SCOPE_CHANGED')
     meter=repair.meter(for_dispatch=False) if repair else UniverseComputeGovernanceV1(folder,scope['authority'],scope['request'],stage,for_dispatch=False)
     with ObjectiveMutationLock.for_resource(folder/'EXECUTE.lock'):
@@ -997,6 +1041,7 @@ def write_reports(job,index,*,_universe_inputs=None,_deadline=None,_report_repai
         if type(_report_repair) is not ReportRepairV1:
             raise PermissionError('JOB_REPORT_REPAIR_CONTEXT_REQUIRED')
     root=Path(job['root']) if _report_repair is None else _report_repair.output_root
+    account_version=account_version_context(job)
     results={name:read_json(item['result']) for name,item in index.items()}
     def dates(result):
         if 'daily' in result:return [str(row['date']) for row in result['daily']]
@@ -1031,6 +1076,11 @@ def write_reports(job,index,*,_universe_inputs=None,_deadline=None,_report_repai
         if sha(index[name]['result'])!=index[name]['sha256'] or read_json(index[name]['settlement'])['result_sha256']!=index[name]['sha256']:
             raise PermissionError('REPORT_SETTLEMENT_CONFLICT')
         report=deepcopy(result['report'])
+        expected_version=account_version.proof(name) if account_version is not None else None
+        if result.get('account_version_continuation')!=expected_version:
+            raise PermissionError('REPORT_ACCOUNT_VERSION_CONFLICT')
+        if account_version is not None:
+            report['account_version_continuation']=expected_version
         report['artifacts']['source_result']={'path':index[name]['result'],'sha256':index[name]['sha256']}
         report['artifacts']['trades']=index[name]['result']+'#fills'
         ledger_key=next(k for k in ('ledger','ledgers','final_account_checkpoint') if k in result)

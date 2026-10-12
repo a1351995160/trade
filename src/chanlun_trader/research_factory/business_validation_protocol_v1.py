@@ -508,6 +508,12 @@ class BusinessValidationProtocolV1:
         _require(isinstance(reports, dict) and len(reports) == 2,
                  'BUSINESS_VALIDATION_DUAL_REPORT_REFERENCES_REQUIRED')
         job = read_json(path)
+        from .account_version_continuation_v1 import AccountVersionContinuationV1
+        continuation = AccountVersionContinuationV1.from_job(job, for_dispatch=False)
+        version_proof = continuation.proof() if continuation else None
+        _require(outcome.get('account_version_continuation') == version_proof
+            and outcome['verification'].get('account_version_continuation') == version_proof,
+            'BUSINESS_VALIDATION_ACCOUNT_VERSION_PROOF_CONFLICT')
         _require(set(reports) == set(task.get('plan_ids', {})) == set(job.get('plans', {}))
             and task['plan_ids'] == {name: item['plan_id'] for name, item in job['plans'].items()}
             and job.get('input_identity') == task['input_identity'],
@@ -539,6 +545,12 @@ class BusinessValidationProtocolV1:
             final = read_json(final_path)
             source = final.get('artifacts', {}).get('source_result', {})
             result_path = path.parent / (name + '_RESULT.json')
+            member_proof = continuation.proof(name) if continuation else None
+            _require(final.get('account_version_continuation') == member_proof
+                and read_json(result_path).get('account_version_continuation') == member_proof
+                and (outcome['verification'].get('items', {}).get(name, {})
+                     .get('account_version_continuation')) == member_proof,
+                'BUSINESS_VALIDATION_ACCOUNT_VERSION_MEMBER_CONFLICT')
             _require(Path(source.get('path', '')).absolute() == result_path
                 and _file_hash(result_path) == source.get('sha256')
                 and read_json(path.parent / (name + '_SETTLEMENT.json')).get('result_sha256') == source['sha256']
@@ -560,6 +572,8 @@ class BusinessValidationProtocolV1:
                 'BUSINESS_VALIDATION_ACTUAL_ACCOUNT_SESSIONS_OR_CASH_INVALID')
             normalized[cost] = {'report_identity': report['report_identity'],
                 'sessions': account['sessions'], 'report_ref': deepcopy(reference)}
+            if continuation:
+                normalized[cost]['account_version_continuation'] = member_proof
         _require(costs == {'BASE', 'STRESS'} and normalized['BASE']['sessions'] == normalized['STRESS']['sessions'],
                  'BUSINESS_VALIDATION_COST_ACCOUNT_SESSIONS_CONFLICT')
         return normalized

@@ -118,6 +118,13 @@ jobs:
           tests/research_factory/test_business_validation_protocol_v1.py
           tests/research_factory/test_continuous_universe_lifecycle_v1.py
           tests/research_factory/test_continuous_universe_acceptance_v1.py
+          tests/research_factory/test_account_version_capability_bridge_v1.py
+          tests/research_factory/test_account_version_continuation_v1.py
+          tests/research_factory/test_account_version_feedback_v1.py
+          tests/research_factory/test_account_version_session_resume_v1.py
+          tests/research_factory/test_account_version_setup_cli_v1.py
+          tests/research_factory/test_account_version_public_integration_v1.py
+          tests/research_factory/test_universe_coverage_initialization_v1.py
           --basetemp=${{ runner.temp }}/continuous-tests
           --junitxml=completion-tests.xml
       - name: Verify long-horizon public entry, continuation and independent evidence

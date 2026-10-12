@@ -330,6 +330,8 @@ def _verify_segment_resources(job, name, aggregate, settlement):
     from .etf_account_governance_v1 import StrategyBatchGovernanceV1
     gov = StrategyBatchGovernanceV1(job['root'], job['budget_path'], job['objective_id'], job['plans'])
     state = gov.segment_status(name)
+    from .account_version_continuation_v1 import AccountVersionContinuationV1
+    continuation = AccountVersionContinuationV1.from_job(job)
     root = Path(job['root'])
     _require(state['pending'] is None and state['segments']
              and state['segments'][-1]['charge']['outcome'] == 'COMPLETED', 'SEGMENT_COMPLETION_NOT_PROVEN')
@@ -342,6 +344,8 @@ def _verify_segment_resources(job, name, aggregate, settlement):
     measured_seconds = upper_bound_seconds = 0.
     for index, row in enumerate(state['segments']):
         dispatch, charge = row['dispatch'], row['charge']
+        if continuation is not None:
+            continuation.validate_dispatch(name, dispatch['segment_number'])
         prefix = name + '_SEGMENT_' + str(dispatch['segment_number']).zfill(6)
         path = root / (prefix + '_RESOURCE.json')
         if charge['basis'] == 'UNKNOWN_CHARGED_DISPATCH_UPPER_BOUND':
@@ -351,6 +355,9 @@ def _verify_segment_resources(job, name, aggregate, settlement):
             upper_bound_seconds += charge['seconds']
             continue
         resource, worker, access = _json(path), _json(root / (prefix + '_WORKER.json')), _json(root / (prefix + '_INPUT_ACCESS.json'))
+        expected_version = continuation.segment_proof(name, dispatch['segment_number']) if continuation is not None else None
+        _require(all(value.get('account_version_continuation') == expected_version for value in (worker, access)),
+                 'SEGMENT_ACCOUNT_VERSION_CONFLICT')
         _require(charge['basis'] == 'MEASURED_ACTIVE_WALL_SECONDS' and _sha(path) == charge['evidence_identity'],
                  'SEGMENT_RESOURCE_RECEIPT_CONFLICT')
         _same(resource['elapsed_wall_seconds'], charge['seconds'], 'SEGMENT_MEASUREMENT_CONFLICT', 1e-6)
@@ -384,6 +391,12 @@ def verify_job_evidence(job_path, *, name, audit_checkpoint_path=None, segment_s
         _require(plan["plan_id"] == stable_hash({key: value for key, value in plan.items() if key != "plan_id"}), "PLAN_HASH_CONFLICT")
         item = job["items"][name]
         _require(item == plan["runtime"], "RUNTIME_PLAN_CONFLICT")
+        from .account_version_continuation_v1 import AccountVersionContinuationV1
+        continuation = AccountVersionContinuationV1.from_job(job)
+        if continuation is not None:
+            continuation.validate_sources(job)
+        execution_plan = continuation.active_plan(name) if continuation is not None else plan
+        expected_version = continuation.proof(name) if continuation is not None else None
         qualified_loader = item['loader'] == 'chanlun_trader.research_factory.strategy_submission_v1:load_frozen_qualified_bundle'
         _require(qualified_loader or item["loader"] == "chanlun_trader.research_factory.strategy_submission_v1:load_frozen_bundle", "OFFLINE_INPUT_LOADER_UNSUPPORTED")
         long_universe = plan['backend']['backend'] == 'UNIVERSE_ACCOUNT_BACKEND_V2'
@@ -429,6 +442,8 @@ def verify_job_evidence(job_path, *, name, audit_checkpoint_path=None, segment_s
         _require(type(resource["returncode"]) is int and resource["returncode"] == 0 and not resource.get("timed_out"), "WORKER_NOT_SUCCESSFUL")
         worker = _json(root / (name + "_WORKER.json"))
         access = _json(root / (name + "_INPUT_ACCESS.json"))
+        _require(all(value.get('account_version_continuation') == expected_version for value in (worker, access)),
+                 'INPUT_ACCESS_ACCOUNT_VERSION_CONFLICT')
         direct_pid = worker["pid"] == access["reader_pid"]
         windows_child = (access.get("resource_platform") == resource.get("resource_platform") == "nt"
                          and access.get("reader_parent_pid") == worker["pid"] == access.get("launcher_pid")
@@ -462,11 +477,12 @@ def verify_job_evidence(job_path, *, name, audit_checkpoint_path=None, segment_s
         frozen = _json(item["loader_kwargs"]["path"])
         _require(loaded["input_identity"] == job["input_identity"] and frozen["window"] == plan["backend"]["window"], "FROZEN_INPUT_SCOPE_CONFLICT")
         result = _json(result_path)
-        _require(result["strategy_plan"] == plan and result["input_identity"] == job["input_identity"], "RESULT_PLAN_CONFLICT")
+        _require(result["strategy_plan"] == execution_plan and result["input_identity"] == job["input_identity"], "RESULT_PLAN_CONFLICT")
+        _require(result.get('account_version_continuation') == expected_version, 'RESULT_ACCOUNT_VERSION_CONFLICT')
         reconstruct = reconstruct_account
         audit_options = {}
         if plan['backend']['backend'] in {'UNIVERSE_ACCOUNT_BACKEND_V1', 'UNIVERSE_ACCOUNT_BACKEND_V2'}:
-            _require(result.get('execution_description') == plan['backend'], 'RESULT_EXECUTION_POLICY_CONFLICT')
+            _require(result.get('execution_description') == execution_plan['backend'], 'RESULT_EXECUTION_POLICY_CONFLICT')
             from .universe_evidence_v1 import reconstruct_universe_account
             reconstruct = reconstruct_universe_account
             if long_universe:
@@ -480,7 +496,9 @@ def verify_job_evidence(job_path, *, name, audit_checkpoint_path=None, segment_s
             rule=plan["strategy"]["parameters"].get("candidate_payload"), **audit_options)
         resource_layer = ({'resource_accounting': {key: segment_evidence[key] for key in
             ('charged_seconds', 'measured_seconds', 'conservatively_charged_seconds')}} if segment_evidence else {})
-        return {"version": VERSION, "status": "PASS", "advance_allowed": True, "reasons": [], **resource_layer,
+        version_layer = ({'account_version_continuation': expected_version,
+                          'active_plan_id': execution_plan['plan_id']} if continuation is not None else {})
+        return {"version": VERSION, "status": "PASS", "advance_allowed": True, "reasons": [], **resource_layer, **version_layer,
                 "plan_id": plan["plan_id"], "result_sha256": digest, "input_identity": loaded["input_identity"],
                 "account_audit": audit, "data_qualification": frozen.get("qualification"),
                 "evidence_layers": {"account_reconciled": True, "input_profile": loaded["frame"]["profile"],

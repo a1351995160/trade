@@ -727,9 +727,11 @@ class UniverseAccountInputsV1:
                     reasons.append("UNIVERSE_UNEXPLAINED_PRICE_REFERENCE")
                 account_day = day >= self.window["account_start"]
                 if account_day:
-                    closed = self.state(symbol, day, asof=self._close_times[day])
-                    if not closed["state_known"]:
-                        reasons.append(closed["reason"])
+                    # 同一证券日固定行在开盘已可见，收盘仍可见；未知开盘仍核对收盘缺口。
+                    if not state["state_known"]:
+                        closed = self.state(symbol, day, asof=self._close_times[day])
+                        if not closed["state_known"]:
+                            reasons.append(closed["reason"])
                     if state["state_known"] and state["listed"]:
                         if symbol not in self.listing_dates or symbol not in self.listing_date_sources:
                             reasons.append("UNIVERSE_LISTING_DATE_UNVERIFIED")

@@ -61,6 +61,18 @@ class OwnerApprovalStoreV1:
         self.directory = Path(directory).resolve()
         self._owner_capability = owner_capability
 
+    @classmethod
+    def from_checked_directory(cls, directory):
+        """只读接入已检查的绝对 Owner Path，不再次解析或授予对象能力。"""
+        from .secure_file_reference_v1 import checked_directory_path
+        if not isinstance(directory, Path):
+            raise ValueError('OWNER_APPROVAL_CHECKED_DIRECTORY_REQUIRED')
+        checked = checked_directory_path(directory, error_code='OWNER_APPROVAL_CHECKED_DIRECTORY_INVALID')
+        store = cls.__new__(cls)
+        store.directory = checked
+        store._owner_capability = None
+        return store
+
     def approve(self, summary, *, approver, capability):
         if (self._owner_capability is None or capability is not self._owner_capability
                 or not isinstance(approver, str) or not approver):
@@ -138,7 +150,13 @@ def validate_scope_policy(root, authorization):
         if str(exc) != 'CONTINUOUS_CAPABILITIES_CHANGED_NEW_VERSION_REQUIRED':
             raise
         from .report_repair_capability_bridge_v1 import ReportRepairCapabilityBridgeV1
-        bridge = ReportRepairCapabilityBridgeV1.read(root, authorization)
+        try:
+            bridge = ReportRepairCapabilityBridgeV1.read(root, authorization)
+        except ValueError as bridge_error:
+            if str(bridge_error) != 'CONTINUOUS_CAPABILITIES_CHANGED_NEW_VERSION_REQUIRED':
+                raise
+            from .account_version_capability_bridge_v1 import AccountVersionCapabilityBridgeV1
+            bridge = AccountVersionCapabilityBridgeV1.read(root, authorization)
         summary = scope_summary(root, authorization, policy['summary']['contract'], policy['summary']['stage_limits'],
             capabilities_snapshot=bridge['capabilities_snapshot'])
     if policy['summary'] != summary:
