@@ -8,8 +8,64 @@ import pytest
 
 from chanlun_trader.research_factory import account_version_capability_bridge_v1 as bridges
 from chanlun_trader.research_factory import account_version_continuation_v1 as continuation
+from chanlun_trader.research_factory.campaign_scope_v1 import OwnerApprovalStoreV1
 from chanlun_trader.research_factory.common import stable_hash
 from test_account_version_continuation_v1 import case, install, pin, summary, write
+
+
+def test_checked_owner_reader_preserves_approval_without_resolve_or_write_capability(tmp_path, monkeypatch):
+    owner = tmp_path.resolve() / 'protected_owner'; owner.mkdir()
+    token = object(); writer = OwnerApprovalStoreV1(owner, owner_capability=token)
+    value = {'synthetic_owner_scope': 'exact'}
+    reference = writer.approve(value, approver='synthetic_owner', capability=token)
+
+    def reject_resolve(*args, **kwargs):
+        pytest.fail('已检查目录的只读入口不得再次 resolve')
+
+    monkeypatch.setattr(Path, 'resolve', reject_resolve)
+    reader = OwnerApprovalStoreV1.from_checked_directory(owner)
+    assert reader.directory == writer.directory
+    assert reader.require(reference, value)['approval_id'] == reference['approval_id']
+    with pytest.raises(PermissionError, match='OWNER_APPROVAL_REQUIRED'):
+        reader.approve(value, approver='synthetic_owner', capability=token)
+    with pytest.raises(PermissionError, match='OWNER_APPROVAL_BINDING_INVALID'):
+        reader.require(reference, {'synthetic_owner_scope': 'different'})
+
+
+@pytest.mark.parametrize('kind', ['string', 'relative', 'traversal', 'file', 'missing'])
+def test_checked_owner_reader_rejects_unchecked_or_invalid_directory(tmp_path, kind):
+    root = tmp_path.resolve()
+    source = root / 'regular_file'; source.write_text('not a directory', encoding='utf-8')
+    value = {'string': str(root), 'relative': Path('relative-owner'),
+        'traversal': root / '..' / root.name, 'file': source, 'missing': root / 'missing'}[kind]
+    with pytest.raises(ValueError, match='OWNER_APPROVAL_CHECKED_DIRECTORY_'):
+        OwnerApprovalStoreV1.from_checked_directory(value)
+
+
+def test_checked_owner_reader_rejects_reparse_directory(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    owner = tmp_path.resolve(); original_stat = Path.lstat
+
+    def reparse_stat(path):
+        metadata = original_stat(path)
+        return SimpleNamespace(st_mode=metadata.st_mode, st_file_attributes=0x400) if path == owner else metadata
+
+    monkeypatch.setattr(Path, 'lstat', reparse_stat)
+    with pytest.raises(ValueError, match='OWNER_APPROVAL_CHECKED_DIRECTORY_INVALID'):
+        OwnerApprovalStoreV1.from_checked_directory(owner)
+
+
+def test_legacy_owner_constructor_still_resolves_directory(tmp_path, monkeypatch):
+    logical = Path('legacy-relative-owner'); canonical = tmp_path.resolve()
+    resolved = []
+
+    def legacy_resolve(path):
+        resolved.append(path)
+        return canonical
+
+    monkeypatch.setattr(Path, 'resolve', legacy_resolve)
+    token = object(); store = OwnerApprovalStoreV1(logical, owner_capability=token)
+    assert resolved == [logical] and store.directory == canonical and store._owner_capability is token
 
 
 @pytest.mark.parametrize('case', [True], indirect=True)

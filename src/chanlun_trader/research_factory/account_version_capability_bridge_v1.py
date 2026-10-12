@@ -136,7 +136,7 @@ class AccountVersionCapabilityBridgeV1:
             and policy['scope_hash'] == stable_hash({key: value for key, value in policy.items() if key != 'scope_hash'}),
             'ORIGINAL_SCOPE_INVALID')
         owner = checked_directory_path(policy['approval_store'], error_code='ACCOUNT_VERSION_OWNER_ROOT_INVALID')
-        approvals = OwnerApprovalStoreV1(owner)
+        approvals = OwnerApprovalStoreV1.from_checked_directory(owner)
         approvals.require(policy['approval_ref'], policy['summary'])
         _require(isinstance(replacements, list) and replacements, 'SOURCE_ALLOWLIST_REQUIRED')
         seen = set()
@@ -217,7 +217,7 @@ class AccountVersionCapabilityBridgeV1:
         base = base_authorization
         policy = base.get('scope_policy', {})
         owner = checked_directory_path(policy.get('approval_store', ''), error_code='ACCOUNT_VERSION_OWNER_ROOT_INVALID')
-        approvals = OwnerApprovalStoreV1(owner)
+        approvals = OwnerApprovalStoreV1.from_checked_directory(owner)
         approvals.require(policy['approval_ref'], policy['summary'])
         fingerprint = capabilities()['fingerprint']
         path = cls._binding_path(approvals, base, fingerprint)
