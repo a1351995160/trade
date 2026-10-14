@@ -238,3 +238,43 @@ def test_mutation_rechecks_owner_before_trial_repair_after_constructor(continuou
     with pytest.raises(PermissionError):
         campaign.status()
     assert revoked and event_path.read_bytes() == before
+
+
+@pytest.mark.parametrize('policy', [{}, False, [], ''])
+def test_readonly_metadata_rejects_non_none_empty_scope(continuous_guard, policy):
+    _, campaign, *_ = continuous_guard
+    authority = json.loads(campaign.authorization_path.read_text(encoding='utf-8'))
+    authority['scope_policy'] = policy
+    campaign.authorization_path.write_text(json.dumps(authority), encoding='utf-8')
+    before = {path: path.read_bytes() for path in campaign.directory.rglob('*') if path.is_file()}
+    with pytest.raises(PermissionError, match='CAMPAIGN_SCOPE_IDENTITY_CONFLICT'):
+        campaign.peek_status()
+    assert before == {path: path.read_bytes() for path in campaign.directory.rglob('*') if path.is_file()}
+
+
+def test_readonly_constructor_rechecks_owner_after_metadata(continuous_guard, monkeypatch):
+    _, campaign, approvals, approval, _ = continuous_guard
+    before = {path: path.read_bytes() for path in campaign.directory.rglob('*') if path.is_file()}
+    native = campaign._authorization_metadata
+
+    def revoke_after_metadata():
+        value = native()
+        (approvals.directory / (approval['approval_id'] + '.json')).write_text('{}', encoding='utf-8')
+        return value
+
+    monkeypatch.setattr(campaign, '_authorization_metadata', revoke_after_metadata)
+    with pytest.raises(PermissionError):
+        campaign.peek_status()
+    assert before == {path: path.read_bytes() for path in campaign.directory.rglob('*') if path.is_file()}
+
+
+def test_readonly_create_validates_owner_before_constructing_budget(continuous_guard, monkeypatch):
+    _, campaign, approvals, approval, _ = continuous_guard
+    (approvals.directory / (approval['approval_id'] + '.json')).write_text('{}', encoding='utf-8')
+
+    def unexpected_constructor(*args, **kwargs):
+        pytest.fail('create must validate Owner before budget construction')
+
+    monkeypatch.setattr(AutonomousRunBudgetV2, '__init__', unexpected_constructor)
+    with pytest.raises(PermissionError):
+        campaign._budget(create=True, readonly=True)

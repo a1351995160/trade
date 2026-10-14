@@ -156,7 +156,7 @@ def validate_scope_policy(root, authorization):
             if str(bridge_error) != 'CONTINUOUS_CAPABILITIES_CHANGED_NEW_VERSION_REQUIRED':
                 raise
             from .account_version_capability_bridge_v1 import AccountVersionCapabilityBridgeV1
-            from .account_purpose_time_extension_v1 import AccountPurposeTimeExtensionV1, _read, _reference
+            from .account_purpose_time_extension_v1 import _read, _reference
             folder = Path(root) / 'reports' / 'research_campaigns' / stable_hash(
                 authorization['authorization_id']) / 'account-purpose-time-extension-slots'
             if folder.exists():
@@ -164,13 +164,11 @@ def validate_scope_policy(root, authorization):
                 if len(slots) != 1:
                     raise PermissionError('ACCOUNT_PURPOSE_TIME_EXTENSION_SCOPE_SLOT_CONFLICT')
                 slot = _read(_reference(slots[0], root), root)
-                extension = AccountPurposeTimeExtensionV1.read(root, slot['manifest_ref'],
-                    base_authorization=authorization)
-                if slot != {'extension_id': extension.extension_id, 'manifest_ref': extension.scope_reference}:
+                if not isinstance(slot, dict) or set(slot) != {'extension_id', 'manifest_ref'}:
                     raise PermissionError('ACCOUNT_PURPOSE_TIME_EXTENSION_SCOPE_SLOT_CONFLICT')
+                # bridge从Owner binding取前驱；其完整quota读取独立核规范slot和相同前驱。
                 bridge = AccountVersionCapabilityBridgeV1.read_historical(root, authorization,
-                    reference=extension.summary_value['predecessor_bridge_ref'],
-                    time_extension_ref=extension.scope_reference)
+                    reference=None, time_extension_ref=slot['manifest_ref'])
             else:
                 bridge = AccountVersionCapabilityBridgeV1.read(root, authorization)
         summary = scope_summary(root, authorization, policy['summary']['contract'], policy['summary']['stage_limits'],

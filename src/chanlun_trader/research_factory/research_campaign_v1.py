@@ -98,12 +98,18 @@ class ResearchCampaignV1:
     def _lock(self):
         return ObjectiveMutationLock(self.root, 'campaign:' + self.authorization_id)
 
-    def _authorization(self):
+    def _authorization_metadata(self):
         if not self.authorization_path.exists():
             raise ValueError('CAMPAIGN_NOT_REGISTERED')
         value = json.loads(self.authorization_path.read_text(encoding='utf-8'))
         if value.get('root') != os.path.normcase(str(self.root)) or value.get('authorization_id') != self.authorization_id:
             raise BudgetLedgerMismatchError('CAMPAIGN_REGISTERED_ROOT_CONFLICT')
+        if value.get('scope_policy') is not None and not value['scope_policy']:
+            raise PermissionError('CAMPAIGN_SCOPE_IDENTITY_CONFLICT')
+        return value
+
+    def _authorization(self):
+        value = self._authorization_metadata()
         from .campaign_scope_v1 import validate_scope_policy
         validate_scope_policy(self.root, value)
         return value
@@ -113,7 +119,8 @@ class ResearchCampaignV1:
 
     def _budget_with_view(self, create=False, readonly=False, _fresh_after_trials=True):
         """只交回本次完整重放；镜像修复后另做 fresh，不跨调用保留许可。"""
-        authorization = self._authorization()
+        # 只读构造内完整新鲜核scope；写入/创建仍在构造和trial修复前独立核验。
+        authorization = self._authorization_metadata() if readonly and not create else self._authorization()
         if not create and not self.budget_path.with_name('run_budget_events.jsonl').exists():
             raise BudgetLedgerMismatchError('CAMPAIGN_EVENT_HISTORY_MISSING')
         initial_views = []

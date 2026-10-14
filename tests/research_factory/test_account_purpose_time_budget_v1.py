@@ -361,7 +361,7 @@ def test_installed_quota_readonly_replay_is_local_and_rejects_next_change(instal
     assert view['operations']['BASE']['effective_total_seconds'] == 72000
     record_property('installed_quota_full_replays', counts['view'])
     record_property('installed_quota_fresh_proof_reads', counts['proof_read'])
-    assert counts['view'] == 1 and counts['proof_read'] > 0
+    assert counts['view'] == 1 and counts['proof_read'] == 2
     assert all(path.read_bytes() == value for path, value in before.items())
     reads = counts['proof_read']
     if change == 'owner':
@@ -378,3 +378,32 @@ def test_installed_quota_readonly_replay_is_local_and_rejects_next_change(instal
         campaign.peek_status()
     assert counts['proof_read'] > reads
     assert all(path.read_bytes() == value for path, value in before.items())
+
+
+def test_scope_rejects_noncanonical_slots_without_writing(installed_case):
+    case = installed_case
+    campaign = case['campaign']
+    folder = campaign.directory / 'account-purpose-time-extension-slots'
+    slot_path, = folder.glob('*.json')
+    original = slot_path.read_bytes()
+    slot = json.loads(original)
+    changes = [
+        {**slot, 'extension_id': '0' * 64},
+        {**slot, 'extra': True},
+        {**slot, 'manifest_ref': case['spec']['predecessor_manifest_ref']},
+    ]
+    for altered in changes:
+        slot_path.write_text(json.dumps(altered), encoding='utf-8')
+        before = {path: path.read_bytes() for path in campaign.directory.rglob('*') if path.is_file()}
+        with pytest.raises((PermissionError, BudgetLedgerMismatchError, ValueError)):
+            campaign.peek_status()
+        assert before == {path: path.read_bytes() for path in campaign.directory.rglob('*') if path.is_file()}
+    slot_path.write_bytes(original)
+    duplicate = folder / ('f' * 64 + '.json')
+    duplicate.write_bytes(original)
+    before = {path: path.read_bytes() for path in campaign.directory.rglob('*') if path.is_file()}
+    with pytest.raises(PermissionError, match='SCOPE_SLOT_CONFLICT'):
+        campaign.peek_status()
+    assert before == {path: path.read_bytes() for path in campaign.directory.rglob('*') if path.is_file()}
+    duplicate.unlink()
+    assert campaign.peek_status()['operations']['BASE']['effective_total_seconds'] == 72000
