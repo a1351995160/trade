@@ -84,3 +84,14 @@ parent-only撤权反例实际1FAIL：最终Owner拒绝前已写第36段修复标
 R4关机前已提交189日，第169日及全部日文件/链/日历独立核验，第3段推进21日并真实结清837.127秒；第4段已派发但未见worker/终态回执。Windows用户关机事件与本轮人工说明一致，旧场景和558源共1667条已ZIP逐SHA保全，无完整XML/RESULT，不计产品FAILED或完整通过。0b26ccd9精确71CI已全部SUCCESS，原22失败节点由实际Win/Linux JUnit核对全部通过。
 
 停止的189日人工账本一次只读profile为18.797秒，完整quota.read达5次。先真实计数RED1FAIL，再只改research_campaign_v1.py和campaign_scope_v1.py两个治理调用方：非创建只读metadata+构造完整scope验证，Owner binding内quota独立核规范slot/前驱；创建/变更完整fresh不减少。修后47PASS/126.73秒、563源保持，同次证明读取2次、只读重放1次、派发/收费各4次；Owner/source/day变化、错误slot、metadata后撤Owner、空scope和readonly create反例通过。限定实际diff安全复审无发现。新字节须重新绑定精确CI和新鲜完整504双成本成交/公司行为合成，旧71CI及189日前缀不冒充新版本完整通过。
+
+
+## 2026-10-15：超时前暂停与同次父视图去重
+
+R5人工BASE已完成504日、STRESS215日。前6个STRESS段各32日、墙时派发间隔约27分钟；剩余账户日加核账/报告无法在原8小时内完成。公共PAUSE结清第7段737.5481秒，无worker/第8段后才人工停止控制器，原558源、日文件与费用保持，现场2198项ZIP逐SHA保全。该取消不是产品失败或完整合成通过。
+
+实测父进程采样定位record_dispatch→validate→segment_status→quota证明与安全路径stat。segment_status同一次调用先完整验证campaign来源，再为有效额度重复重放父账本；改为只投影本轮刚验证的局部view。公开effective_execution_limit仍自行完整fresh，不接受外部view；派发/收费提交前后、写前Owner/h0、逐日两次guard和所有侧车/日文件读取不变，无跨调用Owner或文件缓存。实际计数RED1FAIL（2次父视图）后48PASS（1次），派发收费各4重放保持。
+
+完整人工夹具在冻结前明确48小时有限Owner/transport窗口：两账户各72000秒共40小时，余8小时容纳前缀准备、控制、独立核账/报告与对照。普通_public_case默认8小时不变。期限只属于新人工用途，不延长真实campaign/Owner，也不修改旧R5批准。账户阶段使用现有公共execute_long_horizon_accounts(recover=True)默认阻塞循环，避免每段反复进入提交服务；仍单worker900秒/2048MiB、真实逐段测量与收费。随后原公共service.advance和run_session完成报告/PUBLIC_RESULT/FEEDBACK，原生连续对照与168日分红应收/支付/税费断言保留。
+
+48小时是人工安全上限，不是恢复时间承诺；新head完整CI、完整双成本504场景和独立审查仍全部必需。局部调用数或短回归不能证明真实3401证券吞吐已经改善。旧6884的71SUCCESS只证明旧字节，新治理字节须重新绑定CI和新鲜完整场景，真实main755/168日+STRESS0/CONTROL5在安装门禁前不变。

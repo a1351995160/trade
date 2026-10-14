@@ -273,8 +273,8 @@ class StrategyBatchGovernanceV1(ETFAccountGovernanceV1):
             if mirror.exists():raise PermissionError('STRATEGY_TIME_EXTENSION_NOT_AUTHORIZED')
             return {'effective_total_seconds':self._segment_profile(name,None)['total_seconds'],
                 'time_extension_proof':None, 'time_extension_boundary':None, 'time_extension_mirror_pending':False}
-        campaign=validate_campaign_source(source,self.plans,self.objective_id,readonly=True)
-        limit=campaign.effective_execution_limit(source['operation_ids'][name])
+        campaign,view=_validated_campaign_source(source,self.plans,self.objective_id,readonly=True)
+        limit=campaign._execution_limit_from_view(view,source['operation_ids'][name])
         proof=limit['time_extension_proof']
         if proof is None:
             if mirror.exists():raise PermissionError('STRATEGY_TIME_EXTENSION_PARENT_NOT_INSTALLED')

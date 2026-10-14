@@ -64,3 +64,14 @@ python scripts/setup_account_purpose_time_extension_v1.py inspect --manifest MAN
 人工guard回归实际完整重放为1次，派发/收费边界各保留4次；单引用路径组件遍历为2次。实时人工合成采样只用于定位函数热点，不能从调用次数或采样百分比推断真实全池吞吐；最终主目录部署仍要求修后精确CI及新鲜双成本完整504日成交/公司行为合成。
 
 只读非创建路径先核授权元信息的根目录、身份及空scope拒绝规则，再由本次预算构造完整验证scope/Owner；返回前仍逐字比较权威事件中的原授权。创建或变更路径继续在构造前独立完整核验。扩限scope通过受保护Owner binding选择已批准前驱，内层完整quota读取校验规范slot和同一前驱；不在调用方预先重复读取整份quota。安装后的只读重放因此保留scope与扩限父事件各一次完整证明读取，下一次调用重新读取全部Owner、源码和日文件，无跨调用缓存。
+
+
+## 2026-10-15：超时前暂停与同次父视图去重
+
+R5人工BASE已完成504日、STRESS215日。前6个STRESS段各32日、墙时派发间隔约27分钟；剩余账户日加核账/报告无法在原8小时内完成。公共PAUSE结清第7段737.5481秒，无worker/第8段后才人工停止控制器，原558源、日文件与费用保持，现场2198项ZIP逐SHA保全。该取消不是产品失败或完整合成通过。
+
+实测父进程采样定位record_dispatch→validate→segment_status→quota证明与安全路径stat。segment_status同一次调用先完整验证campaign来源，再为有效额度重复重放父账本；改为只投影本轮刚验证的局部view。公开effective_execution_limit仍自行完整fresh，不接受外部view；派发/收费提交前后、写前Owner/h0、逐日两次guard和所有侧车/日文件读取不变，无跨调用Owner或文件缓存。实际计数RED1FAIL（2次父视图）后48PASS（1次），派发收费各4重放保持。
+
+完整人工夹具在冻结前明确48小时有限Owner/transport窗口：两账户各72000秒共40小时，余8小时容纳前缀准备、控制、独立核账/报告与对照。普通_public_case默认8小时不变。期限只属于新人工用途，不延长真实campaign/Owner，也不修改旧R5批准。账户阶段使用现有公共execute_long_horizon_accounts(recover=True)默认阻塞循环，避免每段反复进入提交服务；仍单worker900秒/2048MiB、真实逐段测量与收费。随后原公共service.advance和run_session完成报告/PUBLIC_RESULT/FEEDBACK，原生连续对照与168日分红应收/支付/税费断言保留。
+
+48小时是人工安全上限，不是恢复时间承诺；新head完整CI、完整双成本504场景和独立审查仍全部必需。局部调用数或短回归不能证明真实3401证券吞吐已经改善。旧6884的71SUCCESS只证明旧字节，新治理字节须重新绑定CI和新鲜完整场景，真实main755/168日+STRESS0/CONTROL5在安装门禁前不变。

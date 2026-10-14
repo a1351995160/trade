@@ -407,3 +407,43 @@ def test_scope_rejects_noncanonical_slots_without_writing(installed_case):
     assert before == {path: path.read_bytes() for path in campaign.directory.rglob('*') if path.is_file()}
     duplicate.unlink()
     assert campaign.peek_status()['operations']['BASE']['effective_total_seconds'] == 72000
+
+
+def test_segment_status_uses_one_fresh_parent_view(installed_case, monkeypatch, record_property):
+    case = installed_case
+    paths = [events(case), case['campaign'].budget_path, *case['account'].glob('*.json')]
+    before = {path: path.read_bytes() for path in paths}
+    calls = []
+    native = AutonomousRunBudgetV2.campaign_view
+
+    def counted(budget):
+        calls.append(1)
+        return native(budget)
+
+    monkeypatch.setattr(AutonomousRunBudgetV2, 'campaign_view', counted)
+    state = case['gov'].segment_status_for_reconcile('ARTIFICIAL_BASE')
+    record_property('segment_status_parent_views', len(calls))
+    assert state['effective_total_seconds'] == 72000
+    assert len(calls) == 1, {'parent_view_calls': len(calls)}
+    assert all(path.read_bytes() == data for path, data in before.items())
+
+
+@pytest.mark.parametrize('change', ['owner', 'source', 'day'])
+def test_segment_status_rechecks_changed_installed_proof_without_writing(installed_case, change):
+    from pathlib import Path
+    case = installed_case
+    assert case['gov'].segment_status_for_reconcile('ARTIFICIAL_BASE')['effective_total_seconds'] == 72000
+    before = {path: path.read_bytes() for path in (events(case), case['campaign'].budget_path)}
+    if change == 'owner':
+        manifest = json.loads(Path(case['context'].scope_reference['path']).read_text(encoding='utf-8'))
+        (case['approvals'].directory / (manifest['approval_ref']['approval_id'] + '.json')).write_text('{}', encoding='utf-8')
+    elif change == 'source':
+        path = Path(case['spec']['runtime_source_refs'][0]['path'])
+        path.write_bytes(path.read_bytes() + b'\n# artificial changed source\n')
+    else:
+        state = json.loads((case['account'] / 'ARTIFICIAL_BASE_STATE.json').read_text(encoding='utf-8'))
+        path = case['account'] / 'ARTIFICIAL_BASE_DAYS' / state['artifacts']['days'][0]['file']
+        path.write_bytes(path.read_bytes() + b'artificial changed day')
+    with pytest.raises((PermissionError, BudgetLedgerMismatchError, ValueError)):
+        case['gov'].segment_status_for_reconcile('ARTIFICIAL_BASE')
+    assert all(path.read_bytes() == data for path, data in before.items())

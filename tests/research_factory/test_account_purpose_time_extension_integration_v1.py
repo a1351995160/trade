@@ -1,6 +1,6 @@
 """人工成交及分红跨168日治理接续；临时部署不接触真实行情或原Owner。"""
 from copy import deepcopy
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 import math
@@ -49,6 +49,58 @@ def trading_rule():
         'max_hold_sessions': 200, 'exits': {'execution_mode': 'CLOSE_CONFIRM_NEXT_SESSION_OPEN',
             'stop_loss_pct': .08, 'take_profit_pct': None,
             'trailing_activate_pct': .05, 'trailing_pct': .04}}
+
+
+_SYNTHETIC_LIFETIME = timedelta(hours=48)
+_SYNTHETIC_TIMEOUT_SECONDS = int(_SYNTHETIC_LIFETIME.total_seconds())
+
+
+def _full_public_case(root):
+    return _public_case(root, fixture_factory=trading_fixture, rule_overrides=trading_rule(),
+        authorization_lifetime=_SYNTHETIC_LIFETIME)
+
+
+def _complete_public_account_and_reports(runner, service, job_path, task_id):
+    # 原公共阻塞循环保留每段完整guard和收费，避免逐段重复进入提交服务。
+    accounts = runner.execute_long_horizon_accounts(job_path, recover=True)
+    assert accounts and 'status' not in accounts, accounts
+    history = []
+    for _ in range(120):
+        outcome = service.advance(task_id)
+        history.append(outcome['status'])
+        assert outcome.get('dispatched_segments', 0) <= 1
+        assert outcome['status'] not in ('FAILED', 'EVIDENCE_BLOCKED', 'UNKNOWN'), outcome
+        if outcome['status'] == 'ACCOUNT_VERIFIED':
+            return history
+    raise AssertionError(history)
+
+
+def test_full_synthetic_owner_lifetime_matches_transport_and_two_account_limits(tmp_path):
+    started = datetime.now(timezone.utc)
+    service, request, campaign, _, _, _ = _full_public_case(tmp_path)
+    authority = service.authority_for_request(request)
+    expires = datetime.fromisoformat(authority['expires_at'])
+    base = campaign.peek_status()['base_authorization']
+    assert (expires - started).total_seconds() >= _SYNTHETIC_TIMEOUT_SECONDS - 30
+    assert base['expires_at'] == authority['expires_at']
+    assert _SYNTHETIC_TIMEOUT_SECONDS > 2 * 72000
+
+
+def test_full_synthetic_account_phase_uses_existing_public_blocking_entry_before_reports():
+    from types import SimpleNamespace
+    calls = []
+
+    def accounts(path, *, recover=False, step=False):
+        calls.append(('accounts', path, recover, step))
+        return {'BASE': {}, 'STRESS': {}}
+
+    def advance(task_id):
+        assert calls == [('accounts', Path('JOB.json'), True, False)]
+        return {'status': 'ACCOUNT_VERIFIED', 'dispatched_segments': 0}
+
+    history = _complete_public_account_and_reports(SimpleNamespace(execute_long_horizon_accounts=accounts),
+        SimpleNamespace(advance=advance), Path('JOB.json'), 'SYNTHETIC_TASK')
+    assert history == ['ACCOUNT_VERIFIED']
 
 
 def test_artificial_168th_close_contains_real_lots_orders_exit_state_and_dividend_receivable(tmp_path):
@@ -304,8 +356,7 @@ def _scenario(root):
     source = root / BUSINESS_PATH
     original_bytes = source.read_bytes()
     source.write_bytes(original_bytes + b'\n# Synthetic original input predecessor identity.\n')
-    service, request, campaign, approvals, owner, restored = _public_case(root,
-        fixture_factory=trading_fixture, rule_overrides=trading_rule())
+    service, request, campaign, approvals, owner, restored = _full_public_case(root)
     from chanlun_trader.research_factory.common import stable_hash
     from chanlun_trader.research_factory.strategy_submission_v1 import public_rule_factory
     session_config = {'candidate_id': request['strategy_id'], 'campaign_id': campaign.authorization_id,
@@ -386,16 +437,7 @@ def _scenario(root):
     assert checkpoint.read_bytes() == checkpoint_bytes
     runner.control_job(job_path, 'RESUME')
     service = restored()
-    history = []
-    for _ in range(120):
-        outcome = service.advance(task['task_id'])
-        history.append(outcome['status'])
-        assert outcome.get('dispatched_segments', 0) <= 1
-        assert outcome['status'] not in ('FAILED', 'EVIDENCE_BLOCKED', 'UNKNOWN'), outcome
-        if outcome['status'] == 'ACCOUNT_VERIFIED':
-            break
-    else:
-        raise AssertionError(history)
+    history = _complete_public_account_and_reports(runner, service, job_path, task['task_id'])
     public = _read(job_path.parent.parent / 'PUBLIC_RESULT.json')
     assert public['account_version_continuation'] == context.proof()
     feedback = BusinessValidationProtocolV1.verify_report_refs(task, public, minimum_sessions=504)
@@ -444,17 +486,17 @@ def test_full_504_day_time_extension_keeps_168_day_economic_state_and_public_pro
         'source_sha256': {str(path.relative_to(root)): _sha(path)
             for folder in ('src', 'scripts') for path in sorted((root / folder).rglob('*.py'))},
         'test_source_sha256': _sha(Path(__file__).resolve()),
-        'timeout_seconds': 28800, 'real_market_or_performance_acceptance': False})
+        'timeout_seconds': _SYNTHETIC_TIMEOUT_SECONDS, 'real_market_or_performance_acceptance': False})
     try:
         completed = subprocess.run(argv, cwd=root, env=env, capture_output=True, text=True,
-            encoding='utf-8', errors='replace', timeout=28800)
+            encoding='utf-8', errors='replace', timeout=_SYNTHETIC_TIMEOUT_SECONDS)
     except subprocess.TimeoutExpired as error:
         for label, output in (('STDOUT', error.stdout), ('STDERR', error.stderr)):
             if isinstance(output, bytes):
                 output = output.decode('utf-8', errors='replace')
             (root / ('SCENARIO_' + label + '.log')).write_text(output or '', encoding='utf-8')
         _write(root / 'SCENARIO_TRANSPORT_RESULT.json', {'status': 'TIMED_OUT',
-            'timeout_seconds': 28800, 'returncode': None})
+            'timeout_seconds': _SYNTHETIC_TIMEOUT_SECONDS, 'returncode': None})
         raise
     (root / 'SCENARIO_STDOUT.log').write_text(completed.stdout, encoding='utf-8')
     (root / 'SCENARIO_STDERR.log').write_text(completed.stderr, encoding='utf-8')

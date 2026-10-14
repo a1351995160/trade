@@ -364,9 +364,16 @@ class ResearchCampaignV1:
                     for_dispatch=True)
                 if resolved['proof'] != proof:
                     raise PermissionError('CAMPAIGN_ACCOUNT_TIME_EXTENSION_PROOF_CONFLICT')
+        return self._execution_limit_from_view(view, operation_id)
+
+    @staticmethod
+    def _execution_limit_from_view(view, operation_id):
+        """仅投影本次已完整验证的父视图；不读取或保存跨调用状态。"""
+        operation=view['operations'][operation_id]
         return {'profile':deepcopy(operation['execution_profile']),
             'effective_total_seconds':effective_execution_total_seconds(operation),
-            'time_extension_proof':deepcopy(proof), 'boundary':deepcopy(operation.get('time_extension_boundary')),
+            'time_extension_proof':deepcopy(operation.get('account_purpose_time_extension')),
+            'boundary':deepcopy(operation.get('time_extension_boundary')),
             'parent_segments':deepcopy(operation.get('segments', []))}
 
     def start_execution_segment(self, operation_id, *, segment_number, profile=None, upper_bound_seconds=None):
