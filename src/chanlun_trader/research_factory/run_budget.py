@@ -220,12 +220,10 @@ class AutonomousRunBudgetV1:
         self._events: list[dict[str, Any]] = []
         self._event_ids: set[str] = set()
         self._load()
-        initial_view = self._load_events()
+        self._load_events(_campaign_view_out=_campaign_view_out)
         self._replay_events_if_state_is_empty()
         self._sync_materialized_counts()
         self._persist()
-        if _campaign_view_out is not None:
-            _campaign_view_out(initial_view)
 
     @property
     def remaining_predictive_trials(self) -> int:
@@ -566,7 +564,7 @@ class AutonomousRunBudgetV1:
     def _events_path(self) -> Path | None:
         return self.path.with_name("run_budget_events.jsonl") if self.path is not None else None
 
-    def _load_events(self) -> None:
+    def _load_events(self, _campaign_view_out=None) -> None:
         path = self._events_path
         if path is None or not path.exists():
             return
@@ -657,7 +655,7 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
         result['campaign_event_head'] = self._events[-1]['event_id'] if self._events else None
         return result
 
-    def _load_events(self):
+    def _load_events(self, _campaign_view_out=None):
         super()._load_events()
         if self.path is not None and self.path.exists():
             snapshot = json.loads(self.path.read_text(encoding="utf-8"))
@@ -674,7 +672,8 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
         if view['authorization'] is not None:
             self.max_batches = view['authorization']['max_batches']
             self.max_total_predictive_trials = view['authorization']['max_total_predictive_trials']
-        return view
+        if _campaign_view_out is not None:
+            _campaign_view_out(view)
 
     def _replay_events_if_state_is_empty(self):
         # V2 的事件是权威；快照可落后于最后一次持久化事件。
