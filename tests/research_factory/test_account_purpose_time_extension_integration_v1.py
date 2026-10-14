@@ -26,10 +26,12 @@ def trading_fixture():
     days = window['calendar']
     bundle['events'] = [{'event_id': 'SYNTHETIC_BOUNDARY_DIVIDEND_' + symbol,
         'symbol': symbol, 'event_type': 'CASH_DIVIDEND', 'record_date': days[226],
-        'effective_date': days[227], 'payment_date': days[230], 'source': 'synthetic',
+        'effective_date': days[227], 'payment_date': days[230], 'source': 'events',
         'source_published_at': str(days[220]), 'units': 'CNY_PER_SHARE',
         'terms': {'cash_per_share': .4, 'tax_rule': {'kind': 'DEFERRED_INDIVIDUAL_2015_101',
             'source': 'SYNTHETIC_TAX_FIXTURE'}}} for symbol in window['symbols']]
+    bundle['source_hashes']['events'] = hashlib.sha256(
+        json.dumps(bundle['events']).encode('utf-8')).hexdigest()
     changed = bundle['daily'].date.ge(days[227])
     bundle['daily'].loc[changed, ['open', 'high', 'low', 'close', 'prev_close']] -= .4
     return window, bundle
@@ -85,6 +87,10 @@ def test_public_artificial_fixture_registers_all_dividend_events_before_freeze(t
     events = _read(tmp_path / 'synthetic_inputs/data/events.json')
     assert len(events) == 3 and all(row['event_type'] == 'CASH_DIVIDEND' for row in events)
     assert {row['symbol'] for row in events} == {'000001.SZ', '300001.SZ', '600000.SH'}
+    scanned = service.scan(request, preview['preview_identity'])
+    assert scanned['qualified_account_ready'] is True
+    assert scanned['qualification_scope']['qualified_symbols'] == sorted(row['symbol'] for row in events)
+    assert scanned['qualification_scope']['excluded'] == []
 
 
 def _prefix_worker(job_path, name, number, stop_day):
