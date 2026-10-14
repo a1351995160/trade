@@ -340,10 +340,11 @@ def control_job(path,event):
         return control_state(job)
 
 
-def record_segment_failure(folder,prefix,dispatch_id,scope_identity,exc):
+def record_segment_failure(folder,prefix,dispatch_id,scope_identity,exc,*,time_extension_proof=None):
     save(Path(folder)/(prefix+'_FAILURE.json'),{'exception_type':type(exc).__name__,'message':str(exc),
         'dispatch_id':dispatch_id,'scope_identity':scope_identity,
-        'evidence':getattr(exc,'evidence',None),'automatic_retry':False})
+        'evidence':getattr(exc,'evidence',None),'automatic_retry':False,
+        **({'time_extension_proof':time_extension_proof} if time_extension_proof is not None else {})})
 
 
 def long_horizon_worker(path,name,number):
@@ -352,7 +353,8 @@ def long_horizon_worker(path,name,number):
         return _long_horizon_worker(path,name,number)
     except Exception as exc:
         if pending and pending['segment_number']==number:
-            record_segment_failure(root,segment_prefix(name,number),pending['dispatch_id'],sha(path),exc)
+            record_segment_failure(root,segment_prefix(name,number),pending['dispatch_id'],sha(path),exc,
+                time_extension_proof=pending.get('time_extension_proof'))
         raise
 
 
@@ -395,6 +397,10 @@ def _long_horizon_worker(path,name,number):
     item=account_version.active_item(name) if account_version is not None else job['items'][name]
     plan=account_version.active_plan(name) if account_version is not None else job['plans'][name]
     proof={'account_version_continuation':account_version.proof(name)} if account_version is not None else {}
+    if dispatch.get('time_extension_proof') is not None:
+        if proof.get('account_version_continuation', {}).get('account_purpose_time_extension') != dispatch['time_extension_proof']:
+            raise PermissionError('JOB_TIME_EXTENSION_DISPATCH_VERSION_CONFLICT')
+        proof['time_extension_proof']=dispatch['time_extension_proof']
     strategy=resolve(item['factory'])(**item.get('factory_kwargs',{}))
     backend=backend_for(strategy,item['backend_options'])
     if prepare(strategy,backend,item) != plan:
@@ -457,7 +463,7 @@ def _long_horizon_worker(path,name,number):
         save(root/(prefix+'_STATUS.json'),{'state':'CONTINUE','dispatch_id':dispatch['dispatch_id'],
             'phase':getattr(exc,'phase','ACCOUNT'),'last_day':value.get('last_day'),
             'state_identity':value.get('state_identity'),'checkpoint_sha256':sha(checkpoint) if checkpoint.exists() else None,
-            'reason':str(exc)})
+            'reason':str(exc),**(proof if dispatch.get('time_extension_proof') is not None else {})})
         return 75
 
 
@@ -555,13 +561,18 @@ def execute_long_horizon_accounts(path,*,recover=False,step=False):
                         environment=env,execution={'purpose':name,'segment_number':number,'dispatch_id':dispatch['dispatch_id']},
                         on_started=lambda pid:save(root/(prefix+'_WORKER.json'),{'pid':pid,'purpose':name,
                             'segment_number':number,'dispatch_id':dispatch['dispatch_id'],
-                            **({'account_version_continuation':account_version.proof(name)} if account_version is not None else {})}))
+                            **({'account_version_continuation':account_version.proof(name)} if account_version is not None else {}),
+                            **({'time_extension_proof':dispatch['time_extension_proof']}
+                                if dispatch.get('time_extension_proof') is not None else {})}))
                 except Exception as exc:
                     resource={'returncode':None,'timed_out':False,'error_type':type(exc).__name__,'error':str(exc)}
                 elapsed=time.monotonic()-begin
                 resource={key:value.decode('utf-8',errors='replace') if isinstance(value,bytes) else value
                           for key,value in resource.items()}
                 resource.update(elapsed_wall_seconds=elapsed,segment_number=number,dispatch_id=dispatch['dispatch_id'])
+                if dispatch.get('time_extension_proof') is not None:
+                    resource.update(time_extension_proof=dispatch['time_extension_proof'],
+                        account_version_continuation=account_version.proof(name))
                 resource_path=root/(prefix+'_RESOURCE.json');save(resource_path,resource)
                 status_path=root/(prefix+'_STATUS.json')
                 status_value=read_json(status_path) if status_path.exists() else {}
@@ -1128,6 +1139,8 @@ def write_reports(job,index,*,_universe_inputs=None,_deadline=None,_report_repai
 def status(path):
     """只读执行进度与结算原因，不读取收益或持仓。"""
     job=read_json(path);root=Path(job['root']);states={}
+    successor=(account_version_context(job)
+        if (root.parent/'account-purpose-time-extensions').exists() else None)
     for name in job['plans']:
         settled=root/(name+'_SETTLEMENT.json');started=root/(name+'_START.json')
         if settled.exists():
@@ -1141,10 +1154,17 @@ def status(path):
             profile=job['resources'];value=states[name]
             value.update(account_sessions=profile['account_sessions'],profile_id=profile['profile_id'],
                 charged_seconds=0,remaining_seconds=profile['total_seconds'],processed_sessions=0,last_day=None,phase='NOT_STARTED')
+            if successor is not None and successor.time_extension_installed:
+                total=successor.time_extension.effective_total_seconds(name)
+                value.update(effective_total_seconds=total,remaining_seconds=total,
+                    time_extension_proof=successor.time_extension.proof())
             if started.exists():
                 state=service(job).segment_status(name)
                 value.update(charged_seconds=state['charged_seconds'],remaining_seconds=state['remaining_seconds'],
-                    resource_overrun=state['resource_overrun'],dispatch_overrun=state['dispatch_overrun'])
+                    resource_overrun=state['resource_overrun'],dispatch_overrun=state['dispatch_overrun'],
+                    **({'effective_total_seconds':state['effective_total_seconds'],
+                        'time_extension_proof':state['time_extension_proof']}
+                        if state.get('time_extension_proof') is not None else {}))
                 if state['segments']:
                     last_status=root/(segment_prefix(name,state['segments'][-1]['dispatch']['segment_number'])+'_STATUS.json')
                     if last_status.exists():value['phase']=read_json(last_status).get('phase','ACCOUNT')

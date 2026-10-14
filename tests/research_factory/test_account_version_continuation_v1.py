@@ -175,7 +175,18 @@ def test_install_preserves_ledger_start_and_reservations_and_is_idempotent(case)
     assert ctx.governance.segment_status('SYNTHETIC_BASE')['charged_seconds'] == 4800.
     assert case['campaign'].peek_status()['operations']['STRESS']['status'] == 'RESERVED'
     assert AccountVersionContinuationV1.freeze(case['root'], value, approval_ref=approval) == ctx.scope_reference
-    assert all(path.read_bytes() == raw for path, raw in before.items())
+    changed = {}
+    for path, original in before.items():
+        actual = path.read_bytes()
+        if actual != original:
+            change = {'before_sha256': hashlib.sha256(original).hexdigest(),
+                'after_sha256': hashlib.sha256(actual).hexdigest()}
+            if path.suffix == '.json':
+                old_value, new_value = json.loads(original), json.loads(actual)
+                change['changed_top_level_fields'] = sorted(key for key in old_value.keys() | new_value.keys()
+                    if old_value.get(key) != new_value.get(key))
+            changed[str(path)] = change
+    assert not changed, json.dumps(changed, ensure_ascii=False, sort_keys=True)
     assert AccountVersionContinuationV1.from_job(case['job']).proof() == ctx.proof()
     assert {k: v for k, v in ctx.proof('SYNTHETIC_BASE').items() if k != 'purpose'} == ctx.proof()
 

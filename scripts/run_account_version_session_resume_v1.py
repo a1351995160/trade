@@ -52,6 +52,7 @@ def load_session(job_path):
     context = AccountVersionContinuationV1.from_job(job, for_reconcile=True)
     require(context is not None and context.job_path == job_path, 'APPROVED_CONTINUATION_REQUIRED')
     context.validate(for_reconcile=True)
+    require(context.time_extension is None or context.time_extension_installed, 'TIME_EXTENSION_NOT_INSTALLED')
     summary, refs = context.summary_value, context.summary_value.get('session_refs', {})
     require(set(refs) == SESSION_REFS, 'ORIGINAL_REFERENCES_REQUIRED')
     workspace, owner = Path(summary['root']), Path(summary['approval_store'])
@@ -81,7 +82,7 @@ def load_session(job_path):
     require(isinstance(config['pins'], list) and len(config['pins']) == 55
         and len({reference['path'] for reference in config['pins']}) == 55, 'ORIGINAL_55_PINS_REQUIRED')
     require(sum(reference == refs['runner'] for reference in config['pins']) == 1, 'ORIGINAL_RUNNER_PIN_REQUIRED')
-    replacements = {item['path']: item for item in summary['source_replacements']}
+    replacements = {item['path']: item for item in context.approved_source_replacements()}
     for reference in [*(config[key] for key in ('deployment', 'request', 'proposal', 'context', 'rule')),
                       *config['pins']]:
         replacement = replacements.get(reference['path'])
@@ -94,7 +95,7 @@ def load_session(job_path):
             legacy.pinned({'path': reference['path'], 'sha256': replacement['new_sha256']}, parse=False)
     own_path = workspace / 'scripts' / Path(__file__).name
     own_reference = {'path': str(own_path), 'sha256': digest(own_path, workspace)}
-    require(Path(__file__).resolve() == own_path and own_reference in summary['runtime_sources'],
+    require(Path(__file__).resolve() == own_path and own_reference in context.approved_runtime_sources(),
             'RESUME_RUNNER_NOT_APPROVED')
     audit = Path(config['audit_root'])
     require(audit.resolve() == audit and audit.is_relative_to(runner_path.parent) and audit != runner_path.parent,

@@ -126,7 +126,7 @@ class AccountVersionCapabilityBridgeV1:
         return original
 
     @classmethod
-    def _capture(cls, root, base, replacements, runtime_refs, predecessor_ref):
+    def _capture(cls, root, base, replacements, runtime_refs, predecessor_ref, *, _time_extension=None):
         root = checked_directory_path(root, error_code='ACCOUNT_VERSION_ROOT_INVALID').resolve(strict=True)
         _require(isinstance(base, dict) and base.get('root') == os.path.normcase(str(root)), 'ROOT_CONFLICT')
         policy = base.get('scope_policy')
@@ -138,6 +138,23 @@ class AccountVersionCapabilityBridgeV1:
         owner = checked_directory_path(policy['approval_store'], error_code='ACCOUNT_VERSION_OWNER_ROOT_INVALID')
         approvals = OwnerApprovalStoreV1.from_checked_directory(owner)
         approvals.require(policy['approval_ref'], policy['summary'])
+        successor = {}
+        if _time_extension is not None:
+            from .account_purpose_time_extension_v1 import AccountPurposeTimeExtensionV1
+            _require(type(_time_extension) is AccountPurposeTimeExtensionV1
+                and _time_extension.summary_value['base_authorization_identity'] == stable_hash(base),
+                'TIME_EXTENSION_CONTEXT_REQUIRED')
+            successor = {row['path']: row for row in _time_extension.summary_value['source_replacements']}
+
+        def source_matches(reference):
+            row = successor.get(reference['path'])
+            if row is None:
+                return reference == _reference(reference['path'], root)
+            return (row['old_sha256'] == reference['sha256']
+                and row['archive_ref']['sha256'] == reference['sha256']
+                and _reference(row['archive_ref']['path'], root / 'reports') == row['archive_ref']
+                and _reference(row['path'], root)['sha256'] == row['new_sha256'])
+
         _require(isinstance(replacements, list) and replacements, 'SOURCE_ALLOWLIST_REQUIRED')
         seen = set()
         for row in replacements:
@@ -150,14 +167,14 @@ class AccountVersionCapabilityBridgeV1:
             seen.add(path)
             _require(isinstance(row['archive_ref'], dict) and row['archive_ref'].get('sha256') == row['old_sha256']
                 and _reference(row['archive_ref']['path'], root / 'reports') == row['archive_ref'], 'ARCHIVE_CHANGED')
-            _require(_reference(path, root)['sha256'] == row['new_sha256'], 'SOURCE_CHANGED')
+            _require(source_matches({'path': str(path), 'sha256': row['new_sha256']}), 'SOURCE_CHANGED')
         _require(root / BUSINESS_PATH in seen, 'BUSINESS_SOURCE_REQUIRED')
         _require(isinstance(runtime_refs, list), 'RUNTIME_SOURCE_PINS_REQUIRED')
         runtime_seen = set()
         for reference in runtime_refs:
             path = _path(reference.get('path', ''), root)
             _require(_runtime_allowed(path, root) and path not in runtime_seen
-                and reference == _reference(path, root), 'RUNTIME_SOURCE_CHANGED')
+                and source_matches(reference), 'RUNTIME_SOURCE_CHANGED')
             runtime_seen.add(path)
         _require(all(root / path in runtime_seen for path in REQUIRED_RUNTIME_PATHS),
             'PROTOCOL_SOURCE_PIN_REQUIRED')
@@ -213,7 +230,7 @@ class AccountVersionCapabilityBridgeV1:
         return reference
 
     @classmethod
-    def read(cls, root, base_authorization, *, reference=None):
+    def read(cls, root, base_authorization, *, reference=None, time_extension_ref=None):
         base = base_authorization
         policy = base.get('scope_policy', {})
         owner = checked_directory_path(policy.get('approval_store', ''), error_code='ACCOUNT_VERSION_OWNER_ROOT_INVALID')
@@ -232,6 +249,11 @@ class AccountVersionCapabilityBridgeV1:
         approved = binding['reference']
         _require(isinstance(approved, dict) and set(approved) == {'path', 'sha256', 'approval_ref'}
             and (reference is None or approved == reference), 'REFERENCE_CONFLICT')
+        extension = None
+        if time_extension_ref is not None:
+            from .account_purpose_time_extension_v1 import AccountPurposeTimeExtensionV1
+            extension = AccountPurposeTimeExtensionV1.read(root, time_extension_ref, base_authorization=base)
+            _require(extension.summary_value['predecessor_bridge_ref'] == approved, 'TIME_EXTENSION_PREDECESSOR_CONFLICT')
         record = _read({key: approved[key] for key in ('path', 'sha256')}, owner)
         _require(set(record) == {'schema_version', 'summary', 'approval_ref', 'identity'}
             and record['schema_version'] == VERSION
@@ -240,7 +262,14 @@ class AccountVersionCapabilityBridgeV1:
             and Path(approved['path']) == owner / 'account_version_capability_bridges' / 'records'
                 / (record['identity'] + '.json'), 'RECORD_IDENTITY_CONFLICT')
         summary, original, _ = cls._capture(root, base, record['summary'].get('source_replacements'),
-            record['summary'].get('runtime_sources'), record['summary'].get('predecessor_bridge_ref'))
+            record['summary'].get('runtime_sources'), record['summary'].get('predecessor_bridge_ref'),
+            _time_extension=extension)
         _require(summary == record['summary'], 'SUMMARY_CHANGED')
         approvals.require(record['approval_ref'], summary)
         return {'reference': deepcopy(approved), 'record': record, 'capabilities_snapshot': original}
+
+    @classmethod
+    def read_historical(cls, root, base_authorization, *, reference, time_extension_ref):
+        """已批准后继治理源码只映射历史字节；不授予新账户额度。"""
+        _require(time_extension_ref is not None, 'TIME_EXTENSION_REFERENCE_REQUIRED')
+        return cls.read(root, base_authorization, reference=reference, time_extension_ref=time_extension_ref)

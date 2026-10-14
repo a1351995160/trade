@@ -10,7 +10,8 @@ import re
 from .budget import BudgetExhaustedError, BudgetLedgerMismatchError
 from .common import stable_hash
 from .mutation_boundary import ObjectiveMutationLock
-from .run_budget import AutonomousRunBudgetV2
+from .run_budget import (AutonomousRunBudgetV2, effective_operation_upper_bounds,
+                         effective_execution_total_seconds, effective_segment_allowance)
 
 STAGES = ('EXPLORATION', 'CONFIRMATION', 'OBSERVATION')
 KINDS = {'CANDIDATE': 'candidate_attempts', 'DATA': 'data_experiments', 'ACCOUNT': 'account_jobs',
@@ -114,9 +115,9 @@ class ResearchCampaignV1:
         budget = AutonomousRunBudgetV2(run_id=self.authorization_id, objective_id=authorization['objective_id'],
             path=self.budget_path, policy_hash=stable_hash(authorization), readonly=readonly,
             **{key: authorization[key] for key in LIMIT_KEYS})
-        if not create and budget.campaign_view()['base_authorization'] != authorization:
-            raise BudgetLedgerMismatchError('CAMPAIGN_AUTHORIZATION_EVENT_CONFLICT')
         view = budget.campaign_view()
+        if not create and view['base_authorization'] != authorization:
+            raise BudgetLedgerMismatchError('CAMPAIGN_AUTHORIZATION_EVENT_CONFLICT')
         for operation in (() if readonly else view['operations'].values()):
             if operation['kind'] in ('ACCOUNT', 'DATA'):
                 budget.reserve_trial(trial_id=operation['operation_id'], batch_id=operation['batch_id'],
@@ -152,9 +153,38 @@ class ResearchCampaignV1:
     def status(self):
         with self._lock():
             budget = self._budget()
-            return {**budget.campaign_view(), 'trial_usage': budget.usage_state.to_dict(),
+            view = budget.campaign_view()
+            return {**view, 'trial_usage': budget.usage_state.to_dict(),
                     'batch_count': budget.batch_count_used,
-                    'expired': datetime.now(timezone.utc) >= _timestamp(budget.campaign_view()['authorization']['expires_at'])}
+                    'expired': datetime.now(timezone.utc) >= _timestamp(view['authorization']['expires_at'])}
+
+    def _peek_execution_status(self):
+        "只读guard严格核父trial镜像；缺口交专门对账，不隐式补记消费。"
+        from .run_budget import trial_budget_identity
+        budget = self._budget(readonly=True)
+        view = budget.campaign_view()
+        usage = budget.usage_state.to_dict()
+        for operation in view['operations'].values():
+            if operation['kind'] not in ('ACCOUNT', 'DATA'):
+                continue
+            name = operation['operation_id']
+            expected = {'batch_id': operation['batch_id'], 'candidate_id': operation['subject_identity'],
+                        'candidate_hash': operation['subject_identity'], 'family_id': operation['kind']}
+            identity = trial_budget_identity(run_id=self.authorization_id, trial_id=name,
+                batch_id=expected['batch_id'], candidate_id=expected['candidate_id'],
+                candidate_hash=expected['candidate_hash'])
+            prior = budget._trial_identities.get(name, {})
+            if (prior.get('reservation_id') != identity or prior.get('trial_id') != name
+                    or any(prior.get(key) != value for key, value in expected.items())):
+                raise BudgetLedgerMismatchError('CAMPAIGN_EXECUTION_TRIAL_IDENTITY_CONFLICT')
+            used = name in usage['performance_accessed_trial_ids']
+            completed = name in usage['completed_trial_ids']
+            if ((operation['status'] == 'RESERVED' and name not in usage['reserved_trial_ids'])
+                    or (operation['status'] in ('RUNNING', 'UNKNOWN', 'COMPLETED', 'FAILED') and not used)
+                    or (operation['status'] in ('COMPLETED', 'FAILED') and not completed)):
+                raise BudgetLedgerMismatchError('CAMPAIGN_EXECUTION_TRIAL_MIRROR_REQUIRED')
+        return {**view, 'trial_usage': usage, 'batch_count': budget.batch_count_used,
+                'expired': datetime.now(timezone.utc) >= _timestamp(view['authorization']['expires_at'])}
 
     def peek_status(self):
         """只读重放；不修快照、不修镜像、不创建锁文件。"""
@@ -279,9 +309,57 @@ class ResearchCampaignV1:
                                      candidate_hash=subject_identity, family_id=kind)
             return deepcopy(budget.campaign_view()['operations'][operation_id])
 
+    def install_account_purpose_time_extension(self, manifest_ref):
+        """经原 Owner 许可一次原子预留两原用途；不增 grant、用途或总预算。"""
+        from .account_purpose_time_extension_v1 import resolve_time_extension_manifest
+        with self._lock():
+            budget=self._budget(); view=budget.campaign_view()
+            resolved=resolve_time_extension_manifest(manifest_ref, root=self.root,
+                authorization_id=self.authorization_id, objective_id=view['authorization']['objective_id'],
+                for_dispatch=True)
+            proof=resolved['proof']
+            targets=[view['operations'].get(value, {}) for value in resolved['operation_ids'].values()]
+            installed=[operation.get('account_purpose_time_extension') for operation in targets]
+            if any(value is not None for value in installed):
+                if len(targets) == 2 and all(value == proof for value in installed):
+                    return {operation['operation_id']:deepcopy(operation) for operation in targets}
+                raise PermissionError('CAMPAIGN_ACCOUNT_TIME_EXTENSION_ALREADY_INSTALLED')
+            if view.get('revoked'):
+                raise PermissionError('CAMPAIGN_REVOKED')
+            if view['stages'].get('EXPLORATION', {}).get('status') == 'WAITING':
+                raise PermissionError('CAMPAIGN_STAGE_WAITING')
+            # 首装还要求冻结时的实时 CP、控制暂停头和账本边界完全未变。
+            verified=resolve_time_extension_manifest(manifest_ref, root=self.root,
+                authorization_id=self.authorization_id, objective_id=view['authorization']['objective_id'],
+                for_install=True)
+            if verified['proof'] != proof:
+                raise PermissionError('CAMPAIGN_ACCOUNT_TIME_EXTENSION_PROOF_CONFLICT')
+            budget.campaign_event('CAMPAIGN_ACCOUNT_PURPOSE_TIME_EXTENDED',
+                {'proof':proof, 'installed_at':datetime.now(timezone.utc).isoformat()})
+            current=budget.campaign_view()
+            return {value:deepcopy(current['operations'][value]) for value in resolved['operation_ids'].values()}
+
+    def effective_execution_limit(self, operation_id, *, for_dispatch=False):
+        """由同一权威事件重放的有效限时；原 profile/hash 不变。"""
+        view=self._budget(readonly=True).campaign_view(); operation=view['operations'][operation_id]
+        proof=operation.get('account_purpose_time_extension')
+        if for_dispatch:
+            self._dispatchable(view, operation['stage'])
+            if proof is not None:
+                from .account_purpose_time_extension_v1 import resolve_time_extension_manifest
+                resolved=resolve_time_extension_manifest(proof['manifest_ref'], root=self.root,
+                    authorization_id=self.authorization_id, objective_id=view['authorization']['objective_id'],
+                    for_dispatch=True)
+                if resolved['proof'] != proof:
+                    raise PermissionError('CAMPAIGN_ACCOUNT_TIME_EXTENSION_PROOF_CONFLICT')
+        return {'profile':deepcopy(operation['execution_profile']),
+            'effective_total_seconds':effective_execution_total_seconds(operation),
+            'time_extension_proof':deepcopy(proof), 'boundary':deepcopy(operation.get('time_extension_boundary')),
+            'parent_segments':deepcopy(operation.get('segments', []))}
+
     def start_execution_segment(self, operation_id, *, segment_number, profile=None, upper_bound_seconds=None):
         """继续原 operation；不建立第二个 Trial 或第二份账户额度。"""
-        from .universe_execution_profile_v1 import validate_execution_profile, segment_allowance
+        from .universe_execution_profile_v1 import validate_execution_profile
         with self._lock():
             budget=self._budget(); view=budget.campaign_view(); operation=view['operations'][operation_id]
             self._dispatchable(view,operation['stage'])
@@ -296,14 +374,24 @@ class ResearchCampaignV1:
                 raise PermissionError('CAMPAIGN_EXECUTION_SEGMENT_ALREADY_DISPATCHED_OR_TERMINAL')
             if type(segment_number) is not int or segment_number != len(segments)+1:
                 raise PermissionError('CAMPAIGN_EXECUTION_SEGMENT_NUMBER_CONFLICT')
+            proof=operation.get('account_purpose_time_extension')
+            if proof is not None:
+                from .account_purpose_time_extension_v1 import resolve_time_extension_manifest
+                resolved=resolve_time_extension_manifest(proof['manifest_ref'], root=self.root,
+                    authorization_id=self.authorization_id, objective_id=view['authorization']['objective_id'],
+                    for_dispatch=True)
+                if resolved['proof'] != proof:
+                    raise PermissionError('CAMPAIGN_ACCOUNT_TIME_EXTENSION_PROOF_CONFLICT')
             now=datetime.now(timezone.utc)
-            allowed=segment_allowance(value,operation.get('active_wall_seconds',0),
+            allowed=effective_segment_allowance(value,operation.get('active_wall_seconds',0),
+                effective_total_seconds=effective_execution_total_seconds(operation), time_extension_proof=proof,
                 seconds_to_expiry=(_timestamp(view['authorization']['expires_at'])-now).total_seconds())
             upper=allowed if upper_bound_seconds is None else upper_bound_seconds
-            if type(upper) not in (int,float) or not 0 < upper <= allowed:
+            if type(upper) not in (int,float) or not 0 < upper <= allowed or (proof is not None and upper <= 70):
                 raise PermissionError('CAMPAIGN_EXECUTION_SEGMENT_BOUND_CONFLICT')
             item={'operation_id':operation_id,'segment_number':segment_number,'profile_hash':value['profile_hash'],
                   'upper_bound_seconds':upper,'dispatched_at':now.isoformat()}
+            if proof is not None:item['time_extension_proof']=deepcopy(proof)
             budget.campaign_event('CAMPAIGN_EXECUTION_SEGMENT_DISPATCHED',item)
             return deepcopy(budget.campaign_view()['operations'][operation_id]['active_segment'])
 
@@ -321,6 +409,8 @@ class ResearchCampaignV1:
             item={'operation_id':operation_id,'segment_number':segment_number,'measured_seconds':seconds,
                   'seconds':amount,'basis':basis,'evidence_identity':evidence_identity,'outcome':outcome,
                   'charged_at':datetime.now(timezone.utc).isoformat()}
+            if active.get('time_extension_proof') is not None:
+                item['time_extension_proof']=deepcopy(active['time_extension_proof'])
             budget.campaign_event('CAMPAIGN_EXECUTION_SEGMENT_CHARGED',item)
             if basis=='MEASURED_FAILED_RESOURCE_BOUND_VIOLATION':
                 budget.campaign_event('CAMPAIGN_PAUSED',{'reason':'DISPATCH_RESOURCE_BOUND_VIOLATION',
@@ -359,6 +449,9 @@ class ResearchCampaignV1:
             budget = self._budget()
             operation = budget.campaign_view()['operations'][operation_id]
             item = {'operation_id': operation_id, 'actual': units, 'outcome': outcome, 'evidence_identity': evidence_identity}
+            if operation.get('account_purpose_time_extension') is not None:
+                item['time_extension_proof']=deepcopy(operation['account_purpose_time_extension'])
+            bounds=effective_operation_upper_bounds(operation)
             if operation['status'] in ('COMPLETED', 'FAILED'):
                 if any(operation[key] != value for key, value in item.items()):
                     raise BudgetLedgerMismatchError('CAMPAIGN_SETTLEMENT_CONFLICT')
@@ -372,14 +465,14 @@ class ResearchCampaignV1:
                     raise ValueError('CAMPAIGN_EXECUTION_ACTIVE_USAGE_CANNOT_BE_ERASED')
             if units[KINDS[operation['kind']]] != 1 or units['wall_seconds'] < 1:
                 raise ValueError('CAMPAIGN_CONSUMPTION_CANNOT_BE_ERASED')
-            if any(amount > operation['upper_bounds'][name] for name, amount in units.items()):
+            if any(amount > bounds[name] for name, amount in units.items()):
                 segments=operation.get('segments',[])
                 if (operation.get('execution_profile') is not None and outcome=='FAILED' and segments
                         and segments[-1].get('outcome')=='FAILED'
                         and segments[-1].get('basis')=='MEASURED_FAILED_RESOURCE_BOUND_VIOLATION'
                         and units['wall_seconds']==max(1,math.ceil(operation['active_wall_seconds']))
-                        and all(units[name]<=operation['upper_bounds'][name] for name in units if name!='wall_seconds')):
-                    item['resource_overrun']={name:max(0,units[name]-operation['upper_bounds'][name]) for name in units}
+                        and all(units[name]<=bounds[name] for name in units if name!='wall_seconds')):
+                    item['resource_overrun']={name:max(0,units[name]-bounds[name]) for name in units}
                     if operation['kind'] in ('ACCOUNT','DATA'):budget.complete_trial(operation_id)
                     budget.campaign_event('CAMPAIGN_OPERATION_RESOURCE_OVERRUN_SETTLED',item)
                     budget.campaign_event('CAMPAIGN_PAUSED',{'reason':'ACTUAL_RESOURCE_OVERRUN',

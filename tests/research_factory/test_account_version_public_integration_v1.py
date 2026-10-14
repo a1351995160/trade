@@ -72,7 +72,7 @@ def _install_synthetic_capabilities(root):
     return declaration
 
 
-def _public_case(root):
+def _public_case(root, *, fixture_factory=None, rule_overrides=None):
     """冻结前指定504日；沿用原合成提供器及规则，不接触真实账户或行情。"""
     from chanlun_trader.research_factory.campaign_scope_v1 import (
         CampaignScopeV1, OwnerApprovalStoreV1, bind_campaign_scope, scope_summary,
@@ -91,7 +91,7 @@ def _public_case(root):
 
     # 只替换合成数据生成参数，产品profile和最终门槛均保持504日。
     with pytest.MonkeyPatch.context() as patch:
-        patch.setattr(fixtures, 'fixture', lambda: fixture(days_count=564))
+        patch.setattr(fixtures, 'fixture', fixture_factory or (lambda: fixture(days_count=564)))
         legacy, request, authority, _ = long_public_case(root / 'synthetic_inputs')
     authority['expires_at'] = (datetime.now(timezone.utc) + timedelta(hours=8)).isoformat()
     request['execution_profile'] = execution_profile(SEGMENTED_PROFILE, 504)
@@ -108,6 +108,7 @@ def _public_case(root):
                  node('indicator', 'ma', output='ma', version='MA_ARITHMETIC_V1')),
         selection={'score': node('indicator', 'vol', output='volatility', version='ROLLING_VOLATILITY_V1'),
                    'direction': 'ASCENDING', 'tie_breaker': 'SYMBOL_ASCENDING'})
+    request['rule'].update(deepcopy(rule_overrides or {}))
     snapshot = capabilities()
     frozen = scope(snapshot, confirmation=False)
     dataset = legacy.provider.catalog()['datasets'][0]

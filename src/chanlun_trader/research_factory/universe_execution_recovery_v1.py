@@ -186,6 +186,9 @@ def resume_long_horizon_job(path,job,*,reconcile_only=False):
                         error=None if outcome=='COMPLETED' else 'KNOWN_WORKER_FAILURE')
                 continue
             number=pending['segment_number'];prefix=runner.segment_prefix(name,number)
+            version=(runner.account_version_context(job) if pending.get('time_extension_proof') is not None else None)
+            version_proof=({'time_extension_proof':pending['time_extension_proof'],
+                'account_version_continuation':version.segment_proof(name,number)} if version is not None else {})
             worker_path=root/(prefix+'_WORKER.json');access_path=root/(prefix+'_INPUT_ACCESS.json')
             if not worker_path.exists():
                 proof_path=root/(prefix+'_MIRROR_REPAIR.json')
@@ -194,7 +197,7 @@ def resume_long_horizon_job(path,job,*,reconcile_only=False):
                     gov.end_segment(name,number,outcome='CONTINUE')
                     runner.save(root/(prefix+'_RESUME.json'),{'dispatch_id':pending['dispatch_id'],
                         'charge_basis':'UNKNOWN_UPPER_BOUND','mirror_repair_sha256':runner.sha(proof_path),
-                        'budget_reused':True,'execution_not_launched':True})
+                        'budget_reused':True,'execution_not_launched':True,**version_proof})
                     continue
                 raise PermissionError('UNIVERSE_RESUME_WORKER_START_UNKNOWN')
             worker=runner.read_json(worker_path)
@@ -210,6 +213,8 @@ def resume_long_horizon_job(path,job,*,reconcile_only=False):
                 failure=runner.read_json(failure_path)
                 if failure.get('dispatch_id')!=pending['dispatch_id'] or failure.get('scope_identity')!=runner.sha(path):
                     raise PermissionError('UNIVERSE_RESUME_FAILURE_DISPATCH_CONFLICT')
+                if failure.get('time_extension_proof') != pending.get('time_extension_proof'):
+                    raise PermissionError('UNIVERSE_RESUME_FAILURE_TIME_EXTENSION_CONFLICT')
                 known_failure=True
             checkpoint, feature_binding = checkpoints[name], feature_bindings[name]
             checkpoint_raw = _optional_progress_bytes(checkpoint, root)
@@ -231,6 +236,8 @@ def resume_long_horizon_job(path,job,*,reconcile_only=False):
             if resource is not None:
                 if resource.get('dispatch_id') != pending['dispatch_id']:
                     raise PermissionError('UNIVERSE_RESUME_RESOURCE_DISPATCH_CONFLICT')
+                if resource.get('time_extension_proof') != pending.get('time_extension_proof'):
+                    raise PermissionError('UNIVERSE_RESUME_RESOURCE_TIME_EXTENSION_CONFLICT')
                 measured=resource.get('elapsed_wall_seconds');evidence=runner.sha(resource_path)
                 if (not known_failure and measured<=pending['upper_bound_seconds']
                         and resource.get('returncode')==0 and not resource.get('timed_out') and output.exists()
@@ -246,7 +253,7 @@ def resume_long_horizon_job(path,job,*,reconcile_only=False):
                 'state_identity':hashlib.sha256(checkpoint_raw).hexdigest() if checkpoint_raw is not None else
                     hashlib.sha256(feature_raw).hexdigest() if feature_raw is not None else None,
                 'charge_basis':'MEASURED' if measured is not None else 'UNKNOWN_UPPER_BOUND',
-                'budget_reused':True,'resumed_at':datetime.now(timezone.utc).isoformat()})
+                'budget_reused':True,'resumed_at':datetime.now(timezone.utc).isoformat(),**version_proof})
             if outcome in ('COMPLETED','FAILED'):
                 total=gov.segment_status(name)['charged_seconds']
                 for suffix in ('_WORKER.json','_INPUT_ACCESS.json'):

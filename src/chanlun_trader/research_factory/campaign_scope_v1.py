@@ -156,7 +156,23 @@ def validate_scope_policy(root, authorization):
             if str(bridge_error) != 'CONTINUOUS_CAPABILITIES_CHANGED_NEW_VERSION_REQUIRED':
                 raise
             from .account_version_capability_bridge_v1 import AccountVersionCapabilityBridgeV1
-            bridge = AccountVersionCapabilityBridgeV1.read(root, authorization)
+            from .account_purpose_time_extension_v1 import AccountPurposeTimeExtensionV1, _read, _reference
+            folder = Path(root) / 'reports' / 'research_campaigns' / stable_hash(
+                authorization['authorization_id']) / 'account-purpose-time-extension-slots'
+            if folder.exists():
+                slots = list(folder.glob('*.json'))
+                if len(slots) != 1:
+                    raise PermissionError('ACCOUNT_PURPOSE_TIME_EXTENSION_SCOPE_SLOT_CONFLICT')
+                slot = _read(_reference(slots[0], root), root)
+                extension = AccountPurposeTimeExtensionV1.read(root, slot['manifest_ref'],
+                    base_authorization=authorization)
+                if slot != {'extension_id': extension.extension_id, 'manifest_ref': extension.scope_reference}:
+                    raise PermissionError('ACCOUNT_PURPOSE_TIME_EXTENSION_SCOPE_SLOT_CONFLICT')
+                bridge = AccountVersionCapabilityBridgeV1.read_historical(root, authorization,
+                    reference=extension.summary_value['predecessor_bridge_ref'],
+                    time_extension_ref=extension.scope_reference)
+            else:
+                bridge = AccountVersionCapabilityBridgeV1.read(root, authorization)
         summary = scope_summary(root, authorization, policy['summary']['contract'], policy['summary']['stage_limits'],
             capabilities_snapshot=bridge['capabilities_snapshot'])
     if policy['summary'] != summary:
@@ -212,7 +228,9 @@ def stage_remaining(view):
         return None
     result = deepcopy(policy['summary']['stage_limits'])
     for operation in view['operations'].values():
-        for name, amount in operation.get('actual' if operation['status'] in ('COMPLETED', 'FAILED') else 'upper_bounds', {}).items():
+        units = (operation.get('actual', {}) if operation['status'] in ('COMPLETED', 'FAILED')
+            else operation.get('effective_upper_bounds', operation.get('upper_bounds', {})))
+        for name, amount in units.items():
             result[operation['stage']][name] -= amount
     return result
 
@@ -346,6 +364,10 @@ class CampaignScopeV1:
             raise PermissionError('CAMPAIGN_TRAIN_PROJECTION_ROUTE_CONFLICT')
 
     def resolve(self, reference, *, for_dispatch=True):
+        return self._resolve_from_view(reference, None, for_dispatch=for_dispatch)
+
+    def _resolve_from_view(self, reference, view, *, for_dispatch=True):
+        "本次已完整新鲜重放的视图；公开resolve始终自行读取。"
         if (not isinstance(reference, dict) or set(reference) != {'binding_id'}
                 or not re.fullmatch(r'[a-f0-9]{64}', str(reference['binding_id']))):
             raise PermissionError('CAMPAIGN_BINDING_REFERENCE_INVALID')
@@ -357,7 +379,8 @@ class CampaignScopeV1:
                 or value['authorization_id'] != self.campaign.authorization_id
                 or Path(value['campaign_root']).resolve() != self.campaign.root):
             raise PermissionError('CAMPAIGN_BINDING_IDENTITY_CONFLICT')
-        view = self.campaign.peek_status()
+        if view is None:
+            view = self.campaign.peek_status()
         if for_dispatch:
             self.campaign._dispatchable(view, value['phase'])
         if for_dispatch and datetime.now(timezone.utc) >= _expiry(value['expires_at']):
