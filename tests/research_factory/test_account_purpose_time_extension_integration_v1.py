@@ -200,13 +200,13 @@ def _install_predecessor(root, source, original_bytes, service, request, campaig
     name = next(name for name in job['plans'] if name.endswith('_BASE'))
     service.pause(task_id)
     _charged_prefix(job_path, name, paused=True)
+    base = campaign.peek_status()['base_authorization']
     archive = root / 'reports' / 'synthetic_quota_source_archive' / 'business_predecessor.py'
     archive.parent.mkdir(parents=True)
     archive.write_bytes(source.read_bytes())
     source.write_bytes(original_bytes)
     replacements = [{'path': str(source), 'old_sha256': _sha(archive), 'new_sha256': _sha(source),
         'archive_ref': _ref(archive)}]
-    base = campaign.peek_status()['base_authorization']
     bridge_summary = AccountVersionCapabilityBridgeV1.summary(root, base,
         source_replacements=replacements,
         runtime_source_refs=[_ref(root / path) for path in sorted(REQUIRED_RUNTIME_PATHS)])
