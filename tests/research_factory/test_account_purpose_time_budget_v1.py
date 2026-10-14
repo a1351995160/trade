@@ -332,3 +332,49 @@ def test_reconcile_rechecks_owner_and_authority_before_first_new_mirror(installe
     finally:
         if change == 'owner' and changed:
             approval.write_bytes(approval_bytes)  # 只恢复本用例人工Owner，保留失败工件供诊断。
+
+
+
+@pytest.mark.parametrize('change', ['owner', 'source', 'day'])
+def test_installed_quota_readonly_replay_is_local_and_rejects_next_change(installed_case, monkeypatch,
+                                                                        record_property, change):
+    from pathlib import Path
+    from chanlun_trader.research_factory import account_purpose_time_extension_v1 as extension
+    case = installed_case
+    campaign = case['campaign']
+    before = {path: path.read_bytes() for path in (events(case), campaign.budget_path)}
+    counts = {'view': 0, 'proof_read': 0}
+    native_view = AutonomousRunBudgetV2.campaign_view
+    native_read = extension.AccountPurposeTimeExtensionV1.read.__func__
+
+    def counted_view(budget):
+        counts['view'] += 1
+        return native_view(budget)
+
+    def counted_read(cls, *args, **kwargs):
+        counts['proof_read'] += 1
+        return native_read(cls, *args, **kwargs)
+
+    monkeypatch.setattr(AutonomousRunBudgetV2, 'campaign_view', counted_view)
+    monkeypatch.setattr(extension.AccountPurposeTimeExtensionV1, 'read', classmethod(counted_read))
+    view = campaign.peek_status()
+    assert view['operations']['BASE']['effective_total_seconds'] == 72000
+    record_property('installed_quota_full_replays', counts['view'])
+    record_property('installed_quota_fresh_proof_reads', counts['proof_read'])
+    assert counts['view'] == 1 and counts['proof_read'] > 0
+    assert all(path.read_bytes() == value for path, value in before.items())
+    reads = counts['proof_read']
+    if change == 'owner':
+        manifest = json.loads(Path(case['context'].scope_reference['path']).read_text(encoding='utf-8'))
+        (case['approvals'].directory / (manifest['approval_ref']['approval_id'] + '.json')).write_text('{}', encoding='utf-8')
+    elif change == 'source':
+        path = Path(case['spec']['runtime_source_refs'][0]['path'])
+        path.write_bytes(path.read_bytes() + b'\n# artificial changed source\n')
+    else:
+        state = json.loads((case['account'] / 'ARTIFICIAL_BASE_STATE.json').read_text(encoding='utf-8'))
+        path = case['account'] / 'ARTIFICIAL_BASE_DAYS' / state['artifacts']['days'][0]['file']
+        path.write_bytes(path.read_bytes() + b'artificial changed day')
+    with pytest.raises((PermissionError, BudgetLedgerMismatchError, ValueError)):
+        campaign.peek_status()
+    assert counts['proof_read'] > reads
+    assert all(path.read_bytes() == value for path, value in before.items())

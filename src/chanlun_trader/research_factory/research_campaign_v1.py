@@ -109,13 +109,19 @@ class ResearchCampaignV1:
         return value
 
     def _budget(self, create=False, readonly=False):
+        return self._budget_with_view(create=create, readonly=readonly, _fresh_after_trials=False)[0]
+
+    def _budget_with_view(self, create=False, readonly=False, _fresh_after_trials=True):
+        """只交回本次完整重放；镜像修复后另做 fresh，不跨调用保留许可。"""
         authorization = self._authorization()
         if not create and not self.budget_path.with_name('run_budget_events.jsonl').exists():
             raise BudgetLedgerMismatchError('CAMPAIGN_EVENT_HISTORY_MISSING')
+        initial_views = []
         budget = AutonomousRunBudgetV2(run_id=self.authorization_id, objective_id=authorization['objective_id'],
             path=self.budget_path, policy_hash=stable_hash(authorization), readonly=readonly,
+            _campaign_view_out=initial_views.append if readonly else None,
             **{key: authorization[key] for key in LIMIT_KEYS})
-        view = budget.campaign_view()
+        view = initial_views.pop() if readonly else budget.campaign_view()
         if not create and view['base_authorization'] != authorization:
             raise BudgetLedgerMismatchError('CAMPAIGN_AUTHORIZATION_EVENT_CONFLICT')
         for operation in (() if readonly else view['operations'].values()):
@@ -126,7 +132,9 @@ class ResearchCampaignV1:
                     budget.mark_performance_started(operation['operation_id'])
                 if operation['status'] in ('COMPLETED', 'FAILED'):
                     budget.complete_trial(operation['operation_id'])
-        return budget
+        if not readonly and _fresh_after_trials:
+            view = budget.campaign_view()
+        return budget, view
 
     @staticmethod
     def _units(value, complete=False):
@@ -152,8 +160,7 @@ class ResearchCampaignV1:
 
     def status(self):
         with self._lock():
-            budget = self._budget()
-            view = budget.campaign_view()
+            budget, view = self._budget_with_view()
             return {**view, 'trial_usage': budget.usage_state.to_dict(),
                     'batch_count': budget.batch_count_used,
                     'expired': datetime.now(timezone.utc) >= _timestamp(view['authorization']['expires_at'])}
@@ -161,8 +168,7 @@ class ResearchCampaignV1:
     def _peek_execution_status(self):
         "只读guard严格核父trial镜像；缺口交专门对账，不隐式补记消费。"
         from .run_budget import trial_budget_identity
-        budget = self._budget(readonly=True)
-        view = budget.campaign_view()
+        budget, view = self._budget_with_view(readonly=True)
         usage = budget.usage_state.to_dict()
         for operation in view['operations'].values():
             if operation['kind'] not in ('ACCOUNT', 'DATA'):
@@ -188,8 +194,7 @@ class ResearchCampaignV1:
 
     def peek_status(self):
         """只读重放；不修快照、不修镜像、不创建锁文件。"""
-        budget = self._budget(readonly=True)
-        view = budget.campaign_view()
+        budget, view = self._budget_with_view(readonly=True)
         return {**view, 'trial_usage': budget.usage_state.to_dict(), 'batch_count': budget.batch_count_used,
                 'expired': datetime.now(timezone.utc) >= _timestamp(view['authorization']['expires_at'])}
 
@@ -341,7 +346,7 @@ class ResearchCampaignV1:
 
     def effective_execution_limit(self, operation_id, *, for_dispatch=False):
         """由同一权威事件重放的有效限时；原 profile/hash 不变。"""
-        view=self._budget(readonly=True).campaign_view(); operation=view['operations'][operation_id]
+        _, view=self._budget_with_view(readonly=True); operation=view['operations'][operation_id]
         proof=operation.get('account_purpose_time_extension')
         if for_dispatch:
             self._dispatchable(view, operation['stage'])
@@ -361,7 +366,7 @@ class ResearchCampaignV1:
         """继续原 operation；不建立第二个 Trial 或第二份账户额度。"""
         from .universe_execution_profile_v1 import validate_execution_profile
         with self._lock():
-            budget=self._budget(); view=budget.campaign_view(); operation=view['operations'][operation_id]
+            budget, view=self._budget_with_view(); operation=view['operations'][operation_id]
             self._dispatchable(view,operation['stage'])
             frozen=operation.get('execution_profile')
             if frozen is None or operation['status'] != 'RUNNING':
@@ -401,7 +406,7 @@ class ResearchCampaignV1:
         if outcome not in ('CONTINUE','PAUSED','COMPLETED','FAILED'):
             raise ValueError('CAMPAIGN_EXECUTION_SEGMENT_OUTCOME_INVALID')
         with self._lock():
-            budget=self._budget(); operation=budget.campaign_view()['operations'][operation_id]
+            budget, view=self._budget_with_view(); operation=view['operations'][operation_id]
             active=operation.get('active_segment')
             if operation['status'] not in ('RUNNING','UNKNOWN') or active is None or active['segment_number'] != segment_number:
                 raise PermissionError('CAMPAIGN_EXECUTION_SEGMENT_NOT_ACTIVE')

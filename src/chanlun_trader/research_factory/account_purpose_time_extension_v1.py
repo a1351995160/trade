@@ -57,9 +57,13 @@ def _path(value, root):
 
 
 def _reference(path, root):
-    path = _path(path, root)
-    return {'path': str(path), 'sha256': file_sha256(path, root=root,
-        error_code='ACCOUNT_PURPOSE_TIME_EXTENSION_REFERENCE_CHANGED')}
+    # 安全读取器仍完整核打开前后路径和对象；成功路径不再额外遍历第三次。
+    try:
+        digest = file_sha256(path, root=root, error_code='ACCOUNT_PURPOSE_TIME_EXTENSION_REFERENCE_CHANGED')
+    except ValueError:
+        _path(path, root)  # 错误路径仍沿用原 PATH_INVALID 分类。
+        raise
+    return {'path': str(Path(path)), 'sha256': digest}
 
 
 def _read(reference, root):

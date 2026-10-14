@@ -79,7 +79,7 @@ def test_guard_uses_one_fresh_campaign_view_without_writing_observation(continuo
     record_property('campaign_view_calls', counts['view'])
     record_property('guard_seconds', elapsed)
     assert receipt['execution_consumed'] is True and receipt['execution_purpose'] == 'FIXED'
-    assert counts['view'] <= 3, counts
+    assert counts['view'] == 1, counts
     assert all(path.read_bytes() == data for path, data in before.items())
 
 
@@ -162,3 +162,79 @@ def test_guard_rejects_parent_trial_mirror_gap_without_repair(continuous_guard, 
     with pytest.raises(BudgetLedgerMismatchError):
         governor.active_execution('FIXED')
     assert all(item.read_bytes() == data for item, data in before.items())
+
+
+
+def test_campaign_boundary_views_are_local_and_tail_replay_is_retained(tmp_path, monkeypatch, record_property):
+    from test_universe_execution_profile_v1 import campaign as segmented_campaign
+    campaign = segmented_campaign(tmp_path)
+    native = AutonomousRunBudgetV2.campaign_view
+    counts = []
+
+    def counted(budget):
+        counts.append(1)
+        return native(budget)
+
+    monkeypatch.setattr(AutonomousRunBudgetV2, 'campaign_view', counted)
+    for name in ('peek_status', '_peek_execution_status', 'effective_execution_limit'):
+        counts.clear()
+        method = getattr(campaign, name)
+        method('operation') if name == 'effective_execution_limit' else method()
+        record_property(name + '_full_replays', len(counts))
+        assert len(counts) == 1
+    counts.clear()
+    dispatched = campaign.start_execution_segment('operation', segment_number=1)
+    record_property('dispatch_full_replays', len(counts))
+    assert len(counts) == 4 and dispatched['segment_number'] == 1
+    counts.clear()
+    charged = campaign.end_execution_segment('operation', segment_number=1, seconds=1,
+                                             evidence_identity='SYNTHETIC_MEASURED_RESOURCE')
+    record_property('charge_full_replays', len(counts))
+    assert len(counts) == 4 and charged['seconds'] == 1
+
+
+def test_mutating_view_rechecks_owner_after_trial_mirror_processing(continuous_guard, monkeypatch):
+    _, campaign, approvals, approval, _ = continuous_guard
+    event_path = campaign.budget_path.with_name('run_budget_events.jsonl')
+    before = event_path.read_bytes()
+    native = AutonomousRunBudgetV2.mark_performance_started
+    removed = []
+
+    def revoke_after_trial_processing(budget, trial_id):
+        result = native(budget, trial_id)
+        if not removed:
+            (approvals.directory / (approval['approval_id'] + '.json')).write_text('{}', encoding='utf-8')
+            removed.append(trial_id)
+        return result
+
+    monkeypatch.setattr(AutonomousRunBudgetV2, 'mark_performance_started', revoke_after_trial_processing)
+    with pytest.raises(PermissionError):
+        campaign.status()
+    assert removed and event_path.read_bytes() == before
+
+
+
+def test_mutation_rechecks_owner_before_trial_repair_after_constructor(continuous_guard, monkeypatch):
+    _, campaign, approvals, approval, _ = continuous_guard
+    campaign.set_stage('CONFIRMATION', 'WAITING', 'SYNTHETIC_TAIL_AFTER_CRASH')
+    event_path = campaign.budget_path.with_name('run_budget_events.jsonl')
+    original = [json.loads(line) for line in event_path.read_text(encoding='utf-8').splitlines()]
+    remaining = [row for row in original if not (row['event_type'] == 'RUN_TRIAL_PERFORMANCE_ACCESSED'
+                 and row['payload'].get('trial_id') == 'synthetic_account')]
+    assert len(remaining) == len(original) - 1 and remaining[-1] == original[-1]
+    event_path.write_text(''.join(json.dumps(row) + '\n' for row in remaining), encoding='utf-8')
+    before = event_path.read_bytes()
+    native = AutonomousRunBudgetV2._persist
+    revoked = []
+
+    def revoke_after_constructor_snapshot(budget):
+        result = native(budget)
+        if not revoked:
+            (approvals.directory / (approval['approval_id'] + '.json')).write_text('{}', encoding='utf-8')
+            revoked.append(True)
+        return result
+
+    monkeypatch.setattr(AutonomousRunBudgetV2, '_persist', revoke_after_constructor_snapshot)
+    with pytest.raises(PermissionError):
+        campaign.status()
+    assert revoked and event_path.read_bytes() == before

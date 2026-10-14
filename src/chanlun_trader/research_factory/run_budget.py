@@ -182,7 +182,7 @@ class AutonomousRunBudgetV1:
 
     schema_version = "autonomous-run-budget-v2"
 
-    def __init__(self, *, run_id: str, objective_id: str, path: str | Path | None = None, max_batches: int, max_total_predictive_trials: int, max_trials_per_batch: int, max_hypotheses_per_batch: int, max_candidates_per_batch: int, policy_hash: str = "", objective_hash: str = "", readonly: bool = False):
+    def __init__(self, *, run_id: str, objective_id: str, path: str | Path | None = None, max_batches: int, max_total_predictive_trials: int, max_trials_per_batch: int, max_hypotheses_per_batch: int, max_candidates_per_batch: int, policy_hash: str = "", objective_hash: str = "", readonly: bool = False, _campaign_view_out=None):
         self.readonly = readonly
         self.run_id = str(run_id)
         self.objective_id = str(objective_id)
@@ -220,10 +220,12 @@ class AutonomousRunBudgetV1:
         self._events: list[dict[str, Any]] = []
         self._event_ids: set[str] = set()
         self._load()
-        self._load_events()
+        initial_view = self._load_events()
         self._replay_events_if_state_is_empty()
         self._sync_materialized_counts()
         self._persist()
+        if _campaign_view_out is not None:
+            _campaign_view_out(initial_view)
 
     @property
     def remaining_predictive_trials(self) -> int:
@@ -672,6 +674,7 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
         if view['authorization'] is not None:
             self.max_batches = view['authorization']['max_batches']
             self.max_total_predictive_trials = view['authorization']['max_total_predictive_trials']
+        return view
 
     def _replay_events_if_state_is_empty(self):
         # V2 的事件是权威；快照可落后于最后一次持久化事件。

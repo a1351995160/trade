@@ -497,3 +497,70 @@ def test_unknown_upper_bound_charges_preserve_missing_resource_without_fabricati
     assert not ({str(path) for path in absent} & {reference['path'] for reference in row['segment_refs']})
     assert extension.AccountPurposeTimeExtensionV1.read(case['root'], context.scope_reference,
         for_install=True).proof() == context.proof()
+
+
+
+def test_reference_keeps_open_checks_without_a_third_component_walk(tmp_path, monkeypatch, record_property):
+    from chanlun_trader.research_factory import secure_file_reference_v1 as secure
+    target = tmp_path / '原件.json'
+    target.write_bytes(b'approved bytes')
+    native = secure._reject_link_components
+    calls = []
+
+    def counted(path):
+        calls.append(str(path))
+        return native(path)
+
+    monkeypatch.setattr(secure, '_reject_link_components', counted)
+    assert extension._reference(target, tmp_path) == pin(target)
+    record_property('full_component_walks_per_reference', len(calls))
+    assert len(calls) == 2, calls
+
+
+
+@pytest.mark.parametrize('kind', ['relative', 'outside', 'parent', 'ads', 'missing', 'directory'])
+def test_reference_retains_original_path_and_read_error_codes(tmp_path, kind):
+    root = tmp_path / 'root'
+    root.mkdir()
+    target = root / 'fixed.json'
+    target.write_bytes(b'original')
+    values = {'relative': 'fixed.json', 'outside': tmp_path / 'outside.json',
+              'parent': root / '..' / 'fixed.json', 'ads': str(target) + ':hidden',
+              'missing': root / 'missing.json', 'directory': root}
+    code = 'REFERENCE_CHANGED' if kind in ('missing', 'directory') else 'PATH_INVALID'
+    with pytest.raises(ValueError, match='ACCOUNT_PURPOSE_TIME_EXTENSION_' + code):
+        extension._reference(values[kind], root)
+
+
+def test_reference_rejects_opened_object_replacement(tmp_path, monkeypatch):
+    target, other = tmp_path / 'fixed.json', tmp_path / 'other.json'
+    target.write_bytes(b'approved')
+    other.write_bytes(b'substituted')
+    native = os.open
+    monkeypatch.setattr(os, 'open', lambda _path, flags: native(other, flags))
+    with pytest.raises(ValueError, match='ACCOUNT_PURPOSE_TIME_EXTENSION_REFERENCE_CHANGED'):
+        extension._reference(target, tmp_path)
+
+
+@pytest.mark.parametrize('link_type', ['symlink', 'reparse'])
+def test_reference_rejects_parent_links_before_open(tmp_path, monkeypatch, link_type):
+    import stat
+    from types import SimpleNamespace
+    target = tmp_path / 'parent' / 'fixed.json'
+    target.parent.mkdir()
+    target.write_bytes(b'approved')
+    native = Path.lstat
+
+    def changed(path):
+        if path == target.parent:
+            return SimpleNamespace(st_mode=stat.S_IFLNK if link_type == 'symlink' else stat.S_IFDIR,
+                                   st_file_attributes=0x400 if link_type == 'reparse' else 0)
+        return native(path)
+
+    def unexpected_open(*_args):
+        pytest.fail('linked reference must not reach native open')
+
+    monkeypatch.setattr(Path, 'lstat', changed)
+    monkeypatch.setattr(os, 'open', unexpected_open)
+    with pytest.raises(ValueError, match='ACCOUNT_PURPOSE_TIME_EXTENSION_PATH_INVALID'):
+        extension._reference(target, tmp_path)
