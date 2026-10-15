@@ -298,14 +298,16 @@ def _reference_worker(job_path, name):
 def _compare_native_reference(root, job_path, name, result):
     from chanlun_trader.synthetic_batch_resources import run_bounded_worker
     from chanlun_trader.research_factory.universe_execution_artifacts_v1 import ArtifactSequence
+    folder = job_path.parent.parents[3] / 'synthetic_quota_continuous_reference' / name
     resource = run_bounded_worker([sys.executable, str(Path(__file__).resolve()), '--reference',
         str(job_path), name], root=root, memory_mib=2048, wall_seconds=900,
+        on_started=lambda pid: _write(folder.with_name(name + '_WORKER.json'), {'pid': pid,
+            'started_at': datetime.now(timezone.utc).isoformat()}),
         environment=dict(os.environ), measure_peak_memory=True,
         execution={'purpose': 'SYNTHETIC_CONTINUOUS_REFERENCE_' + name, 'segment_number': 1,
             'dispatch_id': 'c' * 64})
     resource = {key: value.decode('utf-8', errors='replace') if isinstance(value, bytes) else value
         for key, value in resource.items()}
-    folder = job_path.parent.parents[3] / 'synthetic_quota_continuous_reference' / name
     _write(folder / 'RESOURCE.json', resource)
     assert resource['returncode'] == 0 and not resource['timed_out'], resource
     reference = _read(folder / 'RESULT.json')
@@ -315,6 +317,31 @@ def _compare_native_reference(root, job_path, name, result):
     assert reference['final_account_checkpoint'] == result['final_account_checkpoint']
     assert list(ArtifactSequence(reference['artifacts'], 'account')) == list(ArtifactSequence(result['artifacts'], 'account'))
     return _ref(folder / 'RESULT.json')
+
+
+def test_native_reference_records_bounded_worker_launch(tmp_path, monkeypatch):
+    """原生对照也必须满足资源包装器的启动回调契约。"""
+    from inspect import signature
+    from chanlun_trader import synthetic_batch_resources as resources
+
+    worker_signature = signature(resources.run_bounded_worker)
+    job_path = tmp_path / 'reports/public/task/account/JOB.json'
+
+    class Started(Exception):
+        pass
+
+    def start_only(*args, **kwargs):
+        worker_signature.bind(*args, **kwargs)
+        assert kwargs['memory_mib'] == 2048 and kwargs['wall_seconds'] == 900
+        kwargs['on_started'](12345)
+        assert not (tmp_path / 'synthetic_quota_continuous_reference/FULL_FIXTURE_BASE').exists()
+        raise Started
+
+    monkeypatch.setattr(resources, 'run_bounded_worker', start_only)
+    with pytest.raises(Started):
+        _compare_native_reference(tmp_path, job_path, 'FULL_FIXTURE_BASE', {})
+    worker = _read(tmp_path / 'synthetic_quota_continuous_reference/FULL_FIXTURE_BASE_WORKER.json')
+    assert worker['pid'] == 12345
 
 
 def _finish_synthetic_session(root, job_path, context, task, public, campaign, restored, config):
