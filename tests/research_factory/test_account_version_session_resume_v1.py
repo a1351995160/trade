@@ -317,10 +317,12 @@ def pinned_session(tmp_path, monkeypatch, *, owner_alias=False):
         write(path, value)
         session_refs[key] = ref(path)
     context = SimpleNamespace(job_path=job_path, task_root=task_root, validate=lambda **kwargs: None,
-        mirrors_pending=lambda: False,
+        mirrors_pending=lambda: False, time_extension=None, time_extension_installed=False,
         summary_value={'root': str(workspace), 'approval_store': str(owner), 'session_refs': session_refs,
             'runtime_sources': [ref(own)], 'source_replacements': [{'path': str(source),
                 'old_sha256': old_source['sha256'], 'new_sha256': digest(source), 'archive_ref': ref(archive)}]})
+    context.approved_source_replacements = lambda: deepcopy(context.summary_value['source_replacements'])
+    context.approved_runtime_sources = lambda: deepcopy(context.summary_value['runtime_sources'])
     monkeypatch.setattr(runner.AccountVersionContinuationV1, 'from_job',
                         classmethod(lambda cls, job, **kwargs: context))
     acl = []

@@ -31,7 +31,7 @@ def public_universe_case(tmp_path, *, complete=True):
     (data / "calendar.json").write_text(json.dumps(window["calendar"]), encoding="utf-8")
     coverage = [{"symbols": window["symbols"], "start": window["feature_start"],
                  "end": window["account_end"], "source": "actions", "complete": complete,
-                 "event_types": ["CASH_DIVIDEND"]}]
+                 "event_types": sorted({"CASH_DIVIDEND", *(event["event_type"] for event in bundle["events"])})}]
     (data / "actions.json").write_text(json.dumps(coverage), encoding="utf-8")
     def digest(name):
         return hashlib.sha256((data / name).read_bytes()).hexdigest()
@@ -46,6 +46,10 @@ def public_universe_case(tmp_path, *, complete=True):
         files[name] = {"kind": kind, "format": form, "source_id": source,
                        "sha256": digest(name), "start": window["feature_start"], "end": window["account_end"]}
     files["daily.parquet"].update(symbols=window["symbols"], evidence=proof)
+    if bundle["events"]:
+        (data / "events.json").write_text(json.dumps(bundle["events"]), encoding="utf-8")
+        files["events.json"] = {"kind": "EVENTS", "format": "JSON", "source_id": "events",
+            "sha256": digest("events.json"), "start": window["feature_start"], "end": window["account_end"]}
     proof["source_id"] = "daily"
     files["states.parquet"]["date_columns"] = ["effective_date", "valid_to"]
     boards = {symbol: "CHINEXT" if symbol.startswith("30") else

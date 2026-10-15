@@ -8,10 +8,116 @@ import json
 import hashlib
 import math
 import os
+from datetime import datetime
 from typing import Any, Iterable, Mapping
 
 from .budget import BudgetExhaustedError, BudgetLedgerMismatchError
 from .common import now_timestamp, stable_hash
+
+
+def effective_operation_upper_bounds(operation):
+    """历史预留保持原件；附加限时只派生同一用途的有效墙时预留。"""
+    return deepcopy(operation.get('effective_upper_bounds', operation['upper_bounds']))
+
+
+def effective_execution_total_seconds(operation):
+    return operation.get('effective_total_seconds', operation['execution_profile']['total_seconds'])
+
+
+def effective_segment_allowance(profile, charged_seconds, *, seconds_to_expiry,
+                                effective_total_seconds=None, time_extension_proof=None):
+    """纯额度计算；派发方仍须从原子预算事件复验 Owner 证明。"""
+    from .universe_execution_profile_v1 import segment_allowance, validate_execution_profile
+    if time_extension_proof is None:
+        if effective_total_seconds not in (None, profile['total_seconds']):
+            raise PermissionError('ACCOUNT_PURPOSE_TIME_EXTENSION_PROOF_REQUIRED')
+        return segment_allowance(profile, charged_seconds, seconds_to_expiry=seconds_to_expiry)
+    value = validate_execution_profile(profile)
+    if (value['total_seconds'] != 28800 or effective_total_seconds != 72000
+            or not isinstance(time_extension_proof, dict)
+            or set(time_extension_proof) != {'manifest_ref', 'extension_id'}):
+        raise PermissionError('ACCOUNT_PURPOSE_TIME_EXTENSION_LIMIT_CONFLICT')
+    if type(charged_seconds) not in (int, float) or not math.isfinite(charged_seconds) or charged_seconds < 0:
+        raise ValueError('UNIVERSE_SEGMENT_CHARGE_INVALID')
+    if type(seconds_to_expiry) not in (int, float) or not math.isfinite(seconds_to_expiry):
+        raise ValueError('UNIVERSE_SEGMENT_EXPIRY_INVALID')
+    if seconds_to_expiry <= 0:
+        raise PermissionError('UNIVERSE_EXECUTION_AUTHORIZATION_EXPIRED')
+    remaining = effective_total_seconds - charged_seconds
+    if remaining <= 0:
+        raise PermissionError('UNIVERSE_EXECUTION_RESOURCE_EXHAUSTED')
+    allowed = min(value['worker_seconds'], remaining, seconds_to_expiry)
+    if allowed <= 70:
+        raise PermissionError('ACCOUNT_PURPOSE_TIME_EXTENSION_COOPERATIVE_WINDOW_EXHAUSTED')
+    return allowed
+
+
+def _apply_account_purpose_time_extension(authorization, base_authorization, operations, item, revoked):
+    """一次事件同时增加两原用途；重放不把事件内容本身当成授权。"""
+    from .account_purpose_time_extension_v1 import resolve_time_extension_manifest
+    if authorization is None or revoked or set(item) != {'proof', 'installed_at'}:
+        raise BudgetLedgerMismatchError('CAMPAIGN_ACCOUNT_TIME_EXTENSION_EVENT_ORDER')
+    proof = item['proof']
+    try:
+        if not isinstance(proof, dict) or set(proof) != {'manifest_ref', 'extension_id'}:
+            raise ValueError('ACCOUNT_PURPOSE_TIME_EXTENSION_PROOF_INVALID')
+        resolved = resolve_time_extension_manifest(proof['manifest_ref'], root=authorization['root'],
+            authorization_id=authorization['authorization_id'], objective_id=authorization['objective_id'])
+        installed_at = datetime.fromisoformat(item['installed_at'])
+        expires_at = datetime.fromisoformat(resolved['expires_at'])
+        if (proof != resolved['proof'] or installed_at.tzinfo is None or expires_at.tzinfo is None
+                or installed_at >= expires_at or resolved['expires_at'] != authorization['expires_at']
+                or resolved['base_authorization_identity'] != stable_hash(base_authorization)
+                or resolved['aggregate_reserved_delta'] != 86400):
+            raise ValueError('ACCOUNT_PURPOSE_TIME_EXTENSION_BINDING_CONFLICT')
+        accounts = resolved['accounts']
+        mapping = resolved['operation_ids']
+        if (not isinstance(accounts, dict) or len(accounts) != 2 or set(accounts) != set(mapping)
+                or len(set(mapping.values())) != 2):
+            raise ValueError('ACCOUNT_PURPOSE_TIME_EXTENSION_ACCOUNTS_CONFLICT')
+        targets = []
+        for name, account in accounts.items():
+            operation = operations.get(mapping[name])
+            if (operation is None or account['operation_id'] != mapping[name]
+                    or operation['kind'] != 'ACCOUNT' or operation['stage'] != 'EXPLORATION'
+                    or operation['status'] not in ('RUNNING', 'RESERVED')
+                    or operation.get('active_segment') is not None
+                    or operation.get('account_purpose_time_extension') is not None
+                    or operation.get('execution_profile') != account['original_profile']
+                    or operation['upper_bounds'] != account['original_upper_bounds']
+                    or account['old_total_seconds'] != 28800 or account['effective_total_seconds'] != 72000
+                    or account['additional_reserved_seconds'] != 43200
+                    or operation['execution_profile']['total_seconds'] != 28800
+                    or operation['upper_bounds']['wall_seconds'] != 28800
+                    or len(operation.get('segments', [])) != account['segment_count']
+                    or operation.get('active_wall_seconds', 0) != account['charged_seconds']
+                    or stable_hash(operation.get('segments', [])) != account['parent_segment_prefix_hash']
+                    or account['next_segment_number'] != account['segment_count'] + 1
+                    or (operation.get('segments') and operation['segments'][-1].get('outcome') in ('COMPLETED', 'FAILED'))):
+                raise ValueError('ACCOUNT_PURPOSE_TIME_EXTENSION_OPERATION_BOUNDARY_CONFLICT')
+            targets.append((operation, account))
+        if ({operation['status'] for operation, _ in targets} != {'RUNNING', 'RESERVED'}
+                or len({operation['batch_id'] for operation, _ in targets}) != 1):
+            raise ValueError('ACCOUNT_PURPOSE_TIME_EXTENSION_OPERATION_PAIR_CONFLICT')
+        allocated = sum((operation['actual'] if operation['status'] in ('COMPLETED', 'FAILED')
+                         else effective_operation_upper_bounds(operation))['wall_seconds']
+                        for operation in operations.values())
+        if allocated + 86400 > authorization['resource_limits']['wall_seconds']:
+            raise BudgetLedgerMismatchError('CAMPAIGN_ACCOUNT_TIME_EXTENSION_RESOURCE_LIMIT')
+        if authorization.get('scope_policy'):
+            from .campaign_scope_v1 import stage_remaining
+            available = stage_remaining({'authorization': authorization, 'operations': operations})
+            if available['EXPLORATION']['wall_seconds'] < 86400:
+                raise BudgetLedgerMismatchError('CAMPAIGN_ACCOUNT_TIME_EXTENSION_STAGE_LIMIT')
+        for operation, account in targets:
+            effective = deepcopy(operation['upper_bounds'])
+            effective['wall_seconds'] = account['effective_total_seconds']
+            operation.update(effective_upper_bounds=effective, effective_total_seconds=account['effective_total_seconds'],
+                account_purpose_time_extension=deepcopy(proof), time_extension_boundary=deepcopy(account))
+    except BudgetLedgerMismatchError:
+        raise
+    except (PermissionError, ValueError, TypeError, KeyError, OSError) as exc:
+        raise BudgetLedgerMismatchError('CAMPAIGN_ACCOUNT_TIME_EXTENSION_PROOF_INVALID') from exc
 
 
 @dataclass(frozen=True)
@@ -76,7 +182,7 @@ class AutonomousRunBudgetV1:
 
     schema_version = "autonomous-run-budget-v2"
 
-    def __init__(self, *, run_id: str, objective_id: str, path: str | Path | None = None, max_batches: int, max_total_predictive_trials: int, max_trials_per_batch: int, max_hypotheses_per_batch: int, max_candidates_per_batch: int, policy_hash: str = "", objective_hash: str = "", readonly: bool = False):
+    def __init__(self, *, run_id: str, objective_id: str, path: str | Path | None = None, max_batches: int, max_total_predictive_trials: int, max_trials_per_batch: int, max_hypotheses_per_batch: int, max_candidates_per_batch: int, policy_hash: str = "", objective_hash: str = "", readonly: bool = False, _campaign_view_out=None):
         self.readonly = readonly
         self.run_id = str(run_id)
         self.objective_id = str(objective_id)
@@ -114,7 +220,7 @@ class AutonomousRunBudgetV1:
         self._events: list[dict[str, Any]] = []
         self._event_ids: set[str] = set()
         self._load()
-        self._load_events()
+        self._load_events(_campaign_view_out=_campaign_view_out)
         self._replay_events_if_state_is_empty()
         self._sync_materialized_counts()
         self._persist()
@@ -458,7 +564,7 @@ class AutonomousRunBudgetV1:
     def _events_path(self) -> Path | None:
         return self.path.with_name("run_budget_events.jsonl") if self.path is not None else None
 
-    def _load_events(self) -> None:
+    def _load_events(self, _campaign_view_out=None) -> None:
         path = self._events_path
         if path is None or not path.exists():
             return
@@ -549,7 +655,7 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
         result['campaign_event_head'] = self._events[-1]['event_id'] if self._events else None
         return result
 
-    def _load_events(self):
+    def _load_events(self, _campaign_view_out=None):
         super()._load_events()
         if self.path is not None and self.path.exists():
             snapshot = json.loads(self.path.read_text(encoding="utf-8"))
@@ -566,6 +672,8 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
         if view['authorization'] is not None:
             self.max_batches = view['authorization']['max_batches']
             self.max_total_predictive_trials = view['authorization']['max_total_predictive_trials']
+        if _campaign_view_out is not None:
+            _campaign_view_out(view)
 
     def _replay_events_if_state_is_empty(self):
         # V2 的事件是权威；快照可落后于最后一次持久化事件。
@@ -587,6 +695,9 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
         paused, revoked, grants = False, False, {}
         for event in self._events:
             kind, item = event['event_type'], event['payload']
+            if set(item) & {'effective_upper_bounds', 'effective_total_seconds',
+                            'account_purpose_time_extension', 'time_extension_boundary'}:
+                raise BudgetLedgerMismatchError('CAMPAIGN_ACCOUNT_TIME_EXTENSION_DERIVED_FIELDS_FORBIDDEN')
             if kind == 'CAMPAIGN_AUTHORIZED':
                 if authorization is not None:
                     raise BudgetLedgerMismatchError('CAMPAIGN_AUTHORIZATION_DUPLICATED')
@@ -616,10 +727,25 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
                 if item['operation_id'] in operations:
                     raise BudgetLedgerMismatchError('CAMPAIGN_OPERATION_DUPLICATED')
                 operations[item['operation_id']] = {**item, 'status': 'RESERVED'}
+            elif kind == 'CAMPAIGN_ACCOUNT_PURPOSE_TIME_EXTENDED':
+                _apply_account_purpose_time_extension(authorization, base_authorization, operations, item, revoked)
             elif kind in ('CAMPAIGN_OPERATION_STARTED', 'CAMPAIGN_OPERATION_UNKNOWN', 'CAMPAIGN_OPERATION_SETTLED'):
                 operation = operations.get(item['operation_id'])
                 if operation is None or operation['status'] in ('COMPLETED', 'FAILED'):
                     raise BudgetLedgerMismatchError('CAMPAIGN_OPERATION_EVENT_ORDER')
+                if kind == 'CAMPAIGN_OPERATION_SETTLED' and (item.get('time_extension_proof')
+                        != operation.get('account_purpose_time_extension')):
+                    raise BudgetLedgerMismatchError('CAMPAIGN_ACCOUNT_TIME_EXTENSION_SETTLEMENT_CONFLICT')
+                if kind == 'CAMPAIGN_OPERATION_SETTLED' and operation.get('account_purpose_time_extension') is not None:
+                    actual=item.get('actual', {}); bounds=effective_operation_upper_bounds(operation)
+                    if (set(actual) != set(self.resource_names)
+                            or any(type(value) is not int or value < 0 for value in actual.values())
+                            or any(actual[name] > bounds[name] for name in actual)
+                            or actual['account_jobs'] != 1
+                            or actual['wall_seconds'] < max(1, math.ceil(operation.get('active_wall_seconds', 0)))
+                            or operation.get('active_segment') is not None
+                            or item.get('outcome') not in ('COMPLETED', 'FAILED')):
+                        raise BudgetLedgerMismatchError('CAMPAIGN_ACCOUNT_TIME_EXTENSION_SETTLEMENT_CONFLICT')
                 operation.update(item)
                 operation['status'] = {'CAMPAIGN_OPERATION_STARTED': 'RUNNING', 'CAMPAIGN_OPERATION_UNKNOWN': 'UNKNOWN',
                                        'CAMPAIGN_OPERATION_SETTLED': item.get('outcome')}[kind]
@@ -651,6 +777,7 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
             elif kind=='CAMPAIGN_OPERATION_RESOURCE_OVERRUN_SETTLED':
                 operation=operations.get(item['operation_id']);segments=operation.get('segments',[]) if operation else []
                 actual=item.get('actual',{})
+                bounds=effective_operation_upper_bounds(operation) if operation else {}
                 if (operation is None or operation['status'] not in ('RUNNING','UNKNOWN')
                         or operation.get('execution_profile') is None or operation.get('active_segment') is not None
                         or not segments or segments[-1].get('outcome')!='FAILED'
@@ -659,8 +786,9 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
                         or set(actual)!=set(self.resource_names)
                         or any(type(value) is not int or value<0 for value in actual.values())
                         or actual['wall_seconds']!=max(1,math.ceil(operation['active_wall_seconds']))
-                        or any(actual[name]!=operation['upper_bounds'][name] for name in actual if name!='wall_seconds')
-                        or item.get('resource_overrun')!={name:max(0,actual[name]-operation['upper_bounds'][name]) for name in actual}
+                        or any(actual[name]!=bounds[name] for name in actual if name!='wall_seconds')
+                        or item.get('time_extension_proof') != operation.get('account_purpose_time_extension')
+                        or item.get('resource_overrun')!={name:max(0,actual[name]-bounds[name]) for name in actual}
                         or not any(item['resource_overrun'].values())):
                     raise BudgetLedgerMismatchError('CAMPAIGN_RESOURCE_OVERRUN_PROOF_INVALID')
                 operation.update(item);operation['status']='FAILED'
@@ -674,10 +802,13 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
                 segments=operation.setdefault('segments',[])
                 charged=operation.get('active_wall_seconds',0)
                 upper=item.get('upper_bound_seconds')
+                proof=operation.get('account_purpose_time_extension')
+                total=effective_execution_total_seconds(operation)
                 if (type(item.get('segment_number')) is not int or item['segment_number'] != len(segments)+1
                         or item.get('profile_hash') != profile['profile_hash']
+                        or item.get('time_extension_proof') != proof
                         or type(upper) not in (int,float) or not 0 < upper <= profile['worker_seconds']
-                        or upper > profile['total_seconds']-charged
+                        or upper > total-charged or (proof is not None and upper <= 70)
                         or (segments and segments[-1].get('outcome') in ('COMPLETED','FAILED'))):
                     raise BudgetLedgerMismatchError('CAMPAIGN_EXECUTION_SEGMENT_IDENTITY_CONFLICT')
                 segment=dict(item); segments.append(segment); operation['active_segment']=segment
@@ -691,6 +822,7 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
                 seconds,basis=segment_charge(item.get('measured_seconds'),active['upper_bound_seconds'],
                                              item.get('evidence_identity'),outcome=item.get('outcome'))
                 if (item.get('seconds') != seconds or item.get('basis') != basis
+                        or item.get('time_extension_proof') != active.get('time_extension_proof')
                         or item.get('outcome') not in ('CONTINUE','PAUSED','COMPLETED','FAILED')):
                     raise BudgetLedgerMismatchError('CAMPAIGN_EXECUTION_SEGMENT_CHARGE_CONFLICT')
                 active.update(item)
@@ -703,7 +835,8 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
         for operation in operations.values():
             settled = operation['status'] in ('COMPLETED', 'FAILED')
             destination = used if settled else reserved
-            for name, amount in operation.get('actual' if settled else 'upper_bounds', {}).items():
+            bounds=operation.get('actual', {}) if settled else effective_operation_upper_bounds(operation)
+            for name, amount in bounds.items():
                 destination[name] += amount
         remaining = {name: authorization['resource_limits'][name] - used[name] - reserved[name] for name in used}
         violations=[op for op in operations.values() if op.get('resource_overrun')]
@@ -730,5 +863,13 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
     def campaign_event(self, kind, payload):
         if not kind.startswith('CAMPAIGN_'):
             raise ValueError('CAMPAIGN_EVENT_KIND_INVALID')
+        if kind == 'CAMPAIGN_ACCOUNT_PURPOSE_TIME_EXTENDED':
+            # 校验完整原子结果后才提交；无效许可不能污染权威事件流。
+            candidate={'event_type':kind, 'payload':deepcopy(payload)}
+            self._events.append(candidate)
+            try:
+                self.campaign_view()
+            finally:
+                self._events.pop()
         self._append_event(kind, payload)
         self._persist()

@@ -114,21 +114,37 @@ class AccountVersionContinuationV1:
     def __init__(self, root, manifest_ref):
         self.root = Path(root).resolve(strict=True)
         self.scope_reference = deepcopy(manifest_ref)
+        self.time_extension = None
+        self.time_extension_installed = False
+        self.time_extension_mirror_pending = False
 
     @staticmethod
     def continuation_identity(authorization_id, task_id):
         return stable_hash({'schema_version': VERSION, 'authorization_id': authorization_id, 'task_id': task_id})
 
     @staticmethod
-    def _source_check(root, job, replacements):
+    def _source_check(root, job, replacements, *, time_extension=None):
         mapping = {row['path']: row for row in replacements}
+        successor = {}
+        if time_extension is not None:
+            from .account_purpose_time_extension_v1 import AccountPurposeTimeExtensionV1
+            _require(type(time_extension) is AccountPurposeTimeExtensionV1, 'TIME_EXTENSION_CONTEXT_REQUIRED')
+            successor = {row['path']: row for row in time_extension.summary_value['source_replacements']}
         _require(len(mapping) == len(replacements), 'SOURCE_REPLACEMENTS_DUPLICATED')
         _require(isinstance(job.get('source_hashes'), dict) and job['source_hashes'], 'FROZEN_SOURCES_REQUIRED')
         for path, digest in job['source_hashes'].items():
             source = _path(path, root)
             row = mapping.get(path)
             _require(row is None or row['old_sha256'] == digest, 'ORIGINAL_SOURCE_CONFLICT')
-            _require(_reference(source, root)['sha256'] == (row['new_sha256'] if row else digest),
+            expected = row['new_sha256'] if row else digest
+            following = successor.get(path)
+            if following is not None:
+                _require(following['old_sha256'] == expected
+                    and following['archive_ref']['sha256'] == expected
+                    and _reference(following['archive_ref']['path'], root / 'reports') == following['archive_ref'],
+                    'TIME_EXTENSION_SOURCE_ARCHIVE_CHANGED')
+                expected = following['new_sha256']
+            _require(_reference(source, root)['sha256'] == expected,
                 'UNAPPROVED_SOURCE_CHANGED')
             if source.suffix == '.py':
                 archive = Path(job['root']) / 'source-archive' / (digest + '_' + source.name)
@@ -303,10 +319,18 @@ class AccountVersionContinuationV1:
                 else:
                     _require(index >= count and index == len(parents) - 1, 'PARENT_CHARGE_CONFLICT')
             else:
+                total = state['profile']['total_seconds']
+                proof = parent.get('time_extension_proof')
+                if proof is not None:
+                    _require(proof == state.get('time_extension_proof')
+                        and proof == operation.get('account_purpose_time_extension')
+                        and state.get('effective_total_seconds') == operation.get('effective_total_seconds') == 72000,
+                        'PARENT_DISPATCH_TIME_EXTENSION_CONFLICT')
+                    total = state['effective_total_seconds']
                 _require(index >= count and state['pending'] is None
                     and type(parent.get('upper_bound_seconds')) in (int, float)
                     and 0 < parent['upper_bound_seconds'] <= min(state['profile']['worker_seconds'],
-                        state['profile']['total_seconds'] - state['charged_seconds']), 'PARENT_DISPATCH_CONFLICT')
+                        total - state['charged_seconds']), 'PARENT_DISPATCH_CONFLICT')
             if 'basis' in parent:
                 from .universe_execution_profile_v1 import segment_charge
                 seconds, basis = segment_charge(parent.get('measured_seconds'), parent['upper_bound_seconds'],
@@ -393,11 +417,20 @@ class AccountVersionContinuationV1:
         _require(_read(_reference(slot, self.root), self.root) == {
             'continuation_id': summary['continuation_id'], 'manifest_ref': self.scope_reference}, 'SLOT_CONFLICT')
         OwnerApprovalStoreV1(summary['approval_store']).require(self.approval_ref, summary)
+        self.job = _read(summary['original']['job'], self.root)
+        from .account_purpose_time_extension_v1 import AccountPurposeTimeExtensionV1
+        self.time_extension = AccountPurposeTimeExtensionV1.from_job(self.job)
+        if self.time_extension is not None:
+            _require(self.time_extension.summary_value['predecessor_manifest_ref'] == self.scope_reference,
+                'TIME_EXTENSION_PREDECESSOR_CONFLICT')
         view = self.campaign.peek_status(); base = view['base_authorization']
         _require(stable_hash(base) == summary['base_authorization_identity']
             and base['scope_policy']['scope_hash'] == summary['scope_hash']
             and base['scope_policy']['approval_store'] == summary['approval_store'], 'AUTHORIZATION_CONFLICT')
-        bridge = AccountVersionCapabilityBridgeV1.read(self.root, base, reference=summary['capability_bridge_ref'])
+        bridge = (AccountVersionCapabilityBridgeV1.read_historical(self.root, base,
+            reference=summary['capability_bridge_ref'], time_extension_ref=self.time_extension.scope_reference)
+            if self.time_extension is not None else AccountVersionCapabilityBridgeV1.read(
+                self.root, base, reference=summary['capability_bridge_ref']))
         _require(summary['source_replacements'] == bridge['record']['summary']['source_replacements']
             and summary['runtime_sources'] == bridge['record']['summary']['runtime_sources'], 'BRIDGE_CONFLICT')
         original = summary['original']
@@ -412,7 +445,7 @@ class AccountVersionContinuationV1:
         for reference in summary['session_refs'].values():
             _session_reference(reference, self.root, summary['approval_store'])
         self.job = _read(original['job'], self.root)
-        self._source_check(self.root, self.job, summary['source_replacements'])
+        self._source_check(self.root, self.job, summary['source_replacements'], time_extension=self.time_extension)
         replacements = {row['path']: row for row in summary['source_replacements']}
         for member, plan in self.job['plans'].items():
             active = _project(plan, replacements)
@@ -426,6 +459,19 @@ class AccountVersionContinuationV1:
         from .etf_account_governance_v1 import StrategyBatchGovernanceV1
         self.governance = StrategyBatchGovernanceV1(self.job['root'], self.job['budget_path'],
             self.job['objective_id'], self.job['plans'])
+        self.time_extension_installed = False
+        self.time_extension_mirror_pending = False
+        if self.time_extension is not None:
+            expected = self.time_extension.proof()
+            operations = [view['operations'].get(row['operation_id'], {})
+                for row in self.time_extension.summary_value['accounts'].values()]
+            proofs = [operation.get('account_purpose_time_extension') for operation in operations]
+            if any(proof is not None for proof in proofs):
+                _require(all(proof == expected for proof in proofs)
+                    and all(operation.get('effective_total_seconds') == 72000
+                        and operation.get('effective_upper_bounds', {}).get('wall_seconds') == 72000
+                        for operation in operations), 'TIME_EXTENSION_INSTALLATION_CONFLICT')
+                self.time_extension_installed = True
         for member, frozen in summary['accounts'].items():
             op = view['operations'].get(frozen['operation_id'], {})
             _require(all(op.get(key) == frozen['operation'].get(key) for key in (
@@ -433,7 +479,9 @@ class AccountVersionContinuationV1:
                 'cost_bound_evidence', 'hypothesis_identity')), 'ORIGINAL_OPERATION_CONFLICT')
             start_path = Path(self.job['root']) / (member + '_START.json')
             if start_path.exists():
-                state = self.governance.segment_status(member)
+                state = (self.governance.segment_status_for_reconcile(member) if for_reconcile
+                    else self.governance.segment_status(member))
+                self.time_extension_mirror_pending |= state.get('time_extension_mirror_pending', False)
                 _require(len(state['segments']) >= frozen['segment_count']
                     and state['charged_seconds'] >= frozen['charged_seconds'], 'SEGMENT_PREFIX_CHANGED')
                 if for_reconcile:
@@ -445,6 +493,7 @@ class AccountVersionContinuationV1:
             if frozen['features'] is not None:
                 _feature_prefix(self.job, member, frozen=frozen['features'])
         if for_dispatch:
+            _require(self.time_extension is None or self.time_extension_installed, 'TIME_EXTENSION_NOT_INSTALLED')
             self.campaign._dispatchable(view, 'EXPLORATION')
             _require(not view.get('revoked') and datetime.now(timezone.utc) < datetime.fromisoformat(summary['expires_at']), 'EXPIRED')
             _require(not any(op.get('status') == 'UNKNOWN' for op in view['operations'].values()), 'UNKNOWN_OPERATION')
@@ -460,8 +509,11 @@ class AccountVersionContinuationV1:
                             'DISPATCH_CONFLICT')
                     else:
                         _require(state['pending'] is None, 'ACTIVE_SEGMENT')
-                        segment_allowance(state['profile'], state['charged_seconds'], seconds_to_expiry=(
-                            datetime.fromisoformat(summary['expires_at']) - datetime.now(timezone.utc)).total_seconds())
+                        from .research_campaign_v1 import effective_segment_allowance
+                        effective_segment_allowance(state['profile'], state['charged_seconds'],
+                            effective_total_seconds=state.get('effective_total_seconds'),
+                            time_extension_proof=state.get('time_extension_proof'), seconds_to_expiry=(
+                                datetime.fromisoformat(summary['expires_at']) - datetime.now(timezone.utc)).total_seconds())
                 else:
                     _require(segment_number is None, 'DISPATCH_CONFLICT')
         return self
@@ -472,11 +524,13 @@ class AccountVersionContinuationV1:
         return True
 
     def active_item(self, name):
-        _require(name in self.summary_value['active_plans'], 'PURPOSE_CONFLICT')
-        return deepcopy(self.summary_value['active_plans'][name]['runtime'])
+        return self.active_plan(name)['runtime']
 
     def active_plan(self, name):
         _require(name in self.summary_value['active_plans'], 'PURPOSE_CONFLICT')
+        if self.time_extension is not None and self.time_extension_installed:
+            _require(not self.time_extension_mirror_pending, 'TIME_EXTENSION_MIRROR_REQUIRED')
+            return self.time_extension.successor_plan(name)
         return deepcopy(self.summary_value['active_plans'][name])
 
     def project_receipt(self, receipt, name):
@@ -485,13 +539,13 @@ class AccountVersionContinuationV1:
             'ORIGINAL_RECEIPT_REQUIRED')
         _require(name in self.summary_value['active_plans'], 'PURPOSE_CONFLICT')
         value = deepcopy(receipt)
-        value['strategy_plans'] = deepcopy(self.summary_value['active_plans'])
+        value['strategy_plans'] = {member: self.active_plan(member) for member in self.summary_value['active_plans']}
         for member, plan in value['strategy_plans'].items():
             value['novelty'][member]['plan_id'] = plan['plan_id']
         value['account_version_continuation'] = self.proof(name)
         return value
 
-    def proof(self, name=None):
+    def _predecessor_proof(self, name=None):
         if name is not None:
             _require(name in self.summary_value['active_plans'], 'PURPOSE_CONFLICT')
         return {'manifest_ref': deepcopy(self.scope_reference), 'version_id': self.version_id,
@@ -499,18 +553,64 @@ class AccountVersionContinuationV1:
             'active_plan_ids': {member: plan['plan_id'] for member, plan in self.summary_value['active_plans'].items()},
             **({'purpose': name} if name is not None else {})}
 
+    def proof(self, name=None):
+        value = self._predecessor_proof(name)
+        if self.time_extension is not None and self.time_extension_installed:
+            value['predecessor_active_plan_ids'] = value['active_plan_ids']
+            value['active_plan_ids'] = {member: self.time_extension.successor_plan(member)['plan_id']
+                for member in self.summary_value['active_plans']}
+            value['account_purpose_time_extension'] = self.time_extension.proof()
+        return value
+
+    def approved_source_replacements(self):
+        """旧会话 pin 仍指原字节；两次有限映射串接后核最终源码。"""
+        mapping = {row['path']: deepcopy(row) for row in self.summary_value['source_replacements']}
+        if self.time_extension is not None:
+            for row in self.time_extension.summary_value['source_replacements']:
+                previous = mapping.get(row['path'])
+                if previous is None:
+                    mapping[row['path']] = deepcopy(row)
+                else:
+                    _require(previous['new_sha256'] == row['old_sha256'], 'TIME_EXTENSION_SOURCE_CHAIN_CONFLICT')
+                    previous['new_sha256'] = row['new_sha256']
+        return list(mapping.values())
+
+    def approved_runtime_sources(self):
+        mapping = {row['path']: deepcopy(row) for row in self.summary_value['runtime_sources']}
+        if self.time_extension is not None:
+            mapping.update({row['path']: deepcopy(row) for row in self.time_extension.summary_value['runtime_sources']})
+        return list(mapping.values())
+
     def _dispatch_path(self, name, number):
         return Path(self.job['root']) / (name + '_SEGMENT_' + str(number).zfill(6) + '_EXECUTION_VERSION.json')
+
+    def _authority_ledger_reference(self):
+        return _reference(self.campaign.budget_path.with_name('run_budget_events.jsonl'), self.root)
+
+    def _require_aggregate_authority(self, reference):
+        _require(reference == self._authority_ledger_reference(), 'AGGREGATE_AUTHORITY_CHANGED')
+
+    def _validate_aggregate_prewrite(self, authority):
+        self._require_aggregate_authority(authority)
+        self.validate(for_reconcile=True)
+        self._require_aggregate_authority(authority)
 
     def mirrors_pending(self):
         """已证明合法的父子镜像或未启动版本侧车差异，不吞掉其他校验错误。"""
         self.validate(for_reconcile=True)
+        aggregate = self.time_extension is not None and self.time_extension_installed
+        authority = self._authority_ledger_reference() if aggregate else None
         root = Path(self.job['root']); pending = False
         operations = self.campaign.peek_status()['operations']
+        if aggregate:
+            self._require_aggregate_authority(authority)
         for name, frozen in self.summary_value['accounts'].items():
             if not (root / (name + '_START.json')).exists():
                 continue
-            state = self.governance.segment_status(name)
+            state = self.governance.segment_status_for_reconcile(name)
+            if aggregate:
+                self._require_aggregate_authority(authority)
+            pending |= state.get('time_extension_mirror_pending', False)
             parents = operations[frozen['operation_id']].get('segments', [])
             pending |= len(parents) != len(state['segments']) or operations[frozen['operation_id']].get(
                 'active_wall_seconds', 0) != state['charged_seconds']
@@ -519,27 +619,40 @@ class AccountVersionContinuationV1:
                 number = parent['segment_number']
                 if self._dispatch_path(name, number).exists():
                     _require(number <= len(state['segments']), 'DISPATCH_VERSION_WITHOUT_LOCAL_DISPATCH')
-                    self.validate_dispatch(name, number)
+                    if aggregate:
+                        self._validate_dispatch_from_state(name, number, state)
+                    else:
+                        self.validate_dispatch(name, number, for_reconcile=True)
                 else:
                     prefix = name + '_SEGMENT_' + str(number).zfill(6)
                     _require(not (root / (prefix + '_WORKER.json')).exists()
                         and not (root / (prefix + '_INPUT_ACCESS.json')).exists(),
                         'DISPATCH_VERSION_WORKER_ALREADY_PRESENT')
                     pending = True
+        if aggregate:
+            self._require_aggregate_authority(authority)
+            self.validate(for_reconcile=True)
+            self._require_aggregate_authority(authority)
         return pending
 
     def reconcile_segment_mirrors(self):
         """只补原父事件的本地镜像及未启动段版本证明，不派发、不收费。"""
         self.validate(for_reconcile=True)
+        aggregate = self.time_extension is not None and self.time_extension_installed
+        authority = self._authority_ledger_reference() if aggregate else None
         root = Path(self.job['root'])
         with ObjectiveMutationLock.for_resource(root / 'LONG_EXECUTION.lock'):
             with ObjectiveMutationLock.for_resource(root / 'RESUME.lock'):
                 self.validate(for_reconcile=True)
+                if aggregate:
+                    self._require_aggregate_authority(authority)
                 for name in self.job['plans']:
                     if not (root / (name + '_START.json')).exists():
                         continue
                     frozen = self.summary_value['accounts'][name]
                     operation = self.campaign.peek_status()['operations'][frozen['operation_id']]
+                    if aggregate:
+                        self._require_aggregate_authority(authority)
                     for parent in operation.get('segments', [])[frozen['segment_count']:]:
                         number = parent['segment_number']
                         if not self._dispatch_path(name, number).exists():
@@ -547,11 +660,20 @@ class AccountVersionContinuationV1:
                             _require(not (root / (prefix + '_WORKER.json')).exists()
                                 and not (root / (prefix + '_INPUT_ACCESS.json')).exists(),
                                 'DISPATCH_VERSION_WORKER_ALREADY_PRESENT')
-                    state = self.governance.reconcile_segment_mirrors(name)
+                    if aggregate:
+                        state = self.governance.reconcile_segment_mirrors(name,
+                            _before_immutable=lambda: self._validate_aggregate_prewrite(authority))
+                    else:
+                        state = self.governance.reconcile_segment_mirrors(name)
+                    if aggregate:
+                        self._require_aggregate_authority(authority)
                     for row in state['segments'][frozen['segment_count']:]:
                         dispatch = row['dispatch']; number = dispatch['segment_number']
                         if self._dispatch_path(name, number).exists():
-                            self.validate_dispatch(name, number)
+                            if aggregate:
+                                self._validate_dispatch_from_state(name, number, state)
+                            else:
+                                self.validate_dispatch(name, number)
                             continue
                         prefix = name + '_SEGMENT_' + str(number).zfill(6)
                         marker = _path(root / (prefix + '_MIRROR_REPAIR.json'), self.root)
@@ -561,7 +683,8 @@ class AccountVersionContinuationV1:
                                 _read(self.summary_value['original']['receipt'], self.root)['source']),
                             'operation_id': frozen['operation_id'], 'dispatch_id': dispatch['dispatch_id'],
                             'parent_dispatch_identity': stable_hash({key: parent[key] for key in (
-                                'operation_id', 'segment_number', 'profile_hash', 'upper_bound_seconds', 'dispatched_at')}),
+                                'operation_id', 'segment_number', 'profile_hash', 'upper_bound_seconds', 'dispatched_at')
+                                + (('time_extension_proof',) if parent.get('time_extension_proof') is not None else ())}),
                             'worker_absent': True}
                         _require(not (root / (prefix + '_WORKER.json')).exists()
                             and not (root / (prefix + '_INPUT_ACCESS.json')).exists(),
@@ -571,18 +694,32 @@ class AccountVersionContinuationV1:
                             _require(row['charge'] is None and state['pending'] == dispatch
                                 and operation.get('active_segment') == parent,
                                 'DISPATCH_VERSION_NO_WORKER_PROOF_REQUIRED')
+                            if aggregate:
+                                self._validate_aggregate_prewrite(authority)
                             immutable(marker, expected)
                         _require(_read(_reference(marker, self.root), self.root) == expected,
                             'DISPATCH_VERSION_NO_WORKER_PROOF_REQUIRED')
                         path = _path(self._dispatch_path(name, number), self.root)
+                        if aggregate:
+                            self._validate_aggregate_prewrite(authority)
                         immutable(path, {
                             'schema_version': 'ACCOUNT_VERSION_SEGMENT_V1', 'dispatch_id': dispatch['dispatch_id'],
-                            'segment_number': number, 'account_version_continuation': self.proof(name)})
-                return self.validate()
+                            'segment_number': number, 'account_version_continuation': self.segment_proof(name, number)})
+                if aggregate:
+                    self._require_aggregate_authority(authority)
+                result = self.validate()
+                if aggregate:
+                    self._require_aggregate_authority(authority)
+                return result
 
     def segment_proof(self, name, number):
         _require(name in self.summary_value['accounts'] and type(number) is int and number > 0, 'DISPATCH_CONFLICT')
-        return None if number <= self.summary_value['accounts'][name]['segment_count'] else self.proof(name)
+        if number <= self.summary_value['accounts'][name]['segment_count']:
+            return None
+        if (self.time_extension is not None and self.time_extension_installed
+                and number <= self.time_extension.summary_value['accounts'][name]['segment_count']):
+            return self._predecessor_proof(name)
+        return self.proof(name)
 
     def record_dispatch(self, name, dispatch):
         self.validate(for_dispatch=True, name=name, segment_number=dispatch.get('segment_number'))
@@ -594,11 +731,17 @@ class AccountVersionContinuationV1:
         immutable(_path(self._dispatch_path(name, dispatch['segment_number']), self.root), value)
         return value
 
-    def validate_dispatch(self, name, number):
+    def validate_dispatch(self, name, number, *, for_reconcile=False):
         if not hasattr(self, 'summary_value'):
             self.validate(for_dispatch=False)
         _require(name in self.summary_value['accounts'] and type(number) is int and number > 0, 'DISPATCH_CONFLICT')
-        state = self.governance.segment_status(name)
+        state = (self.governance.segment_status_for_reconcile(name) if for_reconcile
+            else self.governance.segment_status(name))
+        return self._validate_dispatch_from_state(name, number, state)
+
+    def _validate_dispatch_from_state(self, name, number, state):
+        """单次聚合内的完整逐段检查；调用方负责 fresh 状态及权威事件流一致。"""
+        _require(name in self.summary_value['accounts'] and type(number) is int and number > 0, 'DISPATCH_CONFLICT')
         _require(number <= len(state['segments']), 'DISPATCH_CONFLICT')
         if self.segment_proof(name, number) is None:
             for reference in self.summary_value['accounts'][name]['segment_refs']:
@@ -607,6 +750,21 @@ class AccountVersionContinuationV1:
             return None
         dispatch = state['segments'][number - 1]['dispatch']
         expected = {'schema_version': 'ACCOUNT_VERSION_SEGMENT_V1', 'dispatch_id': dispatch['dispatch_id'],
-            'segment_number': number, 'account_version_continuation': self.proof(name)}
+            'segment_number': number, 'account_version_continuation': self.segment_proof(name, number)}
         _require(_read(_reference(self._dispatch_path(name, number), self.root), self.root) == expected, 'DISPATCH_VERSION_CONFLICT')
+        time_proof = expected['account_version_continuation'].get('account_purpose_time_extension')
+        _require(dispatch.get('time_extension_proof') == time_proof, 'DISPATCH_TIME_EXTENSION_CONFLICT')
+        charge = state['segments'][number - 1]['charge']
+        _require(charge is None or charge.get('time_extension_proof') == time_proof, 'CHARGE_TIME_EXTENSION_CONFLICT')
+        if time_proof is not None:
+            prefix = name + '_SEGMENT_' + str(number).zfill(6)
+            for suffix in ('_RESOURCE.json', '_WORKER.json', '_INPUT_ACCESS.json', '_STATUS.json',
+                    '_FAILURE.json', '_RESUME.json'):
+                path = Path(self.job['root']) / (prefix + suffix)
+                if path.exists():
+                    value = _read(_reference(path, self.root), self.root)
+                    _require(value.get('time_extension_proof') == time_proof, 'SEGMENT_TIME_EXTENSION_CONFLICT')
+                    if suffix not in ('_FAILURE.json', '_RESUME.json'):
+                        _require(value.get('account_version_continuation') == expected['account_version_continuation'],
+                            'SEGMENT_SUCCESSOR_VERSION_CONFLICT')
         return expected

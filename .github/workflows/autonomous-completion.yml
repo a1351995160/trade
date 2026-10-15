@@ -14,7 +14,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        suite: [workflow, formal-scope, full-universe, long-horizon, continuous]
+        suite: [workflow, formal-scope, full-universe, long-horizon, continuous, account-purpose-owner, account-purpose-budget, account-purpose-runtime, account-purpose-runtime-authority]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 150
     env:
@@ -124,8 +124,49 @@ jobs:
           tests/research_factory/test_account_version_session_resume_v1.py
           tests/research_factory/test_account_version_setup_cli_v1.py
           tests/research_factory/test_account_version_public_integration_v1.py
+          tests/research_factory/test_account_execution_guard_v1.py
           tests/research_factory/test_universe_coverage_initialization_v1.py
           --basetemp=${{ runner.temp }}/continuous-tests
+          --junitxml=completion-tests.xml
+      - name: Verify account purpose Owner proof and public setup
+        if: matrix.suite == 'account-purpose-owner'
+        env:
+          CHANLUN_PROCESS_EVIDENCE_DIR: ${{ runner.temp }}/purpose-owner-resource-evidence
+        run: >-
+          python -m pytest -q
+          tests/research_factory/test_account_purpose_time_extension_v1.py
+          tests/research_factory/test_account_purpose_time_extension_setup_cli_v1.py
+          tests/research_factory/test_account_purpose_time_extension_integration_v1.py
+          --basetemp=${{ runner.temp }}/purpose-owner-tests
+          --junitxml=completion-tests.xml
+      - name: Verify account purpose budget and mirror boundaries
+        if: matrix.suite == 'account-purpose-budget'
+        env:
+          CHANLUN_PROCESS_EVIDENCE_DIR: ${{ runner.temp }}/purpose-budget-resource-evidence
+        run: >-
+          python -m pytest -q
+          tests/research_factory/test_account_purpose_time_budget_v1.py
+          --basetemp=${{ runner.temp }}/purpose-budget-tests
+          --junitxml=completion-tests.xml
+      - name: Verify account purpose successor runtime and recovery
+        if: matrix.suite == 'account-purpose-runtime'
+        env:
+          CHANLUN_PROCESS_EVIDENCE_DIR: ${{ runner.temp }}/purpose-runtime-resource-evidence
+        run: >-
+          python -m pytest -q
+          tests/research_factory/test_account_purpose_time_runtime_v1.py
+          -k "not (aggregate or existing_repair_marker or combined_session)"
+          --basetemp=${{ runner.temp }}/purpose-runtime-tests
+          --junitxml=completion-tests.xml
+      - name: Verify account purpose aggregate authority and prewrite checks
+        if: matrix.suite == 'account-purpose-runtime-authority'
+        env:
+          CHANLUN_PROCESS_EVIDENCE_DIR: ${{ runner.temp }}/purpose-authority-resource-evidence
+        run: >-
+          python -m pytest -q
+          tests/research_factory/test_account_purpose_time_runtime_v1.py
+          -k "aggregate or existing_repair_marker or combined_session"
+          --basetemp=${{ runner.temp }}/purpose-authority-tests
           --junitxml=completion-tests.xml
       - name: Verify long-horizon public entry, continuation and independent evidence
         if: matrix.suite == 'long-horizon'

@@ -152,3 +152,9 @@
 /src/chanlun_trader/research_factory/account_version_continuation_v1.py text eol=lf
 /scripts/run_account_version_session_resume_v1.py text eol=lf
 /scripts/setup_account_version_continuation_v1.py text eol=lf
+
+# 有限限时续接的新增治理源码同样固定检出字节，供最终Owner绑定。
+/src/chanlun_trader/research_factory/account_purpose_time_extension_v1.py text eol=lf
+/scripts/setup_account_purpose_time_extension_v1.py text eol=lf
+# 治理范围校验保留现有CRLF原件，使最终CI与主目录的源码pin一致。
+/src/chanlun_trader/research_factory/campaign_scope_v1.py text eol=crlf
