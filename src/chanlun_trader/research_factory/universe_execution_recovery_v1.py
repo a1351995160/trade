@@ -160,12 +160,12 @@ def resume_long_horizon_job(path,job,*,reconcile_only=False):
             execution_paths = runner.account_execution_paths(job, name)
             recovered = (context is not None and context.recovery_installed
                 and context.recovery.original_failed_account == name)
-            settle = gov.settle_recovery if recovered else gov.settle
             if not execution_paths['start'].exists():
                 continue
             if execution_paths['settlement'].exists():
                 runner.validated_settlement(job,name)
                 continue
+            settle = gov.settle_recovery if recovered else gov.settle
             gov.reconcile_segment_mirrors(name)
             gov.dispatched_execution(name); state=gov.segment_status(name)
             pending=state['pending']
