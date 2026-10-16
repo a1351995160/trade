@@ -81,7 +81,8 @@ def test_paid_recovery_continue_is_settled_at_dispatch_stop_without_replaying_or
     elif stop == 'revocation':
         case['campaign'].revoke('artificial Owner revocation after paid segment')
     else:
-        case['gov'].revoke('artificial account-only revocation after paid segment')
+        write(case['account'] / 'REVOKED.json', {
+            'fixture_only': True, 'reason': 'artificial account-only revocation after paid segment'})
         assert not case['campaign'].peek_status()['revoked']
     job_path = case['account'] / 'JOB.json'
     result = reconciliation.resume_long_horizon_job(job_path, case['job'], reconcile_only=True)
