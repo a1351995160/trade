@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import re
 
+from chanlun_trader.account_startup_boundary_v1 import startup_checkpoint
 from .common import stable_hash
 from .mutation_boundary import ObjectiveMutationLock
 
@@ -88,6 +89,7 @@ class OwnerApprovalStoreV1:
         return {'approval_id': record['approval_id'], 'summary_hash': record['summary_hash']}
 
     def require(self, reference, summary):
+        startup_checkpoint('CAMPAIGN_OWNER_APPROVAL')
         if (not isinstance(reference, dict) or set(reference) != {'approval_id', 'summary_hash'}
                 or not re.fullmatch(r'[a-f0-9]{64}', str(reference['approval_id']))
                 or reference['summary_hash'] != stable_hash(summary)):
@@ -138,12 +140,37 @@ def bind_campaign_scope(root, authorization, *, contract, stage_limits, approval
 
 
 def validate_scope_policy(root, authorization):
+    startup_checkpoint('CAMPAIGN_SCOPE_APPROVAL')
     policy = authorization.get('scope_policy')
     if policy is None:
         return None
     if (policy.get('schema_version') != VERSION
             or policy.get('scope_hash') != stable_hash({key: item for key, item in policy.items() if key != 'scope_hash'})):
         raise PermissionError('CAMPAIGN_SCOPE_IDENTITY_CONFLICT')
+    # 新源码只能经明确Owner签发的恢复slot继承旧scope；无效slot不得回退到旧能力桥。
+    recovery_folder = Path(root) / 'reports' / 'research_campaigns' / stable_hash(
+        authorization['authorization_id']) / 'failed-account-recovery-slots'
+    if recovery_folder.exists():
+        from .failed_account_recovery_v1 import (
+            _path, _read, _reference, resolve_failed_account_recovery_manifest,
+        )
+        _path(recovery_folder, Path(root))
+        slots = list(recovery_folder.glob('*.json'))
+        if len(slots) != 1:
+            raise PermissionError('FAILED_ACCOUNT_RECOVERY_SCOPE_SLOT_CONFLICT')
+        slot = _read(_reference(slots[0], root), root)
+        if not isinstance(slot, dict) or set(slot) != {'recovery_id', 'manifest_ref'}:
+            raise PermissionError('FAILED_ACCOUNT_RECOVERY_SCOPE_SLOT_CONFLICT')
+        recovered = resolve_failed_account_recovery_manifest(slot['manifest_ref'], root=root,
+            authorization_id=authorization['authorization_id'], objective_id=authorization['objective_id'])
+        if recovered['recovery_id'] != slot['recovery_id']:
+            raise PermissionError('FAILED_ACCOUNT_RECOVERY_SCOPE_SLOT_CONFLICT')
+        summary = scope_summary(root, authorization, policy['summary']['contract'], policy['summary']['stage_limits'],
+            capabilities_snapshot=recovered['capabilities_snapshot'])
+        if policy['summary'] != summary:
+            raise PermissionError('CAMPAIGN_SCOPE_AUTHORIZATION_CONFLICT')
+        OwnerApprovalStoreV1(policy['approval_store']).require(policy['approval_ref'], summary)
+        return deepcopy(policy)
     try:
         summary = scope_summary(root, authorization, policy['summary']['contract'], policy['summary']['stage_limits'])
     except ValueError as exc:
@@ -225,9 +252,10 @@ def stage_remaining(view):
     if not policy:
         return None
     result = deepcopy(policy['summary']['stage_limits'])
+    from .run_budget import effective_operation_allocation
     for operation in view['operations'].values():
-        units = (operation.get('actual', {}) if operation['status'] in ('COMPLETED', 'FAILED')
-            else operation.get('effective_upper_bounds', operation.get('upper_bounds', {})))
+        startup_checkpoint('CAMPAIGN_STAGE_ALLOCATION')
+        units = effective_operation_allocation(operation)
         for name, amount in units.items():
             result[operation['stage']][name] -= amount
     return result

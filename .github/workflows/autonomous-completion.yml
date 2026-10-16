@@ -14,7 +14,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        suite: [workflow, formal-scope, full-universe, long-horizon, continuous, account-purpose-owner, account-purpose-budget, account-purpose-runtime, account-purpose-runtime-authority]
+        suite: [workflow, formal-scope, full-universe, long-horizon, continuous, account-purpose-owner, account-purpose-budget, account-purpose-runtime, account-purpose-runtime-authority, failed-account-owner, failed-account-budget, failed-account-context, failed-account-governance, failed-account-worker]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 150
     env:
@@ -27,6 +27,12 @@ jobs:
           python-version: "3.13"
       - name: Install frozen test dependencies
         run: python -m pip install --disable-pip-version-check --only-binary ":all:" --no-binary "pytdx" --require-hashes -r .github/workflows/requirements-p3b.txt
+      - name: Record exact failed-account test source identities
+        if: startsWith(matrix.suite, 'failed-account-')
+        env:
+          SOURCE_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: >-
+          python -c "import hashlib,json,os,pathlib,subprocess,sys; root=pathlib.Path('.'); sources={str(p.as_posix()):hashlib.sha256(p.read_bytes()).hexdigest() for folder in ('src','scripts','tests') for p in sorted((root/folder).rglob('*.py'))}; value={'source_head':os.environ['SOURCE_HEAD'],'checkout_commit':subprocess.check_output(['git','-c','gc.auto=0','-c','maintenance.auto=false','rev-parse','HEAD'],text=True).strip(),'platform':sys.platform,'source_sha256':sources}; pathlib.Path('failed-account-source-identity.json').write_bytes((json.dumps(value,ensure_ascii=True,indent=2)+'\n').encode('utf-8'))"
       - name: Check generated capability documentation and public examples
         run: python scripts/generate_research_capabilities_v1.py --check
       - name: Verify new workflow and original entry contracts
@@ -168,6 +174,54 @@ jobs:
           -k "aggregate or existing_repair_marker or combined_session"
           --basetemp=${{ runner.temp }}/purpose-authority-tests
           --junitxml=completion-tests.xml
+      - name: Verify failed account recovery owner boundaries
+        if: matrix.suite == 'failed-account-owner'
+        env:
+          CHANLUN_PROCESS_EVIDENCE_DIR: ${{ runner.temp }}/failed-account-owner-resource-evidence
+        run: >-
+          python -m pytest -q
+          tests/research_factory/test_failed_account_recovery_capability_v1.py
+          tests/research_factory/test_failed_account_recovery_setup_v1.py
+          --basetemp=${{ runner.temp }}/failed-account-owner-tests
+          --junitxml=completion-tests.xml
+      - name: Verify failed account recovery budget boundaries
+        if: matrix.suite == 'failed-account-budget'
+        env:
+          CHANLUN_PROCESS_EVIDENCE_DIR: ${{ runner.temp }}/failed-account-budget-resource-evidence
+        run: >-
+          python -m pytest -q
+          tests/research_factory/test_failed_account_recovery_budget_v1.py
+          --basetemp=${{ runner.temp }}/failed-account-budget-tests
+          --junitxml=completion-tests.xml
+      - name: Verify failed account recovery context boundaries
+        if: matrix.suite == 'failed-account-context'
+        env:
+          CHANLUN_PROCESS_EVIDENCE_DIR: ${{ runner.temp }}/failed-account-context-resource-evidence
+        run: >-
+          python -m pytest -q
+          tests/research_factory/test_failed_account_recovery_context_v1.py
+          tests/research_factory/test_failed_account_recovery_public_v1.py
+          --basetemp=${{ runner.temp }}/failed-account-context-tests
+          --junitxml=completion-tests.xml
+      - name: Verify failed account recovery governance boundaries
+        if: matrix.suite == 'failed-account-governance'
+        env:
+          CHANLUN_PROCESS_EVIDENCE_DIR: ${{ runner.temp }}/failed-account-governance-resource-evidence
+        run: >-
+          python -m pytest -q
+          tests/research_factory/test_failed_account_recovery_governance_v1.py
+          --basetemp=${{ runner.temp }}/failed-account-governance-tests
+          --junitxml=completion-tests.xml
+      - name: Verify failed account recovery worker boundaries
+        if: matrix.suite == 'failed-account-worker'
+        env:
+          CHANLUN_PROCESS_EVIDENCE_DIR: ${{ runner.temp }}/failed-account-worker-resource-evidence
+        run: >-
+          python -m pytest -q
+          tests/research_factory/test_failed_account_recovery_worker_v1.py
+          tests/research_factory/test_failed_account_recovery_evidence_v1.py
+          --basetemp=${{ runner.temp }}/failed-account-worker-tests
+          --junitxml=completion-tests.xml
       - name: Verify long-horizon public entry, continuation and independent evidence
         if: matrix.suite == 'long-horizon'
         env:
@@ -267,6 +321,15 @@ jobs:
           tests/research_factory/test_universe_resources_v1.py
           --basetemp=${{ runner.temp }}/full-universe-tests
           --junitxml=completion-tests.xml
+      - name: Upload failed-account source and resource identities
+        if: always() && startsWith(matrix.suite, 'failed-account-')
+        uses: actions/upload-artifact@v4
+        with:
+          name: failed-account-evidence-${{ matrix.os }}-${{ matrix.suite }}
+          path: |
+            failed-account-source-identity.json
+            ${{ runner.temp }}/failed-account-*-resource-evidence/**
+            ${{ runner.temp }}/failed-account-*-tests/**/SUPERVISOR_*
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -5,6 +5,7 @@ from pathlib import Path
 import json
 import re
 
+from chanlun_trader.account_startup_boundary_v1 import startup_checkpoint
 from .account_version_capability_bridge_v1 import (
     AccountVersionCapabilityBridgeV1, BUSINESS_PATH, _hash, _path, _read, _reference, _require,
 )
@@ -46,6 +47,7 @@ def _project(value, replacements):
 def _control(job):
     root = Path(job['root']); rows = []; head = None; paused = False
     for path in sorted(root.glob('CONTROL_*.json')):
+        startup_checkpoint('ACCOUNT_VERSION_CONTROL')
         row = _read(_reference(path, root), root)
         _require(path.name == 'CONTROL_' + str(len(rows) + 1).zfill(6) + '.json'
             and row.get('sequence') == len(rows) + 1 and row.get('previous_head') == head
@@ -86,6 +88,7 @@ def _feature_prefix(job, name, *, frozen=None):
             and values.shape[2] in (4, 7) and values.dtype == np.dtype('float64'), 'FEATURE_ARRAY_INVALID')
         rows = []
         for path in sorted(folder.glob('*.json')):
+            startup_checkpoint('ACCOUNT_VERSION_FEATURE_RECEIPT')
             if not re.fullmatch(r'[0-9]{6}\.(SZ|SH)\.json', path.name):
                 continue
             symbol = path.name[:-5]
@@ -117,22 +120,31 @@ class AccountVersionContinuationV1:
         self.time_extension = None
         self.time_extension_installed = False
         self.time_extension_mirror_pending = False
+        self.recovery = None
+        self.recovery_installed = False
+        self.recovery_mirror_pending = False
 
     @staticmethod
     def continuation_identity(authorization_id, task_id):
         return stable_hash({'schema_version': VERSION, 'authorization_id': authorization_id, 'task_id': task_id})
 
     @staticmethod
-    def _source_check(root, job, replacements, *, time_extension=None):
+    def _source_check(root, job, replacements, *, time_extension=None, recovery=None):
         mapping = {row['path']: row for row in replacements}
         successor = {}
         if time_extension is not None:
             from .account_purpose_time_extension_v1 import AccountPurposeTimeExtensionV1
             _require(type(time_extension) is AccountPurposeTimeExtensionV1, 'TIME_EXTENSION_CONTEXT_REQUIRED')
             successor = {row['path']: row for row in time_extension.summary_value['source_replacements']}
+        recovered = {}
+        if recovery is not None:
+            from .failed_account_recovery_v1 import FailedAccountRecoveryV1, validate_predecessor_sources
+            _require(type(recovery) is FailedAccountRecoveryV1 and time_extension is not None, 'SIGNED_RECOVERY_CONTEXT_REQUIRED')
+            recovered = {row['path']: row for row in validate_predecessor_sources(time_extension.summary_value, recovery=recovery)}
         _require(len(mapping) == len(replacements), 'SOURCE_REPLACEMENTS_DUPLICATED')
         _require(isinstance(job.get('source_hashes'), dict) and job['source_hashes'], 'FROZEN_SOURCES_REQUIRED')
         for path, digest in job['source_hashes'].items():
+            startup_checkpoint('ACCOUNT_VERSION_SOURCE_VERIFY')
             source = _path(path, root)
             row = mapping.get(path)
             _require(row is None or row['old_sha256'] == digest, 'ORIGINAL_SOURCE_CONFLICT')
@@ -143,6 +155,13 @@ class AccountVersionContinuationV1:
                     and following['archive_ref']['sha256'] == expected
                     and _reference(following['archive_ref']['path'], root / 'reports') == following['archive_ref'],
                     'TIME_EXTENSION_SOURCE_ARCHIVE_CHANGED')
+                expected = following['new_sha256']
+            following = recovered.get(path)
+            if following is not None:
+                _require(following['old_sha256'] == expected
+                    and following['archive_ref']['sha256'] == expected
+                    and _reference(following['archive_ref']['path'], root / 'reports') == following['archive_ref'],
+                    'RECOVERY_SOURCE_ARCHIVE_CHANGED')
                 expected = following['new_sha256']
             _require(_reference(source, root)['sha256'] == expected,
                 'UNAPPROVED_SOURCE_CHANGED')
@@ -283,14 +302,22 @@ class AccountVersionContinuationV1:
         parents = operation.get('segments', [])
         _require(len(parents) == len(state['segments']), 'PARENT_SEGMENT_COUNT_CONFLICT')
         for parent, row in zip(parents, state['segments']):
+            startup_checkpoint('ACCOUNT_VERSION_PARENT_PREFIX')
             dispatch, charge = row['dispatch'], row['charge']
             _require(parent.get('segment_number') == dispatch['segment_number']
                 and all(parent.get(key) == dispatch[key] for key in ('profile_hash', 'upper_bound_seconds', 'dispatched_at')),
                 'PARENT_DISPATCH_CONFLICT')
+            _require(all(parent.get(key) == dispatch.get(key) for key in (
+                'time_extension_proof', 'failed_account_recovery_proof', 'dispatch_identity')), 'PARENT_DISPATCH_PROOF_CONFLICT')
+            if parent.get('failed_account_recovery_proof') is not None:
+                from .run_budget import execution_dispatch_identity
+                _require(parent.get('dispatch_identity') == execution_dispatch_identity(parent), 'PARENT_DISPATCH_IDENTITY_CONFLICT')
             if charge is not None:
                 _require(all(parent.get(key) == charge[key] for key in (
                     'measured_seconds', 'seconds', 'basis', 'evidence_identity', 'outcome', 'charged_at')),
                     'PARENT_CHARGE_CONFLICT')
+                _require(all(parent.get(key) == charge.get(key) for key in (
+                    'time_extension_proof', 'failed_account_recovery_proof', 'dispatch_identity')), 'PARENT_CHARGE_PROOF_CONFLICT')
             else:
                 _require('basis' not in parent and operation.get('active_segment') == parent,
                     'PARENT_CHARGE_CONFLICT')
@@ -305,6 +332,7 @@ class AccountVersionContinuationV1:
             'PARENT_SEGMENT_COUNT_CONFLICT')
         charged = 0.
         for index, parent in enumerate(parents):
+            startup_checkpoint('ACCOUNT_VERSION_RECONCILE_PARENT_PREFIX')
             _require(parent.get('segment_number') == index + 1
                 and parent.get('operation_id') == operation['operation_id']
                 and parent.get('profile_hash') == state['profile']['profile_hash'], 'PARENT_DISPATCH_CONFLICT')
@@ -312,10 +340,14 @@ class AccountVersionContinuationV1:
                 dispatch, charge = rows[index]['dispatch'], rows[index]['charge']
                 _require(all(parent.get(key) == dispatch[key] for key in (
                     'profile_hash', 'upper_bound_seconds', 'dispatched_at')), 'PARENT_DISPATCH_CONFLICT')
+                _require(all(parent.get(key) == dispatch.get(key) for key in (
+                    'time_extension_proof', 'failed_account_recovery_proof', 'dispatch_identity')), 'PARENT_DISPATCH_PROOF_CONFLICT')
                 if charge is not None:
                     _require(all(parent.get(key) == charge[key] for key in (
                         'measured_seconds', 'seconds', 'basis', 'evidence_identity', 'outcome', 'charged_at')),
                         'PARENT_CHARGE_CONFLICT')
+                    _require(all(parent.get(key) == charge.get(key) for key in (
+                        'time_extension_proof', 'failed_account_recovery_proof', 'dispatch_identity')), 'PARENT_CHARGE_PROOF_CONFLICT')
                 else:
                     _require(index >= count and index == len(parents) - 1, 'PARENT_CHARGE_CONFLICT')
             else:
@@ -327,6 +359,10 @@ class AccountVersionContinuationV1:
                         and state.get('effective_total_seconds') == operation.get('effective_total_seconds') == 72000,
                         'PARENT_DISPATCH_TIME_EXTENSION_CONFLICT')
                     total = state['effective_total_seconds']
+                recovery_proof = parent.get('failed_account_recovery_proof')
+                if recovery_proof is not None:
+                    _require(recovery_proof == state.get('failed_account_recovery_proof')
+                        and recovery_proof == operation.get('failed_account_recovery_proof'), 'PARENT_DISPATCH_RECOVERY_CONFLICT')
                 _require(index >= count and state['pending'] is None
                     and type(parent.get('upper_bound_seconds')) in (int, float)
                     and 0 < parent['upper_bound_seconds'] <= min(state['profile']['worker_seconds'],
@@ -340,6 +376,9 @@ class AccountVersionContinuationV1:
             else:
                 _require(index == len(parents) - 1 and operation.get('active_segment') == parent,
                     'PARENT_ACTIVE_SEGMENT_CONFLICT')
+            if parent.get('failed_account_recovery_proof') is not None:
+                from .run_budget import execution_dispatch_identity
+                _require(parent.get('dispatch_identity') == execution_dispatch_identity(parent), 'PARENT_DISPATCH_IDENTITY_CONFLICT')
         _require(charged == operation.get('active_wall_seconds', 0)
             and (not parents or 'basis' not in parents[-1] or operation.get('active_segment') is None),
             'PARENT_CHARGE_CONFLICT')
@@ -393,6 +432,7 @@ class AccountVersionContinuationV1:
         return context
 
     def validate(self, *, for_dispatch=False, name=None, segment_number=None, for_reconcile=False):
+        startup_checkpoint('ACCOUNT_VERSION_CONTEXT')
         _require(type(for_dispatch) is bool and type(for_reconcile) is bool
             and not (for_dispatch and for_reconcile), 'DISPATCH_MODE_INVALID')
         manifest = _read(self.scope_reference, self.root)
@@ -418,8 +458,10 @@ class AccountVersionContinuationV1:
             'continuation_id': summary['continuation_id'], 'manifest_ref': self.scope_reference}, 'SLOT_CONFLICT')
         OwnerApprovalStoreV1(summary['approval_store']).require(self.approval_ref, summary)
         self.job = _read(summary['original']['job'], self.root)
+        from .failed_account_recovery_v1 import FailedAccountRecoveryV1
+        self.recovery = FailedAccountRecoveryV1.from_job(self.job)
         from .account_purpose_time_extension_v1 import AccountPurposeTimeExtensionV1
-        self.time_extension = AccountPurposeTimeExtensionV1.from_job(self.job)
+        self.time_extension = AccountPurposeTimeExtensionV1.from_job(self.job, recovery=self.recovery)
         if self.time_extension is not None:
             _require(self.time_extension.summary_value['predecessor_manifest_ref'] == self.scope_reference,
                 'TIME_EXTENSION_PREDECESSOR_CONFLICT')
@@ -428,7 +470,7 @@ class AccountVersionContinuationV1:
             and base['scope_policy']['scope_hash'] == summary['scope_hash']
             and base['scope_policy']['approval_store'] == summary['approval_store'], 'AUTHORIZATION_CONFLICT')
         bridge = (AccountVersionCapabilityBridgeV1.read_historical(self.root, base,
-            reference=summary['capability_bridge_ref'], time_extension_ref=self.time_extension.scope_reference)
+            reference=summary['capability_bridge_ref'], time_extension_ref=self.time_extension.scope_reference, recovery=self.recovery)
             if self.time_extension is not None else AccountVersionCapabilityBridgeV1.read(
                 self.root, base, reference=summary['capability_bridge_ref']))
         _require(summary['source_replacements'] == bridge['record']['summary']['source_replacements']
@@ -441,11 +483,12 @@ class AccountVersionContinuationV1:
             if row['start'] is not None:
                 refs.append(row['start'])
         for reference in refs:
+            startup_checkpoint('ACCOUNT_VERSION_ORIGINAL_REFERENCES')
             _require(reference == _reference(reference['path'], self.root), 'ORIGINAL_CHANGED')
         for reference in summary['session_refs'].values():
             _session_reference(reference, self.root, summary['approval_store'])
         self.job = _read(original['job'], self.root)
-        self._source_check(self.root, self.job, summary['source_replacements'], time_extension=self.time_extension)
+        self._source_check(self.root, self.job, summary['source_replacements'], time_extension=self.time_extension, recovery=self.recovery)
         replacements = {row['path']: row for row in summary['source_replacements']}
         for member, plan in self.job['plans'].items():
             active = _project(plan, replacements)
@@ -461,6 +504,8 @@ class AccountVersionContinuationV1:
             self.job['objective_id'], self.job['plans'])
         self.time_extension_installed = False
         self.time_extension_mirror_pending = False
+        self.recovery_installed = False
+        self.recovery_mirror_pending = False
         if self.time_extension is not None:
             expected = self.time_extension.proof()
             operations = [view['operations'].get(row['operation_id'], {})
@@ -472,7 +517,21 @@ class AccountVersionContinuationV1:
                         and operation.get('effective_upper_bounds', {}).get('wall_seconds') == 72000
                         for operation in operations), 'TIME_EXTENSION_INSTALLATION_CONFLICT')
                 self.time_extension_installed = True
+        if self.recovery is not None:
+            expected = self.recovery.proof(); accounts = self.recovery.summary_value['accounts']
+            operations = [view['operations'].get(row['operation_id'], {}) for row in accounts.values()]
+            proofs = [operation.get('failed_account_recovery_proof') for operation in operations]
+            if any(proof is not None for proof in proofs):
+                failed = view['operations'].get(accounts[self.recovery.original_failed_account]['operation_id'], {})
+                installed = failed.get('failed_account_recovery', {})
+                _require(self.time_extension_installed and all(proof == expected for proof in proofs)
+                    and all(operation.get('recovery_boundary') == accounts[member]
+                        for member, operation in zip(accounts, operations))
+                    and installed.get('proof') == expected
+                    and installed.get('boundary') == accounts[self.recovery.original_failed_account], 'RECOVERY_INSTALLATION_CONFLICT')
+                self.recovery_installed = True
         for member, frozen in summary['accounts'].items():
+            startup_checkpoint('ACCOUNT_VERSION_ACCOUNT_PREFIX')
             op = view['operations'].get(frozen['operation_id'], {})
             _require(all(op.get(key) == frozen['operation'].get(key) for key in (
                 'operation_id', 'kind', 'stage', 'batch_id', 'subject_identity', 'upper_bounds', 'execution_profile',
@@ -482,6 +541,7 @@ class AccountVersionContinuationV1:
                 state = (self.governance.segment_status_for_reconcile(member) if for_reconcile
                     else self.governance.segment_status(member))
                 self.time_extension_mirror_pending |= state.get('time_extension_mirror_pending', False)
+                self.recovery_mirror_pending |= state.get('failed_account_recovery_mirror_pending', False)
                 _require(len(state['segments']) >= frozen['segment_count']
                     and state['charged_seconds'] >= frozen['charged_seconds'], 'SEGMENT_PREFIX_CHANGED')
                 if for_reconcile:
@@ -494,14 +554,19 @@ class AccountVersionContinuationV1:
                 _feature_prefix(self.job, member, frozen=frozen['features'])
         if for_dispatch:
             _require(self.time_extension is None or self.time_extension_installed, 'TIME_EXTENSION_NOT_INSTALLED')
+            _require(self.recovery is None or self.recovery_installed, 'RECOVERY_NOT_INSTALLED')
+            _require(not self.recovery_mirror_pending, 'RECOVERY_MIRROR_REQUIRED')
+            if self.recovery is not None:
+                self.recovery = FailedAccountRecoveryV1.read(self.root, self.recovery.scope_reference, for_dispatch=True)
             self.campaign._dispatchable(view, 'EXPLORATION')
             _require(not view.get('revoked') and datetime.now(timezone.utc) < datetime.fromisoformat(summary['expires_at']), 'EXPIRED')
-            _require(not any(op.get('status') == 'UNKNOWN' for op in view['operations'].values()), 'UNKNOWN_OPERATION')
+            from .run_budget import effective_execution_status
+            _require(not any(effective_execution_status(op) == 'UNKNOWN' for op in view['operations'].values()), 'UNKNOWN_OPERATION')
             if name is not None:
-                _require(not control['paused'], 'PAUSED')
+                _require(not self.execution_paused(control), 'PAUSED')
                 _require(name in summary['accounts'], 'PURPOSE_CONFLICT')
                 frozen = summary['accounts'][name]; op = view['operations'][frozen['operation_id']]
-                _require(op['status'] in ('RUNNING', 'RESERVED'), 'ACCOUNT_TERMINAL')
+                _require(effective_execution_status(op) in ('RUNNING', 'RESERVED'), 'ACCOUNT_TERMINAL')
                 if (Path(self.job['root']) / (name + '_START.json')).exists():
                     state = self.governance.segment_status(name)
                     if segment_number is not None:
@@ -528,10 +593,29 @@ class AccountVersionContinuationV1:
 
     def active_plan(self, name):
         _require(name in self.summary_value['active_plans'], 'PURPOSE_CONFLICT')
+        if self.recovery is not None:
+            _require(self.recovery_installed, 'RECOVERY_NOT_INSTALLED')
+            _require(not self.time_extension_mirror_pending, 'TIME_EXTENSION_MIRROR_REQUIRED')
+            _require(not self.recovery_mirror_pending, 'RECOVERY_MIRROR_REQUIRED')
+            return self.recovery.successor_plan(name)
         if self.time_extension is not None and self.time_extension_installed:
             _require(not self.time_extension_mirror_pending, 'TIME_EXTENSION_MIRROR_REQUIRED')
             return self.time_extension.successor_plan(name)
         return deepcopy(self.summary_value['active_plans'][name])
+
+    def execution_paused(self, control=None):
+        """新能力只消费已批准的历史暂停head；之后的新暂停仍立即生效。"""
+        current = _control(self.job)
+        _require(control is None or control == current, 'CONTROL_VIEW_CHANGED')
+        if not self.recovery_installed:
+            return current['paused']
+        from .failed_account_recovery_v1 import FailedAccountRecoveryV1
+        _require(type(self.recovery) is FailedAccountRecoveryV1, 'SIGNED_RECOVERY_CONTEXT_REQUIRED')
+        fresh = FailedAccountRecoveryV1.read(self.root, self.recovery.scope_reference)
+        boundary = fresh.summary_value['control_boundary']
+        if current['head'] == boundary['head'] and boundary['consumes_historical_pause']:
+            return False
+        return current['paused']
 
     def project_receipt(self, receipt, name):
         _require(receipt.get('strategy_plans') == self.job['plans'] and receipt.get('execution_purpose') == name
@@ -553,7 +637,7 @@ class AccountVersionContinuationV1:
             'active_plan_ids': {member: plan['plan_id'] for member, plan in self.summary_value['active_plans'].items()},
             **({'purpose': name} if name is not None else {})}
 
-    def proof(self, name=None):
+    def _time_extension_proof(self, name=None):
         value = self._predecessor_proof(name)
         if self.time_extension is not None and self.time_extension_installed:
             value['predecessor_active_plan_ids'] = value['active_plan_ids']
@@ -562,8 +646,17 @@ class AccountVersionContinuationV1:
             value['account_purpose_time_extension'] = self.time_extension.proof()
         return value
 
+    def proof(self, name=None):
+        value = self._time_extension_proof(name)
+        if self.recovery is not None and self.recovery_installed:
+            value['predecessor_recovery_active_plan_ids'] = value['active_plan_ids']
+            value['active_plan_ids'] = {member: self.recovery.successor_plan(member)['plan_id']
+                for member in self.summary_value['active_plans']}
+            value['failed_account_recovery'] = self.recovery.proof()
+        return value
+
     def approved_source_replacements(self):
-        """旧会话 pin 仍指原字节；两次有限映射串接后核最终源码。"""
+        """旧会话pin仍指原字节；三层有限映射串接后核最终源码。"""
         mapping = {row['path']: deepcopy(row) for row in self.summary_value['source_replacements']}
         if self.time_extension is not None:
             for row in self.time_extension.summary_value['source_replacements']:
@@ -573,12 +666,22 @@ class AccountVersionContinuationV1:
                 else:
                     _require(previous['new_sha256'] == row['old_sha256'], 'TIME_EXTENSION_SOURCE_CHAIN_CONFLICT')
                     previous['new_sha256'] = row['new_sha256']
+        if self.recovery is not None:
+            for row in self.recovery.summary_value['source_replacements']:
+                previous = mapping.get(row['path'])
+                if previous is None:
+                    mapping[row['path']] = deepcopy(row)
+                else:
+                    _require(previous['new_sha256'] == row['old_sha256'], 'RECOVERY_SOURCE_CHAIN_CONFLICT')
+                    previous['new_sha256'] = row['new_sha256']
         return list(mapping.values())
 
     def approved_runtime_sources(self):
         mapping = {row['path']: deepcopy(row) for row in self.summary_value['runtime_sources']}
         if self.time_extension is not None:
             mapping.update({row['path']: deepcopy(row) for row in self.time_extension.summary_value['runtime_sources']})
+        if self.recovery is not None:
+            mapping.update({row['path']: deepcopy(row) for row in self.recovery.summary_value['runtime_sources']})
         return list(mapping.values())
 
     def _dispatch_path(self, name, number):
@@ -611,6 +714,7 @@ class AccountVersionContinuationV1:
             if aggregate:
                 self._require_aggregate_authority(authority)
             pending |= state.get('time_extension_mirror_pending', False)
+            pending |= state.get('failed_account_recovery_mirror_pending', False)
             parents = operations[frozen['operation_id']].get('segments', [])
             pending |= len(parents) != len(state['segments']) or operations[frozen['operation_id']].get(
                 'active_wall_seconds', 0) != state['charged_seconds']
@@ -684,8 +788,12 @@ class AccountVersionContinuationV1:
                             'operation_id': frozen['operation_id'], 'dispatch_id': dispatch['dispatch_id'],
                             'parent_dispatch_identity': stable_hash({key: parent[key] for key in (
                                 'operation_id', 'segment_number', 'profile_hash', 'upper_bound_seconds', 'dispatched_at')
-                                + (('time_extension_proof',) if parent.get('time_extension_proof') is not None else ())}),
+                                + (('time_extension_proof',) if parent.get('time_extension_proof') is not None else ())
+                                + (('failed_account_recovery_proof',) if parent.get('failed_account_recovery_proof') is not None else ())}),
                             'worker_absent': True}
+                        if parent.get('failed_account_recovery_proof') is not None:
+                            expected.update(failed_account_recovery_proof=deepcopy(parent['failed_account_recovery_proof']),
+                                dispatch_identity=parent['dispatch_identity'])
                         _require(not (root / (prefix + '_WORKER.json')).exists()
                             and not (root / (prefix + '_INPUT_ACCESS.json')).exists(),
                             'DISPATCH_VERSION_WORKER_ALREADY_PRESENT')
@@ -702,9 +810,13 @@ class AccountVersionContinuationV1:
                         path = _path(self._dispatch_path(name, number), self.root)
                         if aggregate:
                             self._validate_aggregate_prewrite(authority)
-                        immutable(path, {
+                        value = {
                             'schema_version': 'ACCOUNT_VERSION_SEGMENT_V1', 'dispatch_id': dispatch['dispatch_id'],
-                            'segment_number': number, 'account_version_continuation': self.segment_proof(name, number)})
+                            'segment_number': number, 'account_version_continuation': self.segment_proof(name, number)}
+                        if dispatch.get('failed_account_recovery_proof') is not None:
+                            value.update(failed_account_recovery_proof=deepcopy(dispatch['failed_account_recovery_proof']),
+                                dispatch_identity=dispatch['dispatch_identity'])
+                        immutable(path, value)
                 if aggregate:
                     self._require_aggregate_authority(authority)
                 result = self.validate()
@@ -719,6 +831,9 @@ class AccountVersionContinuationV1:
         if (self.time_extension is not None and self.time_extension_installed
                 and number <= self.time_extension.summary_value['accounts'][name]['segment_count']):
             return self._predecessor_proof(name)
+        if (self.recovery is not None and self.recovery_installed
+                and number <= self.recovery.summary_value['accounts'][name]['segment_count']):
+            return self._time_extension_proof(name)
         return self.proof(name)
 
     def record_dispatch(self, name, dispatch):
@@ -728,6 +843,9 @@ class AccountVersionContinuationV1:
             'DISPATCH_CONFLICT')
         value = {'schema_version': 'ACCOUNT_VERSION_SEGMENT_V1', 'dispatch_id': dispatch['dispatch_id'],
             'segment_number': dispatch['segment_number'], 'account_version_continuation': self.proof(name)}
+        if dispatch.get('failed_account_recovery_proof') is not None:
+            value.update(failed_account_recovery_proof=deepcopy(dispatch['failed_account_recovery_proof']),
+                dispatch_identity=dispatch['dispatch_identity'])
         immutable(_path(self._dispatch_path(name, dispatch['segment_number']), self.root), value)
         return value
 
@@ -751,11 +869,18 @@ class AccountVersionContinuationV1:
         dispatch = state['segments'][number - 1]['dispatch']
         expected = {'schema_version': 'ACCOUNT_VERSION_SEGMENT_V1', 'dispatch_id': dispatch['dispatch_id'],
             'segment_number': number, 'account_version_continuation': self.segment_proof(name, number)}
+        recovery_proof = expected['account_version_continuation'].get('failed_account_recovery')
+        _require(dispatch.get('failed_account_recovery_proof') == recovery_proof, 'DISPATCH_RECOVERY_CONFLICT')
+        if recovery_proof is not None:
+            expected.update(failed_account_recovery_proof=deepcopy(recovery_proof), dispatch_identity=dispatch['dispatch_identity'])
         _require(_read(_reference(self._dispatch_path(name, number), self.root), self.root) == expected, 'DISPATCH_VERSION_CONFLICT')
         time_proof = expected['account_version_continuation'].get('account_purpose_time_extension')
         _require(dispatch.get('time_extension_proof') == time_proof, 'DISPATCH_TIME_EXTENSION_CONFLICT')
         charge = state['segments'][number - 1]['charge']
         _require(charge is None or charge.get('time_extension_proof') == time_proof, 'CHARGE_TIME_EXTENSION_CONFLICT')
+        _require(charge is None or charge.get('failed_account_recovery_proof') == recovery_proof, 'CHARGE_RECOVERY_CONFLICT')
+        if recovery_proof is not None:
+            _require(charge is None or charge.get('dispatch_identity') == dispatch['dispatch_identity'], 'CHARGE_DISPATCH_IDENTITY_CONFLICT')
         if time_proof is not None:
             prefix = name + '_SEGMENT_' + str(number).zfill(6)
             for suffix in ('_RESOURCE.json', '_WORKER.json', '_INPUT_ACCESS.json', '_STATUS.json',
@@ -764,6 +889,9 @@ class AccountVersionContinuationV1:
                 if path.exists():
                     value = _read(_reference(path, self.root), self.root)
                     _require(value.get('time_extension_proof') == time_proof, 'SEGMENT_TIME_EXTENSION_CONFLICT')
+                    _require(value.get('failed_account_recovery_proof') == recovery_proof, 'SEGMENT_RECOVERY_CONFLICT')
+                    if recovery_proof is not None:
+                        _require(value.get('dispatch_identity') == dispatch['dispatch_identity'], 'SEGMENT_DISPATCH_IDENTITY_CONFLICT')
                     if suffix not in ('_FAILURE.json', '_RESUME.json'):
                         _require(value.get('account_version_continuation') == expected['account_version_continuation'],
                             'SEGMENT_SUCCESSOR_VERSION_CONFLICT')

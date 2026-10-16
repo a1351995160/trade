@@ -11,7 +11,8 @@ from .budget import BudgetExhaustedError, BudgetLedgerMismatchError
 from .common import stable_hash
 from .mutation_boundary import ObjectiveMutationLock
 from .run_budget import (AutonomousRunBudgetV2, effective_operation_upper_bounds,
-                         effective_execution_total_seconds, effective_segment_allowance)
+                         effective_execution_total_seconds, effective_segment_allowance,
+                         effective_execution_status, execution_dispatch_identity)
 
 STAGES = ('EXPLORATION', 'CONFIRMATION', 'OBSERVATION')
 KINDS = {'CANDIDATE': 'candidate_attempts', 'DATA': 'data_experiments', 'ACCOUNT': 'account_jobs',
@@ -357,6 +358,7 @@ class ResearchCampaignV1:
         proof=operation.get('account_purpose_time_extension')
         if for_dispatch:
             self._dispatchable(view, operation['stage'])
+            self._validate_recovery_dispatch(view, operation)
             if proof is not None:
                 from .account_purpose_time_extension_v1 import resolve_time_extension_manifest
                 resolved=resolve_time_extension_manifest(proof['manifest_ref'], root=self.root,
@@ -366,6 +368,54 @@ class ResearchCampaignV1:
                     raise PermissionError('CAMPAIGN_ACCOUNT_TIME_EXTENSION_PROOF_CONFLICT')
         return self._execution_limit_from_view(view, operation_id)
 
+    def install_failed_account_recovery(self, manifest_ref):
+        """原总账锁内 fresh 安装一次；原 FAILED/actual/Trial 完成事实不变。"""
+        from .failed_account_recovery_v1 import resolve_failed_account_recovery_manifest
+        with self._lock():
+            budget, view = self._budget_with_view()
+            resolved = resolve_failed_account_recovery_manifest(manifest_ref, root=self.root,
+                authorization_id=self.authorization_id, objective_id=view['authorization']['objective_id'])
+            operation = view['operations'].get(resolved['operation_id'])
+            if operation is None:
+                raise PermissionError('CAMPAIGN_FAILED_ACCOUNT_RECOVERY_OPERATION_MISSING')
+            installed = operation.get('failed_account_recovery')
+            if installed is not None:
+                if installed['proof'] != resolved['proof']:
+                    raise PermissionError('CAMPAIGN_FAILED_ACCOUNT_RECOVERY_ALREADY_INSTALLED')
+                return deepcopy(operation)
+            # 安装不派发，也不解除原失败暂停；新段仍经过完整 _dispatchable。
+            if view.get('revoked'):
+                raise PermissionError('CAMPAIGN_REVOKED')
+            if datetime.now(timezone.utc) >= _timestamp(view['authorization']['expires_at']):
+                raise BudgetExhaustedError('CAMPAIGN_EXPIRED')
+            if operation['stage'] not in view['authorization']['stages']:
+                raise PermissionError('CAMPAIGN_STAGE_NOT_AUTHORIZED')
+            if view['stages'].get(operation['stage'], {}).get('status') == 'WAITING':
+                raise PermissionError('CAMPAIGN_STAGE_WAITING')
+            verified = resolve_failed_account_recovery_manifest(manifest_ref, root=self.root,
+                authorization_id=self.authorization_id, objective_id=view['authorization']['objective_id'],
+                for_install=True)
+            if verified != resolved:
+                raise PermissionError('CAMPAIGN_FAILED_ACCOUNT_RECOVERY_PROOF_CONFLICT')
+            budget.campaign_event('CAMPAIGN_FAILED_ACCOUNT_RECOVERY_INSTALLED',
+                {'proof': deepcopy(resolved['proof']), 'installed_at': datetime.now(timezone.utc).isoformat()})
+            return deepcopy(budget.campaign_view()['operations'][resolved['operation_id']])
+
+    def _validate_recovery_dispatch(self, view, operation):
+        proof = operation.get('failed_account_recovery_proof')
+        if proof is None:
+            return
+        from .failed_account_recovery_v1 import resolve_failed_account_recovery_manifest
+        resolved = resolve_failed_account_recovery_manifest(proof['manifest_ref'], root=self.root,
+            authorization_id=self.authorization_id, objective_id=view['authorization']['objective_id'],
+            for_dispatch=True)
+        if (resolved['proof'] != proof or operation['operation_id'] not in resolved['operation_ids'].values()
+                or operation.get('recovery_boundary') not in resolved['accounts'].values()):
+            raise PermissionError('CAMPAIGN_FAILED_ACCOUNT_RECOVERY_PROOF_CONFLICT')
+        failed = view['operations'].get(resolved['operation_id'], {}).get('failed_account_recovery')
+        if failed is None or failed['status'] in ('FAILED', 'UNKNOWN'):
+            raise PermissionError('CAMPAIGN_FAILED_ACCOUNT_RECOVERY_TERMINAL_OR_UNKNOWN')
+
     @staticmethod
     def _execution_limit_from_view(view, operation_id):
         """仅投影本次已完整验证的父视图；不读取或保存跨调用状态。"""
@@ -373,6 +423,9 @@ class ResearchCampaignV1:
         return {'profile':deepcopy(operation['execution_profile']),
             'effective_total_seconds':effective_execution_total_seconds(operation),
             'time_extension_proof':deepcopy(operation.get('account_purpose_time_extension')),
+            'failed_account_recovery_proof':deepcopy(operation.get('failed_account_recovery_proof')),
+            'recovery_boundary':deepcopy(operation.get('recovery_boundary')),
+            'effective_execution_status':effective_execution_status(operation),
             'boundary':deepcopy(operation.get('time_extension_boundary')),
             'parent_segments':deepcopy(operation.get('segments', []))}
 
@@ -383,16 +436,21 @@ class ResearchCampaignV1:
             budget, view=self._budget_with_view(); operation=view['operations'][operation_id]
             self._dispatchable(view,operation['stage'])
             frozen=operation.get('execution_profile')
-            if frozen is None or operation['status'] != 'RUNNING':
+            if frozen is None or effective_execution_status(operation) != 'RUNNING':
                 raise PermissionError('CAMPAIGN_EXECUTION_CONTINUATION_NOT_AUTHORIZED')
             value=validate_execution_profile(frozen)
             if profile is not None and validate_execution_profile(profile) != value:
                 raise PermissionError('CAMPAIGN_EXECUTION_PROFILE_CONFLICT')
             segments=operation.get('segments',[])
-            if operation.get('active_segment') is not None or (segments and segments[-1].get('outcome') in ('COMPLETED','FAILED')):
+            recovery = operation.get('failed_account_recovery')
+            first_recovery = (recovery is not None and len(segments) == recovery['boundary']['segment_count']
+                              and segments[-1].get('outcome') == 'FAILED')
+            if operation.get('active_segment') is not None or (segments and segments[-1].get('outcome') in ('COMPLETED','FAILED')
+                                                             and not first_recovery):
                 raise PermissionError('CAMPAIGN_EXECUTION_SEGMENT_ALREADY_DISPATCHED_OR_TERMINAL')
             if type(segment_number) is not int or segment_number != len(segments)+1:
                 raise PermissionError('CAMPAIGN_EXECUTION_SEGMENT_NUMBER_CONFLICT')
+            self._validate_recovery_dispatch(view, operation)
             proof=operation.get('account_purpose_time_extension')
             if proof is not None:
                 from .account_purpose_time_extension_v1 import resolve_time_extension_manifest
@@ -411,25 +469,45 @@ class ResearchCampaignV1:
             item={'operation_id':operation_id,'segment_number':segment_number,'profile_hash':value['profile_hash'],
                   'upper_bound_seconds':upper,'dispatched_at':now.isoformat()}
             if proof is not None:item['time_extension_proof']=deepcopy(proof)
+            if operation.get('failed_account_recovery_proof') is not None:
+                item['failed_account_recovery_proof'] = deepcopy(operation['failed_account_recovery_proof'])
+                item['dispatch_identity'] = execution_dispatch_identity(item)
             budget.campaign_event('CAMPAIGN_EXECUTION_SEGMENT_DISPATCHED',item)
             return deepcopy(budget.campaign_view()['operations'][operation_id]['active_segment'])
 
     def end_execution_segment(self, operation_id, *, segment_number, seconds=None,
-                              evidence_identity=None, outcome='CONTINUE'):
+                              evidence_identity=None, outcome='CONTINUE', dispatch_identity=None):
         from .universe_execution_profile_v1 import segment_charge
         if outcome not in ('CONTINUE','PAUSED','COMPLETED','FAILED'):
             raise ValueError('CAMPAIGN_EXECUTION_SEGMENT_OUTCOME_INVALID')
         with self._lock():
             budget, view=self._budget_with_view(); operation=view['operations'][operation_id]
+            if operation.get('failed_account_recovery_proof') is not None:
+                segments = operation.get('segments', [])
+                prior = (segments[segment_number - 1] if type(segment_number) is int
+                         and 1 <= segment_number <= len(segments) else None)
+                if (prior is None or dispatch_identity is None
+                        or prior.get('dispatch_identity') != dispatch_identity):
+                    raise PermissionError('CAMPAIGN_EXECUTION_DISPATCH_IDENTITY_CONFLICT')
+                if 'basis' in prior:
+                    if (prior.get('measured_seconds') != seconds or prior.get('evidence_identity') != evidence_identity
+                            or prior.get('outcome') != outcome):
+                        raise BudgetLedgerMismatchError('CAMPAIGN_EXECUTION_SEGMENT_CHARGE_CONFLICT')
+                    return deepcopy(prior)
             active=operation.get('active_segment')
-            if operation['status'] not in ('RUNNING','UNKNOWN') or active is None or active['segment_number'] != segment_number:
+            if effective_execution_status(operation) not in ('RUNNING','UNKNOWN') or active is None or active['segment_number'] != segment_number:
                 raise PermissionError('CAMPAIGN_EXECUTION_SEGMENT_NOT_ACTIVE')
+            if dispatch_identity is not None and dispatch_identity != execution_dispatch_identity(active):
+                raise PermissionError('CAMPAIGN_EXECUTION_DISPATCH_IDENTITY_CONFLICT')
             amount,basis=segment_charge(seconds,active['upper_bound_seconds'],evidence_identity,outcome=outcome)
             item={'operation_id':operation_id,'segment_number':segment_number,'measured_seconds':seconds,
                   'seconds':amount,'basis':basis,'evidence_identity':evidence_identity,'outcome':outcome,
                   'charged_at':datetime.now(timezone.utc).isoformat()}
             if active.get('time_extension_proof') is not None:
                 item['time_extension_proof']=deepcopy(active['time_extension_proof'])
+            if active.get('failed_account_recovery_proof') is not None:
+                item['failed_account_recovery_proof'] = deepcopy(active['failed_account_recovery_proof'])
+                item['dispatch_identity'] = dispatch_identity
             budget.campaign_event('CAMPAIGN_EXECUTION_SEGMENT_CHARGED',item)
             if basis=='MEASURED_FAILED_RESOURCE_BOUND_VIOLATION':
                 budget.campaign_event('CAMPAIGN_PAUSED',{'reason':'DISPATCH_RESOURCE_BOUND_VIOLATION',
@@ -442,6 +520,7 @@ class ResearchCampaignV1:
             view = budget.campaign_view()
             operation = view['operations'][operation_id]
             self._dispatchable(view, operation['stage'])
+            self._validate_recovery_dispatch(view, operation)
             if operation['status'] != 'RESERVED':
                 raise PermissionError('CAMPAIGN_OPERATION_ALREADY_DISPATCHED')
             budget.campaign_event('CAMPAIGN_OPERATION_STARTED', {'operation_id': operation_id,
@@ -456,9 +535,43 @@ class ResearchCampaignV1:
         with self._lock():
             budget = self._budget()
             operation = budget.campaign_view()['operations'][operation_id]
-            if operation['status'] not in ('RUNNING', 'UNKNOWN') or not isinstance(reason, str) or not reason:
+            if effective_execution_status(operation) not in ('RUNNING', 'UNKNOWN') or not isinstance(reason, str) or not reason:
                 raise ValueError('CAMPAIGN_UNKNOWN_STATE_INVALID')
+            if operation.get('failed_account_recovery') is not None:
+                budget.campaign_event('CAMPAIGN_FAILED_ACCOUNT_RECOVERY_UNKNOWN',
+                    {'operation_id': operation_id, 'proof': deepcopy(operation['failed_account_recovery']['proof']),
+                     'reason': reason})
+                return
             budget.campaign_event('CAMPAIGN_OPERATION_UNKNOWN', {'operation_id': operation_id, 'reason': reason})
+
+    def settle_failed_account_recovery(self, operation_id, *, actual_delta, outcome, evidence_identity):
+        """只结清新接续累计 ceil 差额；到期/撤销后仍记已经发生的费用。"""
+        units = self._units(actual_delta)
+        if (outcome not in ('COMPLETED', 'FAILED') or not isinstance(evidence_identity, str) or not evidence_identity
+                or any(units[name] for name in units if name != 'wall_seconds')):
+            raise ValueError('CAMPAIGN_FAILED_ACCOUNT_RECOVERY_SETTLEMENT_INVALID')
+        with self._lock():
+            budget, view = self._budget_with_view()
+            operation = view['operations'][operation_id]
+            recovery = operation.get('failed_account_recovery')
+            if recovery is None:
+                raise PermissionError('CAMPAIGN_FAILED_ACCOUNT_RECOVERY_NOT_INSTALLED')
+            item = {'operation_id': operation_id, 'proof': deepcopy(recovery['proof']), 'actual_delta': units,
+                    'outcome': outcome, 'evidence_identity': evidence_identity}
+            previous = recovery.get('settlement')
+            if previous is not None:
+                if any(previous.get(key) != value for key, value in item.items()):
+                    raise BudgetLedgerMismatchError('CAMPAIGN_FAILED_ACCOUNT_RECOVERY_SETTLEMENT_CONFLICT')
+                return deepcopy(operation)
+            if operation.get('active_segment') is not None:
+                raise PermissionError('CAMPAIGN_EXECUTION_SEGMENT_NOT_SETTLED')
+            item['settled_at'] = datetime.now(timezone.utc).isoformat()
+            budget.campaign_event('CAMPAIGN_FAILED_ACCOUNT_RECOVERY_SETTLED', item)
+            current = budget.campaign_view()['operations'][operation_id]
+            if current['failed_account_recovery'].get('resource_overrun'):
+                budget.campaign_event('CAMPAIGN_PAUSED', {'reason': 'ACTUAL_RESOURCE_OVERRUN',
+                    'operation_id': operation_id, 'sequence': len(budget._events)})
+            return deepcopy(current)
 
     def settle_operation(self, operation_id, *, actual, outcome, evidence_identity):
         units = self._units(actual)
@@ -470,6 +583,8 @@ class ResearchCampaignV1:
             item = {'operation_id': operation_id, 'actual': units, 'outcome': outcome, 'evidence_identity': evidence_identity}
             if operation.get('account_purpose_time_extension') is not None:
                 item['time_extension_proof']=deepcopy(operation['account_purpose_time_extension'])
+            if operation.get('failed_account_recovery_proof') is not None:
+                item['failed_account_recovery_proof']=deepcopy(operation['failed_account_recovery_proof'])
             bounds=effective_operation_upper_bounds(operation)
             if operation['status'] in ('COMPLETED', 'FAILED'):
                 if any(operation[key] != value for key, value in item.items()):

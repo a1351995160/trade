@@ -158,3 +158,18 @@
 /scripts/setup_account_purpose_time_extension_v1.py text eol=lf
 # 治理范围校验保留现有CRLF原件，使最终CI与主目录的源码pin一致。
 /src/chanlun_trader/research_factory/campaign_scope_v1.py text eol=crlf
+
+# Pin newly authorized recovery source and test byte identities across CI platforms.
+/scripts/setup_failed_account_recovery_v1.py text eol=lf
+/src/chanlun_trader/account_startup_boundary_v1.py text eol=lf
+/src/chanlun_trader/research_factory/failed_account_recovery_v1.py text eol=lf
+/src/chanlun_trader/research_factory/failed_account_recovery_evidence_v1.py text eol=lf
+/tests/research_factory/test_failed_account_recovery_budget_v1.py text eol=lf
+/tests/research_factory/test_failed_account_recovery_capability_v1.py text eol=lf
+/tests/research_factory/test_failed_account_recovery_context_v1.py text eol=lf
+/tests/research_factory/test_failed_account_recovery_evidence_v1.py text eol=lf
+/tests/research_factory/test_failed_account_recovery_governance_v1.py text eol=lf
+/tests/research_factory/test_failed_account_recovery_integration_v1.py text eol=lf
+/tests/research_factory/test_failed_account_recovery_public_v1.py text eol=lf
+/tests/research_factory/test_failed_account_recovery_setup_v1.py text eol=lf
+/tests/research_factory/test_failed_account_recovery_worker_v1.py text eol=lf

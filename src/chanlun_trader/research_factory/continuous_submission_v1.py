@@ -357,8 +357,8 @@ def reconcile_submission(service, task_id):
         if binding['phase']!=request['phase']:
             raise PermissionError('CONTINUOUS_RECONCILE_BINDING_CHANGED')
         stages=[]
-        account_pending=any((path.parent/(name+'_START.json')).exists()
-            and not (path.parent/(name+'_SETTLEMENT.json')).exists() for name in job['plans'])
+        account_pending=any(paths['start'].exists() and not paths['settlement'].exists()
+            for paths in (runner.account_execution_paths(job,name) for name in job['plans']))
         if account_pending:
             from .universe_execution_recovery_v1 import resume_long_horizon_job
             resume_long_horizon_job(path,job,reconcile_only=True)

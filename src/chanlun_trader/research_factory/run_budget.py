@@ -11,6 +11,7 @@ import os
 from datetime import datetime
 from typing import Any, Iterable, Mapping
 
+from ..account_startup_boundary_v1 import startup_checkpoint
 from .budget import BudgetExhaustedError, BudgetLedgerMismatchError
 from .common import now_timestamp, stable_hash
 
@@ -22,6 +23,42 @@ def effective_operation_upper_bounds(operation):
 
 def effective_execution_total_seconds(operation):
     return operation.get('effective_total_seconds', operation['execution_profile']['total_seconds'])
+
+
+def effective_execution_status(operation):
+    """独立接续不重开原 FAILED 或原 Trial；仅显式执行路径使用此状态。"""
+    recovery = operation.get('failed_account_recovery')
+    return recovery['status'] if recovery is not None else operation['status']
+
+
+def effective_operation_allocation(operation):
+    """同一用途的已付费与未结清接续合计；不再预留完整账户额度。"""
+    units = deepcopy(operation.get('actual', {}) if operation['status'] in ('COMPLETED', 'FAILED')
+                     else effective_operation_upper_bounds(operation))
+    recovery = operation.get('failed_account_recovery')
+    if recovery is not None:
+        if recovery.get('settlement') is None:
+            units['wall_seconds'] += recovery['remaining_reserved_seconds']
+        else:
+            for name, amount in recovery['actual_delta'].items():
+                units[name] += amount
+    return units
+
+
+def execution_dispatch_identity(segment):
+    """父派发身份只含不可变派发字段，不能随 charge 回调变化。"""
+    keys = ('operation_id', 'segment_number', 'profile_hash', 'upper_bound_seconds', 'dispatched_at')
+    record = {key: segment[key] for key in keys}
+    for key in ('time_extension_proof', 'failed_account_recovery_proof'):
+        if segment.get(key) is not None:
+            record[key] = segment[key]
+    return stable_hash(record)
+
+
+def _recovery_segment_may_follow(operation, segments):
+    recovery = operation.get('failed_account_recovery')
+    return (recovery is not None and len(segments) == recovery['boundary']['segment_count']
+            and segments[-1].get('outcome') == 'FAILED')
 
 
 def effective_segment_allowance(profile, charged_seconds, *, seconds_to_expiry,
@@ -77,6 +114,7 @@ def _apply_account_purpose_time_extension(authorization, base_authorization, ope
             raise ValueError('ACCOUNT_PURPOSE_TIME_EXTENSION_ACCOUNTS_CONFLICT')
         targets = []
         for name, account in accounts.items():
+            startup_checkpoint('ACCOUNT_TIME_EXTENSION_ACCOUNT')
             operation = operations.get(mapping[name])
             if (operation is None or account['operation_id'] != mapping[name]
                     or operation['kind'] != 'ACCOUNT' or operation['stage'] != 'EXPLORATION'
@@ -118,6 +156,89 @@ def _apply_account_purpose_time_extension(authorization, base_authorization, ope
         raise
     except (PermissionError, ValueError, TypeError, KeyError, OSError) as exc:
         raise BudgetLedgerMismatchError('CAMPAIGN_ACCOUNT_TIME_EXTENSION_PROOF_INVALID') from exc
+
+
+def _apply_failed_account_recovery(authorization, base_authorization, operations, item, revoked):
+    """仅独立 Owner 证明可恢复原失败用途未花的整数预留。"""
+    from .failed_account_recovery_v1 import resolve_failed_account_recovery_manifest
+    if authorization is None or revoked or set(item) != {'proof', 'installed_at'}:
+        raise BudgetLedgerMismatchError('CAMPAIGN_FAILED_ACCOUNT_RECOVERY_EVENT_ORDER')
+    try:
+        proof = item['proof']
+        if not isinstance(proof, dict) or set(proof) != {'manifest_ref', 'recovery_id'}:
+            raise ValueError('FAILED_ACCOUNT_RECOVERY_PROOF_INVALID')
+        resolved = resolve_failed_account_recovery_manifest(proof['manifest_ref'], root=authorization['root'],
+            authorization_id=authorization['authorization_id'], objective_id=authorization['objective_id'])
+        installed_at = datetime.fromisoformat(item['installed_at'])
+        expires_at = datetime.fromisoformat(resolved['expires_at'])
+        mapping, accounts = resolved['operation_ids'], resolved['accounts']
+        if (proof != resolved['proof'] or installed_at.tzinfo is None or expires_at.tzinfo is None
+                or installed_at >= expires_at or resolved['expires_at'] != authorization['expires_at']
+                or resolved['base_authorization_identity'] != stable_hash(base_authorization)
+                or len(mapping) != 2 or set(mapping) != set(accounts) or len(set(mapping.values())) != 2
+                or mapping.get(resolved['original_failed_account']) != resolved['operation_id']
+                or resolved['account'] != accounts[resolved['original_failed_account']]):
+            raise ValueError('FAILED_ACCOUNT_RECOVERY_BINDING_CONFLICT')
+        targets = []
+        for name, account in accounts.items():
+            startup_checkpoint('FAILED_ACCOUNT_RECOVERY_ACCOUNT')
+            operation = operations.get(mapping[name])
+            failed = name == resolved['original_failed_account']
+            if (operation is None or operation['kind'] != 'ACCOUNT' or operation['stage'] != 'EXPLORATION'
+                    or operation['operation_id'] != account['operation_id']
+                    or operation['status'] != ('FAILED' if failed else 'RESERVED')
+                    or account['status_at_install'] != operation['status']
+                    or operation.get('active_segment') is not None or operation.get('resource_overrun')
+                    or operation.get('failed_account_recovery_proof') is not None
+                    or operation.get('execution_profile') != account['original_profile']
+                    or operation['upper_bounds'] != account['original_upper_bounds']
+                    or effective_execution_total_seconds(operation) != 72000
+                    or account['effective_total_seconds'] != 72000
+                    or operation.get('account_purpose_time_extension') != account['time_extension_proof']
+                    or not account['time_extension_proof']
+                    or len(operation.get('segments', [])) != account['segment_count']
+                    or operation.get('active_wall_seconds', 0) != account['charged_seconds']
+                    or stable_hash(operation.get('segments', [])) != account['parent_segment_prefix_hash']
+                    or account['next_segment_number'] != account['segment_count'] + 1):
+                raise ValueError('FAILED_ACCOUNT_RECOVERY_OPERATION_BOUNDARY_CONFLICT')
+            if failed:
+                settlement = {key: operation[key] for key in ('actual', 'outcome', 'evidence_identity')}
+                if (account['parent_operation'] != operation or account['parent_actual'] != operation['actual']
+                        or account['original_settlement'] != settlement or settlement['outcome'] != 'FAILED'
+                        or account['segment_count'] != 50 or account['charged_seconds'] != 42339.896402100036
+                        or operation['segments'][-1].get('outcome') != 'FAILED'
+                        or operation['actual']['wall_seconds'] != math.ceil(account['charged_seconds'])
+                        or operation['actual']['account_jobs'] != 1
+                        or account['remaining_reserved_seconds'] != 29660
+                        or operation['actual']['wall_seconds'] + account['remaining_reserved_seconds'] != 72000):
+                    raise ValueError('FAILED_ACCOUNT_RECOVERY_FAILED_BOUNDARY_CONFLICT')
+            elif (operation.get('segments') or operation.get('active_wall_seconds', 0)
+                    or effective_operation_upper_bounds(operation)['wall_seconds'] != 72000
+                    or account['remaining_reserved_seconds'] != 0):
+                raise ValueError('FAILED_ACCOUNT_RECOVERY_RESERVED_ACCOUNT_CONFLICT')
+            targets.append((operation, account, failed))
+        if len({operation['batch_id'] for operation, _, _ in targets}) != 1:
+            raise ValueError('FAILED_ACCOUNT_RECOVERY_OPERATION_PAIR_CONFLICT')
+        allocated = sum(effective_operation_allocation(operation)['wall_seconds'] for operation in operations.values())
+        if allocated + 29660 > authorization['resource_limits']['wall_seconds']:
+            raise BudgetLedgerMismatchError('CAMPAIGN_FAILED_ACCOUNT_RECOVERY_RESOURCE_LIMIT')
+        if authorization.get('scope_policy'):
+            from .campaign_scope_v1 import stage_remaining
+            available = stage_remaining({'authorization': authorization, 'operations': operations})
+            if available['EXPLORATION']['wall_seconds'] < 29660:
+                raise BudgetLedgerMismatchError('CAMPAIGN_FAILED_ACCOUNT_RECOVERY_STAGE_LIMIT')
+        for operation, account, failed in targets:
+            operation['failed_account_recovery_proof'] = deepcopy(proof)
+            operation['recovery_boundary'] = deepcopy(account)
+            if failed:
+                operation['failed_account_recovery'] = {'proof': deepcopy(proof), 'status': 'RUNNING',
+                    'boundary': deepcopy(account), 'base_actual': deepcopy(operation['actual']),
+                    'base_charged_seconds': account['charged_seconds'],
+                    'remaining_reserved_seconds': account['remaining_reserved_seconds']}
+    except BudgetLedgerMismatchError:
+        raise
+    except (PermissionError, ValueError, TypeError, KeyError, OSError) as exc:
+        raise BudgetLedgerMismatchError('CAMPAIGN_FAILED_ACCOUNT_RECOVERY_PROOF_INVALID') from exc
 
 
 @dataclass(frozen=True)
@@ -663,6 +784,7 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
             if head and head not in self._event_ids:
                 raise BudgetLedgerMismatchError('CAMPAIGN_EVENT_HISTORY_TRUNCATED')
         for event in self._events:
+            startup_checkpoint('RUN_BUDGET_EVENT_INTEGRITY')
             expected = stable_hash({"run_id": self.run_id, "event_type": event["event_type"], "payload": event["payload"]})
             if event.get("event_id") != expected:
                 raise BudgetLedgerMismatchError("CAMPAIGN_EVENT_HASH_CONFLICT")
@@ -694,10 +816,16 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
         authorization, base_authorization, operations, stages = None, None, {}, {}
         paused, revoked, grants = False, False, {}
         for event in self._events:
+            startup_checkpoint('CAMPAIGN_EVENT_REPLAY')
             kind, item = event['event_type'], event['payload']
             if set(item) & {'effective_upper_bounds', 'effective_total_seconds',
-                            'account_purpose_time_extension', 'time_extension_boundary'}:
+                            'account_purpose_time_extension', 'time_extension_boundary',
+                            'failed_account_recovery', 'recovery_boundary'}:
                 raise BudgetLedgerMismatchError('CAMPAIGN_ACCOUNT_TIME_EXTENSION_DERIVED_FIELDS_FORBIDDEN')
+            if ('failed_account_recovery_proof' in item and kind not in (
+                    'CAMPAIGN_EXECUTION_SEGMENT_DISPATCHED', 'CAMPAIGN_EXECUTION_SEGMENT_CHARGED',
+                    'CAMPAIGN_OPERATION_SETTLED', 'CAMPAIGN_OPERATION_RESOURCE_OVERRUN_SETTLED')):
+                raise BudgetLedgerMismatchError('CAMPAIGN_FAILED_ACCOUNT_RECOVERY_DERIVED_FIELDS_FORBIDDEN')
             if kind == 'CAMPAIGN_AUTHORIZED':
                 if authorization is not None:
                     raise BudgetLedgerMismatchError('CAMPAIGN_AUTHORIZATION_DUPLICATED')
@@ -729,12 +857,57 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
                 operations[item['operation_id']] = {**item, 'status': 'RESERVED'}
             elif kind == 'CAMPAIGN_ACCOUNT_PURPOSE_TIME_EXTENDED':
                 _apply_account_purpose_time_extension(authorization, base_authorization, operations, item, revoked)
+            elif kind == 'CAMPAIGN_FAILED_ACCOUNT_RECOVERY_INSTALLED':
+                _apply_failed_account_recovery(authorization, base_authorization, operations, item, revoked)
+            elif kind == 'CAMPAIGN_FAILED_ACCOUNT_RECOVERY_UNKNOWN':
+                operation = operations.get(item.get('operation_id'))
+                recovery = operation.get('failed_account_recovery') if operation else None
+                if (recovery is None or recovery.get('settlement') is not None
+                        or recovery['status'] not in ('RUNNING', 'UNKNOWN')
+                        or item.get('proof') != recovery['proof']
+                        or set(item) != {'operation_id', 'proof', 'reason'}
+                        or not isinstance(item['reason'], str) or not item['reason']):
+                    raise BudgetLedgerMismatchError('CAMPAIGN_FAILED_ACCOUNT_RECOVERY_UNKNOWN_CONFLICT')
+                recovery.update(status='UNKNOWN', reason=item['reason'])
+            elif kind == 'CAMPAIGN_FAILED_ACCOUNT_RECOVERY_SETTLED':
+                operation = operations.get(item.get('operation_id'))
+                recovery = operation.get('failed_account_recovery') if operation else None
+                actual_delta = item.get('actual_delta', {})
+                segments = operation.get('segments', []) if operation else []
+                if (recovery is None or recovery.get('settlement') is not None
+                        or operation.get('active_segment') is not None
+                        or item.get('proof') != recovery['proof']
+                        or set(item) != {'operation_id', 'proof', 'actual_delta', 'outcome', 'evidence_identity', 'settled_at'}
+                        or set(actual_delta) != set(self.resource_names)
+                        or any(type(amount) is not int or amount < 0 for amount in actual_delta.values())
+                        or any(actual_delta[name] != 0 for name in actual_delta if name != 'wall_seconds')
+                        or actual_delta['wall_seconds'] != math.ceil(operation['active_wall_seconds']) - recovery['base_actual']['wall_seconds']
+                        or item.get('outcome') not in ('COMPLETED', 'FAILED')
+                        or (item['outcome'] == 'COMPLETED' and (
+                            len(segments) <= recovery['boundary']['segment_count']
+                            or segments[-1].get('outcome') != 'COMPLETED' or recovery['status'] != 'COMPLETED'))
+                        or (item['outcome'] == 'FAILED' and recovery['status'] not in ('RUNNING', 'UNKNOWN', 'FAILED'))
+                        or not isinstance(item.get('evidence_identity'), str) or not item['evidence_identity']):
+                    raise BudgetLedgerMismatchError('CAMPAIGN_FAILED_ACCOUNT_RECOVERY_SETTLEMENT_CONFLICT')
+                try:
+                    if datetime.fromisoformat(item['settled_at']).tzinfo is None:
+                        raise ValueError('SETTLEMENT_TIMEZONE_REQUIRED')
+                except (ValueError, TypeError) as exc:
+                    raise BudgetLedgerMismatchError('CAMPAIGN_FAILED_ACCOUNT_RECOVERY_SETTLEMENT_CONFLICT') from exc
+                overrun = max(0, actual_delta['wall_seconds'] - recovery['remaining_reserved_seconds'])
+                if overrun and (item['outcome'] != 'FAILED'
+                        or segments[-1].get('basis') != 'MEASURED_FAILED_RESOURCE_BOUND_VIOLATION'):
+                    raise BudgetLedgerMismatchError('CAMPAIGN_FAILED_ACCOUNT_RECOVERY_USAGE_EXCEEDS_BOUND')
+                recovery.update(status=item['outcome'], actual_delta=deepcopy(actual_delta), settlement=deepcopy(item))
+                if overrun:
+                    recovery['resource_overrun'] = {'wall_seconds': overrun}
             elif kind in ('CAMPAIGN_OPERATION_STARTED', 'CAMPAIGN_OPERATION_UNKNOWN', 'CAMPAIGN_OPERATION_SETTLED'):
                 operation = operations.get(item['operation_id'])
                 if operation is None or operation['status'] in ('COMPLETED', 'FAILED'):
                     raise BudgetLedgerMismatchError('CAMPAIGN_OPERATION_EVENT_ORDER')
                 if kind == 'CAMPAIGN_OPERATION_SETTLED' and (item.get('time_extension_proof')
-                        != operation.get('account_purpose_time_extension')):
+                        != operation.get('account_purpose_time_extension')
+                        or item.get('failed_account_recovery_proof') != operation.get('failed_account_recovery_proof')):
                     raise BudgetLedgerMismatchError('CAMPAIGN_ACCOUNT_TIME_EXTENSION_SETTLEMENT_CONFLICT')
                 if kind == 'CAMPAIGN_OPERATION_SETTLED' and operation.get('account_purpose_time_extension') is not None:
                     actual=item.get('actual', {}); bounds=effective_operation_upper_bounds(operation)
@@ -788,13 +961,14 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
                         or actual['wall_seconds']!=max(1,math.ceil(operation['active_wall_seconds']))
                         or any(actual[name]!=bounds[name] for name in actual if name!='wall_seconds')
                         or item.get('time_extension_proof') != operation.get('account_purpose_time_extension')
+                        or item.get('failed_account_recovery_proof') != operation.get('failed_account_recovery_proof')
                         or item.get('resource_overrun')!={name:max(0,actual[name]-bounds[name]) for name in actual}
                         or not any(item['resource_overrun'].values())):
                     raise BudgetLedgerMismatchError('CAMPAIGN_RESOURCE_OVERRUN_PROOF_INVALID')
                 operation.update(item);operation['status']='FAILED'
             elif kind == 'CAMPAIGN_EXECUTION_SEGMENT_DISPATCHED':
                 operation=operations.get(item['operation_id'])
-                if (operation is None or operation['status'] != 'RUNNING'
+                if (operation is None or effective_execution_status(operation) != 'RUNNING'
                         or operation.get('execution_profile') is None or operation.get('active_segment') is not None):
                     raise BudgetLedgerMismatchError('CAMPAIGN_EXECUTION_SEGMENT_EVENT_ORDER')
                 from .universe_execution_profile_v1 import validate_execution_profile
@@ -803,19 +977,31 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
                 charged=operation.get('active_wall_seconds',0)
                 upper=item.get('upper_bound_seconds')
                 proof=operation.get('account_purpose_time_extension')
+                recovery_proof=operation.get('failed_account_recovery_proof')
                 total=effective_execution_total_seconds(operation)
+                if recovery_proof is not None:
+                    try:
+                        dispatched_at = datetime.fromisoformat(item['dispatched_at'])
+                        expires_at = datetime.fromisoformat(authorization['expires_at'])
+                        if revoked or paused or dispatched_at.tzinfo is None or dispatched_at >= expires_at:
+                            raise ValueError('FAILED_ACCOUNT_RECOVERY_DISPATCH_NOT_AUTHORIZED')
+                    except (ValueError, TypeError, KeyError) as exc:
+                        raise BudgetLedgerMismatchError('CAMPAIGN_FAILED_ACCOUNT_RECOVERY_DISPATCH_CONFLICT') from exc
                 if (type(item.get('segment_number')) is not int or item['segment_number'] != len(segments)+1
                         or item.get('profile_hash') != profile['profile_hash']
                         or item.get('time_extension_proof') != proof
+                        or item.get('failed_account_recovery_proof') != recovery_proof
+                        or (recovery_proof is not None and item.get('dispatch_identity') != execution_dispatch_identity(item))
                         or type(upper) not in (int,float) or not 0 < upper <= profile['worker_seconds']
                         or upper > total-charged or (proof is not None and upper <= 70)
-                        or (segments and segments[-1].get('outcome') in ('COMPLETED','FAILED'))):
+                        or (segments and segments[-1].get('outcome') in ('COMPLETED','FAILED')
+                            and not _recovery_segment_may_follow(operation, segments))):
                     raise BudgetLedgerMismatchError('CAMPAIGN_EXECUTION_SEGMENT_IDENTITY_CONFLICT')
                 segment=dict(item); segments.append(segment); operation['active_segment']=segment
             elif kind == 'CAMPAIGN_EXECUTION_SEGMENT_CHARGED':
                 operation=operations.get(item['operation_id'])
                 active=operation.get('active_segment') if operation else None
-                if (operation is None or operation['status'] not in ('RUNNING','UNKNOWN') or active is None
+                if (operation is None or effective_execution_status(operation) not in ('RUNNING','UNKNOWN') or active is None
                         or active['segment_number'] != item.get('segment_number')):
                     raise BudgetLedgerMismatchError('CAMPAIGN_EXECUTION_SEGMENT_EVENT_ORDER')
                 from .universe_execution_profile_v1 import segment_charge
@@ -823,23 +1009,37 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
                                              item.get('evidence_identity'),outcome=item.get('outcome'))
                 if (item.get('seconds') != seconds or item.get('basis') != basis
                         or item.get('time_extension_proof') != active.get('time_extension_proof')
+                        or item.get('failed_account_recovery_proof') != active.get('failed_account_recovery_proof')
+                        or (active.get('failed_account_recovery_proof') is not None
+                            and item.get('dispatch_identity') != active.get('dispatch_identity'))
                         or item.get('outcome') not in ('CONTINUE','PAUSED','COMPLETED','FAILED')):
                     raise BudgetLedgerMismatchError('CAMPAIGN_EXECUTION_SEGMENT_CHARGE_CONFLICT')
                 active.update(item)
                 operation['active_wall_seconds']=operation.get('active_wall_seconds',0)+seconds
                 operation['active_segment']=None
+                if operation.get('failed_account_recovery') is not None and item['outcome'] in ('COMPLETED', 'FAILED'):
+                    operation['failed_account_recovery']['status'] = item['outcome']
         if authorization is None:
             return {'authorization': None, 'operations': {}, 'stages': {}, 'paused': False}
         used = {name: 0 for name in self.resource_names}
         reserved = dict(used)
         for operation in operations.values():
+            startup_checkpoint('CAMPAIGN_RESOURCE_ALLOCATION')
             settled = operation['status'] in ('COMPLETED', 'FAILED')
             destination = used if settled else reserved
             bounds=operation.get('actual', {}) if settled else effective_operation_upper_bounds(operation)
             for name, amount in bounds.items():
                 destination[name] += amount
+            recovery = operation.get('failed_account_recovery')
+            if recovery is not None:
+                if recovery.get('settlement') is None:
+                    reserved['wall_seconds'] += recovery['remaining_reserved_seconds']
+                else:
+                    for name, amount in recovery['actual_delta'].items():
+                        used[name] += amount
         remaining = {name: authorization['resource_limits'][name] - used[name] - reserved[name] for name in used}
-        violations=[op for op in operations.values() if op.get('resource_overrun')]
+        violations=[op for op in operations.values() if op.get('resource_overrun')
+                    or op.get('failed_account_recovery', {}).get('resource_overrun')]
         if min(remaining.values()) < 0 and not violations:
             raise BudgetLedgerMismatchError('CAMPAIGN_RESOURCE_USAGE_EXCEEDS_LIMIT')
         result={'authorization': authorization, 'base_authorization': base_authorization,
@@ -857,13 +1057,14 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
         if any(operation.get('execution_profile') is not None for operation in operations.values()):
             # 计算进度包含在原用途整份预留中，不再次从 remaining 扣除。
             result['active_wall_seconds']=sum(operation.get('active_wall_seconds',0) for operation in operations.values()
-                                              if operation['status'] not in ('COMPLETED','FAILED'))
+                                              if effective_execution_status(operation) not in ('COMPLETED','FAILED'))
         return result
 
     def campaign_event(self, kind, payload):
         if not kind.startswith('CAMPAIGN_'):
             raise ValueError('CAMPAIGN_EVENT_KIND_INVALID')
-        if kind == 'CAMPAIGN_ACCOUNT_PURPOSE_TIME_EXTENDED':
+        if kind in ('CAMPAIGN_ACCOUNT_PURPOSE_TIME_EXTENDED', 'CAMPAIGN_FAILED_ACCOUNT_RECOVERY_INSTALLED',
+                    'CAMPAIGN_FAILED_ACCOUNT_RECOVERY_UNKNOWN', 'CAMPAIGN_FAILED_ACCOUNT_RECOVERY_SETTLED'):
             # 校验完整原子结果后才提交；无效许可不能污染权威事件流。
             candidate={'event_type':kind, 'payload':deepcopy(payload)}
             self._events.append(candidate)

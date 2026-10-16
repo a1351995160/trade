@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import re
 
+from chanlun_trader.account_startup_boundary_v1 import startup_checkpoint
 from .campaign_scope_v1 import OwnerApprovalStoreV1, VERSION as SCOPE_VERSION, _write_once, scope_summary
 from .common import stable_hash
 from .mutation_boundary import ObjectiveMutationLock
@@ -47,11 +48,13 @@ def _path(value, root):
 
 
 def _reference(path, root):
+    startup_checkpoint('ACCOUNT_VERSION_REFERENCE')
     return {'path': str(_path(path, root)),
         'sha256': file_sha256(path, root=root, error_code='ACCOUNT_VERSION_ORIGINAL_CHANGED')}
 
 
 def _read(reference, root):
+    startup_checkpoint('ACCOUNT_VERSION_READ')
     return read_pinned_json(reference, root=root, error_code='ACCOUNT_VERSION_ORIGINAL_CHANGED')
 
 
@@ -127,6 +130,7 @@ class AccountVersionCapabilityBridgeV1:
 
     @classmethod
     def _capture(cls, root, base, replacements, runtime_refs, predecessor_ref, *, _time_extension=None):
+        startup_checkpoint('ACCOUNT_VERSION_CAPABILITY_CAPTURE')
         root = checked_directory_path(root, error_code='ACCOUNT_VERSION_ROOT_INVALID').resolve(strict=True)
         _require(isinstance(base, dict) and base.get('root') == os.path.normcase(str(root)), 'ROOT_CONFLICT')
         policy = base.get('scope_policy')
@@ -158,6 +162,7 @@ class AccountVersionCapabilityBridgeV1:
         _require(isinstance(replacements, list) and replacements, 'SOURCE_ALLOWLIST_REQUIRED')
         seen = set()
         for row in replacements:
+            startup_checkpoint('ACCOUNT_VERSION_CAPABILITY_SOURCE')
             _require(isinstance(row, dict) and set(row) == {'path', 'old_sha256', 'new_sha256', 'archive_ref'},
                 'SOURCE_FIELDS_INVALID')
             path = _path(row['path'], root)
@@ -172,6 +177,7 @@ class AccountVersionCapabilityBridgeV1:
         _require(isinstance(runtime_refs, list), 'RUNTIME_SOURCE_PINS_REQUIRED')
         runtime_seen = set()
         for reference in runtime_refs:
+            startup_checkpoint('ACCOUNT_VERSION_CAPABILITY_RUNTIME')
             path = _path(reference.get('path', ''), root)
             _require(_runtime_allowed(path, root) and path not in runtime_seen
                 and source_matches(reference), 'RUNTIME_SOURCE_CHANGED')
@@ -230,12 +236,28 @@ class AccountVersionCapabilityBridgeV1:
         return reference
 
     @classmethod
-    def read(cls, root, base_authorization, *, reference=None, time_extension_ref=None):
+    def read(cls, root, base_authorization, *, reference=None, time_extension_ref=None, recovery=None):
         base = base_authorization
         policy = base.get('scope_policy', {})
         owner = checked_directory_path(policy.get('approval_store', ''), error_code='ACCOUNT_VERSION_OWNER_ROOT_INVALID')
         approvals = OwnerApprovalStoreV1.from_checked_directory(owner)
         approvals.require(policy['approval_ref'], policy['summary'])
+        extension = None
+        if time_extension_ref is not None:
+            from .account_purpose_time_extension_v1 import AccountPurposeTimeExtensionV1
+            extension = AccountPurposeTimeExtensionV1.read(root, time_extension_ref,
+                base_authorization=base, recovery=recovery)
+            recovery = extension.recovery
+        if recovery is not None:
+            from .failed_account_recovery_v1 import FailedAccountRecoveryV1
+            _require(type(recovery) is FailedAccountRecoveryV1, 'SIGNED_RECOVERY_CONTEXT_REQUIRED')
+            checked_root = checked_directory_path(root, error_code='ACCOUNT_VERSION_ROOT_INVALID')
+            _require(os.path.normcase(str(checked_root)) == os.path.normcase(str(recovery.root)), 'RECOVERY_ROOT_CONFLICT')
+            inherited = recovery.require_capability_bridge(reference, base_authorization=base)
+            if time_extension_ref is not None:
+                predecessor = recovery.require_predecessor(time_extension_ref, base_authorization=base)
+                _require(predecessor['predecessor_bridge_ref'] == inherited['reference'], 'RECOVERY_BRIDGE_CONFLICT')
+            return inherited
         fingerprint = capabilities()['fingerprint']
         path = cls._binding_path(approvals, base, fingerprint)
         _path(path, owner)
@@ -249,10 +271,7 @@ class AccountVersionCapabilityBridgeV1:
         approved = binding['reference']
         _require(isinstance(approved, dict) and set(approved) == {'path', 'sha256', 'approval_ref'}
             and (reference is None or approved == reference), 'REFERENCE_CONFLICT')
-        extension = None
-        if time_extension_ref is not None:
-            from .account_purpose_time_extension_v1 import AccountPurposeTimeExtensionV1
-            extension = AccountPurposeTimeExtensionV1.read(root, time_extension_ref, base_authorization=base)
+        if extension is not None:
             _require(extension.summary_value['predecessor_bridge_ref'] == approved, 'TIME_EXTENSION_PREDECESSOR_CONFLICT')
         record = _read({key: approved[key] for key in ('path', 'sha256')}, owner)
         _require(set(record) == {'schema_version', 'summary', 'approval_ref', 'identity'}
@@ -269,7 +288,7 @@ class AccountVersionCapabilityBridgeV1:
         return {'reference': deepcopy(approved), 'record': record, 'capabilities_snapshot': original}
 
     @classmethod
-    def read_historical(cls, root, base_authorization, *, reference, time_extension_ref):
+    def read_historical(cls, root, base_authorization, *, reference, time_extension_ref, recovery=None):
         """已批准后继治理源码只映射历史字节；不授予新账户额度。"""
         _require(time_extension_ref is not None, 'TIME_EXTENSION_REFERENCE_REQUIRED')
-        return cls.read(root, base_authorization, reference=reference, time_extension_ref=time_extension_ref)
+        return cls.read(root, base_authorization, reference=reference, time_extension_ref=time_extension_ref, recovery=recovery)
