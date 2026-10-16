@@ -281,8 +281,7 @@ class StrategyBatchGovernanceV1(ETFAccountGovernanceV1):
                 readonly=True, require_trial_mirrors=True)
             operation = current['operations'][receipt['source']['operation_ids'][name]]
             from .run_budget import effective_execution_status
-            recovery = self._failed_recovery_state(name, receipt,
-                _execution_limit=campaign._execution_limit_from_view(current, operation['operation_id']))
+            recovery = self._failed_recovery_state(name, receipt, _campaign_view=(campaign, current))
             if recovery['failed_account_recovery_proof'] is not None:
                 campaign._dispatchable(current, operation['stage'])
                 campaign._validate_recovery_dispatch(current, operation)
@@ -360,7 +359,8 @@ class StrategyBatchGovernanceV1(ETFAccountGovernanceV1):
         return {**limit, 'time_extension_boundary':boundary,
             'time_extension_mirror_pending':missing, 'time_extension_mirror':expected}
 
-    def _failed_recovery_state(self, name, receipt, *, allow_missing_mirror=False, _execution_limit=None):
+    def _failed_recovery_state(self, name, receipt, *, allow_missing_mirror=False, _execution_limit=None,
+                               _campaign_view=None):
         """本次完整父视图派生一次性接续；本地镜像从不自行授予权限。"""
         mirror = self.root / 'ACCOUNT_FAILED_RECOVERY.json'
         source = receipt['source']
@@ -371,7 +371,14 @@ class StrategyBatchGovernanceV1(ETFAccountGovernanceV1):
                 raise PermissionError('STRATEGY_FAILED_RECOVERY_NOT_AUTHORIZED')
             return empty
         if _execution_limit is None:
-            campaign, view = _validated_campaign_source(source, self.plans, self.objective_id, readonly=True)
+            campaign, view = (_campaign_view if _campaign_view is not None else
+                _validated_campaign_source(source, self.plans, self.objective_id, readonly=True))
+            operation = view['operations'][source['operation_ids'][name]]
+            if operation.get('failed_account_recovery_proof') is None:
+                if mirror.exists():
+                    raise PermissionError('STRATEGY_FAILED_RECOVERY_PARENT_NOT_INSTALLED')
+                from .run_budget import effective_execution_status
+                return {**empty, 'effective_execution_status': effective_execution_status(operation)}
             limit = campaign._execution_limit_from_view(view, source['operation_ids'][name])
         else:
             limit = _execution_limit

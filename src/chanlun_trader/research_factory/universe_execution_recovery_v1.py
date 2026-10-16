@@ -201,7 +201,7 @@ def resume_long_horizon_job(path,job,*,reconcile_only=False):
                     settle(name,completed=outcome=='COMPLETED',seconds=state['charged_seconds'],
                         result_hash=runner.sha(output) if output.exists() else None,
                         error=None if outcome=='COMPLETED' else 'KNOWN_WORKER_FAILURE')
-                    if outcome == 'FAILED':
+                    if outcome == 'FAILED' and (recovered or not reconcile_only):
                         raise PermissionError('UNIVERSE_KNOWN_FAILURE_NO_RETRY')
                 elif recovered and len(state['segments']) > context.recovery.summary_value['accounts'][name]['segment_count']:
                     # 已收费的CONTINUE在期限/有效协作窗口耗尽后只结清，不重发或改写原FAILED。

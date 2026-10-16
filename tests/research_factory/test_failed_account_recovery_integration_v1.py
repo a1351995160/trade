@@ -285,11 +285,22 @@ def test_full_504_day_failed_account_recovery_keeps_277_days_fees_and_public_fee
     for folder in ('src', 'scripts'):
         shutil.copytree(repo / folder, root / folder, ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
     _install_synthetic_capabilities(root)
+    git_argv = ['git', '-c', 'gc.auto=0', '-c', 'maintenance.auto=false']
+    git_directory = subprocess.check_output(git_argv + ['rev-parse', '--absolute-git-dir'],
+        cwd=repo, text=True, encoding='utf-8').strip()
+    source_head = subprocess.check_output(git_argv + ['rev-parse', 'HEAD'],
+        cwd=repo, text=True, encoding='utf-8').strip()
     env = {**os.environ, 'PYTHONUTF8': '1', 'PYTHONDONTWRITEBYTECODE': '1',
+        'GIT_DIR': git_directory, 'GIT_WORK_TREE': str(root), 'GIT_OPTIONAL_LOCKS': '0',
+        'GIT_CONFIG_COUNT': '2', 'GIT_CONFIG_KEY_0': 'gc.auto', 'GIT_CONFIG_VALUE_0': '0',
+        'GIT_CONFIG_KEY_1': 'maintenance.auto', 'GIT_CONFIG_VALUE_1': 'false',
         'PYTHONPATH': os.pathsep.join((str(root / 'src'), str(root), str(Path(__file__).parent))),
         **{key: '1' for key in ('OMP_NUM_THREADS', 'OPENBLAS_NUM_THREADS', 'MKL_NUM_THREADS', 'NUMEXPR_NUM_THREADS')}}
     argv = [sys.executable, str(Path(__file__).resolve()), '--scenario', str(root)]
     _write(root / 'SCENARIO_LAUNCH.json', {'argv': argv, 'root': str(root),
+        'git_metadata_context': {'git_directory': git_directory, 'source_head': source_head,
+            'work_tree': str(root), 'optional_locks': '0', 'read_only_metadata': True,
+            'fixture_only': 'ISOLATED_WORKING_FILES_WITH_CURRENT_SOURCE_COMMIT_METADATA'},
         'test_helper_source_sha256': _sha(Path(__file__).parent / 'failed_account_startup_charge_fixture_v1.py'),
         'source_sha256': {str(p.relative_to(root)): _sha(p) for folder in ('src', 'scripts')
             for p in sorted((root / folder).rglob('*.py'))}, 'test_source_sha256': _sha(Path(__file__).resolve()),
