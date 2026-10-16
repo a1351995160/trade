@@ -11,6 +11,7 @@ import time
 _ACTIVE = ContextVar('account_startup_boundary_v1', default=None)
 _CHUNK_BYTES = 1024 * 1024
 _TRACE_CONTROL_FILES = frozenset((__file__, contextlib.__file__))
+_SUSPENDABLE_CODE_FLAGS = 0x20 | 0x80 | 0x200  # generator, coroutine, async generator
 
 
 class StartupBoundaryExceeded(Exception):
@@ -41,6 +42,8 @@ class AccountStartupBoundaryV1:
         self._on_stage = on_stage
         self._emitting = False
         self.before_call = None
+        self._trace_callback = self._trace
+        self._plain_trace_callback = self._trace_plain
 
     def checkpoint(self, stage='STARTUP'):
         if self.enabled and not self._emitting:
@@ -54,6 +57,9 @@ class AccountStartupBoundaryV1:
             self.before_call(frame)
         if not self._tracing:
             return self._previous_trace(frame, event, arg) if self._previous_trace is not None else None
+        plain_frame = (event == 'call' and self._previous_trace is None and not control_frame
+            and frame not in self._frame_traces and frame not in self._frame_trace_lines
+            and frame.f_trace is None and not frame.f_code.co_flags & _SUSPENDABLE_CODE_FLAGS)
         previous = self._frame_traces.get(frame, self._previous_trace)
         if previous is not None:
             self._frame_traces[frame] = previous(frame, event, arg)
@@ -68,7 +74,22 @@ class AccountStartupBoundaryV1:
             if self._trace_lines >= 64:
                 self._trace_lines = 0
                 self.checkpoint('PYTHON_LINE_CHECKPOINT')
-        return self._trace if self._tracing else previous
+        if plain_frame and self._tracing and previous is None:
+            return self._plain_trace_callback
+        return self._trace_callback if self._tracing else previous
+
+    def _trace_plain(self, frame, event, arg):
+        # 仅全局 call 已登记的无 previous 普通帧；原有 caller/生成器和外部 trace 不走此路径。
+        if not self._tracing:
+            return None
+        if event == 'return' and frame not in self._frame_trace_lines:
+            self._frame_traces.pop(frame, None)
+        if self.enabled and not self._emitting and event == 'line':
+            self._trace_lines += 1
+            if self._trace_lines >= 64:
+                self._trace_lines = 0
+                self.checkpoint('PYTHON_LINE_CHECKPOINT')
+        return self._plain_trace_callback if self._tracing else None
 
     def _stop_trace(self):
         if self._tracing:
@@ -93,9 +114,9 @@ class AccountStartupBoundaryV1:
             self._frame_traces[frame] = frame.f_trace
             self._frame_trace_lines[frame] = frame.f_trace_lines
             self._tracing = True
-            sys.settrace(self._trace)
+            sys.settrace(self._trace_callback)
             frame.f_trace_lines = True
-            frame.f_trace = self._trace
+            frame.f_trace = self._trace_callback
             yield self
         finally:
             try:

@@ -15,6 +15,7 @@ from chanlun_trader.account_startup_boundary_v1 import (
 )
 from scripts import run_strategy_account_v1 as runner
 from test_long_horizon_cooperative_deadline_v1 import account_worker, clock
+from test_account_version_continuation_v1 import case, install, resume
 
 
 @pytest.mark.parametrize('stage', ['VALIDATE_SOURCES', 'LOADER', 'FIRST_GUARD'])
@@ -582,3 +583,249 @@ def test_plain_failed_settlement_cannot_be_reopened_by_a_recovery_named_file(tmp
     runner.save(tmp_path / 'ARTIFICIAL_BASE_RECOVERY_SETTLEMENT.json', {**start, 'completed': True, 'wall_seconds': 1.})
     with pytest.raises(PermissionError, match='FAILED_OR_SETTLEMENT_CONFLICT'):
         runner.validated_settlement(job, 'ARTIFICIAL_BASE')
+
+
+def test_short_plain_frames_share_the_same_64_line_deadline_counter(monkeypatch):
+    import chanlun_trader.account_startup_boundary_v1 as startup_module
+    timer = clock(monkeypatch)
+    monkeypatch.setattr(startup_module.time, 'monotonic', lambda: timer.now)
+    frame = sys._getframe()
+    old_global, old_local, old_lines = sys.gettrace(), frame.f_trace, frame.f_trace_lines
+    # 外层测试不计行；每次调用一个不同代码文件中的单行普通帧。
+    monkeypatch.setattr(startup_module, '_TRACE_CONTROL_FILES',
+        startup_module._TRACE_CONTROL_FILES | {frame.f_code.co_filename})
+    namespace = {}
+    exec(compile('def one_line():\n    return 1\n', '<artificial-ordinary-startup>', 'exec'), namespace)
+    one_line = namespace['one_line']
+    boundary = AccountStartupBoundaryV1(10.)
+    try:
+        sys.settrace(None)
+        frame.f_trace = None
+        with pytest.raises(StartupBoundaryExceeded) as caught:
+            with boundary.scope():
+                boundary.stage = 'ARTIFICIAL_SHORT_FRAMES'
+                for _ in range(63):
+                    assert one_line() == 1
+                assert boundary._trace_lines == 63
+                timer.now = 10.
+                one_line()
+        assert caught.value.stage == 'ARTIFICIAL_SHORT_FRAMES'
+        assert boundary.checkpoint_stage == 'PYTHON_LINE_CHECKPOINT'
+        assert boundary._trace_lines == 0
+        assert boundary.validation_complete is False
+        assert sys.gettrace() is None and frame.f_trace is None
+        assert frame.f_trace_lines is old_lines
+        assert boundary._frame_traces == boundary._frame_trace_lines == {}
+    finally:
+        sys.settrace(old_global)
+        frame.f_trace = old_local
+        frame.f_trace_lines = old_lines
+
+
+@pytest.mark.parametrize('previous_trace', [None, 'CALLBACK'])
+def test_completed_startup_restores_active_plain_frames_and_external_trace(monkeypatch, previous_trace):
+    import chanlun_trader.account_startup_boundary_v1 as startup_module
+    timer = clock(monkeypatch)
+    monkeypatch.setattr(startup_module.time, 'monotonic', lambda: timer.now)
+    caller = sys._getframe()
+    old_global, old_local, old_lines = sys.gettrace(), caller.f_trace, caller.f_trace_lines
+    old_context = startup_module._ACTIVE.get()
+    observed = []
+
+    def existing_trace(frame, event, arg):
+        if frame.f_code.co_name in ('ordinary', 'finish_inside'):
+            observed.append((frame.f_code.co_name, event))
+        return existing_trace
+
+    expected = existing_trace if previous_trace == 'CALLBACK' else None
+    boundary = AccountStartupBoundaryV1(10.)
+
+    def ordinary():
+        outer = sys._getframe()
+        outer_lines = outer.f_trace_lines
+        selected = boundary._plain_trace_callback if expected is None else boundary._trace_callback
+        assert outer.f_trace is selected
+
+        def finish_inside():
+            inner = sys._getframe()
+            inner_lines = inner.f_trace_lines
+            assert inner.f_trace is selected
+            boundary.completed()
+            assert sys.gettrace() is expected
+            assert outer.f_trace is inner.f_trace is expected
+            assert outer.f_trace_lines is outer_lines and inner.f_trace_lines is inner_lines
+            timer.now = 100.
+            startup_checkpoint('ARTIFICIAL_DAILY_WORK_AFTER_PLAIN_FRAME')
+            return 'DONE'
+
+        return finish_inside()
+
+    try:
+        sys.settrace(expected)
+        caller.f_trace = expected
+        with boundary.scope():
+            assert ordinary() == 'DONE'
+        assert sys.gettrace() is expected and caller.f_trace is expected
+        assert caller.f_trace_lines is old_lines
+        assert startup_module._ACTIVE.get() is old_context
+        assert boundary._frame_traces == boundary._frame_trace_lines == {}
+        assert boundary.validation_complete is True
+        if expected is not None:
+            assert ('ordinary', 'call') in observed and ('finish_inside', 'line') in observed
+    finally:
+        sys.settrace(old_global)
+        caller.f_trace = old_local
+        caller.f_trace_lines = old_lines
+
+
+def test_before_call_completion_does_not_reinstall_plain_trace_at_economic_entry(monkeypatch):
+    import chanlun_trader.account_startup_boundary_v1 as startup_module
+    timer = clock(monkeypatch)
+    monkeypatch.setattr(startup_module.time, 'monotonic', lambda: timer.now)
+    caller = sys._getframe()
+    old_global, old_local, old_lines = sys.gettrace(), caller.f_trace, caller.f_trace_lines
+    boundary = AccountStartupBoundaryV1(10.)
+    observed = []
+
+    def economic_entry():
+        assert sys.gettrace() is None and sys._getframe().f_trace is None
+        timer.now = 100.
+        startup_checkpoint('ARTIFICIAL_ECONOMIC_DAY_AFTER_GUARD')
+        observed.append('ECONOMIC')
+
+    def before_call(frame):
+        if frame.f_code is economic_entry.__code__:
+            observed.append('GUARD')
+            boundary.completed()
+
+    def ordinary_dispatch():
+        assert sys._getframe().f_trace is boundary._plain_trace_callback
+        economic_entry()
+        assert sys._getframe().f_trace is None
+
+    boundary.before_call = before_call
+    try:
+        sys.settrace(None)
+        caller.f_trace = None
+        with boundary.scope():
+            ordinary_dispatch()
+        assert observed == ['GUARD', 'ECONOMIC']
+        assert boundary.validation_complete is True
+        assert sys.gettrace() is None and caller.f_trace is None
+        assert caller.f_trace_lines is old_lines
+        assert boundary._frame_traces == boundary._frame_trace_lines == {}
+    finally:
+        sys.settrace(old_global)
+        caller.f_trace = old_local
+        caller.f_trace_lines = old_lines
+
+
+def test_emitting_diagnostic_does_not_consume_plain_frame_line_budget(monkeypatch):
+    import chanlun_trader.account_startup_boundary_v1 as startup_module
+    timer = clock(monkeypatch)
+    monkeypatch.setattr(startup_module.time, 'monotonic', lambda: timer.now)
+    caller = sys._getframe()
+    old_global, old_local, old_lines = sys.gettrace(), caller.f_trace, caller.f_trace_lines
+    observed = []
+
+    def diagnostic(index, row, event):
+        if event == 'ENTER':
+            assert sys._getframe().f_trace is boundary._plain_trace_callback
+            before = boundary._trace_lines
+            timer.now = 11.
+            total = 0
+            for value in range(256):
+                total += value
+            observed.append((before, boundary._trace_lines, total))
+
+    boundary = AccountStartupBoundaryV1(10., on_stage=diagnostic)
+    try:
+        sys.settrace(None)
+        caller.f_trace = None
+        with pytest.raises(StartupBoundaryExceeded) as caught:
+            with boundary.scope(), boundary.stage_scope('ARTIFICIAL_EMITTING_DIAGNOSTIC'):
+                pytest.fail('诊断耗时仍属于同一绝对截止，不能重新进入启动工作')
+        assert observed and observed[0][0] == observed[0][1]
+        assert observed[0][2] == sum(range(256))
+        assert caught.value.stage == 'ARTIFICIAL_EMITTING_DIAGNOSTIC'
+        assert boundary.validation_complete is False
+        assert sys.gettrace() is None and caller.f_trace is None
+        assert caller.f_trace_lines is old_lines
+        assert boundary._frame_traces == boundary._frame_trace_lines == {}
+    finally:
+        sys.settrace(old_global)
+        caller.f_trace = old_local
+        caller.f_trace_lines = old_lines
+
+
+@pytest.fixture
+def runner_source_case(case, monkeypatch):
+    install(case)
+    resume(case)
+    from chanlun_trader.research_factory import universe_submission_v1 as submission
+    # 沿用已签发V1/6段历史，只装配人工经济scope；runner/from_job/Owner/来源/费用保持真实。
+    # 完整未替换经济scope与worker链由显式双504合成另行验证。
+    monkeypatch.setattr(submission, 'validate_frozen_universe_scopes', lambda job: None)
+    return {**case, 'account': Path(case['job']['root'])}
+
+
+@pytest.mark.parametrize('case', ['RUNNER_VALIDATION'], indirect=True)
+def test_runner_validation_is_once_fresh_and_rejects_changes(runner_source_case, monkeypatch):
+    from chanlun_trader.research_factory.account_version_continuation_v1 import AccountVersionContinuationV1
+    case = runner_source_case
+    original = AccountVersionContinuationV1.validate
+    validations = []
+
+    def observed(context, *args, **kwargs):
+        validations.append(context)
+        return original(context, *args, **kwargs)
+
+    monkeypatch.setattr(AccountVersionContinuationV1, 'validate', observed)
+    before = {path: path.read_bytes() for path in case['account'].rglob('*') if path.is_file()}
+    first = runner.validate_sources(case['job'])
+    assert validations == [first]
+    second = runner.validate_sources(case['job'])
+    assert first is not second and validations == [first, second]
+    assert all(path.read_bytes() == raw for path, raw in before.items())
+    first.validate(for_dispatch=True, name='SYNTHETIC_BASE')
+    # 本单元只测入口委托；原277日/FAILED50/费用完整路径仍由原CI与完整合成验证。
+    for changed in ('source', 'charge'):
+        if changed == 'source':
+            target = Path(case['bridge_summary']['source_replacements'][0]['path'])
+        else:
+            target = case['account'] / 'SYNTHETIC_BASE_SEGMENT_000006_CHARGE.json'
+        raw = target.read_bytes()
+        target.write_bytes(raw + b'\n')
+        tampered = {path: path.read_bytes() for path in case['account'].rglob('*') if path.is_file()}
+        try:
+            with pytest.raises((PermissionError, ValueError)):
+                runner.validate_sources(case['job'])
+            with pytest.raises((PermissionError, ValueError)):
+                first.validate_sources(case['job'])
+            with pytest.raises((PermissionError, ValueError)):
+                first.validate(for_dispatch=True, name='SYNTHETIC_BASE')
+            assert all(path.read_bytes() == content for path, content in tampered.items()), changed
+            assert not (case['account'] / 'SYNTHETIC_BASE_SEGMENT_000007_DISPATCH.json').exists()
+        finally:
+            target.write_bytes(raw)
+    changed_job = deepcopy(case['job'])
+    changed_job['input_identity'] = 'ARTIFICIAL_CHANGED_JOB'
+    with pytest.raises(PermissionError, match='JOB_CHANGED'):
+        runner.validate_sources(changed_job)
+    with pytest.raises(PermissionError, match='JOB_ACCOUNT_VERSION_REPORT_REPAIR_CONFLICT'):
+        runner.validate_sources(case['job'], _report_repair=object())
+    assert all(path.read_bytes() == raw for path, raw in before.items())
+    assert not (case['account'] / 'SYNTHETIC_BASE_SEGMENT_000007_DISPATCH.json').exists()
+
+
+def test_runner_legacy_source_branch_still_reads_actual_bytes(tmp_path):
+    target = tmp_path / 'artificial-legacy-source.py'
+    target.write_bytes(b'artificial legacy source\n')
+    item = {}
+    job = {'root': str(tmp_path), 'items': {'LEGACY': item},
+        'plans': {'LEGACY': {'runtime': item, 'backend': {'backend': 'ARTIFICIAL'}}},
+        'source_hashes': {str(target): hashlib.sha256(target.read_bytes()).hexdigest()}}
+    assert runner.validate_sources(job) is None
+    target.write_bytes(target.read_bytes() + b'changed\n')
+    with pytest.raises(PermissionError, match='JOB_FROZEN_SOURCE_CHANGED'):
+        runner.validate_sources(job)

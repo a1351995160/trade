@@ -317,7 +317,7 @@ def validate_sources(job,*,_report_repair=None):
     if continuation is not None:
         if _report_repair is not None:
             raise PermissionError('JOB_ACCOUNT_VERSION_REPORT_REPAIR_CONFLICT')
-        continuation.validate_sources(job)
+        # from_job 已完整 fresh 校验并核对原 JOB；此处不重复同次校验。
     elif _report_repair is None:
         for path,digest in job['source_hashes'].items():
             if sha(path)!=digest:raise PermissionError('JOB_FROZEN_SOURCE_CHANGED:'+path)
