@@ -330,6 +330,14 @@ jobs:
             failed-account-source-identity.json
             ${{ runner.temp }}/failed-account-*-resource-evidence/**
             ${{ runner.temp }}/failed-account-*-tests/**/SUPERVISOR_*
+      - name: Upload Windows venv data worker evidence
+        if: always() && matrix.os == 'windows-latest' && matrix.suite == 'workflow'
+        uses: actions/upload-artifact@v4
+        with:
+          name: workflow-venv-data-resource-${{ matrix.os }}
+          path: |
+            ${{ runner.temp }}/autonomous-completion-tests/test_actual_windows_venv_data_*/**/DATA_WORKER*.json
+            ${{ runner.temp }}/autonomous-completion-tests/test_actual_windows_venv_data_*/**/DATA_WORKER_EXPOSURES.jsonl
       - uses: actions/upload-artifact@v4
         if: always()
         with:
