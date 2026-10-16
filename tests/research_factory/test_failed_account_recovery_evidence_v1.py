@@ -272,3 +272,52 @@ def test_expired_verification_deadline_propagates_cooperative_boundary_before_ow
     monkeypatch.setattr(adapter, '_fresh_context', lambda *args: pytest.fail('截止后不能访问Owner或价格'))
     with pytest.raises(SegmentBoundary, match='UNIVERSE_VERIFICATION_COOPERATIVE_DEADLINE'):
         adapter.verify_failed_account_recovery_evidence(tmp_path / 'JOB.json', name='ARTIFICIAL_BASE', segment_deadline=1.)
+
+
+@pytest.mark.parametrize('field', ['result', 'settlement'])
+def test_result_index_rejects_redirect_before_resolving_its_path(tmp_path, monkeypatch, field):
+    root = tmp_path.resolve()
+    name = 'ARTIFICIAL_BASE'
+    result = root / (name + '_RESULT.json')
+    settlement_path = root / (name + '_RECOVERY_SETTLEMENT.json')
+    write(result, {'fixture_only': True})
+    write(settlement_path, {'completed': True})
+    digest = adapter.original._sha(result)
+    index = {'result': str(result), 'settlement': str(settlement_path), 'sha256': digest}
+    outside = root.parent / 'must-not-probe.json'
+    index[field] = str(outside)
+    write(root / 'RESULTS_INDEX.json', {'items': {name: index}})
+    original_resolve = Path.resolve
+    probed = []
+
+    def resolve_known_only(path, *args, **kwargs):
+        if path == outside:
+            probed.append(path)
+            raise AssertionError('untrusted index path must not be resolved')
+        return original_resolve(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, 'resolve', resolve_known_only)
+    with pytest.raises(ValueError, match='RESULT_HASH_BINDING_CONFLICT'):
+        adapter._result_binding(root, name, {'settlement': settlement_path}, {'result_sha256': digest})
+    assert probed == []
+
+
+def test_job_self_reported_root_rejected_without_probing_external_path(tmp_path, monkeypatch):
+    root = tmp_path.resolve()
+    outside = root.parent / 'must-not-probe-root'
+    job_path = root / 'JOB.json'
+    write(job_path, {'root': str(outside)})
+    original_resolve = Path.resolve
+    probed = []
+
+    def resolve_known_only(path, *args, **kwargs):
+        if path == outside:
+            probed.append(path)
+            raise AssertionError('untrusted job root must not be resolved')
+        return original_resolve(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, 'resolve', resolve_known_only)
+    result = adapter.verify_failed_account_recovery_evidence(job_path, name='ARTIFICIAL_BASE')
+    assert result['status'] == 'FAIL'
+    assert result['reasons'] == ['FAILED_ACCOUNT_RECOVERY_EVIDENCE_JOB_ROOT_CONFLICT']
+    assert probed == []

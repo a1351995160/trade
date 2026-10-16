@@ -158,6 +158,46 @@ def test_current_caller_frame_restores_local_trace_and_context(monkeypatch, outc
         frame.f_trace_lines = previous_lines
 
 
+@pytest.mark.parametrize('local_trace', [None, 'CALLBACK'])
+@pytest.mark.parametrize('trace_lines', [False, True])
+def test_completed_startup_restores_paused_generator_local_trace(monkeypatch, local_trace, trace_lines):
+    from contextlib import contextmanager
+    timer = clock(monkeypatch)
+    boundary = AccountStartupBoundaryV1(10.)
+    old_global = sys.gettrace()
+
+    def previous_callback(frame, event, arg):
+        return previous_callback
+
+    expected = previous_callback if local_trace == 'CALLBACK' else None
+
+    @contextmanager
+    def suspended_startup():
+        frame = sys._getframe()
+        frame.f_trace = expected
+        frame.f_trace_lines = trace_lines
+        with boundary.scope(), boundary.stage_scope('ARTIFICIAL_GENERATOR_STARTUP'):
+            yield frame
+        assert frame.f_trace is expected
+        assert frame.f_trace_lines is trace_lines
+
+    try:
+        sys.settrace(None)
+        with suspended_startup() as paused:
+            assert paused.f_trace is not expected
+            boundary.completed()
+            # yield is a trace return event; the suspended caller must still be restored.
+            assert paused.f_trace is expected
+            assert paused.f_trace_lines is trace_lines
+            assert sys.gettrace() is None
+            timer.now = 100.
+            startup_checkpoint('ARTIFICIAL_DAILY_WORK_AFTER_GENERATOR_YIELD')
+        assert boundary._frame_traces == boundary._frame_trace_lines == {}
+        assert boundary.validation_complete is True
+    finally:
+        sys.settrace(old_global)
+
+
 def test_startup_diagnostics_do_not_grant_new_time_before_economic_entry(monkeypatch):
     timer = clock(monkeypatch)
 
@@ -184,6 +224,33 @@ def test_chunked_reads_preserve_all_bytes_and_digest(tmp_path, monkeypatch):
     with AccountStartupBoundaryV1(1.).scope():
         assert startup_read_bytes(target) == raw
         assert startup_file_sha256(target) == hashlib.sha256(raw).hexdigest()
+
+
+@pytest.mark.parametrize('reader', [startup_read_bytes, startup_file_sha256])
+def test_startup_reader_rejects_lexical_traversal_before_filesystem_probe(tmp_path, monkeypatch, reader):
+    root = tmp_path.resolve()
+    allowed = root / 'allowed'
+    allowed.mkdir()
+    secret = root / 'private.json'
+    secret.write_bytes(b'{"artificial_private":true}')
+    traversed = allowed / '..' / secret.name
+    original_lstat = Path.lstat
+    probed = []
+
+    def forbidden_probe(path, *args, **kwargs):
+        probed.append(path)
+        raise AssertionError('lexical traversal must be rejected before any lstat')
+
+    monkeypatch.setattr(Path, 'lstat', forbidden_probe)
+    with pytest.raises(ValueError, match='ACCOUNT_STARTUP_FILE_INVALID'):
+        reader(traversed)
+    assert probed == []
+    monkeypatch.setattr(Path, 'lstat', original_lstat)
+    expected = secret.read_bytes()
+    if reader is startup_read_bytes:
+        assert reader(secret) == expected
+    else:
+        assert reader(secret) == hashlib.sha256(expected).hexdigest()
 
 
 def test_expired_boundary_never_starts_a_new_read(tmp_path, monkeypatch):

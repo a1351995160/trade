@@ -173,3 +173,4 @@
 /tests/research_factory/test_failed_account_recovery_public_v1.py text eol=lf
 /tests/research_factory/test_failed_account_recovery_setup_v1.py text eol=lf
 /tests/research_factory/test_failed_account_recovery_worker_v1.py text eol=lf
+/tests/research_factory/failed_account_startup_charge_fixture_v1.py text eol=lf

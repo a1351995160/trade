@@ -15,6 +15,8 @@ import sys
 
 import pytest
 
+from failed_account_startup_charge_fixture_v1 import assert_public_startup_cutoff_charge
+
 from test_account_version_public_integration_v1 import (
     _install_synthetic_capabilities, _read, _ref, _sha, _write,
 )
@@ -231,6 +233,8 @@ def scenario(root):
     assert context.recovery.original_failed_account == base_name
     phase(root, 'RECOVERY_INSTALLED_STRICT_ZERO_DISPATCH')
     public_service = restored()
+    phase(root, 'ACTUAL_PUBLIC_STARTUP_CUTOFF_AND_CHARGE')
+    startup_charge = assert_public_startup_cutoff_charge(runner, public_service, job_path, task['task_id'])
     phase(root, 'PUBLIC_RECOVERY_ACCOUNT_AND_REPORTS_RUNNING')
     history = _complete_public_account_and_reports(runner, public_service, job_path, task['task_id'])
     public = _read(context.task_root / 'PUBLIC_RESULT.json')
@@ -240,6 +244,9 @@ def scenario(root):
     assert final['execution_identity'] == boundary['execution_identity']
     assert final['artifacts']['days'][:277] == boundary['artifacts']['days']
     assert final['artifacts']['days'][277]['date'] == job['plans'][base_name]['backend']['window']['calendar'][337]
+    economic_prefix = runner.segment_prefix(base_name, 52)
+    assert _read(job_path.parent / (economic_prefix + '_STARTUP.json'))['validation_complete'] is True
+    assert (job_path.parent / (economic_prefix + '_INPUT_ACCESS.json')).is_file()
     # 原checkpoint本身允许追加；所有旧日、失败、费用、START与旧sidecar保持。
     assert all(p.read_bytes() == raw for p, raw in original.items() if p != checkpoint)
     assert all(p.read_bytes() == raw for p, raw in error_refs.items())
@@ -256,7 +263,9 @@ def scenario(root):
     canonical_feedback = _finish_synthetic_session(root, job_path, context, task, public, campaign, restored, config)
     assert all(p.read_bytes() == raw for p, raw in error_refs.items())
     value = {'status': 'PASSED', 'account_days_per_cost': 504, 'preserved_original_days': 277,
-        'first_new_day_ordinal': 278, 'first_new_segment': 51, 'old_failed_settlement_preserved': True,
+        'first_new_day_ordinal': 278, 'first_new_segment': 51, 'first_economic_segment': 52,
+        'startup_charge_evidence_ref': startup_charge['startup_charge_evidence_ref'],
+        'old_failed_settlement_preserved': True,
         'old_canonical_seconds': CANONICAL, 'restored_integer_reservation': 29660,
         'original_state_and_error_prefix_preserved': True, 'proof': context.proof(), 'history': history,
         'native_continuous_reference_refs': references, 'canonical_synthetic_feedback_ref': canonical_feedback,
@@ -281,6 +290,7 @@ def test_full_504_day_failed_account_recovery_keeps_277_days_fees_and_public_fee
         **{key: '1' for key in ('OMP_NUM_THREADS', 'OPENBLAS_NUM_THREADS', 'MKL_NUM_THREADS', 'NUMEXPR_NUM_THREADS')}}
     argv = [sys.executable, str(Path(__file__).resolve()), '--scenario', str(root)]
     _write(root / 'SCENARIO_LAUNCH.json', {'argv': argv, 'root': str(root),
+        'test_helper_source_sha256': _sha(Path(__file__).parent / 'failed_account_startup_charge_fixture_v1.py'),
         'source_sha256': {str(p.relative_to(root)): _sha(p) for folder in ('src', 'scripts')
             for p in sorted((root / folder).rglob('*.py'))}, 'test_source_sha256': _sha(Path(__file__).resolve()),
         'timeout_seconds': TIMEOUT_SECONDS, 'real_market_or_performance_acceptance': False})

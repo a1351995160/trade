@@ -205,7 +205,8 @@ def _apply_failed_account_recovery(authorization, base_authorization, operations
                 settlement = {key: operation[key] for key in ('actual', 'outcome', 'evidence_identity')}
                 if (account['parent_operation'] != operation or account['parent_actual'] != operation['actual']
                         or account['original_settlement'] != settlement or settlement['outcome'] != 'FAILED'
-                        or account['segment_count'] != 50 or account['charged_seconds'] != 42339.896402100036
+                        or account['segment_count'] != 50
+                        or stable_hash(account['charged_seconds']) != stable_hash(42339.896402100036)
                         or operation['segments'][-1].get('outcome') != 'FAILED'
                         or operation['actual']['wall_seconds'] != math.ceil(account['charged_seconds'])
                         or operation['actual']['account_jobs'] != 1

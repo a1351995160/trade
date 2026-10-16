@@ -4,7 +4,6 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 import hashlib
 import math
-from pathlib import Path
 import sys
 import time
 
@@ -60,7 +59,8 @@ class AccountStartupBoundaryV1:
             self._frame_traces[frame] = previous(frame, event, arg)
         elif event == 'call':
             self._frame_traces[frame] = None
-        if event == 'return':
+        # yield also emits return; the registered caller may still be suspended.
+        if event == 'return' and frame not in self._frame_trace_lines:
             self._frame_traces.pop(frame, None)
         # 清理帧必须能把截止异常交回调用方；领域代码仍按固定行数检查。
         if self.enabled and not self._emitting and not control_frame and event == 'line':
@@ -171,7 +171,8 @@ def startup_read_bytes(path, *, chunk_bytes=_CHUNK_BYTES):
         raise ValueError('ACCOUNT_STARTUP_READ_CHUNK_INVALID')
     result = bytearray()
     startup_checkpoint('READ_OPEN')
-    with Path(path).open('rb', buffering=0) as stream:
+    from .research_factory.secure_file_reference_v1 import _regular_reader
+    with _regular_reader(path, error_code='ACCOUNT_STARTUP_FILE_INVALID', root=None) as stream:
         while True:
             startup_checkpoint('READ_CHUNK')
             block = stream.read(chunk_bytes)
@@ -186,7 +187,8 @@ def startup_file_sha256(path):
     """完整核对全部字节；每个固定大小块之间允许启动截止退出。"""
     digest = hashlib.sha256()
     startup_checkpoint('HASH_OPEN')
-    with Path(path).open('rb', buffering=0) as stream:
+    from .research_factory.secure_file_reference_v1 import _regular_reader
+    with _regular_reader(path, error_code='ACCOUNT_STARTUP_FILE_INVALID', root=None) as stream:
         while True:
             startup_checkpoint('HASH_CHUNK')
             block = stream.read(_CHUNK_BYTES)

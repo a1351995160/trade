@@ -149,8 +149,9 @@ def _result_binding(root, name, paths, settlement):
     index_path = root / 'RESULTS_INDEX.json'
     index_digest = original._sha(index_path)
     index = original._json(index_path)['items'][name]
-    _require(Path(index['result']).resolve() == result_path
-        and Path(index['settlement']).resolve() == paths['settlement']
+    # Reject redirected index names before any filesystem operation on their values.
+    _require(Path(index['result']) == result_path
+        and Path(index['settlement']) == paths['settlement']
         and index['sha256'] == digest == settlement['result_sha256'], 'RESULT_HASH_BINDING_CONFLICT')
     return result_path, digest, index_path, index_digest
 
@@ -238,7 +239,7 @@ def verify_failed_account_recovery_evidence(job_path, *, name, audit_checkpoint_
             _require(Path(job_path).absolute() == root / 'JOB.json', 'JOB_PATH_CONFLICT')
             job_digest = original._sha(job_path)
             job = original._json(job_path)
-            _require(Path(job['root']).resolve() == root, 'JOB_ROOT_CONFLICT')
+            _require(Path(job['root']) == root, 'JOB_ROOT_CONFLICT')
             context = _fresh_context(job, name)
             original_checkpoint = _original_failed_prefix(context)
             plan, item = job['plans'][name], job['items'][name]
