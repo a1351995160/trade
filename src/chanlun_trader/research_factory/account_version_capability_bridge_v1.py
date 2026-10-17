@@ -253,10 +253,29 @@ class AccountVersionCapabilityBridgeV1:
             _require(type(recovery) is FailedAccountRecoveryV1, 'SIGNED_RECOVERY_CONTEXT_REQUIRED')
             checked_root = checked_directory_path(root, error_code='ACCOUNT_VERSION_ROOT_INVALID')
             _require(os.path.normcase(str(checked_root)) == os.path.normcase(str(recovery.root)), 'RECOVERY_ROOT_CONFLICT')
+            if extension is not None:
+                from .failed_account_recovery_v1 import (
+                    _owner_locator, _read as _read_recovery_record, _require as _recovery_require,
+                )
+                recovery_reference = deepcopy(recovery.scope_reference)
+                _owner_locator(checked_root, recovery_reference, base_authorization=base, job=extension.job,
+                    predecessor_reference=time_extension_ref, original=extension.summary_value['original'])
+                inherited_reference = deepcopy(extension.summary_value['predecessor_bridge_ref'])
+                _recovery_require(reference is None or reference == inherited_reference,
+                    'PREDECESSOR_BRIDGE_REFERENCE_CONFLICT')
+                # 原件只作当前调用候选；下方最后 full read 仍复验期间的持续变化。
+                record = _read_recovery_record({key: inherited_reference[key] for key in ('path', 'sha256')}, owner)
+                fresh = FailedAccountRecoveryV1.read(checked_root, recovery_reference, base_authorization=base)
+                _recovery_require(time_extension_ref == fresh.summary_value['predecessor_manifest_ref'],
+                    'PREDECESSOR_REFERENCE_CONFLICT')
+                _require(fresh.predecessor_summary == extension.summary_value
+                    and fresh.predecessor_summary['predecessor_bridge_ref'] == inherited_reference, 'RECOVERY_BRIDGE_CONFLICT')
+                _require(fresh.job == extension.job and fresh.job_path == extension.job_path, 'JOB_CHANGED')
+                _recovery_require(os.path.normcase(str(owner)) == os.path.normcase(fresh.summary_value['approval_store']),
+                    'AUTHORIZATION_CONFLICT')
+                return {'reference': inherited_reference, 'record': record,
+                    'capabilities_snapshot': deepcopy(fresh.summary_value['capabilities_snapshot'])}
             inherited = recovery.require_capability_bridge(reference, base_authorization=base)
-            if time_extension_ref is not None:
-                predecessor = recovery.require_predecessor(time_extension_ref, base_authorization=base)
-                _require(predecessor['predecessor_bridge_ref'] == inherited['reference'], 'RECOVERY_BRIDGE_CONFLICT')
             return inherited
         fingerprint = capabilities()['fingerprint']
         path = cls._binding_path(approvals, base, fingerprint)

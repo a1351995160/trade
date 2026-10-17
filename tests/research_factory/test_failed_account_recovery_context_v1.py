@@ -2,6 +2,7 @@
 from copy import deepcopy
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -151,3 +152,139 @@ def test_new_dispatch_sidecar_must_match_both_new_proof_and_identity(installed_r
     value['dispatch_identity'] = '0' * 64; path.write_text(json.dumps(value), encoding='utf-8')
     with pytest.raises(PermissionError, match='DISPATCH_VERSION_CONFLICT'):
         context.validate_dispatch(name, 51)
+
+
+@pytest.fixture(scope='module')
+def fresh_reader_context(tmp_path_factory):
+    """只读反例共享一次合法277日生命周期；每次公开调用仍完整 fresh。"""
+    with pytest.MonkeyPatch.context() as patch:
+        case = extension_case.__wrapped__(tmp_path_factory.mktemp('fresh-recovery-readers'),
+            patch, SimpleNamespace(param={}))
+        case = recovery_case.__wrapped__(case)
+        yield installed_recovery_context.__wrapped__(case)
+
+
+@pytest.mark.parametrize(('reader', 'expected_reads'), (
+    ('extension_provided', 1), ('extension_discovered', 1),
+    ('bridge_provided', 2), ('bridge_discovered', 2), ('context', 11),
+))
+def test_public_readers_keep_fresh_proofs_without_nested_full_reads(
+        fresh_reader_context, monkeypatch, reader, expected_reads):
+    case = fresh_reader_context; owner = case['recovery_owner']; ext = case['extension']
+    original = FailedAccountRecoveryV1.read.__func__; calls = []
+
+    def counted(cls, *args, **kwargs):
+        calls.append((args, kwargs))
+        return original(cls, *args, **kwargs)
+
+    monkeypatch.setattr(FailedAccountRecoveryV1, 'read', classmethod(counted))
+    if reader.startswith('extension'):
+        result = AccountPurposeTimeExtensionV1.read(case['root'], ext.scope_reference,
+            recovery=owner if reader.endswith('provided') else None)
+        assert result.recovery.proof() == owner.proof()
+        assert result.recovery.summary_value == owner.summary_value
+    elif reader.startswith('bridge'):
+        reference = ext.summary_value['predecessor_bridge_ref']
+        result = AccountVersionCapabilityBridgeV1.read_historical(case['root'], case['base'],
+            reference=reference, time_extension_ref=ext.scope_reference,
+            recovery=owner if reader.endswith('provided') else None)
+        assert result['reference'] == reference
+        assert result['capabilities_snapshot'] == owner.summary_value['capabilities_snapshot']
+    else:
+        result = AccountVersionContinuationV1.from_job(case['job'])
+        assert result.recovery.proof() == owner.proof() and result.recovery_installed
+    assert len(calls) == expected_reads
+
+
+@pytest.mark.parametrize('provided', (True, False))
+def test_recovery_owner_is_checked_before_outer_original_references(fresh_reader_context, monkeypatch, provided):
+    from chanlun_trader.research_factory import account_purpose_time_extension_v1 as extension
+    case = fresh_reader_context; owner = case['recovery_owner']; ext = case['extension']
+    approval = Path(owner.summary_value['approval_store']) / (owner.approval_ref['approval_id'] + '.json')
+    original = extension._refs; later = []
+
+    def watched(references, root):
+        if ext.summary_value['proposal_ref'] in references and ext.summary_value['ci_ref'] in references:
+            later.append(True)
+            raise AssertionError('missing recovery Owner reached outer original references')
+        return original(references, root)
+
+    raw = approval.read_bytes(); approval.unlink()
+    monkeypatch.setattr(extension, '_refs', watched)
+    try:
+        with pytest.raises(PermissionError, match='OWNER_APPROVAL'):
+            AccountPurposeTimeExtensionV1.read(case['root'], ext.scope_reference, recovery=owner if provided else None)
+        assert not later
+    finally:
+        approval.write_bytes(raw)
+
+
+@pytest.mark.parametrize('mutation', ('owner', 'source', 'charge'))
+@pytest.mark.parametrize('provided', (True, False))
+def test_extension_final_fresh_check_rejects_changes_after_owner_bootstrap(
+        fresh_reader_context, monkeypatch, mutation, provided):
+    from chanlun_trader.research_factory import account_purpose_time_extension_v1 as extension
+    case = fresh_reader_context; owner = case['recovery_owner']; ext = case['extension']
+    target = (Path(owner.summary_value['approval_store']) / (owner.approval_ref['approval_id'] + '.json')
+        if mutation == 'owner' else case['root'] / 'scripts/run_strategy_account_v1.py'
+        if mutation == 'source' else case['account'] / 'ARTIFICIAL_BASE_SEGMENT_000050_CHARGE.json')
+    before = {path: path.read_bytes() for path in case['account'].rglob('*') if path.is_file()}
+    raw = target.read_bytes(); fired = []; original = extension._refs
+
+    def changed_after_refs(references, root):
+        value = original(references, root)
+        if not fired and ext.summary_value['proposal_ref'] in references and ext.summary_value['ci_ref'] in references:
+            fired.append(True)
+            target.unlink() if mutation == 'owner' else target.write_bytes(raw + b'\n')
+        return value
+
+    monkeypatch.setattr(extension, '_refs', changed_after_refs)
+    try:
+        with pytest.raises((PermissionError, ValueError)):
+            AccountPurposeTimeExtensionV1.read(case['root'], ext.scope_reference, recovery=owner if provided else None)
+        assert fired
+    finally:
+        target.write_bytes(raw)
+    assert {path: path.read_bytes() for path in case['account'].rglob('*') if path.is_file()} == before
+    assert not (case['account'] / 'ARTIFICIAL_BASE_SEGMENT_000051_DISPATCH.json').exists()
+
+
+@pytest.mark.parametrize('mutation', ('owner', 'source'))
+def test_bridge_final_fresh_check_covers_its_pinned_record_read(
+        fresh_reader_context, monkeypatch, mutation):
+    from chanlun_trader.research_factory import account_purpose_time_extension_v1 as extension
+    from chanlun_trader.research_factory import account_version_capability_bridge_v1 as bridge
+    from chanlun_trader.research_factory import failed_account_recovery_v1 as recovery
+    case = fresh_reader_context; owner = case['recovery_owner']; ext = case['extension']
+    reference = ext.summary_value['predecessor_bridge_ref']
+    pinned = {key: reference[key] for key in ('path', 'sha256')}
+    target = (Path(owner.summary_value['approval_store']) / (owner.approval_ref['approval_id'] + '.json')
+        if mutation == 'owner' else case['root'] / 'scripts/run_strategy_account_v1.py')
+    raw = target.read_bytes(); armed = []; fired = []
+    original_extension = AccountPurposeTimeExtensionV1.read.__func__
+
+    def after_extension(cls, *args, **kwargs):
+        value = original_extension(cls, *args, **kwargs)
+        armed.append(True)
+        return value
+
+    def watch(original):
+        def read_then_change(value, root):
+            result = original(value, root)
+            if armed and not fired and value == pinned:
+                fired.append(True)
+                target.unlink() if mutation == 'owner' else target.write_bytes(raw + b'\n')
+            return result
+        return read_then_change
+
+    monkeypatch.setattr(AccountPurposeTimeExtensionV1, 'read', classmethod(after_extension))
+    monkeypatch.setattr(bridge, '_read', watch(bridge._read))
+    monkeypatch.setattr(recovery, '_read', watch(recovery._read))
+    try:
+        with pytest.raises((PermissionError, ValueError)):
+            AccountVersionCapabilityBridgeV1.read_historical(case['root'], case['base'],
+                reference=reference, time_extension_ref=ext.scope_reference, recovery=owner)
+        assert fired
+    finally:
+        target.write_bytes(raw)
+    assert not (case['account'] / 'ARTIFICIAL_BASE_SEGMENT_000051_DISPATCH.json').exists()

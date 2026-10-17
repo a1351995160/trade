@@ -670,22 +670,34 @@ class AccountPurposeTimeExtensionV1:
         slot = _read(_reference(directory / 'account-purpose-time-extension-slots' / (summary['extension_id'] + '.json'), context.root), context.root)
         _require(slot == {'extension_id': summary['extension_id'], 'manifest_ref': reference}, 'SLOT_CONFLICT')
         job = _read(original['job'], context.root)
-        from .failed_account_recovery_v1 import FailedAccountRecoveryV1, validate_predecessor_sources
+        from .failed_account_recovery_v1 import (
+            FailedAccountRecoveryV1, _job_manifest_reference, _owner_locator, _require as _recovery_require,
+        )
+        recovery_reference = None
         if recovery is None:
-            recovery = FailedAccountRecoveryV1.from_job(job)
-        elif type(recovery) is not FailedAccountRecoveryV1:
-            _require(False, 'SIGNED_RECOVERY_CONTEXT_REQUIRED')
-        if recovery is not None:
-            # 发现只是定位；重新验新签名及其确切前驱，伪同类型对象不能跳过旧来源。
-            _require(recovery.require_predecessor(reference, base_authorization=base) == summary,
-                'RECOVERY_PREDECESSOR_CONFLICT')
-            context.recovery = FailedAccountRecoveryV1.read(context.root, recovery.scope_reference, base_authorization=base)
+            located = _job_manifest_reference(job)
+            if located is not None:
+                recovery_root, recovery_reference, _ = located
+                _require(os.path.normcase(recovery_root) == os.path.normcase(str(context.root)), 'RECOVERY_ROOT_CONFLICT')
+        else:
+            _require(type(recovery) is FailedAccountRecoveryV1, 'SIGNED_RECOVERY_CONTEXT_REQUIRED')
+            _require(os.path.normcase(str(recovery.root)) == os.path.normcase(str(context.root)), 'RECOVERY_ROOT_CONFLICT')
+            recovery_reference = deepcopy(recovery.scope_reference)
+        if recovery_reference is not None:
+            # 发现和外部对象只作 locator；原A认证Owner/slot，原C才交付完整 fresh 结果。
+            _owner_locator(context.root, recovery_reference, base_authorization=base, job=job,
+                predecessor_reference=reference, original=original)
         _refs([original[key] for key in ('task', 'job', 'preview', 'receipt')] + original['control']
             + [summary['proposal_ref'], summary['ci_ref']], context.root)
-        if context.recovery is None:
+        if recovery_reference is None:
             _sources(context.root, previous, job, summary['source_replacements'], summary['runtime_sources'], summary['economic_sources'])
         else:
-            validate_predecessor_sources(summary, recovery=context.recovery)
+            # 原最后完整读取位置不后移；只按本次 fresh 对象投影前驱与来源。
+            context.recovery = FailedAccountRecoveryV1.read(context.root, recovery_reference, base_authorization=base)
+            _recovery_require(reference == context.recovery.summary_value['predecessor_manifest_ref'],
+                'PREDECESSOR_REFERENCE_CONFLICT')
+            _recovery_require(context.recovery.predecessor_summary == summary, 'PREDECESSOR_SUMMARY_CONFLICT')
+            _require(context.recovery.job == job and context.recovery.job_path == Path(original['job']['path']), 'JOB_CHANGED')
         frozen_session = summary['session_boundary']
         _require(frozen_session['session_refs'] == previous.get('session_refs', {}), 'SESSION_REFERENCES_INVALID')
         _refs(frozen_session['event_refs'], context.root)

@@ -73,6 +73,57 @@ def _refs(references, root):
     return sorted(result, key=lambda ref: ref['path'])
 
 
+def _owner_binding(context, reference, *, base_authorization=None):
+    """只读认证恢复 Owner 原件；不生成完整恢复能力或跨调用凭证。"""
+    manifest = _read(reference, context.root); value = manifest.get('summary', {})
+    _require(set(manifest) == {'schema_version', 'summary', 'approval_ref', 'identity'}
+        and manifest.get('schema_version') == VERSION and extension._identity(manifest)
+        and value.get('schema_version') == SUMMARY_VERSION and extension._identity(value, 'summary_identity')
+        and value.get('maximum_recoveries') == 1
+        and value.get('allowed_action') == 'ONE_FAILED_ACCOUNT_PRODUCTION_CONTINUATION'
+        and all(value.get(key) == 0 for key in (
+            'grant_delta', 'new_account_jobs', 'new_candidate_attempts', 'new_preparation_jobs')), 'MANIFEST_INVALID')
+    _require(isinstance(value.get('root'), str)
+        and os.path.normcase(value['root']) == os.path.normcase(str(context.root)), 'ROOT_CONFLICT')
+    context.root = checked_directory_path(value['root'], root=context.root, error_code='FAILED_ACCOUNT_RECOVERY_ROOT_INVALID')
+    directory, auth_ref, base, approvals = extension._authorization(context.root, value['authorization_id'])
+    _require((base_authorization is None or base == base_authorization)
+        and value['base_authorization_ref'] == auth_ref and value['base_authorization_identity'] == stable_hash(base)
+        and value['scope_hash'] == base['scope_policy']['scope_hash']
+        and value['approval_store'] == str(approvals.directory), 'AUTHORIZATION_CONFLICT')
+    approvals.require(manifest['approval_ref'], value)
+    return manifest, value, directory, base, approvals
+
+
+def _owner_locator(root, reference, *, base_authorization, job, predecessor_reference, original):
+    """只在当前调用认证受限 locator；来源、费用及日链仍由后续完整 read 核验。"""
+    context = FailedAccountRecoveryV1(root, reference)
+    _, value, directory, _, _ = _owner_binding(context, reference, base_authorization=base_authorization)
+    _require(value['predecessor_manifest_ref'] == predecessor_reference, 'PREDECESSOR_REFERENCE_CONFLICT')
+    task_root = Path(original['task']['path']).parent
+    _require(value['recovery_id'] == FailedAccountRecoveryV1.recovery_identity(
+            value['authorization_id'], value['task_id'])
+        and Path(reference['path']) == task_root / 'failed-account-recoveries' / value['recovery_id'] / 'MANIFEST.json'
+        and all(value['original'][key] == original[key] for key in ('task', 'job', 'preview', 'receipt')),
+        'MANIFEST_PATH_OR_PREDECESSOR_CONFLICT')
+    slot = _read(_reference(directory / 'failed-account-recovery-slots' / (value['recovery_id'] + '.json'), context.root), context.root)
+    _require(slot == {'recovery_id': value['recovery_id'], 'manifest_ref': reference}, 'SLOT_CONFLICT')
+    _require(value['original']['job']['path'] == str(Path(job['root']) / 'JOB.json')
+        and _read(value['original']['job'], context.root) == job, 'JOB_CHANGED')
+
+
+def _job_manifest_reference(job):
+    """仅定位规范 manifest；返回值不证明来源有效，调用者仍须认证 Owner 并完整 read。"""
+    if not isinstance(job, dict) or not isinstance(job.get('root'), str): return None
+    account_root = _path(job['root'], None); folder = account_root.parent / 'failed-account-recoveries'
+    if not folder.exists(): return None
+    _path(folder, account_root.parent); paths = list(folder.glob('*/MANIFEST.json'))
+    _require(len(paths) == 1, 'MANIFEST_DISCOVERY_CONFLICT')
+    manifest = _read(_reference(paths[0], account_root.parent), account_root.parent)
+    root = manifest.get('summary', {}).get('root'); _require(isinstance(root, str), 'MANIFEST_INVALID')
+    return root, _reference(paths[0], Path(root)), account_root
+
+
 def _predecessor(root, reference, base, approvals):
     """独立核原扩时的签名、规范slot和冻结前缀；不读取当前执行治理。"""
     manifest = _read(reference, root); previous = manifest.get('summary', {})
@@ -606,23 +657,9 @@ class FailedAccountRecoveryV1:
     @classmethod
     def read(cls, root, reference, *, base_authorization=None, for_install=False, for_dispatch=False):
         _require(type(for_install) is bool and type(for_dispatch) is bool and not (for_install and for_dispatch), 'MODE_INVALID')
-        context = cls(root, reference); manifest = _read(reference, context.root); value = manifest.get('summary', {})
-        _require(set(manifest) == {'schema_version', 'summary', 'approval_ref', 'identity'}
-            and manifest.get('schema_version') == VERSION and extension._identity(manifest)
-            and value.get('schema_version') == SUMMARY_VERSION and extension._identity(value, 'summary_identity')
-            and value.get('maximum_recoveries') == 1
-            and value.get('allowed_action') == 'ONE_FAILED_ACCOUNT_PRODUCTION_CONTINUATION'
-            and all(value.get(key) == 0 for key in (
-                'grant_delta', 'new_account_jobs', 'new_candidate_attempts', 'new_preparation_jobs')), 'MANIFEST_INVALID')
-        _require(isinstance(value.get('root'), str)
-            and os.path.normcase(value['root']) == os.path.normcase(str(context.root)), 'ROOT_CONFLICT')
-        context.root = checked_directory_path(value['root'], root=context.root, error_code='FAILED_ACCOUNT_RECOVERY_ROOT_INVALID')
-        directory, auth_ref, base, approvals = extension._authorization(context.root, value['authorization_id'])
-        _require((base_authorization is None or base == base_authorization)
-            and value['base_authorization_ref'] == auth_ref and value['base_authorization_identity'] == stable_hash(base)
-            and value['scope_hash'] == base['scope_policy']['scope_hash']
-            and value['approval_store'] == str(approvals.directory), 'AUTHORIZATION_CONFLICT')
-        approvals.require(manifest['approval_ref'], value)
+        context = cls(root, reference)
+        manifest, value, directory, base, approvals = _owner_binding(
+            context, reference, base_authorization=base_authorization)
         control_boundary = value.get('control_boundary', {})
         _require(set(control_boundary) == {'head', 'paused', 'consumes_historical_pause'}
             and control_boundary['head'] == value['original']['control_head']
@@ -702,14 +739,10 @@ class FailedAccountRecoveryV1:
 
     @classmethod
     def from_job(cls, job, *, for_dispatch=False):
-        if not isinstance(job, dict) or not isinstance(job.get('root'), str): return None
-        account_root = _path(job['root'], None); folder = account_root.parent / 'failed-account-recoveries'
-        if not folder.exists(): return None
-        _path(folder, account_root.parent); paths = list(folder.glob('*/MANIFEST.json'))
-        _require(len(paths) == 1, 'MANIFEST_DISCOVERY_CONFLICT')
-        manifest = _read(_reference(paths[0], account_root.parent), account_root.parent)
-        root = manifest.get('summary', {}).get('root'); _require(isinstance(root, str), 'MANIFEST_INVALID')
-        context = cls.read(root, _reference(paths[0], Path(root)), for_dispatch=for_dispatch)
+        located = _job_manifest_reference(job)
+        if located is None: return None
+        root, reference, account_root = located
+        context = cls.read(root, reference, for_dispatch=for_dispatch)
         _require(context.job == job and context.job_path == account_root / 'JOB.json', 'JOB_CHANGED')
         return context
 
