@@ -389,10 +389,10 @@ class CampaignScopeV1:
                 or proof.get('independent_confirmation_eligible') is not False):
             raise PermissionError('CAMPAIGN_TRAIN_PROJECTION_ROUTE_CONFLICT')
 
-    def resolve(self, reference, *, for_dispatch=True):
-        return self._resolve_from_view(reference, None, for_dispatch=for_dispatch)
+    def resolve(self, reference, *, for_dispatch=True, calendar_context=None):
+        return self._resolve_from_view(reference, None, for_dispatch=for_dispatch, calendar_context=calendar_context)
 
-    def _resolve_from_view(self, reference, view, *, for_dispatch=True):
+    def _resolve_from_view(self, reference, view, *, for_dispatch=True, calendar_context=None):
         "本次已完整新鲜重放的视图；公开resolve始终自行读取。"
         if (not isinstance(reference, dict) or set(reference) != {'binding_id'}
                 or not re.fullmatch(r'[a-f0-9]{64}', str(reference['binding_id']))):
@@ -407,9 +407,15 @@ class CampaignScopeV1:
             raise PermissionError('CAMPAIGN_BINDING_IDENTITY_CONFLICT')
         if view is None:
             view = self.campaign.peek_status()
-        if for_dispatch:
+        if calendar_context is not None:
+            from .failed_account_calendar_scope_v1 import FailedAccountCalendarContextV1
+            if type(calendar_context) is not FailedAccountCalendarContextV1:
+                raise PermissionError('FAILED_ACCOUNT_CALENDAR_SIGNED_CONTEXT_REQUIRED')
+            FailedAccountCalendarContextV1.require_binding(calendar_context, self.campaign, reference, value,
+                for_dispatch=for_dispatch)
+        elif for_dispatch:
             self.campaign._dispatchable(view, value['phase'])
-        if for_dispatch and datetime.now(timezone.utc) >= _expiry(value['expires_at']):
+        if calendar_context is None and for_dispatch and datetime.now(timezone.utc) >= _expiry(value['expires_at']):
             raise PermissionError('CAMPAIGN_CHILD_EXPIRED')
         if value['scope_hash'] != view['base_authorization']['scope_policy']['scope_hash']:
             raise PermissionError('CAMPAIGN_BINDING_SCOPE_CHANGED')

@@ -3968,3 +3968,59 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 - 对应三份 tests/research_factory 测试补充多代/篡改/重复/物理跨年回归；docs/CONTINUOUS_UNIVERSE_RESEARCH_GUIDE.md 和 docs/LONG_HORIZON_UNIVERSE_RESEARCH_GUIDE.md 同步实际入口与使用边界。
 - 本轮证据存 reports/continuous_universe_real_acceptance_20261010/SOURCE_FIX_VALIDATION.json 与 READONLY_COLLECTION_LINEAGE_CHECK.json。全 4607 登记池的 504 TRAIN 配套仍在真实采集，账户与独立 252 验证未执行，不能称整个目标已完成。
 - 回滚：仅 revert 本次修复提交；保留所有采集原件、续采失败回执、授权及消费账本，不删除旧研究记录。原用户未提交内容保持原样，仅追加本段。
+
+## 2026-10-17 - Task: 原账户有限日历后继实施并保全旧源测试
+
+### What was done
+
+已在隔离WT实现Owner新日历摘要、父预算仅原用途投影、原凭证/版本/扩时/公共收尾适配，同步新测试和CI选择。旧4515为新源门禁受控保全关闭，人工286日原件保留。
+
+### Testing
+
+AST和diff静态检查通过；99经济引用保持。旧4515无1046源变更，1453 ZIP成员逐SHA/CRC通过，natural_exit=false不记PASS/产品FAILED。新pytest/CI/full均尚待；真实277日/费用未动。
+
+### Notes
+
+Files: docs/plans/2026-10-17-001-fix-original-account-calendar-deadline-continuation.md; docs/research/failed-account-calendar-deadline-implementation-20261017.md; calendar scope/recovery, parent budget/campaign, original runtime governance, runner and four new tests; .github/workflows/autonomous-completion.yml; primary/four tracking states. Rollback point: isolated WT base29712a45; mutable .before_calendar_targeted_20261017T124737257296Z.bak; no deployment or real account rollback necessary. Closure PRODUCTION_FULL_R7_CONTROLLED_CLOSED_FOR_AUTHORIZED_CALENDAR_SUCCESSOR_20261017T124240360012Z.json SHA 77ffe0a9656a94927eadab19bd7824a784a09658276418e58b545d7681260248.
+
+## 2026-10-17 - Task: 有限日历恢复三处P1修复与同源必要门禁
+
+### What was done
+
+在隔离生产后继中修复事件派生字段注入、旧期限后两个治理入口遗漏用途截止、CONTINUE离线核账误用历史期限。原授权、277日、50FAILED、全部费用和各72000/global288002保持；未安装Owner或派发真实51。完整合成增加真实墙钟越过人工原期限后才安装及全链执行，默认48小时夹具保持。
+
+### Testing
+
+R1夹具失败原件保留；R2受控关闭736.0888233000005秒、changed=[]、无有效JUnit，不计PASS或产品FAILED。R3自然3FAIL证实事件入口缺口；修复后R4自然12PASS/0FAIL/ERROR/SKIP、8.615670099999988秒、changed=[]。当前唯一必要R5/56232正在执行，1051源码冻结，不预报通过。99经济引用与四真实关键SHA再次保持。记录 PRODUCTION_FINITE_CALENDAR_P1_REPAIRS_RED3_GREEN12_AND_NECESSARY_R5_20261017T131139452736Z.json SHA256 748ff318719f3340e6f9855416bcc4f84660a6ed1be111bb3fddc50113f696fe
+
+### Notes
+
+Files: src/chanlun_trader/research_factory/run_budget.py（阻断派生字段载荷）；etf_account_governance_v1.py（两处绑定原用途）；universe_execution_recovery_v1.py（认证执行期限核账）；三个calendar测试（Owner篡改夹具、注入红绿、旧新期限核账）；test_account_purpose_time_extension_integration_v1.py（默认不变的人工期限参数）；test_failed_account_recovery_integration_v1.py（实际旧期限已过后完整门禁）；四状态/primary及本记录。回滚点：隔离WT的base29712和各1051源码快照；实际账户与原件从未修改，记录与失败证据保留。
+
+## 2026-10-17 - Task: Calendar r4 delivery identity and original-source collection
+
+### What was done
+
+Bound the exact finite-calendar r4 operator/four-step/proposal, retaining r3 and pre-expiry-check r4 originals. Collected original main governance sources with the reviewed bounded collect-sources action; zero Owner/account dispatch.
+
+### Testing
+
+Independent limited security findings=[]; 19 pure validator cases passed (not a full gate or Owner approval). The first external validator fixture had LF/CRLF prefix mismatch and was preserved before its fixture-only correction. All112 inventory/99 economic refs and all13 archived byte streams/line endings equal the original r3 collection. Four real key hashes unchanged. Evidence PRODUCTION_CALENDAR_DELIVERY_R4_REVIEW19_AND_ORIGINAL_COLLECTION_BOUND_20261017T131846156416Z.json SHA256 286e07df6f493031ec3b1bce55b92d4a1a2d6076c08a8613bb8ac03c3360669c
+
+### Notes
+
+Files: external r4 three files and their SHA archive; external pure-contract validator, report and immutable source collection; four mutable states/primary; docs/research/failed-account-calendar-deadline-implementation-20261017.md; progress.md. Runtime install is pending all new-source gates. Rollback point: retained r3 and pre-change r4 SHA backups; real Owner/account bytes were never changed.
+
+## 2026-10-17 - Task: 修复延期收尾用途父API撤销后可写派发的缺口
+
+### What was done
+
+将完整fresh恢复授权检查前移到精确VERIFICATION/REPORT预留写入之前，并覆盖START、派发限额和段DISPATCH。普通历史replay及新期限之后的离线收费结算保持；新5文件增加固定LF属性，避免Windows CI与已测原件换行漂移。
+
+### Testing
+
+R5必要组按精确身份受控保全，708.0951522000105秒/natural_exit=false/changed=[]/无有效JUnit，不计完整PASS或产品FAILED。R6父入口红基线自然3FAIL（明确人工Owner读取层、真实预算事件）；修复后R7自然72PASS/0FAIL/ERROR/SKIP、51.29336959999637秒、changed=[]，为budget25+scope47执行记录。完整必要/回归/新精确CI/完整双504仍待。1051来源与green launch逐SHA一致，四真实关键SHA保持。证据 PRODUCTION_CALENDAR_PARENT_DISPATCH_P1_RED3_GREEN72_AND_R5_PRESERVED_20261017T132551034244Z.json SHA 19cdef0a910d879eae28a432ec387abb9b1e0577ff330afb14397750892bc741
+
+### Notes
+
+Files: research_campaign_v1.py（新预留及执行共用完整当前恢复许可）；test_failed_account_calendar_deadline_budget_v1.py（8拒绝零写入+正常离线结清）；.gitattributes（仅新增5文件LF）；四状态/primary/docs/progress。回滚点：R5/R6/R7各1051源码快照和base29712；原账户/Owner未修改，旧失败与费用证据保留。

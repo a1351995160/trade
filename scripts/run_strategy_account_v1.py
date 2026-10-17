@@ -445,7 +445,7 @@ def control_job(path,event):
         compute_done=root/'COMPUTE_REPORT'/'COMPUTE_START.json'
         if all((root/(name+'_SETTLEMENT.json')).exists() for name in job['plans']) and compute_done.exists():
             scope=read_json(root/'COMPUTE_REPORT'/'SCOPE.json')
-            from chanlun_trader.research_factory.universe_compute_governance_v1 import UniverseComputeGovernanceV1
+            from chanlun_trader.research_factory.failed_account_calendar_scope_v1 import calendar_compute_governance_v1 as UniverseComputeGovernanceV1
             completed=UniverseComputeGovernanceV1(root/'COMPUTE_REPORT',scope['authority'],scope['request'],'REPORT').status()
             terminal=completed['segments'] and completed['segments'][-1]['charge']['outcome'] in ('COMPLETED','FAILED')
         else:terminal=False
@@ -950,7 +950,7 @@ def report_repair_context(path,stage,reference,*,for_dispatch=True):
 
 
 def long_horizon_compute_worker(path,stage,number,member=None,*,_report_repair_ref=None):
-    from chanlun_trader.research_factory.universe_compute_governance_v1 import UniverseComputeGovernanceV1
+    from chanlun_trader.research_factory.failed_account_calendar_scope_v1 import calendar_compute_governance_v1 as UniverseComputeGovernanceV1
     repair=report_repair_context(path,stage,_report_repair_ref)
     job=read_json(path);folder=repair.compute_root if repair else Path(job['root'])/('COMPUTE_'+stage)
     scope=read_json(folder/'SCOPE.json')
@@ -966,7 +966,7 @@ def long_horizon_compute_worker(path,stage,number,member=None,*,_report_repair_r
 
 def _long_horizon_compute_worker(path,stage,number,member=None,*,_report_repair_ref=None):
     """核验和信号标签只在已授权受限评价进程中读取。"""
-    from chanlun_trader.research_factory.universe_compute_governance_v1 import UniverseComputeGovernanceV1
+    from chanlun_trader.research_factory.failed_account_calendar_scope_v1 import calendar_compute_governance_v1 as UniverseComputeGovernanceV1
     begin=time.monotonic()
     repair=report_repair_context(path,stage,_report_repair_ref)
     job=read_json(path)
@@ -1127,7 +1127,7 @@ def run_long_horizon_compute(path,authority,request,stage,*,step=False,_report_r
     """账户公共计算复用同一段循环；step 不会继续派发下一个报告成员。"""
     from chanlun_trader.synthetic_batch_resources import run_bounded_worker
     from chanlun_trader.research_factory.universe_execution_profile_v1 import worker_wall_seconds
-    from chanlun_trader.research_factory.universe_compute_governance_v1 import UniverseComputeGovernanceV1
+    from chanlun_trader.research_factory.failed_account_calendar_scope_v1 import calendar_compute_governance_v1 as UniverseComputeGovernanceV1
     from chanlun_trader.research_factory.mutation_boundary import ObjectiveMutationLock
     repair=report_repair_context(path,stage,_report_repair_ref)
     job=read_json(path)
@@ -1234,7 +1234,7 @@ def report_result_references(root, folder, plans):
 
 def reconcile_long_horizon_compute(path,stage,*,_report_repair_ref=None):
     """明确恢复时先证明旧进程已退出；同一用途保守结算未知段。"""
-    from chanlun_trader.research_factory.universe_compute_governance_v1 import UniverseComputeGovernanceV1
+    from chanlun_trader.research_factory.failed_account_calendar_scope_v1 import calendar_compute_governance_v1 as UniverseComputeGovernanceV1
     from chanlun_trader.research_factory.mutation_boundary import ObjectiveMutationLock
     from chanlun_trader.research_daemon_state import DaemonInstanceLockV1
     repair=report_repair_context(path,stage,_report_repair_ref,for_dispatch=False)
@@ -1509,7 +1509,7 @@ def status(path):
     value={'completed':complete,'total':len(states),'progress_percent':100*complete/len(states),
            'report_index_exists':(root/'RESULTS_INDEX.json').exists(),'items':states}
     if 'profile_id' in job.get('resources', {}):
-        from chanlun_trader.research_factory.universe_compute_governance_v1 import UniverseComputeGovernanceV1
+        from chanlun_trader.research_factory.failed_account_calendar_scope_v1 import calendar_compute_governance_v1 as UniverseComputeGovernanceV1
         from chanlun_trader.research_daemon_state import DaemonInstanceLockV1
         compute={}
         for stage in ('VERIFICATION','REPORT'):

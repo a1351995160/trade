@@ -4,7 +4,7 @@
 native backend producer生成；新段及VERIFY/REPORT/FEEDBACK、双原生对照走真实公共实现。
 """
 from copy import deepcopy
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 import os
@@ -12,6 +12,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import time
 
 import pytest
 
@@ -27,6 +28,7 @@ from test_account_purpose_time_extension_integration_v1 import (
 
 
 TIMEOUT_SECONDS = 172800
+ORIGINAL_CALENDAR_LIFETIME = timedelta(hours=4)
 CANONICAL = 42339.896402100036
 OLD34 = 28741.393096800028
 PRE50 = 41449.676419200034
@@ -124,7 +126,9 @@ def scenario(root):
     worker_path = root / 'scripts/run_strategy_account_v1.py'
     business = root / BUSINESS_PATH; business_raw = business.read_bytes()
     business.write_bytes(business_raw + b'\n# Synthetic original input predecessor identity.\n')
-    service, request, campaign, approvals, owner, restored = _full_public_case(root)
+    # 保留普通夹具48小时默认值；本次完整门禁必须实测原期限已过后的公共链。
+    service, request, campaign, approvals, owner, restored = _full_public_case(
+        root, authorization_lifetime=ORIGINAL_CALENDAR_LIFETIME)
     config = {'candidate_id': request['strategy_id'], 'campaign_id': campaign.authorization_id,
         'batch_id': 'SYNTHETIC_SECOND_BATCH', 'proposal': {'sha256': 'd' * 64}, 'context': {'sha256': 'e' * 64}}
     candidate = request['strategy_id'] + '_CANDIDATE'
@@ -213,18 +217,52 @@ def scenario(root):
     _write(ci, {'status': 'PASSED', 'head': 'c' * 40, 'runtime_sources': runtime,
         'source_replacements': replacements, 'economic_sources': old_inventory['economic_sources'],
         'fixture_only': 'ARTIFICIAL_OWNER_BINDING_NOT_REAL_CI'})
+    original_expiry = before['authorization']['expires_at']
+    new_expiry = (datetime.fromisoformat(original_expiry) + timedelta(hours=72)).isoformat()
+    human_calendar = archive_root / 'DECLARED_ARTIFICIAL_CALENDAR_AUTHORIZATION.json'
+    _write(human_calendar, {
+        'schema_version': 'HUMAN_REAL_ACCOUNT_CALENDAR_DEADLINE_EXTENSION_AUTHORIZATION_V1',
+        'fixture_only': 'ARTIFICIAL_OWNER_CALENDAR_NOT_HUMAN_PRODUCTION_PERMISSION',
+        'campaign': campaign.authorization_id, 'objective': job['objective_id'],
+        'original_expires_at': original_expiry, 'authorized_new_expires_at': new_expiry,
+        'each_account_seconds': 72000, 'global_seconds': 288002, 'original_base_days': 277,
+        'original_stress_days': 0, 'canonical_original_charged_seconds': CANONICAL,
+        'parent_original_used_integer_seconds': 42340, 'base_remaining_integer_seconds': 29660,
+        'stress_remaining_seconds': 72000, 'preserve_original_FAILED_and_all_fees': True,
+        'new_task_candidate_purpose_grant_resource_or_owner_root_allowed': False,
+        'rerun_committed_days_allowed': False, 'all_original_production_gates_required': True})
     summary = FailedAccountRecoveryV1.summary(root, authorization_id=campaign.authorization_id,
         task_ref=_ref(job_path.parent.parent / 'TASK.json'), predecessor_manifest_ref=extension_ref,
         source_replacements=replacements, runtime_source_refs=runtime,
-        economic_source_refs=old_inventory['economic_sources'], proposal_ref=_ref(proposal), ci_ref=_ref(ci))
+        economic_source_refs=old_inventory['economic_sources'], proposal_ref=_ref(proposal), ci_ref=_ref(ci),
+        calendar_deadline_extension={'previous_expires_at': original_expiry, 'expires_at': new_expiry,
+            'human_authorization_ref': _ref(human_calendar)})
     approval = approvals.approve(summary, approver='SYNTHETIC_OWNER', capability=owner)
     manifest = FailedAccountRecoveryV1.freeze(root, summary, approval_ref=approval)
     assert checkpoint.read_bytes() == checkpoint_raw
     assert all(p.read_bytes() == raw for p, raw in original.items())
+    phase(root, 'WAITING_FOR_ORIGINAL_CALENDAR_DEADLINE', original_expires_at=original_expiry,
+        authorized_execution_expires_at=new_expiry, real_account_dispatch=False)
+    while True:
+        remaining = (datetime.fromisoformat(original_expiry) - datetime.now(timezone.utc)).total_seconds()
+        if remaining <= 0:
+            break
+        time.sleep(min(30, remaining))
+    calendar_dispatch_started_at = datetime.now(timezone.utc).isoformat()
+    assert datetime.fromisoformat(original_expiry) <= datetime.fromisoformat(calendar_dispatch_started_at) < datetime.fromisoformat(new_expiry)
+    phase(root, 'ORIGINAL_DEADLINE_ELAPSED_CALENDAR_RECOVERY_INSTALLING',
+        original_expires_at=original_expiry, calendar_dispatch_started_at=calendar_dispatch_started_at)
     campaign.install_failed_account_recovery(manifest)
     gov.reconcile_segment_mirrors(base_name)
     context = AccountVersionContinuationV1.from_job(job); context.validate()
     after = campaign.peek_status()
+    assert after['authorization'] == before['authorization']
+    assert after['grants'] == before['grants']
+    assert context.recovery.execution_expires_at == new_expiry
+    assert context.recovery.summary_value['expires_at'] == original_expiry
+    assert len(context.recovery.summary_value['calendar_task_scope']['compute_operations']) == 2
+    assert all(after['operations'][operation_id]['execution_expires_at'] == new_expiry
+        for operation_id in mapping.values())
     assert after['used'] == before['used']
     assert after['reserved']['wall_seconds'] == before['reserved']['wall_seconds'] + 29660
     assert after['operations'][mapping[base_name]]['status'] == 'FAILED'
@@ -266,6 +304,9 @@ def scenario(root):
         'first_new_day_ordinal': 278, 'first_new_segment': 51, 'first_economic_segment': 52,
         'startup_charge_evidence_ref': startup_charge['startup_charge_evidence_ref'],
         'old_failed_settlement_preserved': True,
+        'original_deadline_elapsed_before_install': True,
+        'calendar_dispatch_started_at': calendar_dispatch_started_at,
+        'calendar_deadline_extension': deepcopy(summary['calendar_deadline_extension']),
         'old_canonical_seconds': CANONICAL, 'restored_integer_reservation': 29660,
         'original_state_and_error_prefix_preserved': True, 'proof': context.proof(), 'history': history,
         'native_continuous_reference_refs': references, 'canonical_synthetic_feedback_ref': canonical_feedback,

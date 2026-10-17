@@ -283,7 +283,7 @@ class StrategyBatchGovernanceV1(ETFAccountGovernanceV1):
             from .run_budget import effective_execution_status
             recovery = self._failed_recovery_state(name, receipt, _campaign_view=(campaign, current))
             if recovery['failed_account_recovery_proof'] is not None:
-                campaign._dispatchable(current, operation['stage'])
+                campaign._dispatchable(current, operation['stage'], operation=operation)
                 campaign._validate_recovery_dispatch(current, operation)
                 if recovery['recovery_boundary']['status_at_install']=='RESERVED' and (
                         start.get('failed_account_recovery_proof')!=recovery['failed_account_recovery_proof']
@@ -446,7 +446,7 @@ class StrategyBatchGovernanceV1(ETFAccountGovernanceV1):
                     or boundary['status_at_install'] != 'FAILED' or state['effective_execution_status'] != 'RUNNING'
                     or state['pending'] is not None or (self.root / (name + '_RECOVERY_SETTLEMENT.json')).exists()):
                 raise PermissionError('STRATEGY_FAILED_RECOVERY_NOT_ACTIVE')
-            campaign._dispatchable(view, operation['stage'])
+            campaign._dispatchable(view, operation['stage'], operation=operation)
             campaign._validate_recovery_dispatch(view, operation)
             self.dispatched_execution(name)
             path = self.root / (name + '_RECOVERY_START.json')
@@ -617,7 +617,7 @@ class StrategyBatchGovernanceV1(ETFAccountGovernanceV1):
             now=datetime.now(timezone.utc)
             upper=effective_segment_allowance(state['profile'],state['charged_seconds'],
                 effective_total_seconds=state['effective_total_seconds'],time_extension_proof=state['time_extension_proof'],
-                seconds_to_expiry=(datetime.fromisoformat(receipt['expires_at'])-now).total_seconds())
+                seconds_to_expiry=(datetime.fromisoformat(self._receipt_execution_expires_at(receipt))-now).total_seconds())
             parent=None
             if receipt['source'].get('origin') == 'CAMPAIGN_V1':
                 source=receipt['source']; campaign=validate_campaign_source(source,self.plans,self.objective_id)
@@ -864,6 +864,26 @@ class StrategyBatchGovernanceV1(ETFAccountGovernanceV1):
             validate_campaign_source(receipt['source'], self.plans, self.objective_id)
         return receipt
 
+    def _receipt_execution_expires_at(self, receipt):
+        """原凭证不改写；到期后只有同JOB完整fresh恢复证明可给出新截止。"""
+        if datetime.now(timezone.utc) < datetime.fromisoformat(receipt['expires_at']):
+            return receipt['expires_at']
+        job_path = self.root / 'JOB.json'
+        if not job_path.is_file() or receipt['source'].get('origin') != 'CAMPAIGN_V1':
+            return receipt['expires_at']
+        from .failed_account_recovery_v1 import FailedAccountRecoveryV1
+        job = read_json(job_path)
+        if (Path(job.get('root', '')) != self.root or job.get('plans') != self.plans
+                or job.get('objective_id') != self.objective_id or job.get('budget_path') != str(self.budget_path)):
+            raise PermissionError('STRATEGY_CALENDAR_JOB_CONFLICT')
+        recovery = FailedAccountRecoveryV1.from_job(job, for_dispatch=True)
+        if recovery is None or recovery.summary_value.get('calendar_deadline_extension') is None:
+            return receipt['expires_at']
+        original = recovery.summary_value['original']['receipt']
+        if Path(original['path']) != self.receipt_path or read_json(self.receipt_path) != receipt:
+            raise PermissionError('STRATEGY_CALENDAR_RECEIPT_CONFLICT')
+        return recovery.execution_expires_at
+
     def _active_receipt(self):
         "每次重读本地批准及撤销/到期状态，不保存跨调用结果。"
         receipt=read_json(self.receipt_path)
@@ -872,7 +892,8 @@ class StrategyBatchGovernanceV1(ETFAccountGovernanceV1):
         if receipt['objective_id']!=self.objective_id or receipt['strategy_plans']!=self.plans or receipt['budget_path']!=str(self.budget_path):
             raise PermissionError('STRATEGY_PLAN_CONFLICT')
         if (self.root/'REVOKED.json').exists():raise PermissionError('STRATEGY_REVOKED')
-        if datetime.now(timezone.utc)>=datetime.fromisoformat(receipt['expires_at']):raise PermissionError('STRATEGY_EXPIRED')
+        if datetime.now(timezone.utc)>=datetime.fromisoformat(self._receipt_execution_expires_at(receipt)):
+            raise PermissionError('STRATEGY_EXPIRED')
         if receipt['source'].get('origin')=='BOUNDED_RESEARCH_SCOPE':
             from .bounded_research_v1 import BoundedResearchSessionV1
             source=receipt['source'];session=BoundedResearchSessionV1(source['scope_root'])

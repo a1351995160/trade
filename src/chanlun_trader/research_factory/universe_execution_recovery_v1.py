@@ -206,8 +206,12 @@ def resume_long_horizon_job(path,job,*,reconcile_only=False):
                 elif recovered and len(state['segments']) > context.recovery.summary_value['accounts'][name]['segment_count']:
                     # 已收费的CONTINUE在期限/有效协作窗口耗尽后只结清，不重发或改写原FAILED。
                     view=context.campaign.peek_status()
-                    expiry=min(datetime.fromisoformat(context.recovery.summary_value['expires_at']),
-                        datetime.fromisoformat(gov.dispatched_execution(name)['expires_at']))
+                    from .run_budget import effective_execution_expires_at
+                    operation=view['operations'][context.recovery.summary_value['accounts'][name]['operation_id']]
+                    execution_expiry=effective_execution_expires_at(view['authorization'], operation)
+                    if execution_expiry != context.recovery.execution_expires_at:
+                        raise PermissionError('UNIVERSE_RESUME_RECOVERY_DEADLINE_CONFLICT')
+                    expiry=datetime.fromisoformat(execution_expiry)
                     remaining_time=(expiry-datetime.now(timezone.utc)).total_seconds()
                     remaining_budget=state['effective_total_seconds']-state['charged_seconds']
                     revoked=view.get('revoked') or (root/'REVOKED.json').exists()

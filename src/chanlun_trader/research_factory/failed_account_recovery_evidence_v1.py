@@ -273,8 +273,12 @@ def verify_failed_account_recovery_evidence(job_path, *, name, audit_checkpoint_
             _require(start['kind'] == name and start['receipt_id'] == receipt['receipt_id']
                 and all(settlement.get(key) == value for key, value in start.items())
                 and settlement.get('completed') is True and settlement.get('error') is None, 'SETTLEMENT_CONFLICT')
+            original_start_deadline = (receipt['expires_at'] if name == context.recovery.original_failed_account
+                else context.recovery.execution_expires_at)
             _require(pd.Timestamp(receipt['recorded_at']) <= pd.Timestamp(original_start['started_at'])
-                <= pd.Timestamp(start['started_at']) < pd.Timestamp(receipt['expires_at'])
+                < pd.Timestamp(original_start_deadline)
+                and pd.Timestamp(original_start['started_at']) <= pd.Timestamp(start['started_at'])
+                < pd.Timestamp(context.recovery.execution_expires_at)
                 and pd.Timestamp(start['started_at']) <= pd.Timestamp(settlement['settled_at']), 'AUTHORIZATION_TIME_CONFLICT')
             if name == context.recovery.original_failed_account:
                 _require(start.get('original_start_sha256') == original._sha(root / (name + '_START.json'))

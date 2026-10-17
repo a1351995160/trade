@@ -55,9 +55,9 @@ _SYNTHETIC_LIFETIME = timedelta(hours=48)
 _SYNTHETIC_TIMEOUT_SECONDS = int(_SYNTHETIC_LIFETIME.total_seconds())
 
 
-def _full_public_case(root):
+def _full_public_case(root, *, authorization_lifetime=_SYNTHETIC_LIFETIME):
     return _public_case(root, fixture_factory=trading_fixture, rule_overrides=trading_rule(),
-        authorization_lifetime=_SYNTHETIC_LIFETIME)
+        authorization_lifetime=authorization_lifetime)
 
 
 def _complete_public_account_and_reports(runner, service, job_path, task_id):

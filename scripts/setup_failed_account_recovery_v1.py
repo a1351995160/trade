@@ -19,7 +19,7 @@ def read_reference(path, digest):
 
 def plan(spec):
     from chanlun_trader.research_factory.failed_account_recovery_v1 import FailedAccountRecoveryV1
-    if not isinstance(spec, dict) or set(spec) != SPEC_FIELDS:
+    if not isinstance(spec, dict) or set(spec) not in (SPEC_FIELDS, SPEC_FIELDS | {'calendar_deadline_extension'}):
         raise ValueError('FAILED_ACCOUNT_RECOVERY_SETUP_SPEC_FIELDS_INVALID')
     return FailedAccountRecoveryV1.summary(ROOT, **spec)
 

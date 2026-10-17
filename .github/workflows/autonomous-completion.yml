@@ -205,6 +205,7 @@ jobs:
           python -m pytest -q
           tests/research_factory/test_failed_account_recovery_capability_v1.py
           tests/research_factory/test_failed_account_recovery_setup_v1.py
+          tests/research_factory/test_failed_account_calendar_deadline_owner_v1.py
           --basetemp=${{ runner.temp }}/failed-account-owner-tests
           --junitxml=completion-tests.xml
       - name: Verify failed account recovery budget boundaries
@@ -214,6 +215,7 @@ jobs:
         run: >-
           python -m pytest -q
           tests/research_factory/test_failed_account_recovery_budget_v1.py
+          tests/research_factory/test_failed_account_calendar_deadline_budget_v1.py
           --basetemp=${{ runner.temp }}/failed-account-budget-tests
           --junitxml=completion-tests.xml
       - name: Verify failed account recovery context boundaries
@@ -224,6 +226,7 @@ jobs:
           python -m pytest -q
           tests/research_factory/test_failed_account_recovery_context_v1.py
           tests/research_factory/test_failed_account_recovery_public_v1.py
+          tests/research_factory/test_failed_account_calendar_scope_v1.py
           --basetemp=${{ runner.temp }}/failed-account-context-tests
           --junitxml=completion-tests.xml
       - name: Verify failed account recovery governance boundaries
@@ -233,6 +236,7 @@ jobs:
         run: >-
           python -m pytest -q
           tests/research_factory/test_failed_account_recovery_governance_v1.py
+          tests/research_factory/test_failed_account_calendar_deadline_runtime_v1.py
           --basetemp=${{ runner.temp }}/failed-account-governance-tests
           --junitxml=completion-tests.xml
       - name: Verify failed account recovery worker boundaries

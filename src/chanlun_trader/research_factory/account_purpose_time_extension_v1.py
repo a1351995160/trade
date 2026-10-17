@@ -693,7 +693,8 @@ class AccountPurposeTimeExtensionV1:
             _sources(context.root, previous, job, summary['source_replacements'], summary['runtime_sources'], summary['economic_sources'])
         else:
             # 原最后完整读取位置不后移；只按本次 fresh 对象投影前驱与来源。
-            context.recovery = FailedAccountRecoveryV1.read(context.root, recovery_reference, base_authorization=base)
+            context.recovery = FailedAccountRecoveryV1.read(context.root, recovery_reference, base_authorization=base,
+                for_dispatch=for_dispatch)
             _recovery_require(reference == context.recovery.summary_value['predecessor_manifest_ref'],
                 'PREDECESSOR_REFERENCE_CONFLICT')
             _recovery_require(context.recovery.predecessor_summary == summary, 'PREDECESSOR_SUMMARY_CONFLICT')
@@ -735,7 +736,9 @@ class AccountPurposeTimeExtensionV1:
             from .account_version_continuation_v1 import _control
             _require(_control(job)['paused'] and _control(job)['head'] == original['control_head'], 'PAUSED_BOUNDARY_REQUIRED')
         if for_install or for_dispatch:
-            _require(datetime.now(timezone.utc) < datetime.fromisoformat(summary['expires_at']), 'EXPIRED')
+            deadline = (context.recovery.execution_expires_at if for_dispatch and recovery_reference is not None
+                else summary['expires_at'])
+            _require(datetime.now(timezone.utc) < datetime.fromisoformat(deadline), 'EXPIRED')
         context.summary_value = deepcopy(summary); context.summary = deepcopy(summary)
         context.approval_ref = deepcopy(manifest['approval_ref']); context.extension_id = summary['extension_id']
         context.job = job; context.job_path = Path(original['job']['path']); context.task_root = task_root

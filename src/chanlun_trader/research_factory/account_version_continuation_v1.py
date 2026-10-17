@@ -558,8 +558,11 @@ class AccountVersionContinuationV1:
             _require(not self.recovery_mirror_pending, 'RECOVERY_MIRROR_REQUIRED')
             if self.recovery is not None:
                 self.recovery = FailedAccountRecoveryV1.read(self.root, self.recovery.scope_reference, for_dispatch=True)
-            self.campaign._dispatchable(view, 'EXPLORATION')
-            _require(not view.get('revoked') and datetime.now(timezone.utc) < datetime.fromisoformat(summary['expires_at']), 'EXPIRED')
+            deadline = self.recovery.execution_expires_at if self.recovery is not None else summary['expires_at']
+            selected = name or (self.recovery.original_failed_account if self.recovery is not None else None)
+            operation = (view['operations'][summary['accounts'][selected]['operation_id']] if selected is not None else None)
+            self.campaign._dispatchable(view, 'EXPLORATION', operation=operation)
+            _require(not view.get('revoked') and datetime.now(timezone.utc) < datetime.fromisoformat(deadline), 'EXPIRED')
             from .run_budget import effective_execution_status
             _require(not any(effective_execution_status(op) == 'UNKNOWN' for op in view['operations'].values()), 'UNKNOWN_OPERATION')
             if name is not None:
@@ -578,7 +581,7 @@ class AccountVersionContinuationV1:
                         effective_segment_allowance(state['profile'], state['charged_seconds'],
                             effective_total_seconds=state.get('effective_total_seconds'),
                             time_extension_proof=state.get('time_extension_proof'), seconds_to_expiry=(
-                                datetime.fromisoformat(summary['expires_at']) - datetime.now(timezone.utc)).total_seconds())
+                                datetime.fromisoformat(deadline) - datetime.now(timezone.utc)).total_seconds())
                 else:
                     _require(segment_number is None, 'DISPATCH_CONFLICT')
         return self
@@ -627,6 +630,8 @@ class AccountVersionContinuationV1:
         for member, plan in value['strategy_plans'].items():
             value['novelty'][member]['plan_id'] = plan['plan_id']
         value['account_version_continuation'] = self.proof(name)
+        if self.recovery is not None and self.recovery_installed:
+            value['expires_at'] = self.recovery.execution_expires_at
         return value
 
     def _predecessor_proof(self, name=None):

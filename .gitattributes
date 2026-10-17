@@ -174,3 +174,10 @@
 /tests/research_factory/test_failed_account_recovery_setup_v1.py text eol=lf
 /tests/research_factory/test_failed_account_recovery_worker_v1.py text eol=lf
 /tests/research_factory/failed_account_startup_charge_fixture_v1.py text eol=lf
+
+# 有限日历后继的新增源码与回归绑定同一份跨平台字节。
+/src/chanlun_trader/research_factory/failed_account_calendar_scope_v1.py text eol=lf
+/tests/research_factory/test_failed_account_calendar_deadline_owner_v1.py text eol=lf
+/tests/research_factory/test_failed_account_calendar_deadline_budget_v1.py text eol=lf
+/tests/research_factory/test_failed_account_calendar_deadline_runtime_v1.py text eol=lf
+/tests/research_factory/test_failed_account_calendar_scope_v1.py text eol=lf

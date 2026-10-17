@@ -30,12 +30,14 @@ PARENT_USED_SECONDS = 42340
 RESTORED_RESERVED_SECONDS = 29660
 GOVERNANCE_PATHS = extension.GOVERNANCE_PATHS | frozenset({
     'src/chanlun_trader/research_factory/failed_account_recovery_v1.py',
+    'src/chanlun_trader/research_factory/failed_account_calendar_scope_v1.py',
     'src/chanlun_trader/research_factory/failed_account_recovery_evidence_v1.py',
     'src/chanlun_trader/account_startup_boundary_v1.py',
     'scripts/setup_failed_account_recovery_v1.py',
 })
 REQUIRED_RUNTIME_PATHS = frozenset({
     'src/chanlun_trader/research_factory/failed_account_recovery_v1.py',
+    'src/chanlun_trader/research_factory/failed_account_calendar_scope_v1.py',
     'src/chanlun_trader/research_factory/failed_account_recovery_evidence_v1.py',
     'src/chanlun_trader/account_startup_boundary_v1.py',
     'scripts/setup_failed_account_recovery_v1.py',
@@ -59,6 +61,42 @@ def _reference(path, root):
 def _read(reference, root):
     startup_checkpoint('FAILED_ACCOUNT_RECOVERY_REFERENCE')
     return read_pinned_json(reference, root=root, error_code='FAILED_ACCOUNT_RECOVERY_REFERENCE_CHANGED')
+
+
+def _validate_calendar_deadline_extension(root, value, *, authorization_id, objective_id,
+                                         previous_expires_at, global_wall_seconds):
+    """只认证本次Owner摘要绑定的人类原件；旧授权和费用前缀不变。"""
+    _require(isinstance(value, dict) and set(value) == {
+        'previous_expires_at', 'expires_at', 'human_authorization_ref'}, 'CALENDAR_DEADLINE_FIELDS_INVALID')
+    _require(isinstance(value['previous_expires_at'], str) and isinstance(value['expires_at'], str)
+        and value['previous_expires_at'] == previous_expires_at, 'CALENDAR_PREVIOUS_EXPIRY_CONFLICT')
+    try:
+        previous = datetime.fromisoformat(value['previous_expires_at'])
+        expires = datetime.fromisoformat(value['expires_at'])
+        valid = (previous.utcoffset() is not None and expires.utcoffset() is not None
+            and expires > previous and math.isfinite((expires - previous).total_seconds()))
+    except (ValueError, TypeError, OverflowError):
+        valid = False
+    _require(valid, 'CALENDAR_DEADLINE_INVALID')
+    human = _read(value['human_authorization_ref'], Path(root) / 'reports')
+    _require(isinstance(human, dict)
+        and human.get('schema_version') == 'HUMAN_REAL_ACCOUNT_CALENDAR_DEADLINE_EXTENSION_AUTHORIZATION_V1'
+        and human.get('campaign') == authorization_id and human.get('objective') == objective_id
+        and human.get('original_expires_at') == previous_expires_at
+        and human.get('authorized_new_expires_at') == value['expires_at'], 'CALENDAR_HUMAN_AUTHORIZATION_CONFLICT')
+    fixed = {'each_account_seconds': TOTAL_SECONDS, 'global_seconds': 288002,
+        'original_base_days': COMMITTED_DAYS, 'original_stress_days': 0,
+        'parent_original_used_integer_seconds': PARENT_USED_SECONDS,
+        'base_remaining_integer_seconds': RESTORED_RESERVED_SECONDS, 'stress_remaining_seconds': TOTAL_SECONDS}
+    _require(type(global_wall_seconds) is int and global_wall_seconds == fixed['global_seconds']
+        and all(type(human.get(key)) is int and human[key] == amount for key, amount in fixed.items())
+        and type(human.get('canonical_original_charged_seconds')) in (int, float)
+        and human['canonical_original_charged_seconds'] == CANONICAL_SECONDS
+        and human.get('preserve_original_FAILED_and_all_fees') is True
+        and human.get('new_task_candidate_purpose_grant_resource_or_owner_root_allowed') is False
+        and human.get('rerun_committed_days_allowed') is False
+        and human.get('all_original_production_gates_required') is True, 'CALENDAR_ORIGINAL_LIMITS_OR_FEES_CONFLICT')
+    return deepcopy(value)
 
 
 def _refs(references, root):
@@ -506,7 +544,7 @@ class FailedAccountRecoveryV1:
 
     @classmethod
     def summary(cls, root, *, authorization_id, task_ref, predecessor_manifest_ref, source_replacements,
-                runtime_source_refs, economic_source_refs, proposal_ref, ci_ref):
+                runtime_source_refs, economic_source_refs, proposal_ref, ci_ref, calendar_deadline_extension=None):
         root = checked_directory_path(root, error_code='FAILED_ACCOUNT_RECOVERY_ROOT_INVALID')
         directory, auth_ref, base, approvals = extension._authorization(root, authorization_id)
         previous, continuation, job = _predecessor(root, predecessor_manifest_ref, base, approvals)
@@ -591,8 +629,14 @@ class FailedAccountRecoveryV1:
         _require(ci.get('status') == 'PASSED' and isinstance(ci.get('head'), str) and re.fullmatch(r'[a-f0-9]{40}', ci['head'])
             and ci.get('runtime_sources') == runtime and ci.get('source_replacements') == replacements
             and ci.get('economic_sources') == economic, 'EXACT_CI_REQUIRED')
-        _require(previous['expires_at'] == effective['expires_at']
-            and datetime.now(timezone.utc) < datetime.fromisoformat(previous['expires_at']), 'EXPIRED_OR_EXPIRY_CHANGED')
+        _require(previous['expires_at'] == effective['expires_at'], 'EXPIRED_OR_EXPIRY_CHANGED')
+        calendar = None
+        if calendar_deadline_extension is not None:
+            calendar = _validate_calendar_deadline_extension(root, calendar_deadline_extension,
+                authorization_id=authorization_id, objective_id=base['objective_id'],
+                previous_expires_at=previous['expires_at'], global_wall_seconds=effective['resource_limits']['wall_seconds'])
+        execution_expires_at = calendar['expires_at'] if calendar is not None else previous['expires_at']
+        _require(datetime.now(timezone.utc) < datetime.fromisoformat(execution_expires_at), 'EXPIRED_OR_EXPIRY_CHANGED')
         core = {'schema_version': SUMMARY_VERSION, 'root': str(root), 'authorization_id': authorization_id,
             'objective_id': base['objective_id'], 'task_id': task['task_id'], 'recovery_id': recovery_id,
             'approval_store': str(approvals.directory), 'base_authorization_ref': auth_ref,
@@ -612,6 +656,12 @@ class FailedAccountRecoveryV1:
                 'consumes_historical_pause': control['paused']},
             'restored_reserved_seconds': accounts[failed]['remaining_reserved_seconds'],
             'grant_delta': 0, 'new_account_jobs': 0, 'new_candidate_attempts': 0, 'new_preparation_jobs': 0}
+        if calendar is not None:
+            core['calendar_deadline_extension'] = calendar
+            from .failed_account_calendar_scope_v1 import calendar_task_scope
+            task_scope = calendar_task_scope(root, core['original'], mapping, execution_expires_at)
+            if task_scope is not None:
+                core['calendar_task_scope'] = task_scope
         return {**core, 'summary_identity': stable_hash(core)}
 
     @classmethod
@@ -633,7 +683,9 @@ class FailedAccountRecoveryV1:
                 fresh = cls.summary(root, authorization_id=summary['authorization_id'], task_ref=summary['original']['task'],
                     predecessor_manifest_ref=summary['predecessor_manifest_ref'], source_replacements=summary['source_replacements'],
                     runtime_source_refs=summary['runtime_sources'], economic_source_refs=summary['economic_sources'],
-                    proposal_ref=summary['proposal_ref'], ci_ref=summary['ci_ref'])
+                    proposal_ref=summary['proposal_ref'], ci_ref=summary['ci_ref'],
+                    **({'calendar_deadline_extension': summary['calendar_deadline_extension']}
+                       if 'calendar_deadline_extension' in summary else {}))
                 _require(fresh == summary, 'SUMMARY_CHANGED'); approvals.require(approval_ref, summary)
                 for row in summary['accounts'].values():
                     cp = row['checkpoint']
@@ -660,6 +712,12 @@ class FailedAccountRecoveryV1:
         context = cls(root, reference)
         manifest, value, directory, base, approvals = _owner_binding(
             context, reference, base_authorization=base_authorization)
+        execution_expires_at = value['expires_at']
+        if 'calendar_deadline_extension' in value:
+            calendar = _validate_calendar_deadline_extension(context.root, value['calendar_deadline_extension'],
+                authorization_id=value['authorization_id'], objective_id=value['objective_id'],
+                previous_expires_at=value['expires_at'], global_wall_seconds=value['global_wall_seconds'])
+            execution_expires_at = calendar['expires_at']
         control_boundary = value.get('control_boundary', {})
         _require(set(control_boundary) == {'head', 'paused', 'consumes_historical_pause'}
             and control_boundary['head'] == value['original']['control_head']
@@ -720,6 +778,12 @@ class FailedAccountRecoveryV1:
                 _require(op.get('status') == 'RESERVED' and row['segment_count'] == row['remaining_reserved_seconds'] == 0
                     and row['original_settlement'] is None and row['checkpoint'] is None, 'STRESS_BOUNDARY_CONFLICT')
         _session_boundary(context.root, previous, frozen=value['session_boundary'], exact=for_install)
+        if 'calendar_deadline_extension' in value:
+            from .failed_account_calendar_scope_v1 import calendar_task_scope
+            task_scope = calendar_task_scope(context.root, value['original'],
+                {name: row['operation_id'] for name, row in value['accounts'].items()}, execution_expires_at)
+            _require(value.get('calendar_task_scope') == task_scope
+                and ('calendar_task_scope' in value) is (task_scope is not None), 'CALENDAR_TASK_SCOPE_CONFLICT')
         if for_install:
             _require(_ledger_boundary(context.root, directory, base, previous, value['predecessor_manifest_ref'])[0]
                 == value['budget_boundary'], 'INSTALL_BOUNDARY_CHANGED')
@@ -730,12 +794,17 @@ class FailedAccountRecoveryV1:
         if for_dispatch:
             _dispatch_boundary(context.root, directory, base, value, reference)
         if for_install or for_dispatch:
-            _require(datetime.now(timezone.utc) < datetime.fromisoformat(value['expires_at']), 'EXPIRED')
+            _require(datetime.now(timezone.utc) < datetime.fromisoformat(execution_expires_at), 'EXPIRED')
         context.summary_value = deepcopy(value); context.summary = deepcopy(value); context.approval_ref = deepcopy(manifest['approval_ref'])
         context.recovery_id = value['recovery_id']; context.job = job; context.job_path = Path(value['original']['job']['path'])
         context.task_root = task_root; context.predecessor_summary = deepcopy(previous)
         context.original_failed_account = failed
+        context._execution_expires_at = execution_expires_at
         return context
+
+    @property
+    def execution_expires_at(self):
+        return self._execution_expires_at
 
     @classmethod
     def from_job(cls, job, *, for_dispatch=False):
@@ -812,7 +881,7 @@ def resolve_failed_account_recovery_manifest(manifest_ref, *, root, authorizatio
     _require(value['authorization_id'] == authorization_id and value['objective_id'] == objective_id,
         'AUTHORIZATION_OR_OBJECTIVE_CONFLICT')
     accounts = deepcopy(value['accounts']); failed = value['original_failed_account']; account = accounts[failed]
-    return {'recovery_id': context.recovery_id, 'manifest_ref': deepcopy(manifest_ref), 'proof': context.proof(),
+    result = {'recovery_id': context.recovery_id, 'manifest_ref': deepcopy(manifest_ref), 'proof': context.proof(),
         'authorization_id': authorization_id, 'objective_id': objective_id,
         'base_authorization_identity': value['base_authorization_identity'], 'expires_at': value['expires_at'],
         'original_failed_account': failed, 'failed_purpose': failed, 'operation_id': account['operation_id'],
@@ -822,3 +891,9 @@ def resolve_failed_account_recovery_manifest(manifest_ref, *, root, authorizatio
         'source_replacements': deepcopy(value['source_replacements']), 'runtime_sources': deepcopy(value['runtime_sources']),
         'economic_sources': deepcopy(value['economic_sources']), 'successor_plans': deepcopy(value['successor_plans']),
         'active_plans': deepcopy(value['successor_plans'])}
+    if 'calendar_deadline_extension' in value:
+        result.update(execution_expires_at=context.execution_expires_at,
+                      calendar_deadline_extension=deepcopy(value['calendar_deadline_extension']))
+        if 'calendar_task_scope' in value:
+            result['calendar_task_scope'] = deepcopy(value['calendar_task_scope'])
+    return result

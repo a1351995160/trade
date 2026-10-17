@@ -16,6 +16,9 @@ from .budget import BudgetExhaustedError, BudgetLedgerMismatchError
 from .common import now_timestamp, stable_hash
 
 
+CALENDAR_DERIVED_FIELDS = frozenset({'execution_expires_at', 'calendar_task_scope', 'calendar_task_deadline_proof'})
+
+
 def effective_operation_upper_bounds(operation):
     """历史预留保持原件；附加限时只派生同一用途的有效墙时预留。"""
     return deepcopy(operation.get('effective_upper_bounds', operation['upper_bounds']))
@@ -23,6 +26,15 @@ def effective_operation_upper_bounds(operation):
 
 def effective_execution_total_seconds(operation):
     return operation.get('effective_total_seconds', operation['execution_profile']['total_seconds'])
+
+
+def effective_execution_expires_at(authorization, operation):
+    """日历后继仅投影到已验证安装的原恢复用途。"""
+    if operation.get('execution_expires_at') is not None:
+        if operation.get('failed_account_recovery_proof') is None and operation.get('calendar_task_deadline_proof') is None:
+            raise BudgetLedgerMismatchError('CAMPAIGN_CALENDAR_DEADLINE_WITHOUT_RECOVERY')
+        return operation['execution_expires_at']
+    return authorization['expires_at']
 
 
 def effective_execution_status(operation):
@@ -170,7 +182,16 @@ def _apply_failed_account_recovery(authorization, base_authorization, operations
         resolved = resolve_failed_account_recovery_manifest(proof['manifest_ref'], root=authorization['root'],
             authorization_id=authorization['authorization_id'], objective_id=authorization['objective_id'])
         installed_at = datetime.fromisoformat(item['installed_at'])
-        expires_at = datetime.fromisoformat(resolved['expires_at'])
+        calendar = resolved.get('calendar_deadline_extension')
+        if calendar is None:
+            if 'execution_expires_at' in resolved or 'calendar_task_scope' in resolved:
+                raise ValueError('CALENDAR_DEADLINE_PROOF_REQUIRED')
+        elif (calendar.get('previous_expires_at') != resolved['expires_at']
+                or calendar.get('expires_at') != resolved.get('execution_expires_at')
+                or datetime.fromisoformat(calendar['expires_at']).tzinfo is None
+                or datetime.fromisoformat(calendar['expires_at']) <= datetime.fromisoformat(resolved['expires_at'])):
+            raise ValueError('CALENDAR_DEADLINE_BINDING_CONFLICT')
+        expires_at = datetime.fromisoformat(resolved.get('execution_expires_at', resolved['expires_at']))
         mapping, accounts = resolved['operation_ids'], resolved['accounts']
         if (proof != resolved['proof'] or installed_at.tzinfo is None or expires_at.tzinfo is None
                 or installed_at >= expires_at or resolved['expires_at'] != authorization['expires_at']
@@ -231,6 +252,10 @@ def _apply_failed_account_recovery(authorization, base_authorization, operations
         for operation, account, failed in targets:
             operation['failed_account_recovery_proof'] = deepcopy(proof)
             operation['recovery_boundary'] = deepcopy(account)
+            if resolved.get('calendar_deadline_extension') is not None:
+                operation['execution_expires_at'] = resolved['execution_expires_at']
+                if resolved.get('calendar_task_scope') is not None:
+                    operation['calendar_task_scope'] = deepcopy(resolved['calendar_task_scope'])
             if failed:
                 operation['failed_account_recovery'] = {'proof': deepcopy(proof), 'status': 'RUNNING',
                     'boundary': deepcopy(account), 'base_actual': deepcopy(operation['actual']),
@@ -819,9 +844,9 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
         for event in self._events:
             startup_checkpoint('CAMPAIGN_EVENT_REPLAY')
             kind, item = event['event_type'], event['payload']
-            if set(item) & {'effective_upper_bounds', 'effective_total_seconds',
+            if set(item) & (CALENDAR_DERIVED_FIELDS | {'effective_upper_bounds', 'effective_total_seconds',
                             'account_purpose_time_extension', 'time_extension_boundary',
-                            'failed_account_recovery', 'recovery_boundary'}:
+                            'failed_account_recovery', 'recovery_boundary'}):
                 raise BudgetLedgerMismatchError('CAMPAIGN_ACCOUNT_TIME_EXTENSION_DERIVED_FIELDS_FORBIDDEN')
             if ('failed_account_recovery_proof' in item and kind not in (
                     'CAMPAIGN_EXECUTION_SEGMENT_DISPATCHED', 'CAMPAIGN_EXECUTION_SEGMENT_CHARGED',
@@ -855,7 +880,17 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
             elif kind == 'CAMPAIGN_OPERATION_RESERVED':
                 if item['operation_id'] in operations:
                     raise BudgetLedgerMismatchError('CAMPAIGN_OPERATION_DUPLICATED')
-                operations[item['operation_id']] = {**item, 'status': 'RESERVED'}
+                projected = {**item, 'status': 'RESERVED'}
+                from .failed_account_calendar_scope_v1 import calendar_operation_deadline
+                deadline = calendar_operation_deadline(authorization, operations, item)
+                if deadline != authorization['expires_at']:
+                    sources = [op for op in operations.values() if op.get('execution_expires_at') == deadline
+                        and item in op.get('calendar_task_scope', {}).get('compute_operations', {}).values()]
+                    if not sources or len({stable_hash(op['failed_account_recovery_proof']) for op in sources}) != 1:
+                        raise BudgetLedgerMismatchError('CAMPAIGN_CALENDAR_COMPUTE_BINDING_CONFLICT')
+                    projected['execution_expires_at'] = deadline
+                    projected['calendar_task_deadline_proof'] = deepcopy(sources[0]['failed_account_recovery_proof'])
+                operations[item['operation_id']] = projected
             elif kind == 'CAMPAIGN_ACCOUNT_PURPOSE_TIME_EXTENDED':
                 _apply_account_purpose_time_extension(authorization, base_authorization, operations, item, revoked)
             elif kind == 'CAMPAIGN_FAILED_ACCOUNT_RECOVERY_INSTALLED':
@@ -980,10 +1015,10 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
                 proof=operation.get('account_purpose_time_extension')
                 recovery_proof=operation.get('failed_account_recovery_proof')
                 total=effective_execution_total_seconds(operation)
-                if recovery_proof is not None:
+                if recovery_proof is not None or operation.get('calendar_task_deadline_proof') is not None:
                     try:
                         dispatched_at = datetime.fromisoformat(item['dispatched_at'])
-                        expires_at = datetime.fromisoformat(authorization['expires_at'])
+                        expires_at = datetime.fromisoformat(effective_execution_expires_at(authorization, operation))
                         if revoked or paused or dispatched_at.tzinfo is None or dispatched_at >= expires_at:
                             raise ValueError('FAILED_ACCOUNT_RECOVERY_DISPATCH_NOT_AUTHORIZED')
                     except (ValueError, TypeError, KeyError) as exc:
@@ -1064,6 +1099,8 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
     def campaign_event(self, kind, payload):
         if not kind.startswith('CAMPAIGN_'):
             raise ValueError('CAMPAIGN_EVENT_KIND_INVALID')
+        if set(payload) & CALENDAR_DERIVED_FIELDS:
+            raise BudgetLedgerMismatchError('CAMPAIGN_CALENDAR_DEADLINE_DERIVED_FIELDS_FORBIDDEN')
         if kind in ('CAMPAIGN_ACCOUNT_PURPOSE_TIME_EXTENDED', 'CAMPAIGN_FAILED_ACCOUNT_RECOVERY_INSTALLED',
                     'CAMPAIGN_FAILED_ACCOUNT_RECOVERY_UNKNOWN', 'CAMPAIGN_FAILED_ACCOUNT_RECOVERY_SETTLED'):
             # 校验完整原子结果后才提交；无效许可不能污染权威事件流。

@@ -12,7 +12,7 @@ from .common import stable_hash
 from .mutation_boundary import ObjectiveMutationLock
 from .run_budget import (AutonomousRunBudgetV2, effective_operation_upper_bounds,
                          effective_execution_total_seconds, effective_segment_allowance,
-                         effective_execution_status, execution_dispatch_identity)
+                         effective_execution_status, execution_dispatch_identity, effective_execution_expires_at)
 
 STAGES = ('EXPLORATION', 'CONFIRMATION', 'OBSERVATION')
 KINDS = {'CANDIDATE': 'candidate_attempts', 'DATA': 'data_experiments', 'ACCOUNT': 'account_jobs',
@@ -154,12 +154,22 @@ class ResearchCampaignV1:
         return {name: value.get(name, 0) for name in names}
 
     @staticmethod
-    def _dispatchable(view, stage):
+    def _dispatchable(view, stage, *, operation=None):
         if view.get('revoked'):
             raise PermissionError('CAMPAIGN_REVOKED')
         if view['paused']:
             raise PermissionError('CAMPAIGN_PAUSED')
-        if datetime.now(timezone.utc) >= _timestamp(view['authorization']['expires_at']):
+        expires_at = view['authorization']['expires_at']
+        if operation is not None:
+            existing = view['operations'].get(operation.get('operation_id'))
+            if existing is not None and existing != operation:
+                raise PermissionError('CAMPAIGN_CALENDAR_OPERATION_CONFLICT')
+            if existing is not None:
+                expires_at = effective_execution_expires_at(view['authorization'], operation)
+            else:
+                from .failed_account_calendar_scope_v1 import calendar_operation_deadline
+                expires_at = calendar_operation_deadline(view['authorization'], view['operations'], operation)
+        if datetime.now(timezone.utc) >= _timestamp(expires_at):
             raise BudgetExhaustedError('CAMPAIGN_EXPIRED')
         if stage not in view['authorization']['stages']:
             raise PermissionError('CAMPAIGN_STAGE_NOT_AUTHORIZED')
@@ -296,7 +306,8 @@ class ResearchCampaignV1:
                 if any(existing[key] != value for key, value in item.items()):
                     raise BudgetLedgerMismatchError('CAMPAIGN_OPERATION_IDENTITY_CONFLICT')
                 return deepcopy(existing)
-            self._dispatchable(view, stage)
+            self._dispatchable(view, stage, operation=item)
+            self._validate_recovery_dispatch(view, item)
             if kind in ('ACCOUNT', 'DATA', 'CANDIDATE') and any(
                     old['kind'] == kind and old['subject_identity'] == subject_identity for old in view['operations'].values()):
                 raise BudgetLedgerMismatchError('CAMPAIGN_DUPLICATE_SUBJECT')
@@ -357,7 +368,7 @@ class ResearchCampaignV1:
         _, view=self._budget_with_view(readonly=True); operation=view['operations'][operation_id]
         proof=operation.get('account_purpose_time_extension')
         if for_dispatch:
-            self._dispatchable(view, operation['stage'])
+            self._dispatchable(view, operation['stage'], operation=operation)
             self._validate_recovery_dispatch(view, operation)
             if proof is not None:
                 from .account_purpose_time_extension_v1 import resolve_time_extension_manifest
@@ -386,7 +397,7 @@ class ResearchCampaignV1:
             # 安装不派发，也不解除原失败暂停；新段仍经过完整 _dispatchable。
             if view.get('revoked'):
                 raise PermissionError('CAMPAIGN_REVOKED')
-            if datetime.now(timezone.utc) >= _timestamp(view['authorization']['expires_at']):
+            if datetime.now(timezone.utc) >= _timestamp(resolved.get('execution_expires_at', resolved['expires_at'])):
                 raise BudgetExhaustedError('CAMPAIGN_EXPIRED')
             if operation['stage'] not in view['authorization']['stages']:
                 raise PermissionError('CAMPAIGN_STAGE_NOT_AUTHORIZED')
@@ -402,15 +413,36 @@ class ResearchCampaignV1:
             return deepcopy(budget.campaign_view()['operations'][resolved['operation_id']])
 
     def _validate_recovery_dispatch(self, view, operation):
+        from .failed_account_calendar_scope_v1 import calendar_operation_deadline
+        calendar_deadline = calendar_operation_deadline(view['authorization'], view['operations'], operation)
+        calendar_proof = operation.get('calendar_task_deadline_proof')
+        is_calendar = calendar_proof is not None or calendar_deadline != view['authorization']['expires_at']
         proof = operation.get('failed_account_recovery_proof')
+        if is_calendar:
+            sources = [account for account in view['operations'].values()
+                if account.get('execution_expires_at') == calendar_deadline
+                and isinstance(account.get('calendar_task_scope'), dict)
+                and any(item.get('operation_id') == operation['operation_id'] for item in
+                    account['calendar_task_scope'].get('compute_operations', {}).values())]
+            if not sources or len({stable_hash(account['failed_account_recovery_proof']) for account in sources}) != 1:
+                raise PermissionError('CAMPAIGN_CALENDAR_COMPUTE_PROOF_CONFLICT')
+            proof = sources[0]['failed_account_recovery_proof']
+            if calendar_proof is not None and calendar_proof != proof:
+                raise PermissionError('CAMPAIGN_CALENDAR_COMPUTE_PROOF_CONFLICT')
         if proof is None:
             return
         from .failed_account_recovery_v1 import resolve_failed_account_recovery_manifest
         resolved = resolve_failed_account_recovery_manifest(proof['manifest_ref'], root=self.root,
             authorization_id=self.authorization_id, objective_id=view['authorization']['objective_id'],
             for_dispatch=True)
-        if (resolved['proof'] != proof or operation['operation_id'] not in resolved['operation_ids'].values()
-                or operation.get('recovery_boundary') not in resolved['accounts'].values()):
+        if is_calendar:
+            if (resolved['proof'] != proof or calendar_deadline != resolved.get('execution_expires_at')
+                    or any(account['calendar_task_scope'] != resolved.get('calendar_task_scope') for account in sources)):
+                raise PermissionError('CAMPAIGN_CALENDAR_COMPUTE_PROOF_CONFLICT')
+        elif (resolved['proof'] != proof or operation['operation_id'] not in resolved['operation_ids'].values()
+                or operation.get('recovery_boundary') not in resolved['accounts'].values()
+                or effective_execution_expires_at(view['authorization'], operation)
+                    != resolved.get('execution_expires_at', resolved['expires_at'])):
             raise PermissionError('CAMPAIGN_FAILED_ACCOUNT_RECOVERY_PROOF_CONFLICT')
         failed = view['operations'].get(resolved['operation_id'], {}).get('failed_account_recovery')
         if failed is None or failed['status'] in ('FAILED', 'UNKNOWN'):
@@ -421,6 +453,7 @@ class ResearchCampaignV1:
         """仅投影本次已完整验证的父视图；不读取或保存跨调用状态。"""
         operation=view['operations'][operation_id]
         return {'profile':deepcopy(operation['execution_profile']),
+            'execution_expires_at': effective_execution_expires_at(view['authorization'], operation),
             'effective_total_seconds':effective_execution_total_seconds(operation),
             'time_extension_proof':deepcopy(operation.get('account_purpose_time_extension')),
             'failed_account_recovery_proof':deepcopy(operation.get('failed_account_recovery_proof')),
@@ -434,7 +467,7 @@ class ResearchCampaignV1:
         from .universe_execution_profile_v1 import validate_execution_profile
         with self._lock():
             budget, view=self._budget_with_view(); operation=view['operations'][operation_id]
-            self._dispatchable(view,operation['stage'])
+            self._dispatchable(view,operation['stage'],operation=operation)
             frozen=operation.get('execution_profile')
             if frozen is None or effective_execution_status(operation) != 'RUNNING':
                 raise PermissionError('CAMPAIGN_EXECUTION_CONTINUATION_NOT_AUTHORIZED')
@@ -462,7 +495,7 @@ class ResearchCampaignV1:
             now=datetime.now(timezone.utc)
             allowed=effective_segment_allowance(value,operation.get('active_wall_seconds',0),
                 effective_total_seconds=effective_execution_total_seconds(operation), time_extension_proof=proof,
-                seconds_to_expiry=(_timestamp(view['authorization']['expires_at'])-now).total_seconds())
+                seconds_to_expiry=(_timestamp(effective_execution_expires_at(view['authorization'],operation))-now).total_seconds())
             upper=allowed if upper_bound_seconds is None else upper_bound_seconds
             if type(upper) not in (int,float) or not 0 < upper <= allowed or (proof is not None and upper <= 70):
                 raise PermissionError('CAMPAIGN_EXECUTION_SEGMENT_BOUND_CONFLICT')
@@ -519,7 +552,7 @@ class ResearchCampaignV1:
             budget = self._budget()
             view = budget.campaign_view()
             operation = view['operations'][operation_id]
-            self._dispatchable(view, operation['stage'])
+            self._dispatchable(view, operation['stage'], operation=operation)
             self._validate_recovery_dispatch(view, operation)
             if operation['status'] != 'RESERVED':
                 raise PermissionError('CAMPAIGN_OPERATION_ALREADY_DISPATCHED')
