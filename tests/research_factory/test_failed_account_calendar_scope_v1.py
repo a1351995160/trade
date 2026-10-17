@@ -303,3 +303,18 @@ def test_factory_keeps_preparation_and_ordinary_requests_on_original_class(froze
     assert type(meter) is UniverseComputeGovernanceV1
     with pytest.raises(PermissionError, match='RECONCILIATION_ONLY'):
         meter.active()
+
+
+@pytest.mark.parametrize('options', [{}, {'for_dispatch': False}, {'campaign_operation': {'operation_id': 'original'}}])
+def test_ordinary_factory_uses_current_original_constructor(monkeypatch, tmp_path, options):
+    from chanlun_trader.research_factory import universe_compute_governance_v1 as ordinary
+    calls = []
+    marker = object()
+
+    def constructor(*args, **kwargs):
+        calls.append((args, kwargs))
+        return marker
+
+    monkeypatch.setattr(ordinary, 'UniverseComputeGovernanceV1', constructor)
+    assert calendar.calendar_compute_governance_v1(tmp_path, {}, {}, 'REPORT', **options) is marker
+    assert calls == [((tmp_path, {}, {}, 'REPORT'), options)]

@@ -7,7 +7,7 @@ import re
 
 from .common import stable_hash
 from .secure_file_reference_v1 import checked_directory_path, read_pinned_json, validated_reference_path
-from .universe_compute_governance_v1 import STAGES, UniverseComputeGovernanceV1
+from .universe_compute_governance_v1 import STAGES
 from .universe_execution_profile_v1 import SEGMENTED_PROFILE, execution_profile, segment_allowance
 
 
@@ -253,58 +253,64 @@ class FailedAccountCalendarContextV1:
         return deadline, canonical
 
 
-class _CalendarComputeGovernanceV1(UniverseComputeGovernanceV1):
-    def __init__(self, root, authority, request, stage, *, calendar_context, campaign_operation=None, for_dispatch=True):
-        _require(type(calendar_context) is FailedAccountCalendarContextV1 and type(for_dispatch) is bool,
-            'SIGNED_CONTEXT_REQUIRED')
-        super().__init__(root, authority, request, stage, campaign_operation=campaign_operation, for_dispatch=False)
-        self.for_dispatch = for_dispatch
-        self._calendar_context = calendar_context
-        FailedAccountCalendarContextV1.require_compute(calendar_context, self, for_dispatch=for_dispatch)
+def _calendar_compute_governance(root, authority, request, stage, *, calendar_context,
+        campaign_operation, for_dispatch):
+    from .universe_compute_governance_v1 import UniverseComputeGovernanceV1
 
-    def _active_deadline(self):
-        _require(self.for_dispatch, 'COMPUTE_RECONCILIATION_ONLY')
-        if (self.root / 'REVOKED.json').exists():
-            raise PermissionError('UNIVERSE_COMPUTE_REVOKED')
-        deadline, canonical = FailedAccountCalendarContextV1.require_compute(
-            self._calendar_context, self, for_dispatch=True)
-        if datetime.now(timezone.utc) >= _time(deadline):
-            raise PermissionError('UNIVERSE_COMPUTE_AUTHORIZATION_EXPIRED')
-        from .research_campaign_v1 import ResearchCampaignV1
-        ref = self.campaign_operation
-        campaign = ResearchCampaignV1(ref['root'], ref['authorization_id'])
-        view = campaign.status()
-        operation = view['operations'].get(ref['operation_id'], canonical)
-        _require(calendar_operation_deadline(view['authorization'], view['operations'], operation) == deadline,
-            'COMPUTE_OPERATION_CONFLICT')
-        campaign._dispatchable(view, operation['stage'], operation=operation)
-        return deadline
+    class CalendarComputeGovernanceV1(UniverseComputeGovernanceV1):
+        def __init__(self):
+            _require(type(calendar_context) is FailedAccountCalendarContextV1 and type(for_dispatch) is bool,
+                'SIGNED_CONTEXT_REQUIRED')
+            super().__init__(root, authority, request, stage, campaign_operation=campaign_operation, for_dispatch=False)
+            self.for_dispatch = for_dispatch
+            self._calendar_context = calendar_context
+            FailedAccountCalendarContextV1.require_compute(calendar_context, self, for_dispatch=for_dispatch)
 
-    def active(self):
-        self._active_deadline()
-        return self.binding
-
-    def dispatch(self):
-        from .exploration_governance import immutable
-        with self.lock():
-            deadline = self._active_deadline()
-            state = self.status()
-            if state['pending'] or (state['segments'] and state['segments'][-1]['charge']['outcome'] in ('COMPLETED', 'FAILED')):
-                raise PermissionError('UNIVERSE_COMPUTE_PENDING_OR_TERMINAL')
-            upper = segment_allowance(self.profile, state['charged_seconds'],
-                seconds_to_expiry=(_time(deadline) - datetime.now(timezone.utc)).total_seconds())
-            value = {'number': state['next_segment_number'], 'compute_identity': self.binding['compute_identity'],
-                'upper_bound_seconds': upper, 'previous_head': state['head'],
-                'dispatched_at': datetime.now(timezone.utc).isoformat()}
-            value['dispatch_id'] = stable_hash(value)
+        def _active_deadline(self):
+            _require(self.for_dispatch, 'COMPUTE_RECONCILIATION_ONLY')
+            if (self.root / 'REVOKED.json').exists():
+                raise PermissionError('UNIVERSE_COMPUTE_REVOKED')
+            deadline, canonical = FailedAccountCalendarContextV1.require_compute(
+                self._calendar_context, self, for_dispatch=True)
+            if datetime.now(timezone.utc) >= _time(deadline):
+                raise PermissionError('UNIVERSE_COMPUTE_AUTHORIZATION_EXPIRED')
             from .research_campaign_v1 import ResearchCampaignV1
             ref = self.campaign_operation
-            parent = ResearchCampaignV1(ref['root'], ref['authorization_id']).start_execution_segment(ref['operation_id'],
-                segment_number=value['number'], profile=self.profile, upper_bound_seconds=upper)
-            value['dispatched_at'] = parent['dispatched_at']
-            value['dispatch_id'] = stable_hash({key: item for key, item in value.items() if key != 'dispatch_id'})
-            immutable(self.root / ('COMPUTE_SEGMENT_' + str(value['number']).zfill(6) + '_DISPATCH.json'), value)
-            return value
+            campaign = ResearchCampaignV1(ref['root'], ref['authorization_id'])
+            view = campaign.status()
+            operation = view['operations'].get(ref['operation_id'], canonical)
+            _require(calendar_operation_deadline(view['authorization'], view['operations'], operation) == deadline,
+                'COMPUTE_OPERATION_CONFLICT')
+            campaign._dispatchable(view, operation['stage'], operation=operation)
+            return deadline
+
+        def active(self):
+            self._active_deadline()
+            return self.binding
+
+        def dispatch(self):
+            from .exploration_governance import immutable
+            with self.lock():
+                deadline = self._active_deadline()
+                state = self.status()
+                if state['pending'] or (state['segments'] and state['segments'][-1]['charge']['outcome'] in ('COMPLETED', 'FAILED')):
+                    raise PermissionError('UNIVERSE_COMPUTE_PENDING_OR_TERMINAL')
+                upper = segment_allowance(self.profile, state['charged_seconds'],
+                    seconds_to_expiry=(_time(deadline) - datetime.now(timezone.utc)).total_seconds())
+                value = {'number': state['next_segment_number'], 'compute_identity': self.binding['compute_identity'],
+                    'upper_bound_seconds': upper, 'previous_head': state['head'],
+                    'dispatched_at': datetime.now(timezone.utc).isoformat()}
+                value['dispatch_id'] = stable_hash(value)
+                from .research_campaign_v1 import ResearchCampaignV1
+                ref = self.campaign_operation
+                parent = ResearchCampaignV1(ref['root'], ref['authorization_id']).start_execution_segment(ref['operation_id'],
+                    segment_number=value['number'], profile=self.profile, upper_bound_seconds=upper)
+                value['dispatched_at'] = parent['dispatched_at']
+                value['dispatch_id'] = stable_hash({key: item for key, item in value.items() if key != 'dispatch_id'})
+                immutable(self.root / ('COMPUTE_SEGMENT_' + str(value['number']).zfill(6) + '_DISPATCH.json'), value)
+                return value
+
+    return CalendarComputeGovernanceV1()
 
 
 def calendar_compute_governance_v1(root, authority, request, stage, *, campaign_operation=None, for_dispatch=True):
@@ -323,7 +329,13 @@ def calendar_compute_governance_v1(root, authority, request, stage, *, campaign_
                 job = json.loads(read_file_bytes(job_path, root=campaign_root, error_code='FAILED_ACCOUNT_CALENDAR_JOB_CHANGED'))
                 context = FailedAccountCalendarContextV1.from_job(campaign_root, job, for_dispatch=for_dispatch)
     if context is None:
-        return UniverseComputeGovernanceV1(root, authority, request, stage,
-            campaign_operation=campaign_operation, for_dispatch=for_dispatch)
-    return _CalendarComputeGovernanceV1(root, authority, request, stage, calendar_context=context,
+        # 保持原入口的调用时绑定及默认四位置参数，不让适配器改变普通计算入口。
+        from .universe_compute_governance_v1 import UniverseComputeGovernanceV1
+        options = {}
+        if campaign_operation is not None:
+            options['campaign_operation'] = campaign_operation
+        if for_dispatch is not True:
+            options['for_dispatch'] = for_dispatch
+        return UniverseComputeGovernanceV1(root, authority, request, stage, **options)
+    return _calendar_compute_governance(root, authority, request, stage, calendar_context=context,
         campaign_operation=campaign_operation, for_dispatch=for_dispatch)

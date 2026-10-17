@@ -4024,3 +4024,31 @@ R5必要组按精确身份受控保全，708.0951522000105秒/natural_exit=false
 ### Notes
 
 Files: research_campaign_v1.py（新预留及执行共用完整当前恢复许可）；test_failed_account_calendar_deadline_budget_v1.py（8拒绝零写入+正常离线结清）；.gitattributes（仅新增5文件LF）；四状态/primary/docs/progress。回滚点：R5/R6/R7各1051源码快照和base29712；原账户/Owner未修改，旧失败与费用证据保留。
+
+## 2026-10-17 - Task: 精确有限日历后继已提交推送并启动新门禁
+
+### What was done
+
+精确提交cefebdb2dbec2550b05090e8fa4280a3cd758282 / tree 9aa8ad9d13321b9ef451f6606ddf2d7a9827be69已快进推送原draft PR45。原生产WT及main未改。同源必要R8/65589运行；外部线性控制38062只等其自然通过后串行接原5文件90回归，再接实际旧期限已过的完整双504；不自动重试、不执行真实Owner或账户派发。
+
+### Testing
+
+两个实际红基线各3FAIL，定向12PASS及父预算+scope72PASS保留；不代表全部新门禁通过。1051来源与launch逐SHA一致，src/scripts/tests无未提交差异。初始CI实际{'QUEUED': 57, 'IN_PROGRESS': 20, 'SUCCESS': 13}，已登记90项、最终要求91，尚未收新工件。四真实关键SHA保持。记录 PRODUCTION_PRECISE_CEFEB_COMMITTED_PUSHED_AND_SERIAL_NEW_GATES_STARTED_20261017T133504555897Z.json SHA 3042be0077ad8136a0e4a9c33b1805dc65e00d09f02628748a3c18deff4c275d
+
+### Notes
+
+Files: 精确提交内24项范围文件；外部串行测试控制器/claim/state/日志；四状态/primary/本记录/progress。回滚点：base29712和各1051源码快照；保留新提交与全部失败记录，不reset/clean；要停原测试先核精确身份并保全，不能热改。
+
+## 2026-10-17 - Task: 保全精确CI失败并修复普通计算入口兼容
+
+### What was done
+
+精确CEFEB双OS各8个长期账户回归失败，原始日志/元数据保持。先停止外部串行控制38062，再受控关闭R8/65589；未启动后续回归或完整合成。普通构造器改回调用时绑定和原默认四位置参数；calendar子类仅在签名范围实际需要时定义。
+
+### Testing
+
+新进程原失败节点R9自然1FAIL；修复后R10原两长期账户文件+calendar scope/budget自然104PASS/0FAIL/ERROR/SKIP，141.1568849000032秒，1051来源快照和当前逐SHA相同、changed=[]。受控R8无有效JUnit，不计PASS或产品FAILED。原4关键真实文件和冻结经济原类SHA保持；新精确全部门禁仍未完成。记录 PRODUCTION_CEFEB_CI_FAILURE_PRESERVED_ORDINARY_RED1_GREEN104_20261017T135500964967Z.json SHA cb168bdee538c1173a452fb06bf53e387adc99eea9d3b9b8f4dc1611b691997c
+
+### Notes
+
+Files: failed_account_calendar_scope_v1.py（延迟构造适配器和普通类）；test_failed_account_calendar_scope_v1.py（3个普通调用边界）；四状态/primary/旧serial可变state/本记录及docs/progress。回滚点CEFEB及R8/R9完整1051快照；不改原失败工件、不reset/clean；原Owner未安装、真实账户未派发。
