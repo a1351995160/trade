@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import re
 
+from chanlun_trader.account_startup_boundary_v1 import startup_checkpoint
 from .campaign_scope_v1 import OwnerApprovalStoreV1, _write_once, replay_grant, stage_remaining
 from .common import stable_hash
 from .mutation_boundary import ObjectiveMutationLock
@@ -57,6 +58,7 @@ def _path(value, root):
 
 
 def _reference(path, root):
+    startup_checkpoint('TIME_EXTENSION_REFERENCE')
     # 安全读取器仍完整核打开前后路径和对象；成功路径不再额外遍历第三次。
     try:
         digest = file_sha256(path, root=root, error_code='ACCOUNT_PURPOSE_TIME_EXTENSION_REFERENCE_CHANGED')
@@ -67,6 +69,7 @@ def _reference(path, root):
 
 
 def _read(reference, root):
+    startup_checkpoint('TIME_EXTENSION_READ')
     return read_pinned_json(reference, root=root, error_code='ACCOUNT_PURPOSE_TIME_EXTENSION_REFERENCE_CHANGED')
 
 
@@ -75,6 +78,7 @@ def _refs(value, root):
     _require(isinstance(value, list), 'REFERENCES_REQUIRED')
     result = []
     for reference in value:
+        startup_checkpoint('TIME_EXTENSION_REFERENCES')
         _require(isinstance(reference, dict) and set(reference) == {'path', 'sha256'}
             and _hash(reference['sha256']) and _reference(reference['path'], root) == reference,
             'REFERENCE_CHANGED')
@@ -153,6 +157,7 @@ def _ledger_boundary(root, directory, base, frozen=None):
     events = [json.loads(line) for line in lines]
     ids = set(); operations = {}; effective = None; revoked = False; extension_seen = False
     for event in events:
+        startup_checkpoint('TIME_EXTENSION_LEDGER_REPLAY')
         _require(event.get('run_id') == base['authorization_id'] and event.get('event_id') == stable_hash({
             'run_id': event['run_id'], 'event_type': event['event_type'], 'payload': event['payload']})
             and event['event_id'] not in ids, 'LEDGER_EVENT_INVALID')
@@ -313,6 +318,7 @@ def _sources(root, previous, job, replacements, runtime_refs, economic_refs):
     expected_economic = _economic_inventory(root, previous, inventory)
     mapping = {}
     for row in replacements:
+        startup_checkpoint('TIME_EXTENSION_SOURCE_REPLACEMENT')
         _require(isinstance(row, dict) and set(row) == {'path', 'old_sha256', 'new_sha256', 'archive_ref'},
             'SOURCE_REPLACEMENT_FIELDS_INVALID')
         path = _path(row['path'], root)
@@ -333,6 +339,7 @@ def _sources(root, previous, job, replacements, runtime_refs, economic_refs):
     _require(economic and {row['path']: row['sha256'] for row in economic} == expected_economic,
         'ECONOMIC_SOURCE_INVENTORY_CONFLICT')
     for path, digest in inventory.items():
+        startup_checkpoint('TIME_EXTENSION_SOURCE_VERIFY')
         _require(_reference(path, root)['sha256'] == (mapping[path]['new_sha256'] if path in mapping else digest),
             'UNAPPROVED_SOURCE_CHANGED')
     for reference in runtime:
@@ -421,6 +428,7 @@ def _checkpoint(root, job, name, *, frozen=None, exact=False):
         and value.get('calendar_identity') == stable_hash(calendar), 'ACCOUNT_CALENDAR_CONFLICT')
     head = stable_hash(['UNIVERSE_EXECUTION_ARTIFACTS_V1', value['execution_identity']]); day_refs = []
     for row in days:
+        startup_checkpoint('TIME_EXTENSION_DAY_VERIFY')
         _require(row.get('previous') == head and _identity(row, 'chain') and _hash(row.get('payload_identity'))
             and isinstance(row.get('file'), str) and Path(row['file']).name == row['file'], 'DAY_CHAIN_CHANGED')
         reference_day = _reference(account_root / (name + '_DAYS') / row['file'], root)
@@ -470,6 +478,7 @@ class AccountPurposeTimeExtensionV1:
     def __init__(self, root, manifest_ref):
         self.root = checked_directory_path(root, error_code='ACCOUNT_PURPOSE_TIME_EXTENSION_ROOT_INVALID')
         self.scope_reference = deepcopy(manifest_ref)
+        self.recovery = None
 
     @staticmethod
     def extension_identity(authorization_id, task_id):
@@ -626,7 +635,7 @@ class AccountPurposeTimeExtensionV1:
                 return reference
 
     @classmethod
-    def read(cls, root, reference, *, base_authorization=None, for_install=False, for_dispatch=False):
+    def read(cls, root, reference, *, base_authorization=None, for_install=False, for_dispatch=False, recovery=None):
         _require(type(for_install) is bool and type(for_dispatch) is bool, 'MODE_INVALID')
         context = cls(root, reference)
         manifest = _read(reference, context.root); summary = manifest.get('summary', {})
@@ -661,9 +670,35 @@ class AccountPurposeTimeExtensionV1:
         slot = _read(_reference(directory / 'account-purpose-time-extension-slots' / (summary['extension_id'] + '.json'), context.root), context.root)
         _require(slot == {'extension_id': summary['extension_id'], 'manifest_ref': reference}, 'SLOT_CONFLICT')
         job = _read(original['job'], context.root)
+        from .failed_account_recovery_v1 import (
+            FailedAccountRecoveryV1, _job_manifest_reference, _owner_locator, _require as _recovery_require,
+        )
+        recovery_reference = None
+        if recovery is None:
+            located = _job_manifest_reference(job)
+            if located is not None:
+                recovery_root, recovery_reference, _ = located
+                _require(os.path.normcase(recovery_root) == os.path.normcase(str(context.root)), 'RECOVERY_ROOT_CONFLICT')
+        else:
+            _require(type(recovery) is FailedAccountRecoveryV1, 'SIGNED_RECOVERY_CONTEXT_REQUIRED')
+            _require(os.path.normcase(str(recovery.root)) == os.path.normcase(str(context.root)), 'RECOVERY_ROOT_CONFLICT')
+            recovery_reference = deepcopy(recovery.scope_reference)
+        if recovery_reference is not None:
+            # 发现和外部对象只作 locator；原A认证Owner/slot，原C才交付完整 fresh 结果。
+            _owner_locator(context.root, recovery_reference, base_authorization=base, job=job,
+                predecessor_reference=reference, original=original)
         _refs([original[key] for key in ('task', 'job', 'preview', 'receipt')] + original['control']
             + [summary['proposal_ref'], summary['ci_ref']], context.root)
-        _sources(context.root, previous, job, summary['source_replacements'], summary['runtime_sources'], summary['economic_sources'])
+        if recovery_reference is None:
+            _sources(context.root, previous, job, summary['source_replacements'], summary['runtime_sources'], summary['economic_sources'])
+        else:
+            # 原最后完整读取位置不后移；只按本次 fresh 对象投影前驱与来源。
+            context.recovery = FailedAccountRecoveryV1.read(context.root, recovery_reference, base_authorization=base,
+                for_dispatch=for_dispatch)
+            _recovery_require(reference == context.recovery.summary_value['predecessor_manifest_ref'],
+                'PREDECESSOR_REFERENCE_CONFLICT')
+            _recovery_require(context.recovery.predecessor_summary == summary, 'PREDECESSOR_SUMMARY_CONFLICT')
+            _require(context.recovery.job == job and context.recovery.job_path == Path(original['job']['path']), 'JOB_CHANGED')
         frozen_session = summary['session_boundary']
         _require(frozen_session['session_refs'] == previous.get('session_refs', {}), 'SESSION_REFERENCES_INVALID')
         _refs(frozen_session['event_refs'], context.root)
@@ -701,14 +736,16 @@ class AccountPurposeTimeExtensionV1:
             from .account_version_continuation_v1 import _control
             _require(_control(job)['paused'] and _control(job)['head'] == original['control_head'], 'PAUSED_BOUNDARY_REQUIRED')
         if for_install or for_dispatch:
-            _require(datetime.now(timezone.utc) < datetime.fromisoformat(summary['expires_at']), 'EXPIRED')
+            deadline = (context.recovery.execution_expires_at if for_dispatch and recovery_reference is not None
+                else summary['expires_at'])
+            _require(datetime.now(timezone.utc) < datetime.fromisoformat(deadline), 'EXPIRED')
         context.summary_value = deepcopy(summary); context.summary = deepcopy(summary)
         context.approval_ref = deepcopy(manifest['approval_ref']); context.extension_id = summary['extension_id']
         context.job = job; context.job_path = Path(original['job']['path']); context.task_root = task_root
         return context
 
     @classmethod
-    def from_job(cls, job, *, for_dispatch=False):
+    def from_job(cls, job, *, for_dispatch=False, recovery=None):
         if not isinstance(job, dict) or not isinstance(job.get('root'), str):
             return None
         job_root = _path(job['root'], None); folder = job_root.parent / 'account-purpose-time-extensions'
@@ -718,7 +755,7 @@ class AccountPurposeTimeExtensionV1:
         _require(len(paths) == 1, 'MANIFEST_DISCOVERY_CONFLICT')
         manifest = _read(_reference(paths[0], job_root.parent), job_root.parent)
         root = manifest.get('summary', {}).get('root'); _require(isinstance(root, str), 'MANIFEST_INVALID')
-        context = cls.read(root, _reference(paths[0], Path(root)), for_dispatch=for_dispatch)
+        context = cls.read(root, _reference(paths[0], Path(root)), for_dispatch=for_dispatch, recovery=recovery)
         _require(context.job == job and context.job_path == job_root / 'JOB.json', 'JOB_CHANGED')
         return context
 

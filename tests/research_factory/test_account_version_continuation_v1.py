@@ -41,7 +41,9 @@ def case(tmp_path, monkeypatch, request):
     archived.write_bytes(b'old synthetic input implementation\n')
     foundation_hash = pin(archived)['sha256']
     intermediate_bytes = b'first approved synthetic input implementation\n'
-    with_predecessor = getattr(request, 'param', False)
+    fixture_mode = getattr(request, 'param', False)
+    runner_validation = fixture_mode == 'RUNNER_VALIDATION'
+    with_predecessor = False if runner_validation else fixture_mode
     old_hash = hashlib.sha256(intermediate_bytes).hexdigest() if with_predecessor else foundation_hash
     old = deepcopy(current)
     old['full_universe']['source_hashes']['universe_account_inputs_v1.py'] = foundation_hash
@@ -75,6 +77,8 @@ def case(tmp_path, monkeypatch, request):
         name = 'SYNTHETIC_' + cost
         item = {'factory': 'synthetic', 'backend_options': {'checkpoint_path': str(account / (name + '_STATE.json'))},
             'execution_profile': resource, 'source_hashes': {str(source): old_hash}}
+        if runner_validation:
+            item['benchmark_mode'] = 'NONE'  # 真实 runner 字段在首次签发前构造。
         plan = {'strategy': {'strategy_id': name, 'source_hashes': {}}, 'runtime': item,
             'backend': {'backend': 'UNIVERSE_ACCOUNT_BACKEND_V2', 'execution_profile': resource,
                 'window': {'symbols': ['000001.SZ', '000002.SZ', '000004.SZ'], 'calendar': [20200101, 20200102]},
