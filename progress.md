@@ -4052,3 +4052,31 @@ Files: 精确提交内24项范围文件；外部串行测试控制器/claim/stat
 ### Notes
 
 Files: failed_account_calendar_scope_v1.py（延迟构造适配器和普通类）；test_failed_account_calendar_scope_v1.py（3个普通调用边界）；四状态/primary/旧serial可变state/本记录及docs/progress。回滚点CEFEB及R8/R9完整1051快照；不改原失败工件、不reset/clean；原Owner未安装、真实账户未派发。
+
+## 2026-10-17 - Task: 精确1102普通计算兼容修复提交并接续新门禁
+
+### What was done
+
+普通入口兼容修复已限定独立复审findings=[]，新提交1102f733938a1309f6aff4308f9a3cf86faffa2a/treee315db9878c2bffecf9b0f34ebaecb2ab3f3cdc0已快进推送原draft PR45。唯一必要组R11/29200运行；串行控制34630仅在自然通过后接原五文件90回归，再接实际旧期限已过的完整双504，无自动重试或Owner动作。
+
+### Testing
+
+原两legacy文件及calendar scope/budget104项自然通过，1051源码与新提交启动逐SHA一致；限定复审核对adapter方法AST保持。新精确CI初始{'QUEUED': 64, 'IN_PROGRESS': 20, 'SUCCESS': 6}/90，尚非91全部成功。原真实四SHA保持。记录PRODUCTION_PRECISE1102_ORDINARY_FIX_COMMITTED_PUSHED_AND_NEW_GATES_20261017T135919168870Z.json SHA9ce8b5d95ef36df76514f33bd5a11cb513a00aeff08699cf2d37fe4543912a04
+
+### Notes
+
+Files: 本次提交4项已记录文件，外部1102线性门禁控制/claim/进程记录、primary/四状态/docs/progress。回滚点CEFEB及R10的1051源快照；旧CI两原失败日志、旧控制和R8受控结果保持，不reset/clean或将其改标为PASS。
+
+## 2026-10-17 - Task: 保全1102真实门禁失败并修正三类接续边界
+
+### What was done
+
+R11自然213PASS/1FAIL/0ERROR/SKIP、2588.807032900004秒、changed=[]，其串行控制自然拒绝后续，二运输最终读取关闭。保全双OS及PR对应六份CI原失败日志。原凭证与精确消费投影比较、普通tasks/campaign并列根路由及反馈替身接口分别定位修复。
+
+### Testing
+
+凭证形状真实红1FAIL/1PASS后8PASS；并列根真实2FAIL后scope54PASS；限定安全/测试静态复审findings=[]。唯一R16/58850正在原公开有界worker与反馈7节点定向验证，未预报通过。完整Owner/父子账本runtime原21条assert及原异常断言AST保持，仍须新完整门禁。四真实关键SHA保持；记录PRODUCTION_1102_RUNTIME_AND_CI_FAILURES_PRESERVED_NARROW_REPAIRS_20261017T151723823086Z.json SHAe6370984d6bc54e636bbccc4da680077a7044b439951d06452b1187dfefce9bb
+
+### Notes
+
+Files: etf_account_governance_v1.py（只接纳精确运行凭证投影）；failed_account_calendar_scope_v1.py（根外普通任务回退）；两calendar测试文件（边界正负例）；test_account_version_feedback_v1.py（补显式替身接口不改原断言）；四状态/primary/docs/本记录/progress。回滚点1102及R11的1051完整快照；保留自然FAIL与原CI日志，不reset/clean或改标为PASS，真实Owner未安装、277日和费用保持。

@@ -880,7 +880,10 @@ class StrategyBatchGovernanceV1(ETFAccountGovernanceV1):
         if recovery is None or recovery.summary_value.get('calendar_deadline_extension') is None:
             return receipt['expires_at']
         original = recovery.summary_value['original']['receipt']
-        if Path(original['path']) != self.receipt_path or read_json(self.receipt_path) != receipt:
+        canonical = read_json(self.receipt_path)
+        consumed = {**canonical, 'execution_purpose': receipt.get('execution_purpose'), 'execution_consumed': True}
+        if (Path(original['path']) != self.receipt_path or (receipt != canonical
+                and (receipt.get('execution_purpose') not in self.kinds or receipt != consumed))):
             raise PermissionError('STRATEGY_CALENDAR_RECEIPT_CONFLICT')
         return recovery.execution_expires_at
 

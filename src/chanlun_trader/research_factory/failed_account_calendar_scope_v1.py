@@ -321,13 +321,16 @@ def calendar_compute_governance_v1(root, authority, request, stage, *, campaign_
         campaign_ref = authority.get('account_authorization', {}).get('campaign_ref')
         if folder.name == 'COMPUTE_' + stage and isinstance(campaign_ref, dict):
             campaign_root = checked_directory_path(campaign_ref.get('root'), error_code='FAILED_ACCOUNT_CALENDAR_ROOT_INVALID')
-            job_path = validated_reference_path(folder.parent / 'JOB.json', root=campaign_root,
-                error_code='FAILED_ACCOUNT_CALENDAR_JOB_PATH_INVALID')
-            if job_path.is_file():
-                from .secure_file_reference_v1 import read_file_bytes
-                import json
-                job = json.loads(read_file_bytes(job_path, root=campaign_root, error_code='FAILED_ACCOUNT_CALENDAR_JOB_CHANGED'))
-                context = FailedAccountCalendarContextV1.from_job(campaign_root, job, for_dispatch=for_dispatch)
+            candidate = folder.parent / 'JOB.json'
+            # 普通任务输出可独立于父账本根；只有根内候选进入恢复能力探测。
+            if candidate.is_relative_to(campaign_root):
+                job_path = validated_reference_path(candidate, root=campaign_root,
+                    error_code='FAILED_ACCOUNT_CALENDAR_JOB_PATH_INVALID')
+                if job_path.is_file():
+                    from .secure_file_reference_v1 import read_file_bytes
+                    import json
+                    job = json.loads(read_file_bytes(job_path, root=campaign_root, error_code='FAILED_ACCOUNT_CALENDAR_JOB_CHANGED'))
+                    context = FailedAccountCalendarContextV1.from_job(campaign_root, job, for_dispatch=for_dispatch)
     if context is None:
         # 保持原入口的调用时绑定及默认四位置参数，不让适配器改变普通计算入口。
         from .universe_compute_governance_v1 import UniverseComputeGovernanceV1

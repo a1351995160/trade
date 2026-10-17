@@ -1,7 +1,9 @@
 """原期限之后的公开账户治理；人工合法旧历史，不启动经济worker。"""
 from datetime import datetime, timedelta
+from copy import deepcopy
 import json
 import math
+from types import SimpleNamespace
 
 import pytest
 
@@ -15,6 +17,58 @@ from chanlun_trader.research_factory.run_budget import effective_execution_statu
 from scripts import run_strategy_account_v1 as runner
 from test_account_purpose_time_extension_v1 import control, write
 from test_failed_account_calendar_deadline_owner_v1 import calendar_owner_case
+
+
+@pytest.fixture
+def receipt_deadline_boundary(tmp_path, monkeypatch):
+    """仅隔离凭证形状边界；完整Owner与父子账本仍由下方真实装配用例覆盖。"""
+    account = tmp_path / 'account'
+    account.mkdir()
+    plans = {'BASE': {'plan_id': 'artificial_plan'}}
+    gov = SimpleNamespace(root=account, plans=plans, objective_id='ARTIFICIAL_OBJECTIVE',
+        budget_path=tmp_path / 'budget.json', receipt_path=account / 'CONFIRMATION.json', kinds=('BASE',))
+    receipt = {'expires_at': '2000-01-01T00:00:00+00:00', 'source': {'origin': 'CAMPAIGN_V1'},
+        'receipt_id': 'artificial_receipt', 'strategy_plans': plans}
+    job = {'root': str(account), 'plans': plans, 'objective_id': gov.objective_id,
+        'budget_path': str(gov.budget_path)}
+    for path, value in ((account / 'JOB.json', job), (gov.receipt_path, receipt)):
+        path.write_text(json.dumps(value), encoding='utf-8')
+    context = SimpleNamespace(summary_value={'calendar_deadline_extension': {'fixture_only': True},
+        'original': {'receipt': {'path': str(gov.receipt_path)}}},
+        execution_expires_at='2099-01-01T00:00:00+00:00')
+    calls = []
+
+    def from_job(cls, actual, *, for_dispatch):
+        assert actual == job and for_dispatch is True
+        calls.append(True)
+        return context
+
+    monkeypatch.setattr(recovery.FailedAccountRecoveryV1, 'from_job', classmethod(from_job))
+    return gov, receipt, context, calls
+
+
+@pytest.mark.parametrize('consumed', [False, True])
+def test_calendar_deadline_accepts_original_or_exact_consumed_receipt(receipt_deadline_boundary, consumed):
+    gov, receipt, context, calls = receipt_deadline_boundary
+    before = gov.receipt_path.read_bytes()
+    value = {**receipt, 'execution_purpose': 'BASE', 'execution_consumed': True} if consumed else receipt
+    assert governance.StrategyBatchGovernanceV1._receipt_execution_expires_at(gov, value) == context.execution_expires_at
+    assert calls == [True] and gov.receipt_path.read_bytes() == before
+
+
+@pytest.mark.parametrize('change', [
+    {'execution_purpose': 'OTHER', 'execution_consumed': True},
+    {'execution_purpose': 'BASE', 'execution_consumed': False},
+    {'execution_purpose': 'BASE'}, {'execution_consumed': True},
+    {'receipt_id': 'changed'}, {'unexpected_runtime_authority': True},
+])
+def test_calendar_deadline_rejects_other_receipt_changes(receipt_deadline_boundary, change):
+    gov, receipt, _, _ = receipt_deadline_boundary
+    value = {**receipt, **deepcopy(change)}
+    before = gov.receipt_path.read_bytes()
+    with pytest.raises(PermissionError, match='RECEIPT_CONFLICT'):
+        governance.StrategyBatchGovernanceV1._receipt_execution_expires_at(gov, value)
+    assert gov.receipt_path.read_bytes() == before
 
 
 def test_expired_original_receipt_needs_installed_calendar_and_new_deadline_is_absolute(calendar_owner_case, monkeypatch):

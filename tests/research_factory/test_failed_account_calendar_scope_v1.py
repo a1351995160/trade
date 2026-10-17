@@ -318,3 +318,48 @@ def test_ordinary_factory_uses_current_original_constructor(monkeypatch, tmp_pat
     monkeypatch.setattr(ordinary, 'UniverseComputeGovernanceV1', constructor)
     assert calendar.calendar_compute_governance_v1(tmp_path, {}, {}, 'REPORT', **options) is marker
     assert calls == [((tmp_path, {}, {}, 'REPORT'), options)]
+
+
+@pytest.mark.parametrize('stage', ['VERIFICATION', 'REPORT'])
+def test_ordinary_v4_tasks_may_be_outside_campaign_root(frozen_task, monkeypatch, stage):
+    case = frozen_task
+    campaign_root = case.root / 'separate_campaign'
+    campaign_root.mkdir()
+    authority = deepcopy(case.authority)
+    authority['account_authorization']['campaign_ref']['root'] = str(campaign_root)
+    monkeypatch.setattr(CampaignScopeV1, 'resolve', lambda *args, **kwargs: {'phase': 'EXPLORATION'})
+
+    def unexpected(*args, **kwargs):
+        pytest.fail('Ordinary external task must not probe calendar paths or Owner')
+
+    monkeypatch.setattr(calendar, 'validated_reference_path', unexpected)
+    monkeypatch.setattr(calendar.FailedAccountCalendarContextV1, 'from_job', classmethod(unexpected))
+    folder = case.account / ('COMPUTE_' + stage)
+    direct = UniverseComputeGovernanceV1(folder, authority, case.request, stage, for_dispatch=False)
+    meter = calendar.calendar_compute_governance_v1(folder, authority, case.request, stage, for_dispatch=False)
+    assert type(meter) is UniverseComputeGovernanceV1 and meter.binding == direct.binding
+    with pytest.raises(PermissionError, match='RECONCILIATION_ONLY'):
+        meter.active()
+    active = calendar.calendar_compute_governance_v1(folder, authority, case.request, stage)
+    assert active.binding['expires_at'] == OLD
+    with pytest.raises(PermissionError, match='AUTHORIZATION_EXPIRED'):
+        active.active()
+
+
+@pytest.mark.parametrize('stage', ['VERIFICATION', 'REPORT'])
+def test_calendar_candidate_validation_errors_never_fall_back(frozen_task, monkeypatch, stage):
+    from chanlun_trader.research_factory import universe_compute_governance_v1 as ordinary
+    case = frozen_task
+
+    def reject(path, *, root, error_code):
+        assert root == case.root and path == case.account / 'JOB.json'
+        raise ValueError(error_code)
+
+    def unexpected(*args, **kwargs):
+        pytest.fail('Invalid calendar candidate must not fall back to ordinary constructor')
+
+    monkeypatch.setattr(calendar, 'validated_reference_path', reject)
+    monkeypatch.setattr(ordinary, 'UniverseComputeGovernanceV1', unexpected)
+    with pytest.raises(ValueError, match='FAILED_ACCOUNT_CALENDAR_JOB_PATH_INVALID'):
+        calendar.calendar_compute_governance_v1(case.account / ('COMPUTE_' + stage),
+            case.authority, case.request, stage)
