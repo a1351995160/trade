@@ -363,3 +363,25 @@ def test_calendar_candidate_validation_errors_never_fall_back(frozen_task, monke
     with pytest.raises(ValueError, match='FAILED_ACCOUNT_CALENDAR_JOB_PATH_INVALID'):
         calendar.calendar_compute_governance_v1(case.account / ('COMPUTE_' + stage),
             case.authority, case.request, stage)
+
+
+@pytest.mark.parametrize('factory_kwargs,expected_global,expected_stages,expected_stage_wall', [
+    ({}, 1000000, {'EXPLORATION', 'CONFIRMATION'}, 500000),
+    ({'resource_wall': 288002, 'exploration_only': True}, 288002, {'EXPLORATION'}, 288002),
+])
+def test_full_recovery_fixture_issues_original_budget_before_native_prefix(
+        tmp_path, factory_kwargs, expected_global, expected_stages, expected_stage_wall):
+    """人工Owner初始签发契约；不派发经济worker，也不补改已签发授权。"""
+    from test_account_purpose_time_extension_integration_v1 import _full_public_case
+
+    root = tmp_path / 'fixture'
+    _, _, campaign, _, _, _ = _full_public_case(root, **factory_kwargs)
+    authorization = json.loads((campaign.directory / 'authorization.json').read_text(encoding='utf-8'))
+    signed = authorization['scope_policy']['summary']
+    assert authorization['resource_limits']['wall_seconds'] == expected_global
+    assert signed['authorization']['resource_limits']['wall_seconds'] == expected_global
+    assert set(authorization['stages']) == set(signed['stage_limits']) == expected_stages
+    assert signed['stage_limits']['EXPLORATION']['wall_seconds'] == expected_stage_wall
+    assert signed['stage_limits']['EXPLORATION']['account_jobs'] == 4
+    assert signed['stage_limits']['EXPLORATION']['candidate_attempts'] == 2
+    assert not list(root.rglob('*DISPATCH.json'))

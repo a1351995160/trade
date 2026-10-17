@@ -4080,3 +4080,103 @@ R11自然213PASS/1FAIL/0ERROR/SKIP、2588.807032900004秒、changed=[]，其串�
 ### Notes
 
 Files: etf_account_governance_v1.py（只接纳精确运行凭证投影）；failed_account_calendar_scope_v1.py（根外普通任务回退）；两calendar测试文件（边界正负例）；test_account_version_feedback_v1.py（补显式替身接口不改原断言）；四状态/primary/docs/本记录/progress。回滚点1102及R11的1051完整快照；保留自然FAIL与原CI日志，不reset/clean或改标为PASS，真实Owner未安装、277日和费用保持。
+
+## 2026-10-17 - Task: 三处接续边界修复提交0a34并启动全新门禁
+
+### What was done
+
+原凭证/精确消费投影、普通任务与账本目录分离、反馈替身接口三处修复已提交0a34925a8acc40ca1985b52fc2600a0dab4e51f1/tree83092897b1f3cf668c6b12d8faf1510bf76a2120并推送原draft PR45。更新PR描述以体现已获新有限日历授权，保留原body备份。独立限定安全、测试及串行控制复审findings=[]。定向R16原公开worker/反馈7节点自然通过并最终读取关闭；唯一串行83404已启动新必要R17，之后仅自然通过才接原五文件90和完整单integration。
+
+### Testing
+
+R16自然0/7PASS/零FAIL,ERROR,SKIP，1165.488750199991秒、changed=[]。它在冻结修复字节上先启动，提交前后1051 launch/snapshot/current字节完全相同，未把旧head执行冒充新head；正式三组另从精确0a34启动。新CI初始{'QUEUED': 62, 'IN_PROGRESS': 20, 'SUCCESS': 8}/90，仍待91全过。原112库存、99经济引用（87代码+12输入仅SHA未复制）、13归档字节/CRLF、真实四SHA及原计划SHA保持。记录PRODUCTION_PRECISE0A34_THREE_BOUNDARY_FIXES_TARGETED7_AND_NEW_GATES_20261017T153914440154Z.json SHA3f9dbb569c372b078fa5c0433231d74fbc15f163e79a13f69bc497b262c4d054
+
+### Notes
+
+Files: 0a34提交7项范围文件；外部0a34串行控制/进程记录/审查、PRbody备份与更新、primary/四状态/docs/progress。回滚点1102及R11/R16完整1051快照；保留旧213PASS/1FAIL、六CI失败日志和取消原件，不reset/clean，不将局部通过当完整门禁。真实Owner未安装，仍277/0及原50FAILED。
+
+## 2026-10-18 - Task: 精确0a34必要226与原回归90自然通过并继续完整合成
+
+### What was done
+
+核验必要R17自然226PASS及原五文件回归自然90PASS；唯一串行83404已启动固定完整单integration CALENDAR_FULL_R10_0A34_EXPIRED_ORIGINAL。限定独立实际复审findings=[]，范围仅本机终态及完整启动。更新primary/四状态/docs，旧29712当前CI通过字段移入保留历史并明确新0a34仍待。
+
+### Testing
+
+必要自然0/226PASS/0FAIL,ERROR,SKIP/5519.967188800001秒；回归自然0/90PASS/0FAIL,ERROR,SKIP/241.87015370000154秒，均changed=[]。三launch/三快照/current1051同源，精确HEAD/tree及原四真实SHA/原计划SHA保持；全合成仍运行，无自然结果，最后来源群/新精确CI91及最终53refs仍待。当前CI只观察90SUCCESS/1IN_PROGRESS，未收集或预报全过。记录PRODUCTION_PRECISE0A34_NECESSARY226_REGRESSION90_NATURAL_FULL_R10_RUNNING_20261017T172225271583Z.json SHAfd7a960f8bfe9b60d5610268e5559b9c930337b995f17cfc62d9d8154be59372
+
+### Notes
+
+Files: 外部本机工件复审、完整进程身份、阶段记录、primary/三JSON别名/CN状态/期限docs/progress。回滚点为before_0a34_local226_90_full_时间戳.bak与原0a34提交及1051快照；仅状态回滚，不重启或重发已结清工件。83404是整条串行的前台运输，不能把两组完成误作全运输关闭。真实仍277/0及原50FAILED，新Owner未安装，各72000/global288002不增加。
+
+## 2026-10-18 - Task: 精确0a34全部91CI成功并启动唯一原件收集
+
+### What was done
+
+精确head0a34的91项CI均SUCCESS；在核原collector SHA、无活跃collector及无同head旧目录后，前台启动唯一60275，只读收33ZIP/28XML/5Win来源。保全原rollup、精确PID/创建/命令及新artifact目录，primary/四状态/docs同步收集运行，未预报收集或复审通过。
+
+### Testing
+
+原rollup91项逐项SUCCESS，head精确0a34；当前完整R10六控制加两pipeline身份均匹配，仍NATIVE_BOUNDED_277_DAY_ECONOMIC_PREFIX且无自然结果。真实四关键SHA保持，无新Owner或真实派发。记录PRODUCTION_PRECISE0A34_CI91_SUCCESS_ARTIFACT_COLLECTION_STARTED_20261017T181737491830Z.json SHA54559058be04c95b09ca54aaae7b11c33dc70950719b43b663e894bd8a15ca3e
+
+### Notes
+
+Files: 外部rollup/collector身份/收集目录/阶段记录，primary/三JSON/CN状态/期限docs/progress。回滚点为before_0a34_ci91_collection_时间戳.bak；不删收集原件、不重跑CI或测试。CI成功不等于完整自然门禁或最终53refs复审通过。
+
+## 2026-10-18 - Task: 精确0a34原件收集自然终态保全与来源标签订正
+
+### What was done
+
+collector60275自然code0并最终读取关闭，精确两个PID已退出；保全33官方ZIP/28XML/5份Win1051来源及manifest，独立实际复审仍待。旧观察将run39045480195称作push有误，官方元数据确认为pull_request；真实工件来源始终是selected push39045476141/attempt1，追加订正，不覆盖旧原件。
+
+### Testing
+
+MANIFEST SHA324c3ca55a0ad8c3a32e3e4eed8ba5567ab3d2fee50d6010201de75479fade57；28XML逐SHA/实际node核计执行记录{'tests': 5950, 'passed': 5938, 'failures': 0, 'errors': 0, 'skipped': 12}，不是唯一测试数；零FAIL/ERROR，跳过合法性由独立复审确认。完整自然合成和最终53refs仍待。记录PRODUCTION_PRECISE0A34_CI91_ARTIFACTS_COLLECTED_NATURAL_CLOSED_20261017T182241732041Z.json SHAf7d71569cfd6cafe1728c846e2b9bb7887c8cb343f8d292c36f05477e84de266
+
+### Notes
+
+Files: 外部原run元数据/收集终态记录/primary/三JSON/CN状态/期限docs/progress。回滚点为before_0a34_ci_natural_closed_时间戳.bak，不重收、改写原CI/JUnit或重启已结束session。真实277/0及全部费用保持，无新Owner/真实派发。
+
+## 2026-10-18 - Task: 精确0a34 CI91全部原件限定独立复审通过
+
+### What was done
+
+33官方ZIP/成员、原push日志、28XML及5份Win1051来源限定独立实际复审findings=[]。CI门禁标为精确0a34通过，完整自然合成/最终53refs仍未通过；PR描述同步实际226/90/CI91并保持draft，保留旧body及精确回读。
+
+### Testing
+
+实际5950执行记录=5938PASS/12合法SKIP/0FAIL/0ERROR，不是唯一测试数。selected push39045476141/attempt1的checkout/source身份经实际工件核验；PR counterpart仅raw rollupSUCCESS，不虚称其独立checkout或计时。1051本机/当前Git filtered/5Win身份一致，完整自然终态群仍待；真实四关键SHA和原计划SHA再次保持。记录PRODUCTION_PRECISE0A34_CI91_ACTUAL_ARTIFACT_REVIEW_PASSED_FULL_R10_CONTINUING_20261017T183405785499Z.json SHA83f0ed5a90aca5d490aa5f081f12951e79e7e5ccc6b50f62e7ac51f8800b9d2d
+
+### Notes
+
+Files: 外部CI限定复审、PRbody更新与备份、阶段记录、primary/三JSON/CN状态/期限docs/progress。回滚点为before_0a34_ci_actual_review_时间戳.bak及PR45_BODY_BEFORE_LOCAL226_90_CI91备份；不改写CI/原费用或重启闭合运输。真实仍277/0/原50FAILED，无新Owner或真实派发。
+
+## 2026-10-18 - Task: 保全完整日历R10自然失败并定位夹具预算契约冲突
+
+### What was done
+
+完整R10自然1FAIL，根因是通用合成夹具初始global1000000与日历人类夹具固定288002不一致；产品拒绝正确，未批准恢复Owner或派51。83404整链自然退出并最终读取关闭，原八精确控制进程均退出。保全1051源快照、原JUnit/log/SCENARIO/原授权/277CP/50费及其余50CHARGE到逐SHA/CRC验证ZIP；所有原目录保留不热改。
+
+### Testing
+
+自然code1/0PASS/1FAIL/0ERROR/SKIP、5825.9004724000115秒、changed=[]；人工277日last20230418/原50FAILED/无51，真实四关键SHA保持。ZIP PRODUCTION_FULL_CALENDAR_R10_NATURAL_FAIL_PRESERVED_20261017T192018837270Z.zip SHA063759be5baca641fc4e8f5ca4e25804c850f250873bb13464e658ef0c901092；记录PRODUCTION_FULL_CALENDAR_R10_NATURAL_FAIL_CLOSED_FIXTURE_BUDGET_PRESERVED_20261017T192018837270Z.json SHA1848c883e73b221e671c813a63204f24c9c36996ff4e2368754bb23127100535
+
+### Notes
+
+Files: 外部失败保全ZIP/阶段记录、primary/三JSON/CN状态/期限docs/progress。原0a34 CI91/226/90仍只证明旧源；待测试夹具修复后必须重新完整来源门禁，绝不放宽288002或真实额度。回滚点0a34提交及本次1051快照与before_full_calendar_R10_fail_*.bak；不重启83404。
+
+## 2026-10-18 - Task: 修复完整日历夹具首次签发预算并验证默认兼容
+
+### What was done
+
+仅修改四个测试文件：通用_public_case及_full_public_case增加默认兼容的resource_wall和exploration_only参数；完整失败恢复场景在第一次Owner签发前显式288002/单EXPLORATION，并在277日构造前断言初始授权及阶段墙钟上限。单阶段保留原account_jobs4/candidate_attempts2等非墙钟阶段额度；原4小时期限、等待实际到期、经济/日链/费用/双原生/报告/反馈完整断言保持。新增两个实际人工Owner初始签发契约节点，未派发经济worker或修改签发后授权。112原库存、99经济引用及13归档SHA/CRLF再次保持，未复制原12输入。
+
+### Testing
+
+R18缺失参数真实红1FAIL/1PASS，R19仅前两helper修复阶段2PASS，R20完整四文件2PASS；最后只补新测试前空行和纠正文案后R21自然code0/2PASS/零FAIL,ERROR,SKIP、7.667682400002377秒、changed=[]，1051 launch/snapshot/current一致。R21在提交前运行，不冒充新精确head门禁，仍须新必要/原五回归/CI91及完整自然门禁。记录PRODUCTION_CALENDAR_FIXTURE_INITIAL_BUDGET_REPAIRED_TARGETED2_ONLY_20261017T192749823983Z.json SHAe5d3de8664b06dba6b748a02b78d0e815336b8503125c81484ec6b910dc4b69a。
+
+### Notes
+
+Files: 上述四测试文件、docs/research/failed-account-calendar-deadline-implementation-20261017.md、本记录；外部定向证据及独立限定原因复审。首次辅助bytepatch误将第三文件LF假设为CRLF，前两helper写入后在第三写入前断言停止；PowerShell仍接起R19，所以明确只将其视为部分helper绿。R19最终关闭后单独补齐第三文件，后续R20/R21实际验证完整字节；未在测试存活时热改源码。所有红/部分绿及原R10失败保留，不改标。回滚点0a34925a8acc40ca1985b52fc2600a0dab4e51f1与R10/R21完整来源快照，回滚按四文件逐项恢复并保留证据，不reset/clean。真实仍277/0及原50FAILED，新Owner未安装、原费用/各72000/global288002不变。
+
+R22 final source addendum: removed only one new EOF LF after R21 closed; AST unchanged. R22 natural code0/2PASS/0FAIL,ERROR,SKIP/7.529661399996257 seconds/changed=[]; final source1051 launch/snapshot/current verified by limited review. XML SHA d5d8caabdba354671e7dc6cd696857bed4d0a7ddc21add38a13aa6674a260ddd. git diff --check passed. R22 is precommit contract evidence, not complete new-head gates.

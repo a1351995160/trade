@@ -128,7 +128,11 @@ def scenario(root):
     business.write_bytes(business_raw + b'\n# Synthetic original input predecessor identity.\n')
     # 保留普通夹具48小时默认值；本次完整门禁必须实测原期限已过后的公共链。
     service, request, campaign, approvals, owner, restored = _full_public_case(
-        root, authorization_lifetime=ORIGINAL_CALENDAR_LIFETIME)
+        root, authorization_lifetime=ORIGINAL_CALENDAR_LIFETIME, resource_wall=288002, exploration_only=True)
+    original_authorization = _read(campaign.directory / 'authorization.json')
+    assert original_authorization['resource_limits']['wall_seconds'] == 288002
+    assert original_authorization['stages'] == ['EXPLORATION']
+    assert original_authorization['scope_policy']['summary']['stage_limits']['EXPLORATION']['wall_seconds'] == 288002
     config = {'candidate_id': request['strategy_id'], 'campaign_id': campaign.authorization_id,
         'batch_id': 'SYNTHETIC_SECOND_BATCH', 'proposal': {'sha256': 'd' * 64}, 'context': {'sha256': 'e' * 64}}
     candidate = request['strategy_id'] + '_CANDIDATE'
