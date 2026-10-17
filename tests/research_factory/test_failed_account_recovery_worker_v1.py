@@ -829,3 +829,152 @@ def test_runner_legacy_source_branch_still_reads_actual_bytes(tmp_path):
     target.write_bytes(target.read_bytes() + b'changed\n')
     with pytest.raises(PermissionError, match='JOB_FROZEN_SOURCE_CHANGED'):
         runner.validate_sources(job)
+
+
+def late_guard_worker(tmp_path, monkeypatch, *, target, action, start=828.):
+    """只替换经济函数和授权材料，保留真实 worker 的首次经济入口/截止路径。"""
+    from chanlun_trader import account_startup_boundary_v1 as startup_module
+    from chanlun_trader.research_factory import universe_account_backend_v2 as backend_module
+    timer = clock(monkeypatch)
+    path, observed = account_worker(tmp_path, monkeypatch, timer)
+    job = runner.read_json(path)
+    governance = runner.service(job)
+    checkpoint = path.parent / 'CHECKPOINT.json'
+    backend = object.__new__(backend_module.UniverseAccountBackendV2)
+    expected_trace = sys.gettrace()
+    observed.update(committed=False, slow_tail=False, after_guard=False, late_steps=[])
+
+    def step(stage):
+        if not observed['committed']:
+            return
+        observed['late_steps'].append(stage)
+        if stage != target:
+            return
+        if action == 'DENIED':
+            raise PermissionError('ARTIFICIAL_LATE_' + stage + '_DENIED')
+        if action == 'SLOW':
+            # 有限循环使旧实现产生真实红基线，避免用挂死作为测试断言。
+            for _ in range(1000):
+                timer.now += 1
+            observed['slow_tail'] = True
+
+    def active(name):
+        assert name == 'FIXED'
+        step('GOVERNANCE')
+        return {'input_identity': 'INPUT'}
+
+    def paused(*args):
+        step('PAUSE')
+        return False
+
+    def project(receipt, name):
+        assert name == 'FIXED'
+        step('PROJECTION')
+        return receipt
+
+    def validate_dispatch(name, number):
+        assert (name, number) == ('FIXED', 1)
+
+    version = SimpleNamespace(recovery=None, validate_dispatch=validate_dispatch,
+        active_item=lambda name: job['items'][name],
+        active_plan=lambda name: job['plans'][name], proof=lambda name: {'fixture': 'LATE_GUARD'},
+        project_receipt=project)
+    governance.active_execution = active
+    monkeypatch.setattr(runner, 'validate_sources', lambda value: version)
+    monkeypatch.setattr(runner, '_execution_paused', paused)
+    monkeypatch.setattr(runner, 'backend_for', lambda *args: backend)
+
+    def economic_entry():
+        assert sys.gettrace() is expected_trace
+        assert startup_module.startup_boundary_active() is False
+        runner.save(checkpoint, {'last_day': 278, 'state_identity': 'ARTIFICIAL_COMMITTED_DAY'})
+        observed['checkpoint_bytes'] = checkpoint.read_bytes()
+        observed['committed'] = True
+
+    def backend_run(self, strategy, bundle, actions, guard):
+        guard()
+        backend_module.build_portfolio_plan()
+        timer.now = start
+        guard()  # 与 V2 的完整日 checkpoint 提交之后的治理调用对应。
+        observed['after_guard'] = True
+        assert sys.gettrace() is expected_trace
+        assert startup_module.startup_boundary_active() is False
+        raise runner_segment_boundary('TEST_COMPLETE_DAY_BOUNDARY')
+
+    from chanlun_trader.research_factory.universe_account_backend_v2 import SegmentBoundary as runner_segment_boundary
+    monkeypatch.setattr(backend_module, 'build_portfolio_plan', economic_entry)
+    monkeypatch.setattr(backend_module.UniverseAccountBackendV2, 'run', backend_run)
+
+    def public_run(strategy, selected_backend, **kwargs):
+        kwargs['active_check']()
+        return selected_backend.run(strategy, None, [], kwargs['active_check'])
+
+    monkeypatch.setattr(runner, 'run', public_run)
+    return path, timer, observed, checkpoint
+
+
+@pytest.mark.parametrize('target', ['GOVERNANCE', 'PAUSE', 'PROJECTION'])
+@pytest.mark.parametrize('start', [828., 835.])
+def test_late_v2_guard_uses_original_deadline_before_returning(tmp_path, monkeypatch, target, start):
+    from chanlun_trader import account_startup_boundary_v1 as startup_module
+    path, timer, observed, checkpoint = late_guard_worker(
+        tmp_path, monkeypatch, target=target, action='SLOW', start=start)
+    previous_trace = sys.gettrace()
+    assert runner._long_horizon_worker(path, 'FIXED', 1) == 75
+    assert observed['committed'] is True
+    assert observed['slow_tail'] is observed['after_guard'] is False
+    assert timer.now < 890.
+    assert checkpoint.read_bytes() == observed['checkpoint_bytes']
+    status = runner.read_json(path.parent / 'FIXED_SEGMENT_000001_STATUS.json')
+    startup = runner.read_json(path.parent / 'FIXED_SEGMENT_000001_STARTUP.json')
+    cutoff = runner.read_json(path.parent / 'FIXED_SEGMENT_000001_STARTUP_ACTIVE_GUARD_CUTOFF.json')
+    assert status['state'] == 'CONTINUE' and status['phase'] == 'ACCOUNT'
+    assert status['reason'] == 'UNIVERSE_WORKER_COOPERATIVE_DEADLINE'
+    assert startup['validation_complete'] is cutoff['startup_validation_complete'] is True
+    assert cutoff['deadline_monotonic'] == 830.
+    assert not (path.parent / 'FIXED_SEGMENT_000001_FAILURE.json').exists()
+    assert sys.gettrace() is previous_trace and startup_module._ACTIVE.get() is None
+
+
+@pytest.mark.parametrize('target', ['GOVERNANCE', 'PAUSE', 'PROJECTION'])
+def test_late_v2_guard_permission_failure_stays_failed(tmp_path, monkeypatch, target):
+    from chanlun_trader import account_startup_boundary_v1 as startup_module
+    path, _, observed, checkpoint = late_guard_worker(
+        tmp_path, monkeypatch, target=target, action='DENIED')
+    previous_trace = sys.gettrace()
+    with pytest.raises(PermissionError, match='ARTIFICIAL_LATE_' + target + '_DENIED'):
+        runner._long_horizon_worker(path, 'FIXED', 1)
+    assert checkpoint.read_bytes() == observed['checkpoint_bytes']
+    assert observed['after_guard'] is False
+    startup = runner.read_json(path.parent / 'FIXED_SEGMENT_000001_STARTUP.json')
+    assert startup['validation_complete'] is True
+    assert not (path.parent / 'FIXED_SEGMENT_000001_STATUS.json').exists()
+    assert not (path.parent / 'FIXED_SEGMENT_000001_STARTUP_ACTIVE_GUARD_CUTOFF.json').exists()
+    assert sys.gettrace() is previous_trace and startup_module._ACTIVE.get() is None
+
+
+@pytest.mark.parametrize('external', [False, True])
+def test_late_v2_guard_restores_trace_before_economic_execution(tmp_path, monkeypatch, external):
+    from chanlun_trader import account_startup_boundary_v1 as startup_module
+    caller = sys._getframe()
+    old_global, old_local, old_lines = sys.gettrace(), caller.f_trace, caller.f_trace_lines
+
+    def previous(frame, event, arg):
+        return previous
+
+    selected_trace = previous if external else None
+    try:
+        sys.settrace(selected_trace)
+        caller.f_trace = selected_trace
+        path, _, observed, checkpoint = late_guard_worker(
+            tmp_path, monkeypatch, target='PROJECTION', action='PASS')
+        assert runner._long_horizon_worker(path, 'FIXED', 1) == 75
+        assert observed['late_steps'] == ['GOVERNANCE', 'PAUSE', 'PROJECTION']
+        assert observed['after_guard'] is True
+        assert checkpoint.read_bytes() == observed['checkpoint_bytes']
+        assert sys.gettrace() is selected_trace and caller.f_trace is selected_trace
+        assert caller.f_trace_lines is old_lines and startup_module._ACTIVE.get() is None
+    finally:
+        sys.settrace(old_global)
+        caller.f_trace = old_local
+        caller.f_trace_lines = old_lines

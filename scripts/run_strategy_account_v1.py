@@ -603,8 +603,9 @@ def _long_horizon_worker(path,name,number):
                     raise PermissionError('LOADED_INPUT_IDENTITY_CONFLICT')
             backend.segment_seconds=(None if deadline is None
                 else cooperative_remaining(deadline,job['resources']['profile_id']))
+            from chanlun_trader.research_factory import universe_account_backend_v2 as account_backend
             first_active=True
-            def active():
+            def active_receipt():
                 nonlocal first_active
                 receipt={**gov.active_execution(name),'execution_pause_requested':_execution_paused(job,account_version)}
                 if account_version is not None:
@@ -615,7 +616,24 @@ def _long_horizon_worker(path,name,number):
                         backend.segment_seconds=cooperative_remaining(deadline,job['resources']['profile_id'])
                 first_active=False
                 return receipt
-            from chanlun_trader.research_factory import universe_account_backend_v2 as account_backend
+            def active():
+                if (type(backend) is not account_backend.UniverseAccountBackendV2
+                        or not boundary.validation_complete or deadline is None):
+                    return active_receipt()
+                # V2 后续 guard 均在经济日开始前或完整 CP 提交后；只覆盖治理核验。
+                # 每调用使用同一绝对截止，不重启原启动边界，也不把 trace 带入经济函数。
+                guard_boundary=AccountStartupBoundaryV1(deadline)
+                try:
+                    with guard_boundary.scope(),guard_boundary.stage_scope('ACTIVE_GOVERNANCE_GUARD'):
+                        return active_receipt()
+                except StartupBoundaryExceeded as exc:
+                    # 在临时 scope 已退出后映射，避免 RuntimeError 被深层文件错误桶改写。
+                    save(root/(prefix+'_STARTUP_ACTIVE_GUARD_CUTOFF.json'),{
+                        **guard_boundary.snapshot(),'schema_version':'account-post-startup-guard-cutoff-v1',
+                        'startup_validation_complete':boundary.validation_complete,'phase':'ACCOUNT',
+                        'worker_started_at_monotonic':WORKER_STARTED_AT,'purpose':name,'segment_number':number,
+                        'dispatch_id':dispatch['dispatch_id'],**proof})
+                    raise SegmentBoundary(str(exc),phase='ACCOUNT') from exc
             if type(backend) is account_backend.UniverseAccountBackendV2:
                 economic_entry=account_backend.build_portfolio_plan.__code__
                 backend_entry=account_backend.UniverseAccountBackendV2.run.__code__
