@@ -15,8 +15,9 @@ from .campaign_scope_v1 import _write_once, replay_grant, scope_summary
 from .common import stable_hash
 from .mutation_boundary import ObjectiveMutationLock
 from .secure_file_reference_v1 import (
-    checked_directory_path, file_sha256, read_file_bytes, read_pinned_json, validated_reference_path,
+    checked_directory_path, validated_reference_path,
 )
+from .account_purpose_time_extension_v1 import file_sha256, read_file_bytes, read_pinned_json
 from .universe_execution_profile_v1 import SEGMENTED_PROFILE, segment_charge, validate_execution_profile
 
 
@@ -54,8 +55,12 @@ def _path(value, root):
 
 
 def _reference(path, root):
-    return {'path': str(_path(path, root)), 'sha256': file_sha256(path, root=root,
-        error_code='FAILED_ACCOUNT_RECOVERY_REFERENCE_CHANGED')}
+    try:
+        digest = file_sha256(path, root=root, error_code='FAILED_ACCOUNT_RECOVERY_REFERENCE_CHANGED')
+    except ValueError:
+        _path(path, root)
+        raise
+    return {'path': str(Path(path)), 'sha256': digest}
 
 
 def _read(reference, root):
@@ -336,7 +341,7 @@ def _events(root, directory, base, frozen=None):
     path = directory / 'run_budget_events.jsonl'
     lines = read_file_bytes(path, root=root, error_code='FAILED_ACCOUNT_RECOVERY_LEDGER_CHANGED').splitlines(keepends=True)
     _require(lines and all(line.strip() for line in lines), 'LEDGER_INVALID')
-    all_events = [json.loads(line) for line in lines]; seen = set()
+    all_events = extension._verification_json_lines(lines); seen = set()
     for event in all_events:
         startup_checkpoint('FAILED_ACCOUNT_RECOVERY_LEDGER_VERIFY')
         _require(event.get('run_id') == base['authorization_id'] and event.get('event_id') == stable_hash({
@@ -364,7 +369,7 @@ def _ledger_boundary(root, directory, base, previous, predecessor_ref, frozen=No
         startup_checkpoint('FAILED_ACCOUNT_RECOVERY_LEDGER_REPLAY')
         kind, item = event['event_type'], event['payload']
         if kind == 'CAMPAIGN_AUTHORIZED':
-            _require(effective is None and item == base, 'AUTHORIZATION_EVENT_CONFLICT'); effective = deepcopy(base)
+            _require(effective is None and item == base, 'AUTHORIZATION_EVENT_CONFLICT'); effective = extension._copy_json_tree(base)
         elif kind == 'CAMPAIGN_GRANT_ADDED':
             _require(effective is not None and not revoked, 'GRANT_EVENT_CONFLICT')
             effective = replay_grant(base, effective, item)
@@ -372,7 +377,7 @@ def _ledger_boundary(root, directory, base, previous, predecessor_ref, frozen=No
             revoked = True
         elif kind == 'CAMPAIGN_OPERATION_RESERVED':
             _require(item.get('operation_id') not in operations, 'OPERATION_DUPLICATED')
-            operations[item['operation_id']] = {**deepcopy(item), 'status': 'RESERVED'}
+            operations[item['operation_id']] = {**extension._copy_json_tree(item), 'status': 'RESERVED'}
         elif kind == 'CAMPAIGN_ACCOUNT_PURPOSE_TIME_EXTENDED':
             _require(not extension_seen and item.get('proof') == expected_proof, 'TIME_EXTENSION_CONFLICT')
             for row in previous['accounts'].values():
@@ -389,7 +394,7 @@ def _ledger_boundary(root, directory, base, previous, predecessor_ref, frozen=No
                 'CAMPAIGN_OPERATION_RESOURCE_OVERRUN_SETTLED', 'CAMPAIGN_MODEL_RESOURCE_OVERRUN_SETTLED'):
             op = operations.get(item.get('operation_id'))
             _require(op is not None and op['status'] not in ('COMPLETED', 'FAILED'), 'OPERATION_EVENT_CONFLICT')
-            op.update(deepcopy(item)); op['status'] = ('RUNNING' if kind == 'CAMPAIGN_OPERATION_STARTED'
+            op.update(extension._copy_json_tree(item)); op['status'] = ('RUNNING' if kind == 'CAMPAIGN_OPERATION_STARTED'
                 else 'UNKNOWN' if kind == 'CAMPAIGN_OPERATION_UNKNOWN' else item.get('outcome'))
         elif kind == 'CAMPAIGN_EXECUTION_SEGMENT_DISPATCHED':
             op = operations.get(item.get('operation_id')); upper = item.get('upper_bound_seconds')
@@ -402,7 +407,7 @@ def _ledger_boundary(root, directory, base, previous, predecessor_ref, frozen=No
                     - op.get('active_wall_seconds', 0))
                 and item.get('time_extension_proof') == op.get('account_purpose_time_extension')
                 and (not segments or segments[-1].get('outcome') not in ('COMPLETED', 'FAILED')), 'SEGMENT_EVENT_CONFLICT')
-            active = deepcopy(item); segments.append(active); op['active_segment'] = active
+            active = extension._copy_json_tree(item); segments.append(active); op['active_segment'] = active
         elif kind == 'CAMPAIGN_EXECUTION_SEGMENT_CHARGED':
             op = operations.get(item.get('operation_id')); active = op.get('active_segment') if op else None
             _require(active is not None and op['status'] in ('RUNNING', 'UNKNOWN')
@@ -411,7 +416,7 @@ def _ledger_boundary(root, directory, base, previous, predecessor_ref, frozen=No
             seconds, basis = segment_charge(item.get('measured_seconds'), active['upper_bound_seconds'],
                 item.get('evidence_identity'), outcome=item.get('outcome'))
             _require(item.get('seconds') == seconds and item.get('basis') == basis, 'SEGMENT_CHARGE_CONFLICT')
-            active.update(deepcopy(item)); op['active_wall_seconds'] = op.get('active_wall_seconds', 0) + seconds
+            active.update(extension._copy_json_tree(item)); op['active_wall_seconds'] = op.get('active_wall_seconds', 0) + seconds
             op['active_segment'] = None
         elif kind in ('RUN_TRIAL_RESERVED', 'RUN_TRIAL_PERFORMANCE_ACCESSED', 'RUN_TRIAL_COMPLETED', 'RUN_TRIAL_RELEASED'):
             trial = trials.setdefault(item['trial_id'], {'identity': deepcopy(item), 'accessed': False, 'completed': False})
@@ -707,6 +712,7 @@ class FailedAccountRecoveryV1:
                 return reference
 
     @classmethod
+    @extension._verified_recovery_reader
     def read(cls, root, reference, *, base_authorization=None, for_install=False, for_dispatch=False):
         _require(type(for_install) is bool and type(for_dispatch) is bool and not (for_install and for_dispatch), 'MODE_INVALID')
         context = cls(root, reference)
@@ -795,9 +801,9 @@ class FailedAccountRecoveryV1:
             _dispatch_boundary(context.root, directory, base, value, reference)
         if for_install or for_dispatch:
             _require(datetime.now(timezone.utc) < datetime.fromisoformat(execution_expires_at), 'EXPIRED')
-        context.summary_value = deepcopy(value); context.summary = deepcopy(value); context.approval_ref = deepcopy(manifest['approval_ref'])
+        context.summary_value = extension._copy_json_tree(value); context.summary = extension._copy_json_tree(value); context.approval_ref = deepcopy(manifest['approval_ref'])
         context.recovery_id = value['recovery_id']; context.job = job; context.job_path = Path(value['original']['job']['path'])
-        context.task_root = task_root; context.predecessor_summary = deepcopy(previous)
+        context.task_root = task_root; context.predecessor_summary = extension._copy_json_tree(previous)
         context.original_failed_account = failed
         context._execution_expires_at = execution_expires_at
         return context

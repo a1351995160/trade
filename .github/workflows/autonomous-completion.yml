@@ -227,6 +227,9 @@ jobs:
           tests/research_factory/test_failed_account_recovery_context_v1.py
           tests/research_factory/test_failed_account_recovery_public_v1.py
           tests/research_factory/test_failed_account_calendar_scope_v1.py
+          tests/research_factory/test_same_call_verification_v1.py
+          tests/research_factory/test_verification_return_boundaries_v1.py
+          tests/research_factory/test_recovery_read_equivalence_v1.py
           --basetemp=${{ runner.temp }}/failed-account-context-tests
           --junitxml=completion-tests.xml
       - name: Verify failed account recovery governance boundaries

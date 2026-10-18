@@ -11,8 +11,9 @@ from .common import stable_hash
 from .mutation_boundary import ObjectiveMutationLock
 from .research_capabilities_v1 import capabilities
 from .secure_file_reference_v1 import (
-    checked_directory_path, file_sha256, read_file_bytes, read_pinned_json, validated_reference_path,
+    checked_directory_path, validated_reference_path,
 )
+from .account_purpose_time_extension_v1 import file_sha256, read_file_bytes, read_pinned_json
 
 
 VERSION = 'OWNER_ACCOUNT_VERSION_CAPABILITY_BRIDGE_V1'
@@ -49,8 +50,12 @@ def _path(value, root):
 
 def _reference(path, root):
     startup_checkpoint('ACCOUNT_VERSION_REFERENCE')
-    return {'path': str(_path(path, root)),
-        'sha256': file_sha256(path, root=root, error_code='ACCOUNT_VERSION_ORIGINAL_CHANGED')}
+    try:
+        digest = file_sha256(path, root=root, error_code='ACCOUNT_VERSION_ORIGINAL_CHANGED')
+    except ValueError:
+        _path(path, root)
+        raise
+    return {'path': str(Path(path)), 'sha256': digest}
 
 
 def _read(reference, root):

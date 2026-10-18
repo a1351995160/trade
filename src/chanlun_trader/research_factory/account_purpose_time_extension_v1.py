@@ -1,6 +1,9 @@
 """原两账户用途的有限附加限时证明；不签发 Owner 能力、不修改经济状态。"""
 from copy import deepcopy
+from contextlib import contextmanager
+from contextvars import ContextVar
 from datetime import datetime, timezone
+from functools import wraps
 import hashlib
 import json
 import os
@@ -11,8 +14,9 @@ from chanlun_trader.account_startup_boundary_v1 import startup_checkpoint
 from .campaign_scope_v1 import OwnerApprovalStoreV1, _write_once, replay_grant, stage_remaining
 from .common import stable_hash
 from .mutation_boundary import ObjectiveMutationLock
+from . import secure_file_reference_v1 as _secure_files
 from .secure_file_reference_v1 import (
-    checked_directory_path, file_sha256, read_file_bytes, read_pinned_json, validated_reference_path,
+    checked_directory_path, validated_reference_path,
 )
 from .universe_execution_profile_v1 import SEGMENTED_PROFILE, segment_charge, validate_execution_profile
 
@@ -38,6 +42,174 @@ GOVERNANCE_PATHS = frozenset({
     'scripts/run_strategy_account_v1.py',
     'scripts/run_account_version_session_resume_v1.py',
 })
+
+
+_VERIFICATION_READ_VIEW = ContextVar('account_verification_read_view', default=None)
+_VERIFICATION_RAW_LIMIT = 1024 * 1024
+_VERIFICATION_RAW_TOTAL = 16 * 1024 * 1024
+
+
+class _VerificationReadView:
+    """仅一次纯读取的临时字节视图；被复用的文件在返回前再次完整核SHA。"""
+
+    def __init__(self):
+        self.files = {}
+        self.raw_bytes = 0
+        self.event_lines = {}
+
+    def _record(self, value, root, error_code):
+        startup_checkpoint('VERIFICATION_READ_REFERENCE')
+        if (not isinstance(value, (str, Path))
+                or (root is not None and not isinstance(root, (str, Path)))):
+            raise ValueError(error_code)
+        key = (str(value), str(root) if root is not None else None)
+        record = self.files.get(key)
+        # 只有原安全读取器成功验证过的同一路径/root键才能命中；命中不打开路径。
+        # 新键仍经原读取器完整核验，复用的原件在成功返回前再次完整核验。
+        return key, record['path'] if record is not None else value, record
+
+    def _remember(self, key, path, root, error_code, digest, raw):
+        if (raw is not None and (len(raw) > _VERIFICATION_RAW_LIMIT
+                or self.raw_bytes + len(raw) > _VERIFICATION_RAW_TOTAL)):
+            raw = None
+        if raw is not None:
+            self.raw_bytes += len(raw)
+        record = {'path': Path(path), 'root': root, 'error_code': error_code,
+            'digest': digest, 'raw': raw, 'reused': False}
+        self.files[key] = record
+        return record
+
+    def digest(self, value, *, root, error_code):
+        key, path, record = self._record(value, root, error_code)
+        if record is None:
+            # 只核SHA的源码/日工件不重复留存并重哈希；仅复用已实际读入的字节。
+            return _secure_files.file_sha256(path, root=root, error_code=error_code)
+        record['reused'] = True
+        return record['digest']
+
+    def read(self, value, *, root, error_code, maximum_bytes):
+        if maximum_bytes is not None and (type(maximum_bytes) is not int or maximum_bytes < 1):
+            raise ValueError(error_code)
+        key, path, record = self._record(value, root, error_code)
+        if record is not None and record['raw'] is not None:
+            raw = record['raw']
+            if maximum_bytes is not None and len(raw) > maximum_bytes:
+                raise ValueError(error_code)
+            record['reused'] = True
+            return raw
+        raw = _secure_files.read_file_bytes(path, root=root, error_code=error_code, maximum_bytes=maximum_bytes)
+        digest = hashlib.sha256(raw).hexdigest()
+        if record is not None:
+            if digest != record['digest']:
+                raise ValueError(error_code)
+        else:
+            self._remember(key, path, root, error_code, digest, raw)
+        return raw
+
+    def verify_reused_files(self):
+        for record in self.files.values():
+            if not record['reused']:
+                continue
+            startup_checkpoint('VERIFICATION_RETURN_REFERENCE')
+            digest = hashlib.sha256()
+            with _secure_files._regular_reader(record['path'], root=record['root'],
+                    error_code=record['error_code']) as stream:
+                while True:
+                    startup_checkpoint('VERIFICATION_RETURN_HASH_CHUNK')
+                    block = stream.read(1024 * 1024)
+                    startup_checkpoint('VERIFICATION_RETURN_HASH_CHUNK_COMPLETE')
+                    if not block:
+                        break
+                    digest.update(block)
+            if digest.hexdigest() != record['digest']:
+                raise ValueError(record['error_code'])
+        startup_checkpoint('VERIFICATION_RETURN_COMPLETE')
+
+
+@contextmanager
+def _verification_read_scope():
+    # 嵌套公开读取也从空视图开始，不继承上一调用已观察的原件或许可。
+    view = _VerificationReadView()
+    token = _VERIFICATION_READ_VIEW.set(view)
+    try:
+        yield view
+        view.verify_reused_files()
+    finally:
+        _VERIFICATION_READ_VIEW.reset(token)
+
+
+def _verified_recovery_reader(reader):
+    @wraps(reader)
+    def checked(*args, **kwargs):
+        with _verification_read_scope():
+            context = reader(*args, **kwargs)
+        # Owner检查不复用；原件复核之后、返回权限上下文之前再核签发原件。
+        OwnerApprovalStoreV1(context.summary_value['approval_store']).require(
+            context.approval_ref, context.summary_value)
+        if kwargs.get('for_install', False) or kwargs.get('for_dispatch', False):
+            if datetime.now(timezone.utc) >= datetime.fromisoformat(context.execution_expires_at):
+                raise PermissionError('FAILED_ACCOUNT_RECOVERY_EXPIRED')
+        startup_checkpoint('VERIFICATION_OWNER_RETURN_COMPLETE')
+        return context
+    return checked
+
+
+def file_sha256(value, *, error_code, root=None):
+    view = _VERIFICATION_READ_VIEW.get()
+    if (view is None or not isinstance(value, (str, Path))
+            or not str(value).endswith(('.json', '.jsonl'))):
+        return _secure_files.file_sha256(value, root=root, error_code=error_code)
+    return view.digest(value, root=root, error_code=error_code)
+
+
+def read_file_bytes(value, *, error_code, root=None, maximum_bytes=None):
+    view = _VERIFICATION_READ_VIEW.get()
+    if view is None:
+        return _secure_files.read_file_bytes(value, root=root, error_code=error_code, maximum_bytes=maximum_bytes)
+    return view.read(value, root=root, error_code=error_code, maximum_bytes=maximum_bytes)
+
+
+def read_pinned_json(reference, *, error_code, root=None, maximum_bytes=20 * 1024 * 1024):
+    if _VERIFICATION_READ_VIEW.get() is None:
+        return _secure_files.read_pinned_json(reference, root=root, error_code=error_code, maximum_bytes=maximum_bytes)
+    try:
+        if (not isinstance(reference, dict) or set(reference) != {'path', 'sha256'}
+                or not isinstance(reference['sha256'], str) or not re.fullmatch(r'[a-f0-9]{64}', reference['sha256'])):
+            raise ValueError
+        raw = read_file_bytes(reference['path'], root=root, error_code=error_code, maximum_bytes=maximum_bytes)
+        if hashlib.sha256(raw).hexdigest() != reference['sha256']:
+            raise ValueError
+        return json.loads(raw)
+    except (OSError, RuntimeError, TypeError, ValueError) as exc:
+        cause = exc
+        while cause.__cause__ is not None:
+            cause = cause.__cause__
+        raise ValueError(error_code) from cause
+
+
+def _verification_json_lines(lines):
+    view = _VERIFICATION_READ_VIEW.get()
+    if view is None:
+        return [json.loads(line) for line in lines]
+    key = tuple(lines)
+    if key in view.event_lines:
+        return json.loads(view.event_lines[key])
+    # 每份物理行先独立验证NDJSON格式，再暂存编码；复用不共享可变重放状态。
+    events = [json.loads(line) for line in lines]
+    encoded = json.dumps(events, ensure_ascii=True, separators=(',', ':')).encode('ascii')
+    retained_bytes = len(encoded) + sum(map(len, lines))
+    if view.raw_bytes + retained_bytes <= _VERIFICATION_RAW_TOTAL:
+        view.event_lines[key] = encoded
+        view.raw_bytes += retained_bytes
+    return events
+
+
+def _copy_json_tree(value):
+    """仅复制由JSON原件解析的树；使用C编解码，避免启动trace递归遍历每个节点。"""
+    startup_checkpoint('VERIFICATION_JSON_COPY')
+    result = json.loads(json.dumps(value, ensure_ascii=True, separators=(',', ':')))
+    startup_checkpoint('VERIFICATION_JSON_COPY_COMPLETE')
+    return result
 
 
 def _require(condition, reason):
@@ -154,7 +326,7 @@ def _ledger_boundary(root, directory, base, frozen=None):
         lines = lines[:frozen['line_count']]
         _require(hashlib.sha256(b''.join(lines)).hexdigest() == frozen.get('prefix_sha256'), 'LEDGER_PREFIX_CHANGED')
     _require(lines and all(line.strip() for line in lines), 'LEDGER_INVALID')
-    events = [json.loads(line) for line in lines]
+    events = _verification_json_lines(lines)
     ids = set(); operations = {}; effective = None; revoked = False; extension_seen = False
     for event in events:
         startup_checkpoint('TIME_EXTENSION_LEDGER_REPLAY')
@@ -164,7 +336,7 @@ def _ledger_boundary(root, directory, base, frozen=None):
         ids.add(event['event_id']); kind, item = event['event_type'], event['payload']
         if kind == 'CAMPAIGN_AUTHORIZED':
             _require(effective is None and item == base, 'AUTHORIZATION_EVENT_CONFLICT')
-            effective = deepcopy(base)
+            effective = _copy_json_tree(base)
         elif kind == 'CAMPAIGN_GRANT_ADDED':
             _require(effective is not None and not revoked, 'GRANT_EVENT_CONFLICT')
             effective = replay_grant(base, effective, item)
@@ -174,11 +346,11 @@ def _ledger_boundary(root, directory, base, frozen=None):
             extension_seen = True
         elif kind == 'CAMPAIGN_OPERATION_RESERVED':
             _require(item.get('operation_id') not in operations, 'OPERATION_DUPLICATED')
-            operations[item['operation_id']] = {**deepcopy(item), 'status': 'RESERVED'}
+            operations[item['operation_id']] = {**_copy_json_tree(item), 'status': 'RESERVED'}
         elif kind in ('CAMPAIGN_OPERATION_STARTED', 'CAMPAIGN_OPERATION_UNKNOWN', 'CAMPAIGN_OPERATION_SETTLED'):
             op = operations.get(item.get('operation_id'))
             _require(op is not None and op['status'] not in ('COMPLETED', 'FAILED'), 'OPERATION_EVENT_CONFLICT')
-            op.update(deepcopy(item))
+            op.update(_copy_json_tree(item))
             op['status'] = {'CAMPAIGN_OPERATION_STARTED': 'RUNNING', 'CAMPAIGN_OPERATION_UNKNOWN': 'UNKNOWN',
                 'CAMPAIGN_OPERATION_SETTLED': item.get('outcome')}[kind]
         elif kind == 'CAMPAIGN_EXECUTION_SEGMENT_DISPATCHED':
@@ -192,7 +364,7 @@ def _ledger_boundary(root, directory, base, frozen=None):
                 and upper <= profile['total_seconds'] - op.get('active_wall_seconds', 0)
                 and (not segments or segments[-1].get('outcome') not in ('COMPLETED', 'FAILED')),
                 'SEGMENT_EVENT_CONFLICT')
-            segment = deepcopy(item); segments.append(segment); op['active_segment'] = segment
+            segment = _copy_json_tree(item); segments.append(segment); op['active_segment'] = segment
         elif kind == 'CAMPAIGN_EXECUTION_SEGMENT_CHARGED':
             op = operations.get(item.get('operation_id')); active = op.get('active_segment') if op else None
             _require(active is not None and op['status'] in ('RUNNING', 'UNKNOWN')
@@ -200,7 +372,7 @@ def _ledger_boundary(root, directory, base, frozen=None):
             seconds, basis = segment_charge(item.get('measured_seconds'), active['upper_bound_seconds'],
                 item.get('evidence_identity'), outcome=item.get('outcome'))
             _require(item.get('seconds') == seconds and item.get('basis') == basis, 'SEGMENT_CHARGE_CONFLICT')
-            active.update(deepcopy(item)); op['active_wall_seconds'] = op.get('active_wall_seconds', 0) + seconds
+            active.update(_copy_json_tree(item)); op['active_wall_seconds'] = op.get('active_wall_seconds', 0) + seconds
             op['active_segment'] = None
         elif kind.startswith('CAMPAIGN_') and kind not in (
                 'CAMPAIGN_PAUSED', 'CAMPAIGN_RESUMED', 'CAMPAIGN_STAGE_CHANGED'):
@@ -739,7 +911,7 @@ class AccountPurposeTimeExtensionV1:
             deadline = (context.recovery.execution_expires_at if for_dispatch and recovery_reference is not None
                 else summary['expires_at'])
             _require(datetime.now(timezone.utc) < datetime.fromisoformat(deadline), 'EXPIRED')
-        context.summary_value = deepcopy(summary); context.summary = deepcopy(summary)
+        context.summary_value = _copy_json_tree(summary); context.summary = _copy_json_tree(summary)
         context.approval_ref = deepcopy(manifest['approval_ref']); context.extension_id = summary['extension_id']
         context.job = job; context.job_path = Path(original['job']['path']); context.task_root = task_root
         return context

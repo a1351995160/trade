@@ -4180,3 +4180,17 @@ R18缺失参数真实红1FAIL/1PASS，R19仅前两helper修复阶段2PASS，R20�
 Files: 上述四测试文件、docs/research/failed-account-calendar-deadline-implementation-20261017.md、本记录；外部定向证据及独立限定原因复审。首次辅助bytepatch误将第三文件LF假设为CRLF，前两helper写入后在第三写入前断言停止；PowerShell仍接起R19，所以明确只将其视为部分helper绿。R19最终关闭后单独补齐第三文件，后续R20/R21实际验证完整字节；未在测试存活时热改源码。所有红/部分绿及原R10失败保留，不改标。回滚点0a34925a8acc40ca1985b52fc2600a0dab4e51f1与R10/R21完整来源快照，回滚按四文件逐项恢复并保留证据，不reset/clean。真实仍277/0及原50FAILED，新Owner未安装、原费用/各72000/global288002不变。
 
 R22 final source addendum: removed only one new EOF LF after R21 closed; AST unchanged. R22 natural code0/2PASS/0FAIL,ERROR,SKIP/7.529661399996257 seconds/changed=[]; final source1051 launch/snapshot/current verified by limited review. XML SHA d5d8caabdba354671e7dc6cd696857bed4d0a7ddc21add38a13aa6674a260ddd. git diff --check passed. R22 is precommit contract evidence, not complete new-head gates.
+
+## 2026-10-18 - Task: 独立工作树优化单次恢复核验并准备合回原PR45
+
+### What was done
+
+从2fd0建立独立工作树codex/recovery-validation-scope；仅修改三个治理读取文件，在FailedAccountRecoveryV1.read单次调用内复用已安全读入的字节/摘要/账本JSON，返回前完整重读被复用原件并再核Owner和绝对执行期限。保留原安全打开前后检查，去掉成功路径额外第三次路径遍历；仅对确定JSON来源树使用带前后协作截止检查的JSON复制。原301个_require/assert AST节点保持，全部事件哈希、顺序、费用及状态重放断言仍执行，不缓存授权结论或跨调用许可。新增三个测试文件及只读基准工具，CI原failed-account-context组追加三测试文件，原矩阵/原模块保留；新增文件固定LF，未批量转码。当前R11工作树、root、控制器、经济源、预算、期限及费用均未修改。
+
+### Testing
+
+最终补充单元及边界R8自然67PASS/1原Windows符号链接权限SKIP/0FAIL,ERROR，等价R8自然13PASS/0FAIL,ERROR,SKIP；原XML位于E:/t/，SHA分别4e0a427527a8aee38eb5339368b344a83a5025a02cf18e2d335a9984af8ecdc6、6b7989ac3823ea14d737e19339e630870156669ff6111056a3fd9183794d198e。限定独立安全复审findings=[]，已修复返回前绝对期限跨越、NDJSON物理行及基准输出路径问题。实际2fd0/优化两个进程、同一合法人工277日/50FAILED原件、普通与830秒原trace各3次：中位5.657198→5.223391秒（7.67%），trace8.257040→7.619101秒（7.73%），安全打开983→981，路径遍历2353→1970；summary/proof/expiry/approval identity相同，账户changed=[]，派发0，136导入来源各自闭合。记录在reports/recovery_validation_scope_20261018/，最终JSON SHA6f03fc4844faff9a83fa193052f5ae858c9d5756996c8c634c8da21f9c372081与0ed0cadfe3641bd267b1340f2d6837cb00f63e95fc2ffd9157da2fc180c62325。
+
+### Notes
+
+Files: 三治理读取文件、三新测试、tests/benchmarks/compare_failed_account_read_v1.py、原CI追加、四项LF属性、docs/recovery-validation-scope-20261018.md、本记录。早期版本变慢、R1夹具装配受控关闭及所有红/错误/订正原件保留，不改标通过。性能只证明单次读取，不能保证完整504或总体ETA，也不能放行真实恢复。用户已授权修好后合回：提交快进纳入原draft PR45，新head重新取得冻结r4十selectors228/原五文件90/CI91及完整自然双504等所有门禁和最终53refs后再merge/ff部署。外部接续控制器等待旧R11自然关闭和精确身份全部退出，不并发第二条账户链；未以此局部测试冒充正式门禁。回滚点2fd070894ac48f9d0f289a340336160c686b9592；合入后通过反向提交回退本次代码，保留所有授权/费用/工件及追加记录，不reset/clean/prune或修改已发生经济状态。

@@ -181,3 +181,9 @@
 /tests/research_factory/test_failed_account_calendar_deadline_budget_v1.py text eol=lf
 /tests/research_factory/test_failed_account_calendar_deadline_runtime_v1.py text eol=lf
 /tests/research_factory/test_failed_account_calendar_scope_v1.py text eol=lf
+
+# 单次核验的新增测试与只读对照工具固定同一份跨平台字节。
+/tests/research_factory/test_same_call_verification_v1.py text eol=lf
+/tests/research_factory/test_verification_return_boundaries_v1.py text eol=lf
+/tests/research_factory/test_recovery_read_equivalence_v1.py text eol=lf
+/tests/benchmarks/compare_failed_account_read_v1.py text eol=lf
