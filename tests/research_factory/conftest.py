@@ -1,4 +1,8 @@
 """跨模块共享一次完整504日诊断夹具；补丁仅在构建期间生效。"""
+import json
+from pathlib import Path
+import tempfile
+
 import pytest
 
 
@@ -21,3 +25,19 @@ def completed_rule_diagnosis(tmp_path_factory):
     assert len(invoker.contexts) == 2
     # 会话缓存保存已完成结果，不能让合成数据补丁泄漏至其他模块。
     yield service, loader, invoker, status
+
+
+@pytest.fixture(scope='session')
+def _research_short_tmp_root(tmp_path_factory):
+    """保留每次运行的独占目录，使 Windows 人工来源归档不依赖系统长路径开关。"""
+    parent = tmp_path_factory.getbasetemp()
+    root = Path(tempfile.mkdtemp(prefix='rf_', dir=parent.parent))
+    (parent / 'RESEARCH_FACTORY_TMP_ROOT.json').write_text(
+        json.dumps({'root': str(root), 'exclusive': True}, ensure_ascii=True), encoding='utf-8')
+    return root
+
+
+@pytest.fixture
+def tmp_path(_research_short_tmp_root):
+    """每个用例仍获得全新空目录，保留全部工件，不改变测试或账户预算。"""
+    return Path(tempfile.mkdtemp(prefix='t_', dir=_research_short_tmp_root))

@@ -4282,3 +4282,12 @@ H5当前源码局部111PASS/1原权限SKIP；有限计量自然退出1，Missing
 2026-10-23 本次工程改动：四个治理读取文件只优化不可变路径解析、实时Windows分量属性读取与已验证JSON树复制；打开前后身份检查、Owner/期限fresh与账本重放断言保留。完整人工测试改用短且独占的临时根，原场景AST及43条assert完全不变，四小时实际跨期仍须执行。已测1059源已完整封存ZIP，当前产品559仍等于已测H5。新主测试环境固定Python3.13.5/41依赖，14模块实际导入通过；旧虚拟环境保留。已有111PASS/1原权限SKIP及同环境普通段实际核验只是补充证据；新精确CI、228/90/full和最终独立53refs尚待。
 
 本次提交只提供上述优化和补充证据，精确新来源的完整验收继续保留为未通过。
+
+
+精确新版本本机验证准备（2026-10-23T07:36:02.215018+00:00）：H5 性能修复已提交为 e5c0e7971faa1e3b2757003c0432acb0d78d6b29 / tree db6887592715752031d9bf6207067c148253c4c9，1059 Python / 559 产品与 Git filtered 逐字节闭合；559 产品与同环境代表性实测一致。新本机门禁配置已在 E:/t/g504r1 独占目录准备，尚未建 CLAIM 或启动测试。原冻结 r3 字节不改，仅 REPO 指向新树，顺序仍为原 228→90→完整单 integration；所有新版本门禁均待实际运行。推送因本机无可用 GitHub 登录而失败，用户选择暂时只做本机验证，原 PR 分支仍保留 60f2，未合并部署。旧 CI 通过字段已完整转存历史；真实截止已过、277/0/50FAILED、原预算和真实停止保持。记录 E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_E5C0_FROZEN_LOCAL_GATES_PREPARED_REAL_EXPIRED_20261023T073602215018Z.json SHA eaf41fbabe872265c2a49edf9f47b99856da5aab279672717c2ae4c85ea6c3ba。
+
+
+新精确版本本机必要组已启动（2026-10-23T07:42:44.473115+00:00）：e5c0e7971faa1e3b2757003c0432acb0d78d6b29 的原 r4 十 selectors / 声明228项，由唯一运输98781、controller15860（创建07:41:12.5422930Z）在全新 E:/t/g504r2 CLAIM 下实际执行；原 r3 SHA保持，只适配REPO。启动1059来源、当前工作树和源码快照逐SHA一致，配置及控制经过当前代理限定实际检查与11项调用权限边界用例，非独立最终复审。尚无自然结果，不将声明228当通过；后续仅自然通过才串行90与完整单integration，无自动重试。CI依用户选择暂不推送，本机验证继续；真实截止已过，真实277/0/50FAILED和原预算保持。记录 E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_E5C0_EXACT_LOCAL228_ACTIVE_REAL_EXPIRED_20261023T074244473115Z.json SHA 3332d1df64c607e4648624cb4c377d8e8f60d235e7ae4352cff07c524f93fc27。
+
+
+2026-10-23 当前更新（2026-10-23T08:02:50.505544+00:00）：原 E5 必要组已自然 code1 关闭，46PASS/2FAIL/1ERROR，来源 changed=[]；90 和完整组未启动，失败原件保留。两项失败来自人工目录的 Windows 长路径限制；另一项在进入原生阻塞前已耗完0.2秒协作窗口。现人工用例改用每次独占短目录，阶段0.2/1秒从目标阶段开始计时，整进程1.5秒硬超时仍包含导入和握手，原断言全部保留并新增原生入口证据。6项定向实测自然通过，原生调用确实进入并发生硬超时；这不是228/90/完整验收。559产品字节与实测H5一致，生产预算、截止及真实四SHA保持。用户已完成GitHub登录并恢复推送授权；下一步提交夹具修复并在新精确来源、新CLAIM上重跑原CI和228→90→完整单integration。真实截止已过，暂不合并部署或安装真实Owner。正式记录 E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_FIXTURE_SIX_PASSED_NEW_EXACT_GATES_REQUIRED_20261023T080250505544Z.json SHA 30057e675d0eb6c5ba15b56ed60783a9d003c558806bd6d45dbb5b01480cd07c。

@@ -194,3 +194,6 @@
 
 # Preserve measured Windows secure-reader bytes in all checkouts.
 /src/chanlun_trader/research_factory/secure_file_reference_v1.py text eol=crlf
+
+# Keep artificial short-path fixture bytes identical across local and CI checkouts.
+/tests/research_factory/conftest.py text eol=lf

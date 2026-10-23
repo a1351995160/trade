@@ -443,7 +443,10 @@ def write(name, value):
     (root / name).write_text(json.dumps(value), encoding='utf-8')
 def phase(index, row, event):
     write('PHASE_' + event + '.json', {'row': row, 'handshake': handshake, 'started': started})
-boundary = AccountStartupBoundaryV1(started + handshake['execution']['cutoff_seconds'], on_stage=phase)
+# The 0.2/1-second allowance targets this artificial stage. The unchanged
+# 1.5-second supervisor window still includes interpreter imports and handshake.
+stage_started = time.monotonic()
+boundary = AccountStartupBoundaryV1(stage_started + handshake['execution']['cutoff_seconds'], on_stage=phase)
 try:
     with boundary.scope(), boundary.stage_scope('ARTIFICIAL_RESOURCE_STARTUP'):
         if mode == 'PYTHON':
@@ -451,6 +454,10 @@ try:
             while True:
                 value += 1
         elif mode == 'NATIVE':
+            write('NATIVE_ENTRY.json', {'entered_at_monotonic': time.monotonic(),
+                'deadline_monotonic': stage_started + handshake['execution']['cutoff_seconds'],
+                'cooperative_seconds': handshake['execution']['cutoff_seconds'],
+                'whole_worker_started_at_monotonic': started})
             time.sleep(10)
         elif mode == 'MEMORY':
             value = bytearray(512 * 1024 * 1024)
@@ -506,6 +513,9 @@ def test_actual_resource_handshake_preserves_cutoff_timeout_and_memory_failure(t
     elif mode == 'NATIVE':
         # Python 检查点不能伪造原生调用上界，真实硬超时不能改标 CONTINUE。
         assert resource['timed_out'] and resource['returncode'] != 75
+        entered_native = runner.read_json(tmp_path / 'NATIVE_ENTRY.json')
+        assert entered_native['cooperative_seconds'] == .2
+        assert entered_native['entered_at_monotonic'] < entered_native['deadline_monotonic']
         assert not (tmp_path / 'STATUS.json').exists()
     else:
         assert resource['returncode'] != 75 and not resource['timed_out']
