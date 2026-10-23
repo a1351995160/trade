@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import hashlib
 import json
 from pathlib import Path
+import tempfile
 from types import SimpleNamespace
 
 import pytest
@@ -110,10 +111,10 @@ def test_calendar_authorization_cannot_change_parent_global_limit(calendar_reque
 
 
 @pytest.fixture(scope='module')
-def calendar_owner_case(tmp_path_factory):
+def calendar_owner_case(_research_short_tmp_root):
     """仅本模块共享一次完整合法装配；各公开read仍做真实fresh校验。"""
     with pytest.MonkeyPatch.context() as patch:
-        case = extension_case.__wrapped__(tmp_path_factory.mktemp('calendar-owner'), patch,
+        case = extension_case.__wrapped__(Path(tempfile.mkdtemp(prefix='own_', dir=_research_short_tmp_root)), patch,
             SimpleNamespace(param={'resource_wall': 288002}))
         case = recovery_case.__wrapped__(case)
         legacy = recovery.FailedAccountRecoveryV1.summary(case['root'], **case['recovery_spec'])

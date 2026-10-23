@@ -2,6 +2,7 @@
 from copy import deepcopy
 import json
 from pathlib import Path
+import tempfile
 from types import SimpleNamespace
 
 import pytest
@@ -155,10 +156,10 @@ def test_new_dispatch_sidecar_must_match_both_new_proof_and_identity(installed_r
 
 
 @pytest.fixture(scope='module')
-def fresh_reader_context(tmp_path_factory):
+def fresh_reader_context(_research_short_tmp_root):
     """只读反例共享一次合法277日生命周期；每次公开调用仍完整 fresh。"""
     with pytest.MonkeyPatch.context() as patch:
-        case = extension_case.__wrapped__(tmp_path_factory.mktemp('fresh-recovery-readers'),
+        case = extension_case.__wrapped__(Path(tempfile.mkdtemp(prefix='ctx_', dir=_research_short_tmp_root)),
             patch, SimpleNamespace(param={}))
         case = recovery_case.__wrapped__(case)
         yield installed_recovery_context.__wrapped__(case)
