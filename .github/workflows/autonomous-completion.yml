@@ -230,6 +230,8 @@ jobs:
           tests/research_factory/test_same_call_verification_v1.py
           tests/research_factory/test_verification_return_boundaries_v1.py
           tests/research_factory/test_recovery_read_equivalence_v1.py
+          tests/research_factory/test_lexical_reference_cache_v1.py
+          tests/research_factory/test_verified_json_resolvers_v1.py
           --basetemp=${{ runner.temp }}/failed-account-context-tests
           --junitxml=completion-tests.xml
       - name: Verify failed account recovery governance boundaries

@@ -73,6 +73,7 @@ def test_relative_path_and_bad_hash_are_rejected_without_filesystem_probe(monkey
     def forbidden(*_args, **_kwargs):
         pytest.fail('invalid reference must not probe the filesystem')
     monkeypatch.setattr(Path, 'resolve', forbidden)
+    monkeypatch.setattr(secure_reference, '_component_metadata', forbidden)
     with pytest.raises(ValueError, match='^' + CODE + '$'):
         validated_reference_path('relative.json', error_code=CODE)
     with pytest.raises(ValueError, match='^' + CODE + '$'):
@@ -89,6 +90,7 @@ def test_outside_task_root_is_rejected_before_any_filesystem_probe(tmp_path, mon
 
     monkeypatch.setattr(Path, 'resolve', forbidden)
     monkeypatch.setattr(Path, 'lstat', forbidden)
+    monkeypatch.setattr(secure_reference, '_component_metadata', forbidden)
     monkeypatch.setattr(os, 'open', forbidden)
     functions = {
         'validate': lambda: validated_reference_path(outside, error_code=CODE, root=root),
@@ -138,6 +140,7 @@ def test_each_link_component_is_rejected_before_read(tmp_path, monkeypatch, comp
         pytest.fail('link rejection must not resolve or open the target')
 
     monkeypatch.setattr(Path, 'lstat', lstat)
+    monkeypatch.setattr(secure_reference, '_component_metadata', lstat)
     monkeypatch.setattr(Path, 'resolve', forbidden)
     monkeypatch.setattr(os, 'open', forbidden)
     with pytest.raises(ValueError, match='^' + CODE + '$'):
@@ -162,6 +165,7 @@ def test_pending_multilevel_tail_stops_at_first_missing_component(tmp_path, monk
         pytest.fail('pending reference must not resolve or open the target')
 
     monkeypatch.setattr(Path, 'lstat', lstat)
+    monkeypatch.setattr(secure_reference, '_component_metadata', lstat)
     monkeypatch.setattr(Path, 'resolve', forbidden)
     monkeypatch.setattr(os, 'open', forbidden)
     assert validated_reference_path(target, error_code=CODE, root=tmp_path if bounded else None) == target

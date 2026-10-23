@@ -951,14 +951,14 @@ def resolve_time_extension_manifest(manifest_ref, *, root, authorization_id, obj
     summary = context.summary_value
     _require(summary['authorization_id'] == authorization_id and summary['objective_id'] == objective_id,
         'AUTHORIZATION_OR_OBJECTIVE_CONFLICT')
-    accounts = deepcopy(summary['accounts'])
+    accounts = _copy_json_tree(summary['accounts'])
     return {'extension_id': context.extension_id, 'manifest_ref': deepcopy(manifest_ref), 'proof': context.proof(),
         'authorization_id': authorization_id, 'objective_id': objective_id,
         'base_authorization_identity': summary['base_authorization_identity'],
         'expires_at': summary['expires_at'], 'aggregate_reserved_delta': summary['aggregate_reserved_delta'],
-        'summary_value': deepcopy(summary), 'source_replacements': deepcopy(summary['source_replacements']),
-        'runtime_sources': deepcopy(summary['runtime_sources']), 'economic_sources': deepcopy(summary['economic_sources']),
-        'successor_plans': deepcopy(summary['successor_plans']), 'active_plans': deepcopy(summary['successor_plans']),
+        'summary_value': _copy_json_tree(summary), 'source_replacements': _copy_json_tree(summary['source_replacements']),
+        'runtime_sources': _copy_json_tree(summary['runtime_sources']), 'economic_sources': _copy_json_tree(summary['economic_sources']),
+        'successor_plans': _copy_json_tree(summary['successor_plans']), 'active_plans': _copy_json_tree(summary['successor_plans']),
         'operation_ids': {name: row['operation_id'] for name, row in accounts.items()}, 'accounts': accounts,
         'limits': {row['operation_id']: {'old_total_seconds': row['old_total_seconds'],
             'effective_total_seconds': row['effective_total_seconds'],

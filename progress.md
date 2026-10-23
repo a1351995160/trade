@@ -4194,3 +4194,91 @@ R22 final source addendum: removed only one new EOF LF after R21 closed; AST unc
 ### Notes
 
 Files: 三治理读取文件、三新测试、tests/benchmarks/compare_failed_account_read_v1.py、原CI追加、四项LF属性、docs/recovery-validation-scope-20261018.md、本记录。早期版本变慢、R1夹具装配受控关闭及所有红/错误/订正原件保留，不改标通过。性能只证明单次读取，不能保证完整504或总体ETA，也不能放行真实恢复。用户已授权修好后合回：提交快进纳入原draft PR45，新head重新取得冻结r4十selectors228/原五文件90/CI91及完整自然双504等所有门禁和最终53refs后再merge/ff部署。外部接续控制器等待旧R11自然关闭和精确身份全部退出，不并发第二条账户链；未以此局部测试冒充正式门禁。回滚点2fd070894ac48f9d0f289a340336160c686b9592；合入后通过反向提交回退本次代码，保留所有授权/费用/工件及追加记录，不reset/clean/prune或修改已发生经济状态。
+
+## 2026-10-23 - Task: 取消504排程后直接核算和验证性能
+### What was done
+- 确认504已取消、无替代排程；原真实截止已过，原277日和全部费用不变。保全H5中断现场，不补造收费或重跑旧链。
+- 在独立工作树试验H6纯词法角色复用；完成单元、等价与微基准/整次读取ABBA。整次收益小且有波动，保全实验并只撤回本轮两个文件，恢复1059源精确H5。
+- 记录原基线/H3普通段对比、真实50费用及预算必要平均值；新普通段、full和真实均未启动，未设置后台唤醒。
+### Testing
+- H6本地100PASS/1既有Windows权限SKIP，等价13PASS；首次缺pyarrow收集错误保留。XML与环境清单均绑定正式记录。
+- 同环境四进程ABBA整次读取981安全打开/1970完整分量检查、identity一致、changed=[]、零派发；中位改善1.66%/3.29%，不代worker或完整门禁。
+- Q/T1059源对原H5冻结逐SHA一致；真实JOB/CP277/CHARGE50/父账本四SHA不变；git diff --check通过。
+### Notes
+- 改动文件：T的src/chanlun_trader/research_factory/secure_file_reference_v1.py和tests/research_factory/test_lexical_reference_cache_v1.py仅本轮实验已撤回；P6/reports中的原始JSON/脚本/REJECTED_H6_SOURCE保存证据；M/T的docs/recovery-validation-direct-control-20261023.md新增当前结论；M/docs/recovery-deadline-budget-risk-20261019.md新增历史提示；R/REAL_ACCEPTANCE_STATUS_CN.md与四JSON状态同步；M/T progress.md仅追加。
+- T继承的H5未提交源码和CI配置仍保留；未提交/推送/合并新字节。普通段完整证据和新来源门禁仍待。
+- 回滚点：状态与既有文档逐文件原件在 E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\mutable_status_history\DIRECT_H6_REJECTED_20261023T041748092705Z（MANIFEST含SHA）；progress仅追加订正，不覆盖历史。H6撤回来源为P6/BEFORE_H6，拒绝版本在P6/REJECTED_H6_SOURCE；不得reset/clean/stash-all或恢复旧活CLAIM。
+- 正式记录：E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_DIRECT_H6_REJECTED_H5_PRESERVED_EXPIRED_20261023T041748092705Z.json SHA86c62d13a5b978ca2311884b48a24d2ea9739402223cc5a509d25b90c96baf46。
+
+
+## 2026-10-23 - Task: 保全H5C有限计量环境失败并修复隔离依赖
+
+### What was done
+
+2026-10-23 当前补充：H5C/R1人工有限计量自然code1，因新隔离环境缺少pydantic停在前驱装配；未派普通51，不能作为H5性能结果或产品失败。56750已最终读取关闭，原精确控制及根残留全部退出，1059源码与真实四SHA保持。已按原requirements补齐隔离依赖，14项模块导入和依赖一致性检查通过，相关局部测试复核中；只有通过后才建立新根/CLAIM/配置的一次有限计量，不自动重试旧根。真实截止已过，原余额与全部门禁保持。正式记录 E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_H5C_ENVIRONMENT_FAILURE_CLOSED_20261023T044043161084Z.json SHAb7be1e90d31734a176766dbc5ca38a1192603b6860f65a4e325213a1b2110a5f。
+
+### Testing
+
+H5当前源码局部111PASS/1原权限SKIP；有限计量自然退出1，Missing pydantic，未派普通51；修复后14项导入通过，uv pip check通过。修复后测试结果另行记录，不借用旧环境结果。
+
+### Notes
+
+改动文件：四JSON状态更新已闭合原因；CN及两工作树direct-control文档追加现状；本progress追加历史。报告H5_FINITE_DIRECT_R1保留原件，新ISOLATED_RUNTIME_DEPENDENCIES_FIXED_R2记录完整依赖。产品与测试源未修改。回滚点：E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\mutable_status_history\H5C_R1_CLOSED_20261023T044043161084Z\MANIFEST.json；按对应备份逐文件恢复状态/文档，保留本追加日志及失败原件。
+
+
+## 2026-10-23 - Task: 依赖修复后以新独占根启动H5一次有限计量
+
+### What was done
+
+2026-10-23 当前：修复新隔离环境后111PASS/1原权限SKIP、14模块导入及依赖检查通过，H5D全新有限人工计量已实际启动。唯一运输34032，controller10300创建04:42:51.8108840Z/父4984及完整命令匹配；新根E:/t/recovery_throughput_H5D_20261023_R2/r，新CLAIM/配置01245318425d9990fe92c12fa566fd5fd892dee79ff1295e16673a6ecb6978b3，原1059源码/559产品/H5冻结保持。只允许一次普通51；自然结果待，不预报新日和收费。R1依赖失败原件已闭合保留，不复用旧根；本次实际配置复核为当前代理限定复核，不冒充最终独立验收。504取消；无并发测试/账户/热改、无full或真实入口。真实期限已过，BASE29660/STRESS72000保持。记录 E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_H5D_NEW_FINITE_MEASUREMENT_ACTIVE_20261023T044355747168Z.json SHA5a1a72e0a18adb4b005e5c6e2fefcaa27659124de3a24914b78ea866c7319267。
+
+### Testing
+
+当前环境111PASS/1原权限SKIP/0FAIL,ERROR，106.30秒；原guard和b2df harness字节保持，1059源核对一致，实际新配置预检通过。普通段完整计量尚未完成，禁止把本记录当完整通过。
+
+### Notes
+
+改动文件：reports/.../H5_FINITE_DIRECT_20261023_R2/run_one.py及CONFIG/REVIEW/guard只控制新有限计量，增加真实已导入包集合核对；四状态与CN/两WT direct-control文档更新当前活身份；progress仅追加。产品测试源未改。回滚：依次通过primary work_paused_by_human=true或本配置HOLD.json请求边界停止，等已入有限操作收尾且核进程退出后，按E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\mutable_status_history\H5D_ACTIVE_20261023T044355747168Z\MANIFEST.json恢复本次状态/文档对应备份；不删除失败或运行原件，不复用CLAIM。
+
+
+## 2026-10-23 - Task: 修正有限计量路径兼容性并在新短根接续
+
+### What was done
+
+2026-10-23 当前：R2已自然失败闭合，原因是263字符归档路径超过新系统普通路径能力（LongPathsEnabled=0，父目录存在），已完成的人工277日/34段历史费保留，未派普通51。当前新R3已启动，唯一运输78013、controller7580创建2026-10-23T04:51:54.2428610Z，新独占短根E:/t/recovery_throughput_F_1/r；1405个历史完整计量路径投影最长251字符且普通Path写/读实证通过。原1059源/H5、原b2df计量器/全部断言/预算/Windows设置保持，源配置不热改、不重用R2根或CLAIM。R3自然普通段结果尚待，不冒充代表性通过；配置为当前代理实际限定复核，非最终独立验收。504已取消；真实期限已过，原余额保持，不启动full或真实动作。记录 E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_H5_SHORT_ROOT_FINITE_ACTIVE_20261023T045323448813Z.json SHAaa3e9ecea6f947f0db1648aa7f6057967190ea3b210d5a3e17dfff022b5158ab。
+
+### Testing
+
+依赖修复后111PASS/1原权限SKIP原件保持；1405路径投影最长251，普通Path打开读取成功；原始R2自然退出1/全部进程退出/34032最终读闭。R3配置/claim/精确控制实际匹配，普通51未完成。
+
+### Notes
+
+改动：reports/.../H5_FINITE_DIRECT_20261023_R3新控制配置/实际限定复核/路径实证；四JSON状态、CN和两WT direct-control文档写入当前实际身份，progress仅追加。产品及原计量器未改。回滚点 E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\mutable_status_history\H5_SHORT_ROOT_R3_ACTIVE_20261023T045323448813Z\MANIFEST.json；需停止时仅设置本轮HOLD请求边界停派，等有限操作自然收尾与精确进程退出后恢复对应备份，不删除运行及失败证据，不复用旧CLAIM。
+
+
+2026-10-23T05:53:57.744848+00:00 H5自然有限段结清及历史对照缺口
+最新实际状态（2026-10-23）：H5短根R3已自然code0，运输78013最终读取关闭，全部控制及根残留已退出。人工277→292（新增15日），完整启动176.182843秒，收费850.915814秒／56.727721秒每新增日，公共调用1225.017598秒。292日gzip／payload／链、原277前缀／50费用、唯一母子八字段及RESOURCE SHA均实际核验，无52。单段必要速率达标，不是完整验收。
+
+严格历史对照发现当前pandas3.1.0／PyArrow26.0.0与旧2.3.3／21.0.0导致人工Parquet物理类型与字节不同，原严格相同字节检查失败保留；不能据旧基线声称代码因果提速。下一步只补同一当前环境／相同人工数据字节的一次有限60f2基线；须新根／CLAIM／配置与实际限定复核，全部fresh／断言／原预算保持，尚未派发。完整门禁仍未启动，真实期限已过，BASE29660／STRESS72000／global288002保持；504已取消。
+
+正式记录：E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_H5_NATURAL_MEASURED_COMPARISON_GAP_REAL_EXPIRED_20261023T055357744848Z.json SHA54eac07e2a5df815806f7c5cd8b49df06612013b4ae3f41ca2aacb136fa179f5。以下保留旧观察历史，以本条最新状态为准。
+
+
+
+当前直接推进（2026-10-23T05:58:17.645588+00:00）：同环境60f2有限基线已实际启动，唯一运输90012，controller1748/父23012，创建05:56:55.2766350Z，完整命令与CLAIM匹配。新根E:/t/recovery_throughput_B_1/r，冻结1055源与原60f2实际launch逐字节一致；与已闭合H5使用同一解释器、完整依赖和原计量器。仅一个普通51，要求生成的人工数据字节与H5一致，结果尚待；不预报新日或收费，不自动接full或重试。H5单段15日/56.727721秒每新增日已核验，但历史跨环境对照缺口未放行。
+
+配置、源、每个暂停边界、全部断言与原预算保持。本次复核是当前代理实际限定复核，不是最终独立验收。真实截止已过，原真实277/0/50FAILED及费用、BASE29660/STRESS72000/global288002保持，零真实动作。504已取消。正式记录 E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_SAME_RUNTIME_BASE60F2_FINITE_CONTROL_ACTIVE_20261023T055817645588Z.json SHA11d13faf003cab34d18f1762b75c792fcf1d4a04dec3ef2dffac71916522b158。下方仅保留此前观察历史。
+
+
+
+2026-10-23 当前：同一Python/依赖及六份人工数据字节的60f2/H5有限单段对照已自然完成并实际核验。基线90012自然code0最终读闭；H5的78013此前自然读闭；精确控制和根残留退出。完整启动359.444186→176.182843秒（减少50.98%），新增日7→15，worker收费851.984579→850.915814秒，收费121.712083→56.727721秒/新增日（减少53.39%），公共调用1474.279654→1225.017598秒，公共墙钟210.611379→81.667840秒/新增日。两组均CONTINUE/75/非timeout，原277日前缀和50费用不变，全部gzip/日期/链及唯一母子八字段收费/RESOURCE SHA通过、无52。当前代理实际核验不是最终独立53refs。
+
+保留H5四治理文件优化；原fresh/断言/87经济代码/12未读输入及72000/global288002/900/2048/并发1不变。此单段低于BASE必要130.660793秒/日，不能证明后段/STRESS/报告或完整验收。下一步封存已测源，修复主测试虚拟环境与最小人工full短路径，冻结新精确来源后按原CI及228→90→完整单integration验证，不借旧绿。真实截止2026-10-20T19:43:08+08:00已过、余日历0；BASE29660/STRESS72000保持，无新真实Owner/51/278，门禁和新明确未来期限齐备前不合并部署或真实恢复。504已取消，无替代排程。
+
+正式记录：E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_H5_SAME_RUNTIME_PAIR_PASSED_REAL_EXPIRED_20261023T071104591139Z.json SHA490a56a63333d34a2284bddd5a5e52da75af15f7929083cd64d69d7e2cf70d86。以下为保留的历史观察，以本条为准。
+
+
+
+2026-10-23 本次工程改动：四个治理读取文件只优化不可变路径解析、实时Windows分量属性读取与已验证JSON树复制；打开前后身份检查、Owner/期限fresh与账本重放断言保留。完整人工测试改用短且独占的临时根，原场景AST及43条assert完全不变，四小时实际跨期仍须执行。已测1059源已完整封存ZIP，当前产品559仍等于已测H5。新主测试环境固定Python3.13.5/41依赖，14模块实际导入通过；旧虚拟环境保留。已有111PASS/1原权限SKIP及同环境普通段实际核验只是补充证据；新精确CI、228/90/full和最终独立53refs尚待。
+
+本次提交只提供上述优化和补充证据，精确新来源的完整验收继续保留为未通过。

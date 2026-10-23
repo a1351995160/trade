@@ -187,3 +187,10 @@
 /tests/research_factory/test_verification_return_boundaries_v1.py text eol=lf
 /tests/research_factory/test_recovery_read_equivalence_v1.py text eol=lf
 /tests/benchmarks/compare_failed_account_read_v1.py text eol=lf
+/tests/research_factory/test_lexical_reference_cache_v1.py text eol=lf
+/tests/benchmarks/compare_recovery_guard_v1.py text eol=lf
+/tests/benchmarks/measure_recovery_public_segment_v1.py text eol=lf
+/tests/research_factory/test_verified_json_resolvers_v1.py text eol=lf
+
+# Preserve measured Windows secure-reader bytes in all checkouts.
+/src/chanlun_trader/research_factory/secure_file_reference_v1.py text eol=crlf

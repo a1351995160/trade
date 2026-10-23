@@ -886,20 +886,20 @@ def resolve_failed_account_recovery_manifest(manifest_ref, *, root, authorizatio
     value = context.summary_value
     _require(value['authorization_id'] == authorization_id and value['objective_id'] == objective_id,
         'AUTHORIZATION_OR_OBJECTIVE_CONFLICT')
-    accounts = deepcopy(value['accounts']); failed = value['original_failed_account']; account = accounts[failed]
+    accounts = extension._copy_json_tree(value['accounts']); failed = value['original_failed_account']; account = accounts[failed]
     result = {'recovery_id': context.recovery_id, 'manifest_ref': deepcopy(manifest_ref), 'proof': context.proof(),
         'authorization_id': authorization_id, 'objective_id': objective_id,
         'base_authorization_identity': value['base_authorization_identity'], 'expires_at': value['expires_at'],
         'original_failed_account': failed, 'failed_purpose': failed, 'operation_id': account['operation_id'],
         'operation_ids': {name: row['operation_id'] for name, row in accounts.items()}, 'accounts': accounts, 'account': account,
-        'summary_value': deepcopy(value), 'restored_reserved_seconds': value['restored_reserved_seconds'],
-        'capabilities_snapshot': deepcopy(value['capabilities_snapshot']),
-        'source_replacements': deepcopy(value['source_replacements']), 'runtime_sources': deepcopy(value['runtime_sources']),
-        'economic_sources': deepcopy(value['economic_sources']), 'successor_plans': deepcopy(value['successor_plans']),
-        'active_plans': deepcopy(value['successor_plans'])}
+        'summary_value': extension._copy_json_tree(value), 'restored_reserved_seconds': value['restored_reserved_seconds'],
+        'capabilities_snapshot': extension._copy_json_tree(value['capabilities_snapshot']),
+        'source_replacements': extension._copy_json_tree(value['source_replacements']), 'runtime_sources': extension._copy_json_tree(value['runtime_sources']),
+        'economic_sources': extension._copy_json_tree(value['economic_sources']), 'successor_plans': extension._copy_json_tree(value['successor_plans']),
+        'active_plans': extension._copy_json_tree(value['successor_plans'])}
     if 'calendar_deadline_extension' in value:
         result.update(execution_expires_at=context.execution_expires_at,
-                      calendar_deadline_extension=deepcopy(value['calendar_deadline_extension']))
+                      calendar_deadline_extension=extension._copy_json_tree(value['calendar_deadline_extension']))
         if 'calendar_task_scope' in value:
-            result['calendar_task_scope'] = deepcopy(value['calendar_task_scope'])
+            result['calendar_task_scope'] = extension._copy_json_tree(value['calendar_task_scope'])
     return result

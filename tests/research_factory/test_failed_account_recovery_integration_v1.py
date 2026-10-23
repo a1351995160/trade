@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import tempfile
 import sys
 import time
 
@@ -326,7 +327,8 @@ def scenario(root):
 @pytest.mark.skipif(os.environ.get('RUN_LONG_FAILED_ACCOUNT_RECOVERY_INTEGRATION') != '1',
     reason='完整人工双504/277日原状态/50段费用/双原生对照须显式启用')
 def test_full_504_day_failed_account_recovery_keeps_277_days_fees_and_public_feedback(tmp_path):
-    repo = Path(__file__).resolve().parents[2]; root = (tmp_path / 'r').resolve()
+    repo = Path(__file__).resolve().parents[2]
+    root = (Path(tempfile.mkdtemp(prefix='fr_', dir=tmp_path.parent.parent)) / 'r').resolve()
     for folder in ('src', 'scripts'):
         shutil.copytree(repo / folder, root / folder, ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
     _install_synthetic_capabilities(root)

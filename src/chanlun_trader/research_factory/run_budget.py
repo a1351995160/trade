@@ -103,7 +103,7 @@ def effective_segment_allowance(profile, charged_seconds, *, seconds_to_expiry,
 
 def _apply_account_purpose_time_extension(authorization, base_authorization, operations, item, revoked):
     """一次事件同时增加两原用途；重放不把事件内容本身当成授权。"""
-    from .account_purpose_time_extension_v1 import resolve_time_extension_manifest
+    from .account_purpose_time_extension_v1 import _copy_json_tree, resolve_time_extension_manifest
     if authorization is None or revoked or set(item) != {'proof', 'installed_at'}:
         raise BudgetLedgerMismatchError('CAMPAIGN_ACCOUNT_TIME_EXTENSION_EVENT_ORDER')
     proof = item['proof']
@@ -163,7 +163,7 @@ def _apply_account_purpose_time_extension(authorization, base_authorization, ope
             effective = deepcopy(operation['upper_bounds'])
             effective['wall_seconds'] = account['effective_total_seconds']
             operation.update(effective_upper_bounds=effective, effective_total_seconds=account['effective_total_seconds'],
-                account_purpose_time_extension=deepcopy(proof), time_extension_boundary=deepcopy(account))
+                account_purpose_time_extension=deepcopy(proof), time_extension_boundary=_copy_json_tree(account))
     except BudgetLedgerMismatchError:
         raise
     except (PermissionError, ValueError, TypeError, KeyError, OSError) as exc:
@@ -173,6 +173,7 @@ def _apply_account_purpose_time_extension(authorization, base_authorization, ope
 def _apply_failed_account_recovery(authorization, base_authorization, operations, item, revoked):
     """仅独立 Owner 证明可恢复原失败用途未花的整数预留。"""
     from .failed_account_recovery_v1 import resolve_failed_account_recovery_manifest
+    from .account_purpose_time_extension_v1 import _copy_json_tree
     if authorization is None or revoked or set(item) != {'proof', 'installed_at'}:
         raise BudgetLedgerMismatchError('CAMPAIGN_FAILED_ACCOUNT_RECOVERY_EVENT_ORDER')
     try:
@@ -251,14 +252,14 @@ def _apply_failed_account_recovery(authorization, base_authorization, operations
                 raise BudgetLedgerMismatchError('CAMPAIGN_FAILED_ACCOUNT_RECOVERY_STAGE_LIMIT')
         for operation, account, failed in targets:
             operation['failed_account_recovery_proof'] = deepcopy(proof)
-            operation['recovery_boundary'] = deepcopy(account)
+            operation['recovery_boundary'] = _copy_json_tree(account)
             if resolved.get('calendar_deadline_extension') is not None:
                 operation['execution_expires_at'] = resolved['execution_expires_at']
                 if resolved.get('calendar_task_scope') is not None:
-                    operation['calendar_task_scope'] = deepcopy(resolved['calendar_task_scope'])
+                    operation['calendar_task_scope'] = _copy_json_tree(resolved['calendar_task_scope'])
             if failed:
                 operation['failed_account_recovery'] = {'proof': deepcopy(proof), 'status': 'RUNNING',
-                    'boundary': deepcopy(account), 'base_actual': deepcopy(operation['actual']),
+                    'boundary': _copy_json_tree(account), 'base_actual': deepcopy(operation['actual']),
                     'base_charged_seconds': account['charged_seconds'],
                     'remaining_reserved_seconds': account['remaining_reserved_seconds']}
     except BudgetLedgerMismatchError:
