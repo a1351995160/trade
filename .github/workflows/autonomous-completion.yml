@@ -232,6 +232,7 @@ jobs:
           tests/research_factory/test_recovery_read_equivalence_v1.py
           tests/research_factory/test_lexical_reference_cache_v1.py
           tests/research_factory/test_verified_json_resolvers_v1.py
+          tests/research_factory/test_ci_pytest_resource_artifact_paths.py
           --basetemp=${{ runner.temp }}/failed-account-context-tests
           --junitxml=completion-tests.xml
       - name: Verify failed account recovery governance boundaries
@@ -353,23 +354,22 @@ jobs:
           tests/research_factory/test_universe_resources_v1.py
           --basetemp=${{ runner.temp }}/full-universe-tests
           --junitxml=completion-tests.xml
+      - name: Locate retained pytest resource evidence
+        id: pytest-evidence-paths
+        if: always() && (startsWith(matrix.suite, 'failed-account-') || matrix.suite == 'full-universe' || (matrix.os == 'windows-latest' && matrix.suite == 'workflow'))
+        run: python tests/ci/pytest_resource_artifact_paths.py --suite ${{ matrix.suite }}
       - name: Upload failed-account source and resource identities
         if: always() && startsWith(matrix.suite, 'failed-account-')
         uses: actions/upload-artifact@v4
         with:
           name: failed-account-evidence-${{ matrix.os }}-${{ matrix.suite }}
-          path: |
-            failed-account-source-identity.json
-            ${{ runner.temp }}/failed-account-*-resource-evidence/**
-            ${{ runner.temp }}/failed-account-*-tests/**/SUPERVISOR_*
+          path: ${{ steps.pytest-evidence-paths.outputs.paths }}
       - name: Upload Windows venv data worker evidence
         if: always() && matrix.os == 'windows-latest' && matrix.suite == 'workflow'
         uses: actions/upload-artifact@v4
         with:
           name: workflow-venv-data-resource-${{ matrix.os }}
-          path: |
-            ${{ runner.temp }}/autonomous-completion-tests/test_actual_windows_venv_data_*/**/DATA_WORKER*.json
-            ${{ runner.temp }}/autonomous-completion-tests/test_actual_windows_venv_data_*/**/DATA_WORKER_EXPOSURES.jsonl
+          path: ${{ steps.pytest-evidence-paths.outputs.paths }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -379,4 +379,4 @@ jobs:
         if: always() && matrix.suite == 'full-universe'
         with:
           name: full-universe-resource-${{ matrix.os }}
-          path: ${{ runner.temp }}/full-universe-tests/**/SCALE_RESOURCE_EVIDENCE.json
+          path: ${{ steps.pytest-evidence-paths.outputs.paths }}
