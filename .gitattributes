@@ -197,3 +197,7 @@
 
 # Keep artificial short-path fixture bytes identical across local and CI checkouts.
 /tests/research_factory/conftest.py text eol=lf
+
+# Bind CI resource locator and its regression tests to the measured LF bytes.
+/tests/ci/pytest_resource_artifact_paths.py text eol=lf
+/tests/research_factory/test_ci_pytest_resource_artifact_paths.py text eol=lf
