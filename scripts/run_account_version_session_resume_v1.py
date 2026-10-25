@@ -282,7 +282,7 @@ def run_session(job_path, *, max_steps=1):
         try:
             for _ in range(max_steps):
                 pending_event = next((item['action'] for item in reversed(events) if item['action'] in
-                                      ('ADVANCE_STARTED', 'ADVANCE_RETURNED', 'RECONCILE_RETURNED')), None)
+                                      ('ADVANCE_STARTED', 'ADVANCE_RETURNED', 'RECONCILE_RETURNED', 'ERROR')), None)
                 if pending_event == 'ADVANCE_STARTED' or any(
                         effective_execution_status(row) == 'UNKNOWN' or row.get('active_segment') for row in children()):
                     reconciled = reconcile_submission(submission, task['task_id'])

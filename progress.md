@@ -4318,3 +4318,39 @@ H5当前源码局部111PASS/1原权限SKIP；有限计量自然退出1，Missing
 
 
 2026-10-24 当前修复（2026-10-24T00:33:31.792152+00:00）：C7 CI91虽全部SUCCESS，原collector83064自然code1，33官方ZIP/28XML均保全，但5份Windows包只有源码身份、无资源侧车，完整CI工件门禁未通过。原始push日志已用正常gh登录单独补齐；未重收33包。根因是独占短pytest根没有进入原上传规则。现仅增加精确根标记读取器、新13测试和CI路径接线；保留原模式并要求worker真实资源存在，实际20PASS（13新+7原worker），9份真实RESOURCE/23份侧车逐SHA不变且进入清单。此前装配错误和测试路径断言红原件保留。全部旧1059源码、559产品、fresh/原断言/预算保持。旧FX4F1中断无自然结果，原228/90只属C7，原“同head仅接full”计划被本新测试字节覆盖；提交新来源后重跑CI和全新228→90→完整单integration，绝不借旧绿/CLAIM。真实四SHA/277/0/50FAILED及额度保持，真实截止已过，无Owner/278/部署；504已取消。记录 E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_C7_CI_RESOURCE_GAP_CLOSED_TARGETED_UPLOAD_FIX_20261024T003331792152Z.json SHA 9f0273b28ba867250727f494d277903b64c059b2fedf1b5da5f86cf71b1d06f2。
+
+
+## 2026-10-25 - Task: 完整双504自然失败闭环与公共反馈修复接续
+
+### What was done
+
+2026-10-25 自然闭环（2026-10-25T06:21:38.210795+00:00）：精确1e73完整FX5F1自然code1／1FAIL，98209.794764秒、changed=[]；67547最终读取关闭，原控制和revision残留退出，旧CLAIM不复用。人工BASE504／STRESS504及双native结果一致、PUBLIC_RESULT为ACCOUNT_VERIFIED；最终公共FEEDBACK和幂等收尾未通过。实际失败为旧ERROR之后循环内pending事件选择遗漏ERROR，返回WAITING后夹具索引outcome失败；不将最后native阶段标签当成实际失败位置。BASE新增227日含helper收费16401.621001秒／72.253837秒每新日；STRESS504日收费42445.599631秒／84.217460秒每新日，STRESS父整数收费42446、余29554；末段仅4日，不把尾段均值当稳态退化。原件闭环 E:\worktrees\recovery-validation-lexical\trade-system-contract-port-v1\reports\recovery_validation_lexical_20261023\FX5_NATURAL_DUAL504_NATIVE_FEEDBACK_FAILURE_CLOSURE_R1_20261025.json SHA b1ecfb76caeac653c0df8d8820e1f612c16bd1e903ba2b775979dfe1499c0d04。独立修复工作树 E:\worktrees\recovery-session-error-boundary\trade-system-contract-port-v1，保留旧1e73来源；新字节须重新绑定CI和原本机完整门禁，不借旧通过。原真实四SHA、277／0／50FAILED及全部费用不变，真实截止2026-10-20T19:43:08+08:00已过；无新Owner／51／278。504保持删除，不自动重试、扩限、合并或真实派发。
+
+### Testing
+
+只读核对自然result/XML、双账户结果与费用、双native资源和经济结果、旧277日/50费、1061来源、原真实四SHA；全部原字节保持。完整结果为1FAIL，独立53refs尚未通过；本记录不改标。
+
+### Notes
+
+文件：四JSON状态同步终态；REAL_ACCEPTANCE_STATUS_CN.md与三工作树direct-control文档追加最新闭环；三工作树progress.md仅追加；closure证据和只读工具位于既有reports目录；新修复工作树用于下一有限复现。回滚：按 E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\mutable_status_history\FX5_NATURAL_CLOSURE_20261025T062138210795Z\MANIFEST.json 精确恢复对应状态/文档备份；progress保留本条并追加纠正记录，失败原件不改。
+
+
+## 2026-10-25 - Task: 修复后继版本公共反馈被已结束ERROR误阻塞
+
+### What was done
+
+仅统一公共session循环与入口处的待处理事件集合，已记录ERROR关闭原调用；合法后继版本仍须fresh核验原子用途和完整报告后才进入反馈。UNKNOWN、活动段及真正未返回调用继续零派发等待；保留原错误事件、费用和终态幂等。
+
+### Testing
+
+修复前新增四种情形实测1FAIL/3PASS；修复后完整session模块36PASS，零FAIL/ERROR/SKIP。原35条require/assert和全部原测试函数AST一致；除一个产品文件和一个测试文件外，其余1059个py逐字节一致。87经济代码SHA保持，12原输入未打开；完整integration/共享夹具、预算、fresh及UNKNOWN检查均未修改。正式新CI与228→94→完整单integration尚待，局部结果不放行。
+
+### Notes
+
+- scripts/run_account_version_session_resume_v1.py：循环内待处理事件集合增加既有ERROR终止事件。
+- tests/research_factory/test_account_version_session_resume_v1.py：增加旧ERROR完成、UNKNOWN、活动段和真实未返回四个回归情形，原32例保留。
+- docs/recovery-validation-direct-control-20261023.md：记录实测根因、回归范围和新来源接续条件；旧历史保留。
+- progress.md：仅追加本条及先前自然失败闭环记录。
+
+回滚点：本提交父版本1e73884c57853bb570f59e9b8203fd8253d4ce79；如需撤销，使用本提交的git revert形成新提交，保留原失败和红绿证据，重新冻结来源；不能恢复旧CLAIM或据旧结果放行。
+红绿/源核验原件：E:\worktrees\recovery-session-error-boundary\trade-system-contract-port-v1\reports\recovery_session_error_boundary_20261025\SESSION_ERROR_BOUNDARY_RED_GREEN_AND_SOURCE_AUDIT_R1.json SHA a37f1557996188e41f4c978151ff49431e07242ccb600e5c1ced50931abf395b。

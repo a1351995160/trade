@@ -119,6 +119,91 @@ def original_children(session, *, base='COMPLETED', stress='FAILED', active=Fals
         session['campaign'].operations['BASE_ACCOUNT']['active_segment'] = {'number': 7}
 
 
+@pytest.mark.parametrize('pending', ['none', 'unknown', 'active'])
+def test_predecessor_recorded_error_closes_call_but_preserves_fresh_child_guards(tmp_path, monkeypatch, pending):
+    """旧版本已记录 ERROR；合法后继只在实际子用途无未结项时进入公共反馈。"""
+    session, calls = route_session(tmp_path, monkeypatch, complete=True)
+    context = session['context']
+    current_proof = context.proof
+    def predecessor_proof(name=None):
+        value = current_proof(name)
+        value['active_plan_ids'] = {'BASE': '1' * 64, 'STRESS': '2' * 64}
+        return value
+    monkeypatch.setattr(context, 'proof', predecessor_proof)
+    original_children(session, base='RUNNING', stress='RESERVED')
+    advance = session['submission'].advance
+    def fail_advance(task_id):
+        advance(task_id)
+        raise FileNotFoundError('SYNTHETIC_PREDECESSOR_RESOURCE_ABSENT')
+    session['submission'].advance = fail_advance
+    waiting = runner.run_session(tmp_path / 'unused.json')
+    assert waiting['status'] == 'WAITING_ORIGINAL_OPERATION_RECONCILIATION'
+    assert not (session['audit'] / 'ATTEMPT_END.json').exists()
+    originals = {path: path.read_bytes() for path in (session['audit'] / 'events').glob('*.json')}
+    assert [runner.read(path, tmp_path)['action'] for path in sorted(originals)] == ['ADVANCE_STARTED', 'ERROR']
+    monkeypatch.setattr(context, 'proof', current_proof)
+    session['submission'].advance = advance
+    original_children(session, base='UNKNOWN' if pending == 'unknown' else 'COMPLETED',
+                      stress='COMPLETED', active=pending == 'active')
+    checks, reconciled = [], []
+    monkeypatch.setattr(context, 'validate', lambda **kwargs: checks.append(deepcopy(kwargs)) or context)
+    monkeypatch.setattr(runner, 'reconcile_submission', lambda service, task_id:
+                        reconciled.append(task_id) or {'status': 'NO_PUBLIC_RECONCILIATION_PENDING', 'dispatched_segments': 0})
+    monkeypatch.setattr(runner, 'evaluate_business_reports', lambda *args, **kwargs: {'business_criteria_met': False})
+    result = runner.run_session(tmp_path / 'unused.json', max_steps=1)
+    assert all(path.read_bytes() == value for path, value in originals.items())
+    if pending != 'none':
+        assert result['status'] == 'WAITING_RECONCILIATION_REVIEW_NO_REDISPATCH'
+        assert reconciled == [session['task']['task_id']] and len(calls) == 1
+        assert not any(check.get('for_dispatch') for check in checks)
+        assert session['campaign'].settlements == []
+        assert not (session['audit'] / 'FEEDBACK.json').exists()
+        return
+    assert result.get('outcome') == 'COMPLETED'
+    assert reconciled == [] and len(calls) == 2
+    assert {'for_dispatch': True} in checks and checks[-1] == {'for_dispatch': False}
+    feedback = runner.read(session['audit'] / 'FEEDBACK.json', tmp_path)
+    assert feedback[runner.PROOF] == current_proof()
+    assert {cost: row[runner.PROOF] for cost, row in feedback['report_refs'].items()} == {
+        cost: current_proof(cost) for cost in ('BASE', 'STRESS')}
+    saved = {path: path.read_bytes() for path in tmp_path.rglob('*') if path.is_file()}
+    assert runner.run_session(tmp_path / 'unused.json', max_steps=1) == result
+    assert saved == {path: path.read_bytes() for path in tmp_path.rglob('*') if path.is_file()}
+    assert len(calls) == 2 and len(session['campaign'].settlements) == 1
+
+
+def test_predecessor_unreturned_call_still_reconciles_without_redispatch(tmp_path, monkeypatch):
+    session, calls = route_session(tmp_path, monkeypatch, complete=True)
+    context = session['context']
+    current_proof = context.proof
+    def predecessor_proof(name=None):
+        value = current_proof(name)
+        value['active_plan_ids'] = {'BASE': '1' * 64, 'STRESS': '2' * 64}
+        return value
+    monkeypatch.setattr(context, 'proof', predecessor_proof)
+    original_children(session, base='COMPLETED', stress='COMPLETED')
+    advance = session['submission'].advance
+    def interrupted(task_id):
+        advance(task_id)
+        raise SystemExit('SYNTHETIC_PROCESS_INTERRUPTED_WITHOUT_RETURN')
+    session['submission'].advance = interrupted
+    with pytest.raises(SystemExit, match='SYNTHETIC_PROCESS_INTERRUPTED_WITHOUT_RETURN'):
+        runner.run_session(tmp_path / 'unused.json')
+    originals = {path: path.read_bytes() for path in (session['audit'] / 'events').glob('*.json')}
+    assert len(originals) == 1
+    monkeypatch.setattr(context, 'proof', current_proof)
+    session['submission'].advance = advance
+    reconciled = []
+    monkeypatch.setattr(runner, 'reconcile_submission',
+                        lambda service, task_id: reconciled.append(task_id) or {'dispatched_segments': 0})
+    result = runner.run_session(tmp_path / 'unused.json')
+    assert result['status'] == 'WAITING_RECONCILIATION_REVIEW_NO_REDISPATCH'
+    assert reconciled == [session['task']['task_id']] and len(calls) == 1
+    assert session['campaign'].settlements == []
+    assert not (session['audit'] / 'FEEDBACK.json').exists()
+    assert all(path.read_bytes() == value for path, value in originals.items())
+
+
 @pytest.mark.parametrize('failure', ['worker_error', 'report_error', 'EVIDENCE_BLOCKED', 'FAILED', 'ACCOUNTS_FAILED'])
 def test_public_failures_record_real_error_and_settle_only_terminal_original_children(tmp_path, monkeypatch, failure):
     session, calls = route_session(tmp_path, monkeypatch, complete=failure == 'report_error')
