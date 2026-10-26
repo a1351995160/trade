@@ -1,17 +1,22 @@
 """原两账户用途的有限附加限时证明；不签发 Owner 能力、不修改经济状态。"""
 from copy import deepcopy
+from contextlib import contextmanager
+from contextvars import ContextVar
 from datetime import datetime, timezone
+from functools import wraps
 import hashlib
 import json
 import os
 from pathlib import Path
 import re
 
-from .campaign_scope_v1 import OwnerApprovalStoreV1, _write_once, replay_grant, stage_remaining
+from chanlun_trader.account_startup_boundary_v1 import startup_checkpoint
+from .campaign_scope_v1 import OwnerApprovalStoreV1, _write_once, replay_grant, stage_remaining, _hash_json_tree
 from .common import stable_hash
 from .mutation_boundary import ObjectiveMutationLock
+from . import secure_file_reference_v1 as _secure_files
 from .secure_file_reference_v1 import (
-    checked_directory_path, file_sha256, read_file_bytes, read_pinned_json, validated_reference_path,
+    checked_directory_path, validated_reference_path,
 )
 from .universe_execution_profile_v1 import SEGMENTED_PROFILE, segment_charge, validate_execution_profile
 
@@ -39,6 +44,181 @@ GOVERNANCE_PATHS = frozenset({
 })
 
 
+_VERIFICATION_READ_VIEW = ContextVar('account_verification_read_view', default=None)
+_VERIFICATION_RAW_LIMIT = 1024 * 1024
+_VERIFICATION_RAW_TOTAL = 16 * 1024 * 1024
+
+
+class _VerificationReadView:
+    """仅一次纯读取的临时字节视图；被复用的文件在返回前再次完整核SHA。"""
+
+    def __init__(self):
+        self.files = {}
+        self.raw_bytes = 0
+        self.event_lines = {}
+
+    def _record(self, value, root, error_code):
+        startup_checkpoint('VERIFICATION_READ_REFERENCE')
+        if (not isinstance(value, (str, Path))
+                or (root is not None and not isinstance(root, (str, Path)))):
+            raise ValueError(error_code)
+        key = (str(value), str(root) if root is not None else None)
+        record = self.files.get(key)
+        # 只有原安全读取器成功验证过的同一路径/root键才能命中；命中不打开路径。
+        # 新键仍经原读取器完整核验，复用的原件在成功返回前再次完整核验。
+        return key, record['path'] if record is not None else value, record
+
+    def _remember(self, key, path, root, error_code, digest, raw):
+        if (raw is not None and (len(raw) > _VERIFICATION_RAW_LIMIT
+                or self.raw_bytes + len(raw) > _VERIFICATION_RAW_TOTAL)):
+            raw = None
+        if raw is not None:
+            self.raw_bytes += len(raw)
+        record = {'path': Path(path), 'root': root, 'error_code': error_code,
+            'digest': digest, 'raw': raw, 'reused': False}
+        self.files[key] = record
+        return record
+
+    def digest(self, value, *, root, error_code):
+        key, path, record = self._record(value, root, error_code)
+        if record is None:
+            # 只核SHA的源码/日工件不重复留存并重哈希；仅复用已实际读入的字节。
+            return _secure_files.file_sha256(path, root=root, error_code=error_code)
+        record['reused'] = True
+        return record['digest']
+
+    def read(self, value, *, root, error_code, maximum_bytes):
+        if maximum_bytes is not None and (type(maximum_bytes) is not int or maximum_bytes < 1):
+            raise ValueError(error_code)
+        key, path, record = self._record(value, root, error_code)
+        if record is not None and record['raw'] is not None:
+            raw = record['raw']
+            if maximum_bytes is not None and len(raw) > maximum_bytes:
+                raise ValueError(error_code)
+            record['reused'] = True
+            return raw
+        raw = _secure_files.read_file_bytes(path, root=root, error_code=error_code, maximum_bytes=maximum_bytes)
+        digest = hashlib.sha256(raw).hexdigest()
+        if record is not None:
+            if digest != record['digest']:
+                raise ValueError(error_code)
+        else:
+            self._remember(key, path, root, error_code, digest, raw)
+        return raw
+
+    def verify_reused_files(self):
+        for record in self.files.values():
+            if not record['reused']:
+                continue
+            startup_checkpoint('VERIFICATION_RETURN_REFERENCE')
+            digest = hashlib.sha256()
+            with _secure_files._regular_reader(record['path'], root=record['root'],
+                    error_code=record['error_code']) as stream:
+                while True:
+                    startup_checkpoint('VERIFICATION_RETURN_HASH_CHUNK')
+                    block = stream.read(1024 * 1024)
+                    startup_checkpoint('VERIFICATION_RETURN_HASH_CHUNK_COMPLETE')
+                    if not block:
+                        break
+                    digest.update(block)
+            if digest.hexdigest() != record['digest']:
+                raise ValueError(record['error_code'])
+        startup_checkpoint('VERIFICATION_RETURN_COMPLETE')
+
+
+@contextmanager
+def _verification_read_scope():
+    # 嵌套公开读取也从空视图开始，不继承上一调用已观察的原件或许可。
+    view = _VerificationReadView()
+    token = _VERIFICATION_READ_VIEW.set(view)
+    try:
+        yield view
+        view.verify_reused_files()
+    finally:
+        _VERIFICATION_READ_VIEW.reset(token)
+
+
+def _verified_recovery_reader(reader):
+    @wraps(reader)
+    def checked(*args, **kwargs):
+        with _verification_read_scope():
+            context = reader(*args, **kwargs)
+        # Owner检查不复用；原件复核之后、返回权限上下文之前再核签发原件。
+        OwnerApprovalStoreV1(context.summary_value['approval_store']).require_json(
+            context.approval_ref, context.summary_value)
+        revision = getattr(context, 'governance_revision', None)
+        if revision is not None:
+            revision.validate_return(for_dispatch=kwargs.get('for_install', False) or kwargs.get('for_dispatch', False))
+        if kwargs.get('for_install', False) or kwargs.get('for_dispatch', False):
+            if datetime.now(timezone.utc) >= datetime.fromisoformat(context.execution_expires_at):
+                raise PermissionError('FAILED_ACCOUNT_RECOVERY_EXPIRED')
+        startup_checkpoint('VERIFICATION_OWNER_RETURN_COMPLETE')
+        return context
+    return checked
+
+
+def file_sha256(value, *, error_code, root=None):
+    view = _VERIFICATION_READ_VIEW.get()
+    if (view is None or not isinstance(value, (str, Path))
+            or not str(value).endswith(('.json', '.jsonl'))):
+        return _secure_files.file_sha256(value, root=root, error_code=error_code)
+    return view.digest(value, root=root, error_code=error_code)
+
+
+def read_file_bytes(value, *, error_code, root=None, maximum_bytes=None):
+    view = _VERIFICATION_READ_VIEW.get()
+    if view is None:
+        return _secure_files.read_file_bytes(value, root=root, error_code=error_code, maximum_bytes=maximum_bytes)
+    return view.read(value, root=root, error_code=error_code, maximum_bytes=maximum_bytes)
+
+
+def read_pinned_json(reference, *, error_code, root=None, maximum_bytes=20 * 1024 * 1024):
+    if _VERIFICATION_READ_VIEW.get() is None:
+        return _secure_files.read_pinned_json(reference, root=root, error_code=error_code, maximum_bytes=maximum_bytes)
+    try:
+        if (not isinstance(reference, dict) or set(reference) != {'path', 'sha256'}
+                or not isinstance(reference['sha256'], str) or not re.fullmatch(r'[a-f0-9]{64}', reference['sha256'])):
+            raise ValueError
+        raw = read_file_bytes(reference['path'], root=root, error_code=error_code, maximum_bytes=maximum_bytes)
+        if hashlib.sha256(raw).hexdigest() != reference['sha256']:
+            raise ValueError
+        return json.loads(raw)
+    except (OSError, RuntimeError, TypeError, ValueError) as exc:
+        cause = exc
+        while cause.__cause__ is not None:
+            cause = cause.__cause__
+        raise ValueError(error_code) from cause
+
+
+def _verification_json_lines(lines):
+    view = _VERIFICATION_READ_VIEW.get()
+    if view is None:
+        return [json.loads(line) for line in lines]
+    key = tuple(lines)
+    if key in view.event_lines:
+        return json.loads(view.event_lines[key])
+    # 每份物理行先独立验证NDJSON格式，再暂存编码；复用不共享可变重放状态。
+    events = [json.loads(line) for line in lines]
+    encoded = json.dumps(events, ensure_ascii=True, separators=(',', ':')).encode('ascii')
+    retained_bytes = len(encoded) + sum(map(len, lines))
+    if view.raw_bytes + retained_bytes <= _VERIFICATION_RAW_TOTAL:
+        view.event_lines[key] = encoded
+        view.raw_bytes += retained_bytes
+    return events
+
+
+def _copy_json_tree(value):
+    """仅复制由JSON原件解析的树；使用C编解码，避免启动trace递归遍历每个节点。"""
+    startup_checkpoint('VERIFICATION_JSON_COPY')
+    result = json.loads(json.dumps(value, ensure_ascii=True, separators=(',', ':')))
+    startup_checkpoint('VERIFICATION_JSON_COPY_COMPLETE')
+    return result
+
+
+def _json_identity(value, field='identity'):
+    return isinstance(value, dict) and value.get(field) == _hash_json_tree({k: v for k, v in value.items() if k != field})
+
+
 def _require(condition, reason):
     if not condition:
         raise PermissionError('ACCOUNT_PURPOSE_TIME_EXTENSION_' + reason)
@@ -57,6 +237,7 @@ def _path(value, root):
 
 
 def _reference(path, root):
+    startup_checkpoint('TIME_EXTENSION_REFERENCE')
     # 安全读取器仍完整核打开前后路径和对象；成功路径不再额外遍历第三次。
     try:
         digest = file_sha256(path, root=root, error_code='ACCOUNT_PURPOSE_TIME_EXTENSION_REFERENCE_CHANGED')
@@ -67,6 +248,7 @@ def _reference(path, root):
 
 
 def _read(reference, root):
+    startup_checkpoint('TIME_EXTENSION_READ')
     return read_pinned_json(reference, root=root, error_code='ACCOUNT_PURPOSE_TIME_EXTENSION_REFERENCE_CHANGED')
 
 
@@ -75,6 +257,7 @@ def _refs(value, root):
     _require(isinstance(value, list), 'REFERENCES_REQUIRED')
     result = []
     for reference in value:
+        startup_checkpoint('TIME_EXTENSION_REFERENCES')
         _require(isinstance(reference, dict) and set(reference) == {'path', 'sha256'}
             and _hash(reference['sha256']) and _reference(reference['path'], root) == reference,
             'REFERENCE_CHANGED')
@@ -131,7 +314,7 @@ def _authorization(root, authorization_id):
         'ORIGINAL_SCOPE_INVALID')
     owner = checked_directory_path(policy['approval_store'], error_code='ACCOUNT_PURPOSE_TIME_EXTENSION_OWNER_INVALID')
     approvals = OwnerApprovalStoreV1.from_checked_directory(owner)
-    approvals.require(policy['approval_ref'], policy['summary'])
+    approvals.require_json(policy['approval_ref'], policy['summary'])
     return directory, reference, base, approvals
 
 
@@ -150,16 +333,17 @@ def _ledger_boundary(root, directory, base, frozen=None):
         lines = lines[:frozen['line_count']]
         _require(hashlib.sha256(b''.join(lines)).hexdigest() == frozen.get('prefix_sha256'), 'LEDGER_PREFIX_CHANGED')
     _require(lines and all(line.strip() for line in lines), 'LEDGER_INVALID')
-    events = [json.loads(line) for line in lines]
+    events = _verification_json_lines(lines)
     ids = set(); operations = {}; effective = None; revoked = False; extension_seen = False
     for event in events:
-        _require(event.get('run_id') == base['authorization_id'] and event.get('event_id') == stable_hash({
+        startup_checkpoint('TIME_EXTENSION_LEDGER_REPLAY')
+        _require(event.get('run_id') == base['authorization_id'] and event.get('event_id') == _hash_json_tree({
             'run_id': event['run_id'], 'event_type': event['event_type'], 'payload': event['payload']})
             and event['event_id'] not in ids, 'LEDGER_EVENT_INVALID')
         ids.add(event['event_id']); kind, item = event['event_type'], event['payload']
         if kind == 'CAMPAIGN_AUTHORIZED':
             _require(effective is None and item == base, 'AUTHORIZATION_EVENT_CONFLICT')
-            effective = deepcopy(base)
+            effective = _copy_json_tree(base)
         elif kind == 'CAMPAIGN_GRANT_ADDED':
             _require(effective is not None and not revoked, 'GRANT_EVENT_CONFLICT')
             effective = replay_grant(base, effective, item)
@@ -169,11 +353,11 @@ def _ledger_boundary(root, directory, base, frozen=None):
             extension_seen = True
         elif kind == 'CAMPAIGN_OPERATION_RESERVED':
             _require(item.get('operation_id') not in operations, 'OPERATION_DUPLICATED')
-            operations[item['operation_id']] = {**deepcopy(item), 'status': 'RESERVED'}
+            operations[item['operation_id']] = {**_copy_json_tree(item), 'status': 'RESERVED'}
         elif kind in ('CAMPAIGN_OPERATION_STARTED', 'CAMPAIGN_OPERATION_UNKNOWN', 'CAMPAIGN_OPERATION_SETTLED'):
             op = operations.get(item.get('operation_id'))
             _require(op is not None and op['status'] not in ('COMPLETED', 'FAILED'), 'OPERATION_EVENT_CONFLICT')
-            op.update(deepcopy(item))
+            op.update(_copy_json_tree(item))
             op['status'] = {'CAMPAIGN_OPERATION_STARTED': 'RUNNING', 'CAMPAIGN_OPERATION_UNKNOWN': 'UNKNOWN',
                 'CAMPAIGN_OPERATION_SETTLED': item.get('outcome')}[kind]
         elif kind == 'CAMPAIGN_EXECUTION_SEGMENT_DISPATCHED':
@@ -187,7 +371,7 @@ def _ledger_boundary(root, directory, base, frozen=None):
                 and upper <= profile['total_seconds'] - op.get('active_wall_seconds', 0)
                 and (not segments or segments[-1].get('outcome') not in ('COMPLETED', 'FAILED')),
                 'SEGMENT_EVENT_CONFLICT')
-            segment = deepcopy(item); segments.append(segment); op['active_segment'] = segment
+            segment = _copy_json_tree(item); segments.append(segment); op['active_segment'] = segment
         elif kind == 'CAMPAIGN_EXECUTION_SEGMENT_CHARGED':
             op = operations.get(item.get('operation_id')); active = op.get('active_segment') if op else None
             _require(active is not None and op['status'] in ('RUNNING', 'UNKNOWN')
@@ -195,7 +379,7 @@ def _ledger_boundary(root, directory, base, frozen=None):
             seconds, basis = segment_charge(item.get('measured_seconds'), active['upper_bound_seconds'],
                 item.get('evidence_identity'), outcome=item.get('outcome'))
             _require(item.get('seconds') == seconds and item.get('basis') == basis, 'SEGMENT_CHARGE_CONFLICT')
-            active.update(deepcopy(item)); op['active_wall_seconds'] = op.get('active_wall_seconds', 0) + seconds
+            active.update(_copy_json_tree(item)); op['active_wall_seconds'] = op.get('active_wall_seconds', 0) + seconds
             op['active_segment'] = None
         elif kind.startswith('CAMPAIGN_') and kind not in (
                 'CAMPAIGN_PAUSED', 'CAMPAIGN_RESUMED', 'CAMPAIGN_STAGE_CHANGED'):
@@ -224,17 +408,17 @@ def _ledger_boundary(root, directory, base, frozen=None):
 def _predecessor(root, reference, base, approvals):
     manifest = _read(reference, root)
     _require(set(manifest) == {'schema_version', 'summary', 'approval_ref', 'identity'}
-        and manifest.get('schema_version') == 'ACCOUNT_VERSION_CONTINUATION_MANIFEST_V1' and _identity(manifest),
+        and manifest.get('schema_version') == 'ACCOUNT_VERSION_CONTINUATION_MANIFEST_V1' and _json_identity(manifest),
         'PREDECESSOR_MANIFEST_INVALID')
     value = manifest['summary']
     _require(value.get('schema_version') == 'OWNER_ACCOUNT_VERSION_CONTINUATION_SUMMARY_V1'
-        and value.get('version_id') == stable_hash({k: v for k, v in value.items() if k not in ('version_id', 'active_plans')})
+        and value.get('version_id') == _hash_json_tree({k: v for k, v in value.items() if k not in ('version_id', 'active_plans')})
         and value.get('root') == str(root) and value.get('base_authorization_identity') == stable_hash(base)
         and value.get('scope_hash') == base['scope_policy']['scope_hash']
         and value.get('approval_store') == str(approvals.directory)
         and value.get('maximum_version_switches') == 1 and value.get('daily_commit_count_at_install') == 0,
         'PREDECESSOR_SCOPE_CONFLICT')
-    approvals.require(manifest['approval_ref'], value)
+    approvals.require_json(manifest['approval_ref'], value)
     task_root = Path(value['original']['task']['path']).parent
     _require(Path(reference['path']) == task_root / 'account-version-continuations' / value['continuation_id'] / 'MANIFEST.json',
         'PREDECESSOR_PATH_CONFLICT')
@@ -252,12 +436,12 @@ def _predecessor(root, reference, base, approvals):
     _require(isinstance(bridge_ref, dict) and set(bridge_ref) == {'path', 'sha256', 'approval_ref'},
         'PREDECESSOR_BRIDGE_INVALID')
     bridge = _read({key: bridge_ref[key] for key in ('path', 'sha256')}, approvals.directory)
-    _require(_identity(bridge) and bridge.get('schema_version') == 'OWNER_ACCOUNT_VERSION_CAPABILITY_BRIDGE_V1'
+    _require(_json_identity(bridge) and bridge.get('schema_version') == 'OWNER_ACCOUNT_VERSION_CAPABILITY_BRIDGE_V1'
         and bridge.get('approval_ref') == bridge_ref['approval_ref']
         and bridge.get('summary', {}).get('base_authorization_identity') == stable_hash(base)
         and bridge['summary'].get('source_replacements') == value['source_replacements']
         and bridge['summary'].get('runtime_sources') == value['runtime_sources'], 'PREDECESSOR_BRIDGE_CONFLICT')
-    approvals.require(bridge['approval_ref'], bridge['summary'])
+    approvals.require_json(bridge['approval_ref'], bridge['summary'])
     for row in value['source_replacements']:
         _require(row.get('archive_ref', {}).get('sha256') == row.get('old_sha256')
             and _reference(row['archive_ref']['path'], root) == row['archive_ref'], 'PREDECESSOR_ARCHIVE_CHANGED')
@@ -313,6 +497,7 @@ def _sources(root, previous, job, replacements, runtime_refs, economic_refs):
     expected_economic = _economic_inventory(root, previous, inventory)
     mapping = {}
     for row in replacements:
+        startup_checkpoint('TIME_EXTENSION_SOURCE_REPLACEMENT')
         _require(isinstance(row, dict) and set(row) == {'path', 'old_sha256', 'new_sha256', 'archive_ref'},
             'SOURCE_REPLACEMENT_FIELDS_INVALID')
         path = _path(row['path'], root)
@@ -333,6 +518,7 @@ def _sources(root, previous, job, replacements, runtime_refs, economic_refs):
     _require(economic and {row['path']: row['sha256'] for row in economic} == expected_economic,
         'ECONOMIC_SOURCE_INVENTORY_CONFLICT')
     for path, digest in inventory.items():
+        startup_checkpoint('TIME_EXTENSION_SOURCE_VERIFY')
         _require(_reference(path, root)['sha256'] == (mapping[path]['new_sha256'] if path in mapping else digest),
             'UNAPPROVED_SOURCE_CHANGED')
     for reference in runtime:
@@ -346,7 +532,7 @@ def _local_segment_boundary(root, job, name, receipt, parent):
     """新 Owner 证明尚未冻结时，用原规范逐段复验，绝不从治理入口自举新能力。"""
     account_root = Path(job['root']); profile = validate_execution_profile(job['resources'])
     start = _read(_reference(account_root / (name + '_START.json'), root), root)
-    _require(_identity(receipt, 'receipt_id') and receipt.get('strategy_plans') == job['plans']
+    _require(_json_identity(receipt, 'receipt_id') and receipt.get('strategy_plans') == job['plans']
         and receipt.get('input_identity') == job['input_identity'] and receipt.get('objective_id') == job['objective_id']
         and receipt.get('budget_path') == job['budget_path'] and start.get('receipt_id') == receipt['receipt_id']
         and start.get('kind') == name, 'START_OR_RECEIPT_CONFLICT')
@@ -354,7 +540,7 @@ def _local_segment_boundary(root, job, name, receipt, parent):
     for path in sorted(account_root.glob(name + '_SEGMENT_*_DISPATCH.json')):
         number = len(rows) + 1; prefix = name + '_SEGMENT_' + str(number).zfill(6)
         dispatch = _read(_reference(path, root), root)
-        _require(path.name == prefix + '_DISPATCH.json' and _identity(dispatch, 'dispatch_id')
+        _require(path.name == prefix + '_DISPATCH.json' and _json_identity(dispatch, 'dispatch_id')
             and dispatch.get('schema_version') == 'strategy-account-segment-dispatch-v1'
             and dispatch.get('segment_number') == number and dispatch.get('previous_head') == head
             and dispatch.get('receipt_id') == receipt['receipt_id'] and dispatch.get('kind') == name
@@ -367,7 +553,7 @@ def _local_segment_boundary(root, job, name, receipt, parent):
         charge_paths.add(charge_path); charge = _read(_reference(charge_path, root), root)
         seconds, basis = segment_charge(charge.get('measured_seconds'), dispatch['upper_bound_seconds'],
             charge.get('evidence_identity'), outcome=charge.get('outcome'))
-        _require(_identity(charge, 'charge_id') and charge.get('schema_version') == 'strategy-account-segment-charge-v1'
+        _require(_json_identity(charge, 'charge_id') and charge.get('schema_version') == 'strategy-account-segment-charge-v1'
             and charge.get('dispatch_id') == dispatch['dispatch_id'] and charge.get('seconds') == seconds
             and charge.get('basis') == basis and charge.get('time_extension_proof') is None
             and charge.get('outcome') in ('CONTINUE', 'PAUSED', 'COMPLETED', 'FAILED'), 'LOCAL_CHARGE_CHAIN_CONFLICT')
@@ -408,10 +594,10 @@ def _checkpoint(root, job, name, *, frozen=None, exact=False):
         _require(not any((account_root / (name + '_DAYS')).glob('*.json.gz')), 'ORPHAN_ACCOUNT_DAYS')
         return None
     reference = _reference(path, root); value = _read(reference, root)
-    _require(_identity(value, 'state_identity') and value.get('version') == 'UNIVERSE_EXECUTION_STATE_V2'
+    _require(_json_identity(value, 'state_identity') and value.get('version') == 'UNIVERSE_EXECUTION_STATE_V2'
         and _hash(value.get('execution_identity')), 'CHECKPOINT_INVALID')
     artifacts = value.get('artifacts', {})
-    _require(_identity(artifacts, 'manifest_identity') and artifacts.get('version') == 'UNIVERSE_EXECUTION_ARTIFACTS_V1'
+    _require(_json_identity(artifacts, 'manifest_identity') and artifacts.get('version') == 'UNIVERSE_EXECUTION_ARTIFACTS_V1'
         and artifacts.get('identity') == value['execution_identity']
         and artifacts.get('root') == str(account_root / (name + '_DAYS')), 'DAY_MANIFEST_INVALID')
     calendar = plan['backend']['window']['calendar']; first = calendar.index(plan['backend']['window']['account_start'])
@@ -421,7 +607,8 @@ def _checkpoint(root, job, name, *, frozen=None, exact=False):
         and value.get('calendar_identity') == stable_hash(calendar), 'ACCOUNT_CALENDAR_CONFLICT')
     head = stable_hash(['UNIVERSE_EXECUTION_ARTIFACTS_V1', value['execution_identity']]); day_refs = []
     for row in days:
-        _require(row.get('previous') == head and _identity(row, 'chain') and _hash(row.get('payload_identity'))
+        startup_checkpoint('TIME_EXTENSION_DAY_VERIFY')
+        _require(row.get('previous') == head and _json_identity(row, 'chain') and _hash(row.get('payload_identity'))
             and isinstance(row.get('file'), str) and Path(row['file']).name == row['file'], 'DAY_CHAIN_CHANGED')
         reference_day = _reference(account_root / (name + '_DAYS') / row['file'], root)
         _require(reference_day['sha256'] == row.get('sha256'), 'DAY_BYTES_CHANGED')
@@ -456,7 +643,7 @@ def _session_boundary(root, previous):
     for path in sorted((audit / 'events').glob('*.json')):
         reference = _reference(path, root); row = _read(reference, root)
         _require(path.stem == str(len(rows) + 1).zfill(6) and row.get('previous') == head
-            and _identity(row) and row.get('action') != 'ERROR', 'SESSION_EVENT_CONFLICT')
+            and _json_identity(row) and row.get('action') != 'ERROR', 'SESSION_EVENT_CONFLICT')
         head = row['identity']; rows.append(row); refs.append(reference)
     pending = next((row['action'] for row in reversed(rows) if row['action'] in (
         'ADVANCE_STARTED', 'ADVANCE_RETURNED', 'RECONCILE_RETURNED', 'PUBLIC_RECONCILED', 'ERROR')), None)
@@ -470,6 +657,7 @@ class AccountPurposeTimeExtensionV1:
     def __init__(self, root, manifest_ref):
         self.root = checked_directory_path(root, error_code='ACCOUNT_PURPOSE_TIME_EXTENSION_ROOT_INVALID')
         self.scope_reference = deepcopy(manifest_ref)
+        self.recovery = None
 
     @staticmethod
     def extension_identity(authorization_id, task_id):
@@ -626,13 +814,13 @@ class AccountPurposeTimeExtensionV1:
                 return reference
 
     @classmethod
-    def read(cls, root, reference, *, base_authorization=None, for_install=False, for_dispatch=False):
+    def read(cls, root, reference, *, base_authorization=None, for_install=False, for_dispatch=False, recovery=None):
         _require(type(for_install) is bool and type(for_dispatch) is bool, 'MODE_INVALID')
         context = cls(root, reference)
         manifest = _read(reference, context.root); summary = manifest.get('summary', {})
         _require(set(manifest) == {'schema_version', 'summary', 'approval_ref', 'identity'}
-            and manifest['schema_version'] == VERSION and _identity(manifest)
-            and summary.get('schema_version') == SUMMARY_VERSION and _identity(summary, 'summary_identity')
+            and manifest['schema_version'] == VERSION and _json_identity(manifest)
+            and summary.get('schema_version') == SUMMARY_VERSION and _json_identity(summary, 'summary_identity')
             and summary.get('maximum_extensions') == 1 and summary.get('aggregate_reserved_delta') == ADDITIONAL_SECONDS * 2
             and summary.get('grant_delta') == summary.get('new_account_jobs') == summary.get('new_candidate_attempts')
                 == summary.get('new_preparation_jobs') == 0, 'MANIFEST_INVALID')
@@ -649,7 +837,7 @@ class AccountPurposeTimeExtensionV1:
             and summary.get('scope_hash') == base['scope_policy']['scope_hash']
             and summary.get('approval_store') == str(approvals.directory)
             and summary.get('base_authorization_ref') == auth_ref, 'AUTHORIZATION_CONFLICT')
-        approvals.require(manifest['approval_ref'], summary)
+        approvals.require_json(manifest['approval_ref'], summary)
         previous = _predecessor(context.root, summary['predecessor_manifest_ref'], base, approvals)
         original = summary['original']; task_root = Path(original['task']['path']).parent
         _require(summary['extension_id'] == cls.extension_identity(summary['authorization_id'], summary['task_id'])
@@ -661,9 +849,35 @@ class AccountPurposeTimeExtensionV1:
         slot = _read(_reference(directory / 'account-purpose-time-extension-slots' / (summary['extension_id'] + '.json'), context.root), context.root)
         _require(slot == {'extension_id': summary['extension_id'], 'manifest_ref': reference}, 'SLOT_CONFLICT')
         job = _read(original['job'], context.root)
+        from .failed_account_recovery_v1 import (
+            FailedAccountRecoveryV1, _job_manifest_reference, _owner_locator, _require as _recovery_require,
+        )
+        recovery_reference = None
+        if recovery is None:
+            located = _job_manifest_reference(job)
+            if located is not None:
+                recovery_root, recovery_reference, _ = located
+                _require(os.path.normcase(recovery_root) == os.path.normcase(str(context.root)), 'RECOVERY_ROOT_CONFLICT')
+        else:
+            _require(type(recovery) is FailedAccountRecoveryV1, 'SIGNED_RECOVERY_CONTEXT_REQUIRED')
+            _require(os.path.normcase(str(recovery.root)) == os.path.normcase(str(context.root)), 'RECOVERY_ROOT_CONFLICT')
+            recovery_reference = deepcopy(recovery.scope_reference)
+        if recovery_reference is not None:
+            # 发现和外部对象只作 locator；原A认证Owner/slot，原C才交付完整 fresh 结果。
+            _owner_locator(context.root, recovery_reference, base_authorization=base, job=job,
+                predecessor_reference=reference, original=original)
         _refs([original[key] for key in ('task', 'job', 'preview', 'receipt')] + original['control']
             + [summary['proposal_ref'], summary['ci_ref']], context.root)
-        _sources(context.root, previous, job, summary['source_replacements'], summary['runtime_sources'], summary['economic_sources'])
+        if recovery_reference is None:
+            _sources(context.root, previous, job, summary['source_replacements'], summary['runtime_sources'], summary['economic_sources'])
+        else:
+            # 原最后完整读取位置不后移；只按本次 fresh 对象投影前驱与来源。
+            context.recovery = FailedAccountRecoveryV1.read(context.root, recovery_reference, base_authorization=base,
+                for_dispatch=for_dispatch)
+            _recovery_require(reference == context.recovery.summary_value['predecessor_manifest_ref'],
+                'PREDECESSOR_REFERENCE_CONFLICT')
+            _recovery_require(context.recovery.predecessor_summary == summary, 'PREDECESSOR_SUMMARY_CONFLICT')
+            _require(context.recovery.job == job and context.recovery.job_path == Path(original['job']['path']), 'JOB_CHANGED')
         frozen_session = summary['session_boundary']
         _require(frozen_session['session_refs'] == previous.get('session_refs', {}), 'SESSION_REFERENCES_INVALID')
         _refs(frozen_session['event_refs'], context.root)
@@ -701,14 +915,16 @@ class AccountPurposeTimeExtensionV1:
             from .account_version_continuation_v1 import _control
             _require(_control(job)['paused'] and _control(job)['head'] == original['control_head'], 'PAUSED_BOUNDARY_REQUIRED')
         if for_install or for_dispatch:
-            _require(datetime.now(timezone.utc) < datetime.fromisoformat(summary['expires_at']), 'EXPIRED')
-        context.summary_value = deepcopy(summary); context.summary = deepcopy(summary)
+            deadline = (context.recovery.execution_expires_at if for_dispatch and recovery_reference is not None
+                else summary['expires_at'])
+            _require(datetime.now(timezone.utc) < datetime.fromisoformat(deadline), 'EXPIRED')
+        context.summary_value = _copy_json_tree(summary); context.summary = _copy_json_tree(summary)
         context.approval_ref = deepcopy(manifest['approval_ref']); context.extension_id = summary['extension_id']
         context.job = job; context.job_path = Path(original['job']['path']); context.task_root = task_root
         return context
 
     @classmethod
-    def from_job(cls, job, *, for_dispatch=False):
+    def from_job(cls, job, *, for_dispatch=False, recovery=None):
         if not isinstance(job, dict) or not isinstance(job.get('root'), str):
             return None
         job_root = _path(job['root'], None); folder = job_root.parent / 'account-purpose-time-extensions'
@@ -718,7 +934,7 @@ class AccountPurposeTimeExtensionV1:
         _require(len(paths) == 1, 'MANIFEST_DISCOVERY_CONFLICT')
         manifest = _read(_reference(paths[0], job_root.parent), job_root.parent)
         root = manifest.get('summary', {}).get('root'); _require(isinstance(root, str), 'MANIFEST_INVALID')
-        context = cls.read(root, _reference(paths[0], Path(root)), for_dispatch=for_dispatch)
+        context = cls.read(root, _reference(paths[0], Path(root)), for_dispatch=for_dispatch, recovery=recovery)
         _require(context.job == job and context.job_path == job_root / 'JOB.json', 'JOB_CHANGED')
         return context
 
@@ -742,14 +958,14 @@ def resolve_time_extension_manifest(manifest_ref, *, root, authorization_id, obj
     summary = context.summary_value
     _require(summary['authorization_id'] == authorization_id and summary['objective_id'] == objective_id,
         'AUTHORIZATION_OR_OBJECTIVE_CONFLICT')
-    accounts = deepcopy(summary['accounts'])
+    accounts = _copy_json_tree(summary['accounts'])
     return {'extension_id': context.extension_id, 'manifest_ref': deepcopy(manifest_ref), 'proof': context.proof(),
         'authorization_id': authorization_id, 'objective_id': objective_id,
         'base_authorization_identity': summary['base_authorization_identity'],
         'expires_at': summary['expires_at'], 'aggregate_reserved_delta': summary['aggregate_reserved_delta'],
-        'summary_value': deepcopy(summary), 'source_replacements': deepcopy(summary['source_replacements']),
-        'runtime_sources': deepcopy(summary['runtime_sources']), 'economic_sources': deepcopy(summary['economic_sources']),
-        'successor_plans': deepcopy(summary['successor_plans']), 'active_plans': deepcopy(summary['successor_plans']),
+        'summary_value': _copy_json_tree(summary), 'source_replacements': _copy_json_tree(summary['source_replacements']),
+        'runtime_sources': _copy_json_tree(summary['runtime_sources']), 'economic_sources': _copy_json_tree(summary['economic_sources']),
+        'successor_plans': _copy_json_tree(summary['successor_plans']), 'active_plans': _copy_json_tree(summary['successor_plans']),
         'operation_ids': {name: row['operation_id'] for name, row in accounts.items()}, 'accounts': accounts,
         'limits': {row['operation_id']: {'old_total_seconds': row['old_total_seconds'],
             'effective_total_seconds': row['effective_total_seconds'],

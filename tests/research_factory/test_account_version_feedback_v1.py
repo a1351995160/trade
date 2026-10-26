@@ -3,6 +3,7 @@ from copy import deepcopy
 import hashlib
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -111,8 +112,15 @@ def test_continuous_public_result_requires_the_same_approved_version(tmp_path, m
     task_root = root.parent
     write(task_root / 'TASK.json', task)
     write(root / 'CONFIRMATION.json', {})
-    service = type('ExistingTask', (), {'root': tmp_path, '_task': lambda self, task_id: deepcopy(task)})()
-    monkeypatch.setattr(continuous, 'continuous_authority', lambda *args: {'SYNTHETIC_ONLY': True})
+    scope = SimpleNamespace(campaign=SimpleNamespace(root=tmp_path))
+    service = type('ExistingTask', (), {'root': tmp_path, 'continuous_scope': scope,
+        '_task': lambda self, task_id: deepcopy(task)})()
+
+    def authority(actual_service, request, *, calendar_context=None):
+        assert actual_service is service and calendar_context is None
+        return {'SYNTHETIC_ONLY': True}
+
+    monkeypatch.setattr(continuous, 'continuous_authority', authority)
     monkeypatch.setattr(runner, 'execute_long_horizon_accounts',
                         lambda *args, **kwargs: {'status': 'COMPLETED', 'dispatched_segments': 0})
     def compute(path, authority, request, stage, **kwargs):

@@ -158,3 +158,52 @@
 /scripts/setup_account_purpose_time_extension_v1.py text eol=lf
 # 治理范围校验保留现有CRLF原件，使最终CI与主目录的源码pin一致。
 /src/chanlun_trader/research_factory/campaign_scope_v1.py text eol=crlf
+
+# Pin newly authorized recovery source and test byte identities across CI platforms.
+/scripts/setup_failed_account_recovery_v1.py text eol=lf
+/src/chanlun_trader/account_startup_boundary_v1.py text eol=lf
+/src/chanlun_trader/research_factory/failed_account_recovery_v1.py text eol=lf
+/src/chanlun_trader/research_factory/failed_account_recovery_evidence_v1.py text eol=lf
+/tests/research_factory/test_failed_account_recovery_budget_v1.py text eol=lf
+/tests/research_factory/test_failed_account_recovery_capability_v1.py text eol=lf
+/tests/research_factory/test_failed_account_recovery_context_v1.py text eol=lf
+/tests/research_factory/test_failed_account_recovery_evidence_v1.py text eol=lf
+/tests/research_factory/test_failed_account_recovery_governance_v1.py text eol=lf
+/tests/research_factory/test_failed_account_recovery_integration_v1.py text eol=lf
+/tests/research_factory/test_failed_account_recovery_public_v1.py text eol=lf
+/tests/research_factory/test_failed_account_recovery_setup_v1.py text eol=lf
+/tests/research_factory/test_failed_account_recovery_worker_v1.py text eol=lf
+/tests/research_factory/failed_account_startup_charge_fixture_v1.py text eol=lf
+
+# 有限日历后继的新增源码与回归绑定同一份跨平台字节。
+/src/chanlun_trader/research_factory/failed_account_calendar_scope_v1.py text eol=lf
+/tests/research_factory/test_failed_account_calendar_deadline_owner_v1.py text eol=lf
+/tests/research_factory/test_failed_account_calendar_deadline_budget_v1.py text eol=lf
+/tests/research_factory/test_failed_account_calendar_deadline_runtime_v1.py text eol=lf
+/tests/research_factory/test_failed_account_calendar_scope_v1.py text eol=lf
+
+# 单次核验的新增测试与只读对照工具固定同一份跨平台字节。
+/tests/research_factory/test_same_call_verification_v1.py text eol=lf
+/tests/research_factory/test_verification_return_boundaries_v1.py text eol=lf
+/tests/research_factory/test_recovery_read_equivalence_v1.py text eol=lf
+/tests/benchmarks/compare_failed_account_read_v1.py text eol=lf
+/tests/research_factory/test_lexical_reference_cache_v1.py text eol=lf
+/tests/benchmarks/compare_recovery_guard_v1.py text eol=lf
+/tests/benchmarks/measure_recovery_public_segment_v1.py text eol=lf
+/tests/research_factory/test_verified_json_resolvers_v1.py text eol=lf
+
+# Preserve measured Windows secure-reader bytes in all checkouts.
+/src/chanlun_trader/research_factory/secure_file_reference_v1.py text eol=crlf
+
+# Keep artificial short-path fixture bytes identical across local and CI checkouts.
+/tests/research_factory/conftest.py text eol=lf
+
+# Bind CI resource locator and its regression tests to the measured LF bytes.
+/tests/ci/pytest_resource_artifact_paths.py text eol=lf
+/tests/research_factory/test_ci_pytest_resource_artifact_paths.py text eol=lf
+
+# Pin checkpoint governance revision and its validation byte identities.
+/src/chanlun_trader/research_factory/governance_source_revision_v1.py text eol=lf
+/tests/benchmarks/compare_checkpoint_revision_read_v1.py text eol=lf
+/tests/research_factory/test_governance_source_revision_v1.py text eol=lf
+/tests/research_factory/test_verified_json_hash_v1.py text eol=lf

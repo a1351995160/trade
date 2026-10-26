@@ -1,17 +1,34 @@
 """受信部署引用与任务工件的文件边界；错误不披露任意路径的存在性。"""
 from contextlib import contextmanager
+from functools import lru_cache
 import hashlib
 import json
 import os
 from pathlib import Path, PureWindowsPath
 import re
 import stat
+from types import SimpleNamespace
+
+
+if os.name == 'nt':
+    import ctypes
+    _WINDOWS_FILES = ctypes.WinDLL('kernel32', use_last_error=True)
+    _WINDOWS_ATTRIBUTES = _WINDOWS_FILES.GetFileAttributesW
+    _WINDOWS_ATTRIBUTES.argtypes = [ctypes.c_wchar_p]
+    _WINDOWS_ATTRIBUTES.restype = ctypes.c_uint32
+else:
+    _WINDOWS_ATTRIBUTES = None
 
 
 def _lexical_reference_path(value):
     if not isinstance(value, (str, Path)):
         raise ValueError
-    text = str(value)
+    return _lexical_path_text(str(value))
+
+
+@lru_cache(maxsize=4096)
+def _lexical_path_text(text):
+    # 只复用不可变的路径拼写与词法判断；存在性、链接及对象身份从不缓存。
     path, windows = Path(text), PureWindowsPath(text)
     if (not text or '\x00' in text or not path.is_absolute()
             or '..' in path.parts or '..' in windows.parts
@@ -24,10 +41,27 @@ def _lexical_reference_path(value):
     return path
 
 
+@lru_cache(maxsize=4096)
+def _reference_components(text):
+    path = Path(text)
+    return (*reversed(path.parents), path)
+
+
+def _component_metadata(path):
+    # 每次实时查询该分量，不保留属性；文件打开前后的 lstat/fstat 身份检查仍沿用原实现。
+    if _WINDOWS_ATTRIBUTES is None:
+        return path.lstat()
+    attributes = _WINDOWS_ATTRIBUTES('\\\\?\\' + str(path))
+    if attributes == 0xffffffff:
+        raise ctypes.WinError(ctypes.get_last_error())
+    return SimpleNamespace(st_mode=stat.S_IFDIR if attributes & 0x10 else stat.S_IFREG,
+        st_file_attributes=attributes)
+
+
 def _reject_link_components(path):
-    for component in (*reversed(path.parents), path):
+    for component in _reference_components(str(path)):
         try:
-            metadata = component.lstat()
+            metadata = _component_metadata(component)
         except FileNotFoundError:
             # 创建前的 checkpoint 可有尚不存在的尾部；不再探测其后分量。
             return

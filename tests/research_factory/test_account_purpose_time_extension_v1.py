@@ -561,6 +561,7 @@ def test_reference_rejects_parent_links_before_open(tmp_path, monkeypatch, link_
         pytest.fail('linked reference must not reach native open')
 
     monkeypatch.setattr(Path, 'lstat', changed)
+    monkeypatch.setattr(extension._secure_files, '_component_metadata', changed)
     monkeypatch.setattr(os, 'open', unexpected_open)
     with pytest.raises(ValueError, match='ACCOUNT_PURPOSE_TIME_EXTENSION_PATH_INVALID'):
         extension._reference(target, tmp_path)

@@ -19,9 +19,55 @@ if __name__=='__main__' and ('--worker' in sys.argv or '--compute' in sys.argv):
     from chanlun_trader.synthetic_batch_resources import worker_resource_handshake
     HANDSHAKE=worker_resource_handshake()
 
-from chanlun_trader.research_factory.strategy_interface_v1 import prepare,backend_for,run
-from chanlun_trader.research_factory.etf_account_governance_v1 import StrategyBatchGovernanceV1
-from chanlun_trader.research_factory.exploration_governance import immutable,read_json
+from chanlun_trader.account_startup_boundary_v1 import (AccountStartupBoundaryV1,StartupBoundaryExceeded,
+    startup_boundary_active,startup_read_bytes,startup_file_sha256)
+
+def _import_account_runtime():
+    from chanlun_trader.research_factory.strategy_interface_v1 import prepare,backend_for,run
+    from chanlun_trader.research_factory.etf_account_governance_v1 import StrategyBatchGovernanceV1
+    from chanlun_trader.research_factory.exploration_governance import immutable,read_json
+    return prepare,backend_for,run,StrategyBatchGovernanceV1,immutable,read_json
+
+
+if WORKER_STARTED_AT is not None and '--worker' in sys.argv and '--segment' in sys.argv:
+    _entry_job=Path(sys.argv[sys.argv.index('--job')+1]).resolve()
+    _entry_root=_entry_job.parent;_entry_execution=HANDSHAKE['execution']
+    if (not isinstance(_entry_execution,dict)
+            or _entry_execution.get('purpose')!=sys.argv[sys.argv.index('--worker')+1]
+            or type(_entry_execution.get('segment_number')) is not int or _entry_execution['segment_number']<1
+            or _entry_execution['segment_number']!=int(sys.argv[sys.argv.index('--segment')+1])
+            or not isinstance(_entry_execution.get('dispatch_id'),str) or not _entry_execution['dispatch_id']):
+        raise PermissionError('JOB_LONG_HORIZON_WORKER_SCOPE_CONFLICT')
+    _entry_prefix=_entry_execution['purpose']+'_SEGMENT_'+str(_entry_execution['segment_number']).zfill(6)
+    _entry_binding={'worker_started_at_monotonic':WORKER_STARTED_AT,
+        'deadline_monotonic':WORKER_STARTED_AT+HANDSHAKE['wall_seconds']-60,
+        'purpose':_entry_execution['purpose'],'segment_number':_entry_execution['segment_number'],
+        'dispatch_id':_entry_execution['dispatch_id'],'job_path':str(_entry_job),
+        'reader_pid':os.getpid(),'reader_parent_pid':os.getppid(),'launcher_pid':HANDSHAKE.get('launcher_pid'),
+        'resource_platform':os.name,'windows_job_verified':HANDSHAKE.get('windows_job_verified',False),
+        **{key:_entry_execution[key] for key in
+            ('account_version_continuation','time_extension_proof','failed_account_recovery_proof','dispatch_identity')
+            if key in _entry_execution}}
+    def _entry_save(suffix,value):
+        with (_entry_root/(_entry_prefix+suffix)).open('x',encoding='utf-8') as stream:
+            json.dump(value,stream,ensure_ascii=False,allow_nan=False)
+            stream.flush();os.fsync(stream.fileno())
+    def _entry_stage(index,row,event):
+        _entry_save('_STARTUP_00_'+event+'.json',{
+            'schema_version':'account-startup-stage-v1','event':event,**row,**_entry_binding})
+    _entry_boundary=AccountStartupBoundaryV1(_entry_binding['deadline_monotonic'],on_stage=_entry_stage)
+    try:
+        with _entry_boundary.scope(),_entry_boundary.stage_scope('DOMAIN_IMPORTS'):
+            prepare,backend_for,run,StrategyBatchGovernanceV1,immutable,_read_json=_import_account_runtime()
+    except StartupBoundaryExceeded as exc:
+        # 领域组件尚未可用；只提交已握手派发的未完成启动，不宣称任何检查通过。
+        _entry_save('_STARTUP.json',{**_entry_boundary.snapshot(),**_entry_binding,
+            'validation_complete':False,'interrupted_stage':exc.stage})
+        _entry_save('_STATUS.json',{'state':'CONTINUE','phase':'STARTUP','reason':str(exc),
+            'last_day':None,'state_identity':None,'checkpoint_sha256':None,**_entry_binding})
+        raise SystemExit(75)
+else:
+    prepare,backend_for,run,StrategyBatchGovernanceV1,immutable,_read_json=_import_account_runtime()
 
 REPO=Path(__file__).resolve().parents[1]
 if str(REPO) not in sys.path:sys.path.insert(0,str(REPO))
@@ -29,8 +75,14 @@ if str(REPO/'scripts') not in sys.path:sys.path.insert(0,str(REPO/'scripts'))
 
 
 def sha(path):
+    if startup_boundary_active():
+        return startup_file_sha256(path)
     with Path(path).open('rb') as stream:
         return hashlib.file_digest(stream, 'sha256').hexdigest()
+
+
+def read_json(path):
+    return json.loads(startup_read_bytes(path)) if startup_boundary_active() else _read_json(path)
 
 
 def save(path,value):
@@ -104,6 +156,7 @@ def freeze_config(config,root):
             str(REPO/'src/chanlun_trader/research_factory/etf_account_governance_v1.py'),
             str(REPO/'src/chanlun_trader/research_factory/budget.py'),
             str(REPO/'src/chanlun_trader/synthetic_batch_resources.py'),
+            str(REPO/'src/chanlun_trader/account_startup_boundary_v1.py'),
             *getattr(loader,'source_files',()),*item.get('dependency_files',[])}
         runtime={**item,'benchmark_id':config.get('benchmark_id'),'source_identity':[commit,dirty],
                  'source_hashes':{str(Path(p).resolve()):sha(p) for p in paths}}
@@ -155,6 +208,74 @@ def account_version_context(job):
     return AccountVersionContinuationV1.from_job(job)
 
 
+def _failed_account_recovery(account_version,name):
+    recovery=getattr(account_version,'recovery',None) if account_version is not None else None
+    return recovery if recovery is not None and recovery.original_failed_account==name else None
+
+
+
+def _execution_paused(job,account_version):
+    control=control_state(job)
+    return account_version.execution_paused(control=control) if account_version is not None else control['paused']
+
+def _account_execution_paths(job,name,account_version):
+    if name not in job['plans']:
+        raise PermissionError('JOB_ACCOUNT_PURPOSE_NOT_AUTHORIZED')
+    prefix=name+('_RECOVERY' if _failed_account_recovery(account_version,name) is not None else '')
+    return {key:Path(job['root'])/(prefix+'_'+suffix+'.json') for key,suffix in
+        (('start','START'),('settlement','SETTLEMENT'),('resource','RESOURCE'),
+         ('worker','WORKER'),('input_access','INPUT_ACCESS'))}
+
+
+def account_execution_paths(job,name):
+    """只从完整校验的显式失败接续证明选择独立历史结算路径。"""
+    return _account_execution_paths(job,name,account_version_context(job))
+
+
+def _segment_execution_proof(account_version,name,dispatch):
+    proof={'account_version_continuation':account_version.proof(name)} if account_version is not None else {}
+    for key in ('time_extension_proof','failed_account_recovery_proof'):
+        if dispatch.get(key) is not None:
+            proof[key]=dispatch[key]
+    if dispatch.get('failed_account_recovery_proof') is not None:
+        if (account_version is None or getattr(account_version,'recovery',None) is None
+                or account_version.recovery.proof()!=dispatch['failed_account_recovery_proof']
+                or proof['account_version_continuation'].get('failed_account_recovery')!=dispatch['failed_account_recovery_proof']):
+            raise PermissionError('JOB_FAILED_ACCOUNT_RECOVERY_DISPATCH_VERSION_CONFLICT')
+        proof['dispatch_identity']=dispatch['dispatch_identity']
+    return proof
+
+
+def _validate_recovery_segment_sidecars(root,prefix,dispatch,account_version,name,*,require_startup=False,require_worker=True):
+    if dispatch.get('failed_account_recovery_proof') is None:
+        return
+    proof=_segment_execution_proof(account_version,name,dispatch)
+    required=(('_WORKER.json',) if require_worker else ())+(('_STARTUP.json','_STATUS.json') if require_startup else ())
+    for suffix in required:
+        if not (root/(prefix+suffix)).is_file():
+            raise PermissionError('JOB_FAILED_ACCOUNT_RECOVERY_SEGMENT_EVIDENCE_REQUIRED')
+    paths=[root/(prefix+suffix) for suffix in
+        ('_WORKER.json','_RESOURCE.json','_INPUT_ACCESS.json','_STATUS.json','_FAILURE.json','_RESUME.json','_STARTUP.json')]
+    paths.extend(sorted(root.glob(prefix+'_STARTUP_*_*.json')))
+    for source in paths:
+        if source.exists():
+            try:
+                value=read_json(source)
+            except (OSError,ValueError) as exc:
+                raise PermissionError('JOB_FAILED_ACCOUNT_RECOVERY_SEGMENT_EVIDENCE_INVALID') from exc
+            if not isinstance(value,dict) or value.get('dispatch_id')!=dispatch['dispatch_id'] or any(value.get(key)!=expected for key,expected in proof.items()):
+                raise PermissionError('JOB_FAILED_ACCOUNT_RECOVERY_SEGMENT_PROOF_CONFLICT')
+    startup=root/(prefix+'_STARTUP.json')
+    if startup.exists() and require_startup:
+        startup_value=read_json(startup);status_value=read_json(root/(prefix+'_STATUS.json'))
+        if (type(startup_value.get('validation_complete')) is not bool
+                or (status_value.get('state')=='COMPLETED' and startup_value['validation_complete'] is not True)):
+            raise PermissionError('JOB_FAILED_ACCOUNT_RECOVERY_STARTUP_NOT_VALIDATED')
+    if startup.exists() and read_json(startup).get('validation_complete') is True:
+        if not (root/(prefix+'_INPUT_ACCESS.json')).is_file():
+            raise PermissionError('JOB_FAILED_ACCOUNT_RECOVERY_INPUT_ACCESS_REQUIRED')
+
+
 def reconcile_account_version_prefix(job):
     """仅补原父事件证明的镜像；完整派发校验仍在恢复后执行。"""
     from chanlun_trader.research_factory.account_version_continuation_v1 import AccountVersionContinuationV1
@@ -196,7 +317,7 @@ def validate_sources(job,*,_report_repair=None):
     if continuation is not None:
         if _report_repair is not None:
             raise PermissionError('JOB_ACCOUNT_VERSION_REPORT_REPAIR_CONFLICT')
-        continuation.validate_sources(job)
+        # from_job 已完整 fresh 校验并核对原 JOB；此处不重复同次校验。
     elif _report_repair is None:
         for path,digest in job['source_hashes'].items():
             if sha(path)!=digest:raise PermissionError('JOB_FROZEN_SOURCE_CHANGED:'+path)
@@ -324,7 +445,7 @@ def control_job(path,event):
         compute_done=root/'COMPUTE_REPORT'/'COMPUTE_START.json'
         if all((root/(name+'_SETTLEMENT.json')).exists() for name in job['plans']) and compute_done.exists():
             scope=read_json(root/'COMPUTE_REPORT'/'SCOPE.json')
-            from chanlun_trader.research_factory.universe_compute_governance_v1 import UniverseComputeGovernanceV1
+            from chanlun_trader.research_factory.failed_account_calendar_scope_v1 import calendar_compute_governance_v1 as UniverseComputeGovernanceV1
             completed=UniverseComputeGovernanceV1(root/'COMPUTE_REPORT',scope['authority'],scope['request'],'REPORT').status()
             terminal=completed['segments'] and completed['segments'][-1]['charge']['outcome'] in ('COMPLETED','FAILED')
         else:terminal=False
@@ -340,21 +461,35 @@ def control_job(path,event):
         return control_state(job)
 
 
-def record_segment_failure(folder,prefix,dispatch_id,scope_identity,exc,*,time_extension_proof=None):
+def record_segment_failure(folder,prefix,dispatch_id,scope_identity,exc,*,time_extension_proof=None,
+                           failed_account_recovery_proof=None,account_version_continuation=None,dispatch_identity=None):
     save(Path(folder)/(prefix+'_FAILURE.json'),{'exception_type':type(exc).__name__,'message':str(exc),
         'dispatch_id':dispatch_id,'scope_identity':scope_identity,
         'evidence':getattr(exc,'evidence',None),'automatic_retry':False,
-        **({'time_extension_proof':time_extension_proof} if time_extension_proof is not None else {})})
+        **({'time_extension_proof':time_extension_proof} if time_extension_proof is not None else {}),
+        **({'failed_account_recovery_proof':failed_account_recovery_proof} if failed_account_recovery_proof is not None else {}),
+        **({'account_version_continuation':account_version_continuation} if account_version_continuation is not None else {}),
+        **({'dispatch_identity':dispatch_identity} if dispatch_identity is not None else {})})
 
 
 def long_horizon_worker(path,name,number):
-    job=read_json(path);root=Path(job['root']);pending=service(job).segment_status(name)['pending']
     try:
         return _long_horizon_worker(path,name,number)
     except Exception as exc:
-        if pending and pending['segment_number']==number:
-            record_segment_failure(root,segment_prefix(name,number),pending['dispatch_id'],sha(path),exc,
-                time_extension_proof=pending.get('time_extension_proof'))
+        # 异常收尾只读取已派发的固定小回执，不再次做可能已耗尽的完整启动验证。
+        root=Path(path).resolve().parent;prefix=segment_prefix(name,number)
+        dispatch_path=root/(prefix+'_DISPATCH.json')
+        pending=(read_json(dispatch_path) if dispatch_path.exists() else
+            dict(HANDSHAKE['execution']) if HANDSHAKE is not None else {})
+        if pending:
+            if pending.get('segment_number')==number:
+                startup_path=root/(prefix+'_STARTUP.json')
+                startup=read_json(startup_path) if startup_path.exists() else {}
+                record_segment_failure(root,prefix,pending['dispatch_id'],sha(path),exc,
+                    time_extension_proof=pending.get('time_extension_proof'),
+                    failed_account_recovery_proof=pending.get('failed_account_recovery_proof'),
+                    account_version_continuation=startup.get('account_version_continuation'),
+                    dispatch_identity=pending.get('dispatch_identity'))
         raise
 
 
@@ -381,91 +516,187 @@ def cooperative_remaining(deadline,profile_id):
     return max(.01,remaining)
 
 
+def worker_execution_binding(name,dispatch,account_version=None):
+    binding={'purpose':name,'segment_number':dispatch['segment_number'],'dispatch_id':dispatch['dispatch_id']}
+    if dispatch.get('failed_account_recovery_proof') is not None:
+        if account_version is None or getattr(account_version,'recovery',None) is None:
+            raise PermissionError('JOB_FAILED_ACCOUNT_RECOVERY_CONTEXT_REQUIRED')
+        binding.update(failed_account_recovery_proof=dispatch['failed_account_recovery_proof'],
+            dispatch_identity=dispatch['dispatch_identity'],account_version_continuation=account_version.proof(name))
+        if dispatch.get('time_extension_proof') is not None:
+            binding['time_extension_proof']=dispatch['time_extension_proof']
+    return binding
+
+
 def _long_horizon_worker(path,name,number):
     from chanlun_trader.research_factory.universe_account_backend_v2 import SegmentBoundary
-    job=read_json(path);account_version=validate_sources(job);gov=service(job);root=Path(job['root'])
-    state=gov.segment_status(name);dispatch=state['pending'];prefix=segment_prefix(name,number)
-    expected={'purpose':name,'segment_number':number,'dispatch_id':dispatch['dispatch_id'] if dispatch else None}
-    if (dispatch is None or dispatch['segment_number'] != number or HANDSHAKE is None
-            or HANDSHAKE.get('execution') != expected
-            or HANDSHAKE['memory_mib'] != state['profile']['memory_mib']
-            or not 0 < HANDSHAKE['wall_seconds'] <= dispatch['upper_bound_seconds']):
+    if (HANDSHAKE is None or WORKER_STARTED_AT is None or type(number) is not int or number<1
+            or HANDSHAKE.get('execution',{}).get('purpose')!=name
+            or HANDSHAKE['execution'].get('segment_number')!=number):
         raise PermissionError('JOB_LONG_HORIZON_WORKER_SCOPE_CONFLICT')
-    gov.active_execution(name)
-    if account_version is not None:
-        account_version.validate_dispatch(name,number)
-    item=account_version.active_item(name) if account_version is not None else job['items'][name]
-    plan=account_version.active_plan(name) if account_version is not None else job['plans'][name]
-    proof={'account_version_continuation':account_version.proof(name)} if account_version is not None else {}
-    if dispatch.get('time_extension_proof') is not None:
-        if proof.get('account_version_continuation', {}).get('account_purpose_time_extension') != dispatch['time_extension_proof']:
-            raise PermissionError('JOB_TIME_EXTENSION_DISPATCH_VERSION_CONFLICT')
-        proof['time_extension_proof']=dispatch['time_extension_proof']
-    strategy=resolve(item['factory'])(**item.get('factory_kwargs',{}))
-    backend=backend_for(strategy,item['backend_options'])
-    if prepare(strategy,backend,item) != plan:
-        raise PermissionError('WORKER_PLAN_CONFLICT')
-    save(root/(prefix+'_INPUT_ACCESS.json'),{'reader_pid':os.getpid(),'reader_parent_pid':os.getppid(),
-        'launcher_pid':HANDSHAKE.get('launcher_pid'),'resource_platform':os.name,
-        'windows_job_verified':HANDSHAKE.get('windows_job_verified',False),'input_identity':job['input_identity'],
-        'loader':item['loader'],'loader_kwargs':item['loader_kwargs'],'purpose':name,
-        'segment_number':number,'dispatch_id':dispatch['dispatch_id'],
-        'accessed_at':datetime.now(timezone.utc).isoformat(),**proof})
-    begin=time.monotonic()
+    if HANDSHAKE['wall_seconds']<=60:
+        raise PermissionError('JOB_LONG_HORIZON_COOPERATIVE_WINDOW_EXHAUSTED')
+    root=Path(path).resolve().parent;prefix=segment_prefix(name,number);job=None;item=None;dispatch=None
+    proof={key:HANDSHAKE['execution'][key] for key in
+        ('account_version_continuation','time_extension_proof','failed_account_recovery_proof','dispatch_identity')
+        if key in HANDSHAKE['execution']}
+    def record_startup_stage(index,row,event):
+        save(root/(prefix+'_STARTUP_'+str(index).zfill(2)+'_'+event+'.json'),{
+            'schema_version':'account-startup-stage-v1','event':event,**row,
+            'worker_started_at_monotonic':WORKER_STARTED_AT,
+            'deadline_monotonic':WORKER_STARTED_AT+HANDSHAKE['wall_seconds']-60,
+            'dispatch_id':HANDSHAKE['execution'].get('dispatch_id'),**proof})
+    boundary=AccountStartupBoundaryV1(WORKER_STARTED_AT+HANDSHAKE['wall_seconds']-60,
+        on_stage=record_startup_stage)
     try:
-        deadline=(None if job['resources']['purpose']=='ENGINEERING_CONTINUOUS_REFERENCE'
-            else cooperative_deadline(job['resources']['profile_id'],dispatch['upper_bound_seconds'],begin))
-        if deadline is not None:
-            cooperative_remaining(deadline,job['resources']['profile_id'])
-        data=resolve(item['loader'])(**item['loader_kwargs'])
-        if data['input_identity'] != job['input_identity']:
-            raise PermissionError('LOADED_INPUT_IDENTITY_CONFLICT')
-        backend.segment_seconds=(None if deadline is None
-            else cooperative_remaining(deadline,job['resources']['profile_id']))
-        first_active=True
-        def active():
-            nonlocal first_active
-            receipt={**gov.active_execution(name),'execution_pause_requested':control_state(job)['paused']}
-            if account_version is not None:
-                receipt=account_version.project_receipt(receipt,name)
-            # 公共 prepare 后的首次 guard 仍在引擎之前；日内 guard 不新增中断点。
-            if first_active and deadline is not None:
-                backend.segment_seconds=cooperative_remaining(deadline,job['resources']['profile_id'])
-            first_active=False
-            return receipt
-        output=root/(name+'_RESULT.json')
-        if output.exists():
-            result=completion_tail_result(job,name,gov.segment_status(name))
-            from chanlun_trader.research_factory.universe_account_inputs_v1 import _prepare_owned_universe_account_inputs_v1
-            from chanlun_trader.research_factory.universe_execution_artifacts_v1 import hydrated_result
-            from chanlun_trader.research_factory.universe_evidence_v1 import reconstruct_universe_account
-            from chanlun_trader.research_factory.common import stable_hash
-            inputs=_prepare_owned_universe_account_inputs_v1(data['frame'],backend.window,
-                required_fields=strategy.requirements.fields,warmup_bars=strategy.requirements.warmup_sessions)
-            checkpoint=Path(item['backend_options']['checkpoint_path'])
-            audit=reconstruct_universe_account(inputs.bundle,inputs.window,hydrated_result(result),
-                initial_cash=backend.initial_cash,costs=backend.costs,strategy_id=strategy.strategy_id,rule=strategy.payload,
-                audit_checkpoint_path=checkpoint.parent/(strategy.strategy_id+'_AUDIT.json'),
-                segment_seconds=(None if deadline is None else cooperative_remaining(deadline,job['resources']['profile_id'])))
-            if result.get('reconciliation',{}).get('audit_identity')!=stable_hash(audit):
-                raise PermissionError('JOB_COMPLETION_TAIL_AUDIT_CONFLICT')
-        else:
-            result=run(strategy,backend,frame=data['frame'],actions=data['actions'],input_identity=data['input_identity'],
-                active_check=active,runtime=item)
-            result.update(proof)
-            save(output,result)
+        with boundary.scope():
+            with boundary.stage_scope('JOB_READ'):
+                job=read_json(path)
+                if root!=Path(job['root']).resolve():
+                    raise PermissionError('JOB_ROOT_IDENTITY_CONFLICT')
+                if job['resources']['purpose']=='ENGINEERING_CONTINUOUS_REFERENCE':
+                    boundary.disable()
+            with boundary.stage_scope('VALIDATE_SOURCES'):
+                account_version=validate_sources(job)
+            with boundary.stage_scope('GOVERNANCE_SCOPE'):
+                gov=service(job);state=gov.segment_status(name);dispatch=state['pending']
+                expected=worker_execution_binding(name,dispatch,account_version) if dispatch else None
+                if (dispatch is None or dispatch['segment_number'] != number
+                        or HANDSHAKE.get('execution') != expected
+                        or HANDSHAKE['memory_mib'] != state['profile']['memory_mib']
+                        or not 0 < HANDSHAKE['wall_seconds'] <= dispatch['upper_bound_seconds']):
+                    raise PermissionError('JOB_LONG_HORIZON_WORKER_SCOPE_CONFLICT')
+                gov.active_execution(name)
+                if account_version is not None:
+                    account_version.validate_dispatch(name,number)
+                item=account_version.active_item(name) if account_version is not None else job['items'][name]
+                plan=account_version.active_plan(name) if account_version is not None else job['plans'][name]
+                proof={'account_version_continuation':account_version.proof(name)} if account_version is not None else {}
+                if dispatch.get('time_extension_proof') is not None:
+                    if proof.get('account_version_continuation', {}).get('account_purpose_time_extension') != dispatch['time_extension_proof']:
+                        raise PermissionError('JOB_TIME_EXTENSION_DISPATCH_VERSION_CONFLICT')
+                    proof['time_extension_proof']=dispatch['time_extension_proof']
+                if dispatch.get('failed_account_recovery_proof') is not None:
+                    if (account_version is None or getattr(account_version,'recovery',None) is None
+                            or account_version.recovery.proof()!=dispatch['failed_account_recovery_proof']
+                            or proof['account_version_continuation'].get('failed_account_recovery')!=dispatch['failed_account_recovery_proof']):
+                        raise PermissionError('JOB_FAILED_ACCOUNT_RECOVERY_DISPATCH_VERSION_CONFLICT')
+                    proof['failed_account_recovery_proof']=dispatch['failed_account_recovery_proof']
+                    proof['dispatch_identity']=dispatch['dispatch_identity']
+            with boundary.stage_scope('STRATEGY_PREPARE'):
+                strategy=resolve(item['factory'])(**item.get('factory_kwargs',{}))
+                backend=backend_for(strategy,item['backend_options'])
+                if prepare(strategy,backend,item) != plan:
+                    raise PermissionError('WORKER_PLAN_CONFLICT')
+            with boundary.stage_scope('INPUT_ACCESS'):
+                save(root/(prefix+'_INPUT_ACCESS.json'),{'reader_pid':os.getpid(),'reader_parent_pid':os.getppid(),
+                    'launcher_pid':HANDSHAKE.get('launcher_pid'),'resource_platform':os.name,
+                    'windows_job_verified':HANDSHAKE.get('windows_job_verified',False),'input_identity':job['input_identity'],
+                    'loader':item['loader'],'loader_kwargs':item['loader_kwargs'],'purpose':name,
+                    'segment_number':number,'dispatch_id':dispatch['dispatch_id'],
+                    'accessed_at':datetime.now(timezone.utc).isoformat(),**proof})
+            deadline=(None if job['resources']['purpose']=='ENGINEERING_CONTINUOUS_REFERENCE'
+                else cooperative_deadline(job['resources']['profile_id'],dispatch['upper_bound_seconds'],WORKER_STARTED_AT))
+            with boundary.stage_scope('LOADER'):
+                data=resolve(item['loader'])(**item['loader_kwargs'])
+                if data['input_identity'] != job['input_identity']:
+                    raise PermissionError('LOADED_INPUT_IDENTITY_CONFLICT')
+            backend.segment_seconds=(None if deadline is None
+                else cooperative_remaining(deadline,job['resources']['profile_id']))
+            from chanlun_trader.research_factory import universe_account_backend_v2 as account_backend
+            first_active=True
+            def active_receipt():
+                nonlocal first_active
+                receipt={**gov.active_execution(name),'execution_pause_requested':_execution_paused(job,account_version)}
+                if account_version is not None:
+                    receipt=account_version.project_receipt(receipt,name)
+                # 只更新同一绝对截止的剩余；完整 guard 与后续启动核验仍由 trace 覆盖。
+                if first_active:
+                    if deadline is not None:
+                        backend.segment_seconds=cooperative_remaining(deadline,job['resources']['profile_id'])
+                first_active=False
+                return receipt
+            def active():
+                if (type(backend) is not account_backend.UniverseAccountBackendV2
+                        or not boundary.validation_complete or deadline is None):
+                    return active_receipt()
+                # V2 后续 guard 均在经济日开始前或完整 CP 提交后；只覆盖治理核验。
+                # 每调用使用同一绝对截止，不重启原启动边界，也不把 trace 带入经济函数。
+                guard_boundary=AccountStartupBoundaryV1(deadline)
+                try:
+                    with guard_boundary.scope(),guard_boundary.stage_scope('ACTIVE_GOVERNANCE_GUARD'):
+                        return active_receipt()
+                except StartupBoundaryExceeded as exc:
+                    # 在临时 scope 已退出后映射，避免 RuntimeError 被深层文件错误桶改写。
+                    save(root/(prefix+'_STARTUP_ACTIVE_GUARD_CUTOFF.json'),{
+                        **guard_boundary.snapshot(),'schema_version':'account-post-startup-guard-cutoff-v1',
+                        'startup_validation_complete':boundary.validation_complete,'phase':'ACCOUNT',
+                        'worker_started_at_monotonic':WORKER_STARTED_AT,'purpose':name,'segment_number':number,
+                        'dispatch_id':dispatch['dispatch_id'],**proof})
+                    raise SegmentBoundary(str(exc),phase='ACCOUNT') from exc
+            if type(backend) is account_backend.UniverseAccountBackendV2:
+                economic_entry=account_backend.build_portfolio_plan.__code__
+                backend_entry=account_backend.UniverseAccountBackendV2.run.__code__
+                def before_economic_call(frame):
+                    if (frame.f_code is economic_entry and frame.f_back is not None
+                            and frame.f_back.f_code is backend_entry):
+                        if first_active:
+                            raise PermissionError('JOB_STARTUP_ACTIVE_GUARD_REQUIRED')
+                        # 输入、特征、完整 CP 及首日 guard 均已完成，经济函数尚未进入。
+                        boundary.completed()
+                boundary.before_call=before_economic_call
+            output=root/(name+'_RESULT.json')
+            if output.exists():
+                with boundary.stage_scope('COMPLETION_TAIL_INPUT_VALIDATION'):
+                    result=completion_tail_result(job,name,gov.segment_status(name))
+                    from chanlun_trader.research_factory.universe_account_inputs_v1 import _prepare_owned_universe_account_inputs_v1
+                    from chanlun_trader.research_factory.universe_execution_artifacts_v1 import hydrated_result
+                    from chanlun_trader.research_factory.universe_evidence_v1 import reconstruct_universe_account
+                    from chanlun_trader.research_factory.common import stable_hash
+                    inputs=_prepare_owned_universe_account_inputs_v1(data['frame'],backend.window,
+                        required_fields=strategy.requirements.fields,warmup_bars=strategy.requirements.warmup_sessions)
+                    boundary.completed()
+                checkpoint=Path(item['backend_options']['checkpoint_path'])
+                audit=reconstruct_universe_account(inputs.bundle,inputs.window,hydrated_result(result),
+                    initial_cash=backend.initial_cash,costs=backend.costs,strategy_id=strategy.strategy_id,rule=strategy.payload,
+                    audit_checkpoint_path=checkpoint.parent/(strategy.strategy_id+'_AUDIT.json'),
+                    segment_seconds=(None if deadline is None else cooperative_remaining(deadline,job['resources']['profile_id'])))
+                if result.get('reconciliation',{}).get('audit_identity')!=stable_hash(audit):
+                    raise PermissionError('JOB_COMPLETION_TAIL_AUDIT_CONFLICT')
+            else:
+                with boundary.stage_scope('PUBLIC_PREPARE_AND_ENGINE_ENTRY'):
+                    result=run(strategy,backend,frame=data['frame'],actions=data['actions'],input_identity=data['input_identity'],
+                        active_check=active,runtime=item)
+                if not boundary.validation_complete:
+                    if first_active:
+                        raise PermissionError('JOB_STARTUP_ACTIVE_GUARD_REQUIRED')
+                    # 已无新交易日的最终尾部仍完成全部原核验，没有新的经济入口。
+                    boundary.completed()
+                result.update(proof)
+                save(output,result)
+        save(root/(prefix+'_STARTUP.json'),{**boundary.snapshot(),'worker_started_at_monotonic':WORKER_STARTED_AT,
+            'dispatch_id':dispatch['dispatch_id'],**proof})
         save(root/(prefix+'_STATUS.json'),{'state':'COMPLETED','dispatch_id':dispatch['dispatch_id'],
             'result_sha256':sha(root/(name+'_RESULT.json')),**proof})
         return 0
-    except SegmentBoundary as exc:
-        checkpoint=Path(item['backend_options']['checkpoint_path'])
-        value=read_json(checkpoint) if checkpoint.exists() else {}
-        save(root/(prefix+'_STATUS.json'),{'state':'CONTINUE','dispatch_id':dispatch['dispatch_id'],
+    except (SegmentBoundary,StartupBoundaryExceeded) as exc:
+        checkpoint=Path(item['backend_options']['checkpoint_path']) if item is not None else None
+        value=read_json(checkpoint) if checkpoint is not None and checkpoint.exists() else {}
+        dispatch_id=dispatch['dispatch_id'] if dispatch is not None else HANDSHAKE['execution'].get('dispatch_id')
+        if not isinstance(dispatch_id,str) or not dispatch_id:
+            raise PermissionError('JOB_LONG_HORIZON_WORKER_SCOPE_CONFLICT') from exc
+        save(root/(prefix+'_STARTUP.json'),{**boundary.snapshot(),'worker_started_at_monotonic':WORKER_STARTED_AT,
+            'dispatch_id':dispatch_id,**proof})
+        save(root/(prefix+'_STATUS.json'),{'state':'CONTINUE','dispatch_id':dispatch_id,
             'phase':getattr(exc,'phase','ACCOUNT'),'last_day':value.get('last_day'),
-            'state_identity':value.get('state_identity'),'checkpoint_sha256':sha(checkpoint) if checkpoint.exists() else None,
-            'reason':str(exc),**(proof if dispatch.get('time_extension_proof') is not None else {})})
+            'state_identity':value.get('state_identity'),
+            'checkpoint_sha256':sha(checkpoint) if checkpoint is not None and checkpoint.exists() else None,
+            'reason':str(exc),**proof})
         return 75
-
+    except Exception:
+        save(root/(prefix+'_STARTUP.json'),{**boundary.snapshot(),'worker_started_at_monotonic':WORKER_STARTED_AT,
+            'dispatch_id':dispatch['dispatch_id'] if dispatch is not None else HANDSHAKE['execution'].get('dispatch_id'),**proof})
+        raise
 
 def completion_tail_result(job,name,state):
     """宿主回执丢失后的最终快照只核验，不重放交易日，也不改原 RESULT。"""
@@ -500,8 +731,13 @@ def completion_tail_result(job,name,state):
     raise PermissionError('JOB_COMPLETION_TAIL_ORIGINAL_STATUS_NOT_PROVEN')
 
 
+def _settle_account_execution(gov,name,recovery,*,completed,seconds,result_hash,error=None):
+    settle=gov.settle_recovery if recovery is not None else gov.settle
+    return settle(name,completed=completed,seconds=seconds,result_hash=result_hash,error=error)
+
+
 def execute_long_horizon_accounts(path,*,recover=False,step=False):
-    """step 一次至多派发一个真实 worker；默认保持原阻塞入口。"""
+    """step 一次至多派发一个真实 worker；显式失败接续保留原用途终态。"""
     from chanlun_trader.synthetic_batch_resources import run_bounded_worker
     from chanlun_trader.research_factory.universe_execution_profile_v1 import worker_wall_seconds
     from chanlun_trader.research_factory.mutation_boundary import ObjectiveMutationLock
@@ -513,32 +749,45 @@ def execute_long_horizon_accounts(path,*,recover=False,step=False):
         if not recover and any((root/(name+'_START.json')).exists() for name in job['plans']):
             raise PermissionError('JOB_ALREADY_ATTEMPTED_RECONCILE_NO_REPLAY')
         for name in job['plans']:
-            if (root/(name+'_SETTLEMENT.json')).exists():
+            recovery=_failed_account_recovery(account_version,name)
+            paths=_account_execution_paths(job,name,account_version)
+            if paths['settlement'].exists():
                 validated_settlement(job,name)
                 continue
             if step and dispatched_segments:
                 return {'status':'CONTINUE','stage':'ACCOUNT','dispatched_segments':dispatched_segments,
                         'next_purpose':name,'items':status(path)['items']}
-            if control_state(job)['paused']:
+            if _execution_paused(job,account_version):
                 return {'status':'PAUSED','items':status(path)['items'],
                         **({'stage':'ACCOUNT','dispatched_segments':dispatched_segments} if step else {})}
-            if not (root/(name+'_START.json')).exists():
-                gov.start(name)
+            if not paths['start'].exists():
+                if recovery is not None:
+                    gov.start_recovery(name)
+                else:
+                    gov.start(name)
             state=gov.segment_status(name)
             if state['pending'] is not None:
                 raise PermissionError('JOB_LONG_HORIZON_INTERRUPTED_USE_RESUME')
-            if state['segments'] and state['segments'][-1]['charge']['outcome'] == 'FAILED':
+            last=state['segments'][-1] if state['segments'] else None
+            original_failed_boundary=(recovery is not None and last is not None
+                and state.get('failed_account_recovery_proof')==recovery.proof()
+                and state.get('recovery_boundary',{}).get('segment_count')==last['dispatch']['segment_number']
+                and state.get('recovery_boundary',{}).get('status_at_install')=='FAILED'
+                and state.get('effective_execution_status')=='RUNNING')
+            if last is not None and last['charge']['outcome']=='FAILED' and not original_failed_boundary:
                 raise PermissionError('JOB_WORKER_FAILED_NO_RETRY')
             if (root/(name+'_RESULT.json')).exists():
-                if state['segments'] and state['segments'][-1]['charge']['outcome']=='COMPLETED':
-                    prefix=segment_prefix(name,state['segments'][-1]['dispatch']['segment_number'])
-                    for suffix in ('_WORKER.json','_INPUT_ACCESS.json'):
-                        save(root/(name+suffix),read_json(root/(prefix+suffix)))
+                if last is not None and last['charge']['outcome']=='COMPLETED':
+                    prefix=segment_prefix(name,last['dispatch']['segment_number'])
+                    _validate_recovery_segment_sidecars(root,prefix,last['dispatch'],account_version,name,require_startup=True)
+                    for key,suffix in (('worker','_WORKER.json'),('input_access','_INPUT_ACCESS.json')):
+                        save(paths[key],read_json(root/(prefix+suffix)))
                     resource=read_json(root/(prefix+'_RESOURCE.json'))
                     resource.update(elapsed_wall_seconds=state['charged_seconds'],segment_count=len(state['segments']),
                                     active_metering=True,segments=[row['charge']['charge_id'] for row in state['segments']])
-                    save(root/(name+'_RESOURCE.json'),resource)
-                    gov.settle(name,completed=True,seconds=state['charged_seconds'],result_hash=sha(root/(name+'_RESULT.json')))
+                    save(paths['resource'],resource)
+                    _settle_account_execution(gov,name,recovery,completed=True,seconds=state['charged_seconds'],
+                        result_hash=sha(root/(name+'_RESULT.json')))
                     continue
                 completion_tail_result(job,name,state)
             while True:
@@ -547,6 +796,7 @@ def execute_long_horizon_accounts(path,*,recover=False,step=False):
                 dispatch=gov.start_segment(name);number=dispatch['segment_number'];prefix=segment_prefix(name,number)
                 if account_version is not None:
                     account_version.record_dispatch(name,dispatch)
+                proof=_segment_execution_proof(account_version,name,dispatch)
                 dispatched_segments+=1
                 env={**os.environ,'PYTHONDONTWRITEBYTECODE':'1',
                     **{key:'1' for key in ('OMP_NUM_THREADS','OPENBLAS_NUM_THREADS','MKL_NUM_THREADS','NUMEXPR_NUM_THREADS')}}
@@ -558,24 +808,32 @@ def execute_long_horizon_accounts(path,*,recover=False,step=False):
                         '--job',str(Path(path).resolve()),'--segment',str(number)],root=REPO,
                         memory_mib=job['resources']['memory_mib'],wall_seconds=worker_wall_seconds(dispatch['upper_bound_seconds']),
                         measure_peak_memory=True,
-                        environment=env,execution={'purpose':name,'segment_number':number,'dispatch_id':dispatch['dispatch_id']},
+                        environment=env,execution=worker_execution_binding(name,dispatch,account_version),
                         on_started=lambda pid:save(root/(prefix+'_WORKER.json'),{'pid':pid,'purpose':name,
-                            'segment_number':number,'dispatch_id':dispatch['dispatch_id'],
-                            **({'account_version_continuation':account_version.proof(name)} if account_version is not None else {}),
-                            **({'time_extension_proof':dispatch['time_extension_proof']}
-                                if dispatch.get('time_extension_proof') is not None else {})}))
+                            'segment_number':number,'dispatch_id':dispatch['dispatch_id'],**proof}))
                 except Exception as exc:
                     resource={'returncode':None,'timed_out':False,'error_type':type(exc).__name__,'error':str(exc)}
                 elapsed=time.monotonic()-begin
                 resource={key:value.decode('utf-8',errors='replace') if isinstance(value,bytes) else value
                           for key,value in resource.items()}
                 resource.update(elapsed_wall_seconds=elapsed,segment_number=number,dispatch_id=dispatch['dispatch_id'])
-                if dispatch.get('time_extension_proof') is not None:
-                    resource.update(time_extension_proof=dispatch['time_extension_proof'],
-                        account_version_continuation=account_version.proof(name))
+                if dispatch.get('time_extension_proof') is not None or dispatch.get('failed_account_recovery_proof') is not None:
+                    resource.update(proof)
                 resource_path=root/(prefix+'_RESOURCE.json');save(resource_path,resource)
-                status_path=root/(prefix+'_STATUS.json')
-                status_value=read_json(status_path) if status_path.exists() else {}
+                status_path=root/(prefix+'_STATUS.json');status_error=None
+                try:
+                    status_value=read_json(status_path) if status_path.exists() else {}
+                except (OSError,ValueError) as exc:
+                    if dispatch.get('failed_account_recovery_proof') is None:
+                        raise
+                    status_error=PermissionError('JOB_FAILED_ACCOUNT_RECOVERY_STATUS_INVALID')
+                    status_error.__cause__=exc
+                    status_value={}
+                if not isinstance(status_value,dict):
+                    if dispatch.get('failed_account_recovery_proof') is None:
+                        raise PermissionError('JOB_SEGMENT_STATUS_INVALID')
+                    status_error=PermissionError('JOB_FAILED_ACCOUNT_RECOVERY_STATUS_INVALID')
+                    status_value={}
                 output=root/(name+'_RESULT.json')
                 within_bound=elapsed<=dispatch['upper_bound_seconds']
                 complete=(within_bound and resource.get('returncode')==0 and not resource.get('timed_out') and output.exists()
@@ -583,9 +841,19 @@ def execute_long_horizon_accounts(path,*,recover=False,step=False):
                     and status_value.get('result_sha256')==sha(output))
                 continuation=(within_bound and resource.get('returncode')==75 and not resource.get('timed_out')
                     and status_value.get('state')=='CONTINUE' and status_value.get('dispatch_id')==dispatch['dispatch_id'])
-                paused=continuation and control_state(job)['paused']
+                sidecar_error=status_error
+                if dispatch.get('failed_account_recovery_proof') is not None:
+                    try:
+                        _validate_recovery_segment_sidecars(root,prefix,dispatch,account_version,name,
+                            require_startup=complete or continuation)
+                    except PermissionError as exc:
+                        sidecar_error=exc
+                        complete=continuation=False
+                paused=continuation and _execution_paused(job,account_version)
                 outcome='COMPLETED' if complete else 'PAUSED' if paused else 'CONTINUE' if continuation else 'FAILED'
-                gov.end_segment(name,number,seconds=elapsed,evidence_identity=sha(resource_path),outcome=outcome)
+                gov.end_segment(name,number,seconds=elapsed,evidence_identity=sha(resource_path),outcome=outcome,
+                    **({'dispatch_identity':dispatch['dispatch_identity']}
+                       if dispatch.get('failed_account_recovery_proof') is not None else {}))
                 state=gov.segment_status(name)
                 if paused:
                     return {'status':'PAUSED','items':status(path)['items'],
@@ -595,20 +863,24 @@ def execute_long_horizon_accounts(path,*,recover=False,step=False):
                         return {'status':'CONTINUE','stage':'ACCOUNT','dispatched_segments':dispatched_segments,
                                 'next_purpose':name,'items':status(path)['items']}
                     continue
-                # 历史公共证据消费者得到末段访问绑定和整个用途的真实累计耗时。
-                for suffix in ('_WORKER.json','_INPUT_ACCESS.json'):
+                # 独立恢复聚合只引用末段与累计收费，历史 FAILED 聚合原字节不覆盖。
+                for key,suffix in (('worker','_WORKER.json'),('input_access','_INPUT_ACCESS.json')):
                     source=root/(prefix+suffix)
-                    if source.exists():save(root/(name+suffix),read_json(source))
+                    if source.exists():save(paths[key],read_json(source))
                 resource.update(elapsed_wall_seconds=state['charged_seconds'],segment_count=len(state['segments']),
                                 active_metering=True,segments=[row['charge']['charge_id'] for row in state['segments']])
-                save(root/(name+'_RESOURCE.json'),resource)
-                gov.settle(name,completed=complete,seconds=state['charged_seconds'],result_hash=sha(output) if output.exists() else None,
+                save(paths['resource'],resource)
+                _settle_account_execution(gov,name,recovery,completed=complete,seconds=state['charged_seconds'],
+                    result_hash=sha(output) if output.exists() else None,
                     error=None if complete else 'WORKER_FAILED_SEE_SEGMENT_RESOURCE')
+                if sidecar_error is not None:
+                    raise sidecar_error
                 if not complete:
                     raise RuntimeError('JOB_WORKER_FAILED_NO_RETRY')
                 break
         index={name:{'result':str(root/(name+'_RESULT.json')),'sha256':sha(root/(name+'_RESULT.json')),
-            'settlement':str(root/(name+'_SETTLEMENT.json')),'report':str(root/(name+'_REPORT.md'))} for name in job['plans']}
+            'settlement':str(_account_execution_paths(job,name,account_version)['settlement']),
+            'report':str(root/(name+'_REPORT.md'))} for name in job['plans']}
         save(root/'RESULTS_INDEX.json',{'items':index,
             'worker_seconds':sum(gov.segment_status(name)['charged_seconds'] for name in job['plans']),
             'exposures':len(index),'repair_exposures':0})
@@ -616,21 +888,42 @@ def execute_long_horizon_accounts(path,*,recover=False,step=False):
 
 
 def validated_settlement(job, name):
-    """恢复消费累计前核对原 START、结算和资源，不接受自报已完成。"""
+    """核对原结算或受 Owner 明确批准的独立接续结算，不重开历史 FAILED。"""
     import math
     from chanlun_trader.research_factory.common import stable_hash
-    root=Path(job['root'])
-    settled=read_json(root/(name+'_SETTLEMENT.json'));start=read_json(root/(name+'_START.json'))
-    receipt=read_json(root/'CONFIRMATION.json');resource=read_json(root/(name+'_RESOURCE.json'))
+    root=Path(job['root']);account_version=account_version_context(job)
+    recovery=_failed_account_recovery(account_version,name)
+    paths=_account_execution_paths(job,name,account_version)
+    settled=read_json(paths['settlement']);start=read_json(paths['start'])
+    receipt=read_json(root/'CONFIRMATION.json');resource=read_json(paths['resource'])
     seconds=settled.get('wall_seconds')
     if 'profile_id' in job.get('resources', {}):
         state=service(job).segment_status(name)
-        if state['pending'] is not None or seconds != state['charged_seconds']:
+        if (state['pending'] is not None or seconds != state['charged_seconds']
+                or resource.get('elapsed_wall_seconds')!=state['charged_seconds']):
             raise PermissionError('JOB_LONG_HORIZON_RESOURCE_CHAIN_CONFLICT')
         for row in state['segments']:
-            path=root/(segment_prefix(name,row['dispatch']['segment_number'])+'_RESOURCE.json')
-            if row['charge']['basis']=='MEASURED_ACTIVE_WALL_SECONDS' and sha(path)!=row['charge']['evidence_identity']:
+            dispatch=row['dispatch'];charge=row['charge'];prefix=segment_prefix(name,dispatch['segment_number'])
+            path=root/(prefix+'_RESOURCE.json')
+            if charge['basis']=='MEASURED_ACTIVE_WALL_SECONDS' and sha(path)!=charge['evidence_identity']:
                 raise PermissionError('JOB_LONG_HORIZON_SEGMENT_RESOURCE_CHANGED')
+            if dispatch.get('failed_account_recovery_proof') is not None:
+                measured=charge['basis'] in ('MEASURED_ACTIVE_WALL_SECONDS','MEASURED_FAILED_RESOURCE_BOUND_VIOLATION')
+                _validate_recovery_segment_sidecars(root,prefix,dispatch,account_version,name,
+                    require_startup=measured and charge['outcome'] in ('CONTINUE','PAUSED','COMPLETED'),require_worker=measured)
+        if recovery is not None:
+            original=read_json(root/(name+'_SETTLEMENT.json'));boundary=state.get('recovery_boundary',{})
+            proof=recovery.proof();boundary_count=boundary.get('segment_count')
+            if (original.get('completed') is not False or type(boundary_count) is not int or boundary_count<1
+                    or boundary.get('status_at_install')!='FAILED'
+                    or len(state['segments'])<=boundary_count
+                    or state['segments'][boundary_count-1]['charge']['outcome']!='FAILED'
+                    or state['segments'][boundary_count]['dispatch']['segment_number']!=boundary_count+1
+                    or state['segments'][-1]['charge']['outcome']!='COMPLETED'
+                    or state.get('effective_execution_status')!='COMPLETED'
+                    or any(value.get('failed_account_recovery_proof')!=proof for value in (start,settled,resource))
+                    or state.get('failed_account_recovery_proof')!=proof):
+                raise PermissionError('JOB_FAILED_ACCOUNT_RECOVERY_SETTLEMENT_CONFLICT')
     if (receipt['receipt_id']!=stable_hash({k:v for k,v in receipt.items() if k!='receipt_id'})
             or receipt['strategy_plans']!=job['plans'] or start['receipt_id']!=receipt['receipt_id']
             or start['kind']!=name or any(settled.get(k)!=v for k,v in start.items())
@@ -639,6 +932,10 @@ def validated_settlement(job, name):
             or type(seconds) not in (int,float) or not math.isfinite(seconds) or seconds<0
             or not (root/(name+'_RESULT.json')).exists() or sha(root/(name+'_RESULT.json'))!=settled['result_sha256']):
         raise PermissionError('JOB_FAILED_OR_SETTLEMENT_CONFLICT_NO_REPLAY')
+    if account_version is not None:
+        result=read_json(root/(name+'_RESULT.json'))
+        if result.get('account_version_continuation')!=account_version.proof(name):
+            raise PermissionError('JOB_SETTLEMENT_ACCOUNT_VERSION_CONFLICT')
     return settled
 
 
@@ -653,7 +950,7 @@ def report_repair_context(path,stage,reference,*,for_dispatch=True):
 
 
 def long_horizon_compute_worker(path,stage,number,member=None,*,_report_repair_ref=None):
-    from chanlun_trader.research_factory.universe_compute_governance_v1 import UniverseComputeGovernanceV1
+    from chanlun_trader.research_factory.failed_account_calendar_scope_v1 import calendar_compute_governance_v1 as UniverseComputeGovernanceV1
     repair=report_repair_context(path,stage,_report_repair_ref)
     job=read_json(path);folder=repair.compute_root if repair else Path(job['root'])/('COMPUTE_'+stage)
     scope=read_json(folder/'SCOPE.json')
@@ -669,7 +966,7 @@ def long_horizon_compute_worker(path,stage,number,member=None,*,_report_repair_r
 
 def _long_horizon_compute_worker(path,stage,number,member=None,*,_report_repair_ref=None):
     """核验和信号标签只在已授权受限评价进程中读取。"""
-    from chanlun_trader.research_factory.universe_compute_governance_v1 import UniverseComputeGovernanceV1
+    from chanlun_trader.research_factory.failed_account_calendar_scope_v1 import calendar_compute_governance_v1 as UniverseComputeGovernanceV1
     begin=time.monotonic()
     repair=report_repair_context(path,stage,_report_repair_ref)
     job=read_json(path)
@@ -700,7 +997,11 @@ def _long_horizon_compute_worker(path,stage,number,member=None,*,_report_repair_
     profile_id=meter.profile['profile_id']
     deadline=cooperative_deadline(profile_id,pending['upper_bound_seconds'],begin)
     if stage=='VERIFICATION':
-        from chanlun_trader.research_factory.research_evidence_v1 import verify_job_evidence
+        if getattr(account_version,'recovery',None) is not None:
+            from chanlun_trader.research_factory.failed_account_recovery_evidence_v1 import (
+                ADAPTER_VERSION,verify_failed_account_recovery_evidence as verify_job_evidence)
+        else:
+            from chanlun_trader.research_factory.research_evidence_v1 import verify_job_evidence
         from chanlun_trader.research_factory.universe_account_backend_v2 import SegmentBoundary
         checks={};verified_one=False
         for name in job['plans']:
@@ -709,6 +1010,12 @@ def _long_horizon_compute_worker(path,stage,number,member=None,*,_report_repair_
                 row=read_json(verified)
                 if row['job_sha256'] != sha(path) or row.get('source_result_sha256') != sha(root/(name+'_RESULT.json')):
                     raise PermissionError('JOB_VERIFICATION_PROGRESS_CHANGED')
+                if getattr(account_version,'recovery',None) is not None:
+                    cached=row['verification']
+                    if (cached.get('governance_evidence_adapter')!=ADAPTER_VERSION
+                            or cached.get('failed_account_recovery_proof')!=account_version.recovery.proof()
+                            or cached.get('account_version_continuation')!=account_version.proof(name)):
+                        raise PermissionError('JOB_RECOVERY_VERIFICATION_PROGRESS_CHANGED')
                 checks[name]=row['verification'];continue
             # 每段至多新增一个成员核验；第二次严格冷加载须留给下一受限进程。
             if verified_one and profile_id=='LONG_HORIZON_SEGMENTED_V1':
@@ -820,7 +1127,7 @@ def run_long_horizon_compute(path,authority,request,stage,*,step=False,_report_r
     """账户公共计算复用同一段循环；step 不会继续派发下一个报告成员。"""
     from chanlun_trader.synthetic_batch_resources import run_bounded_worker
     from chanlun_trader.research_factory.universe_execution_profile_v1 import worker_wall_seconds
-    from chanlun_trader.research_factory.universe_compute_governance_v1 import UniverseComputeGovernanceV1
+    from chanlun_trader.research_factory.failed_account_calendar_scope_v1 import calendar_compute_governance_v1 as UniverseComputeGovernanceV1
     from chanlun_trader.research_factory.mutation_boundary import ObjectiveMutationLock
     repair=report_repair_context(path,stage,_report_repair_ref)
     job=read_json(path)
@@ -862,7 +1169,7 @@ def run_long_horizon_compute(path,authority,request,stage,*,step=False,_report_r
                 return {'status':'CONTINUE','stage':stage,'dispatched_segments':dispatched_segments,
                         'next_member':member,'charged_seconds':meter.status()['charged_seconds']}
             while True:
-                if control_state(job)['paused']:
+                if _execution_paused(job,account_version):
                     return {'status':'PAUSED','stage':stage,'charged_seconds':meter.status()['charged_seconds'],
                             **({'dispatched_segments':dispatched_segments} if step else {})}
                 if account_version is not None:
@@ -927,7 +1234,7 @@ def report_result_references(root, folder, plans):
 
 def reconcile_long_horizon_compute(path,stage,*,_report_repair_ref=None):
     """明确恢复时先证明旧进程已退出；同一用途保守结算未知段。"""
-    from chanlun_trader.research_factory.universe_compute_governance_v1 import UniverseComputeGovernanceV1
+    from chanlun_trader.research_factory.failed_account_calendar_scope_v1 import calendar_compute_governance_v1 as UniverseComputeGovernanceV1
     from chanlun_trader.research_factory.mutation_boundary import ObjectiveMutationLock
     from chanlun_trader.research_daemon_state import DaemonInstanceLockV1
     repair=report_repair_context(path,stage,_report_repair_ref,for_dispatch=False)
@@ -1084,6 +1391,11 @@ def write_reports(job,index,*,_universe_inputs=None,_deadline=None,_report_repai
             universe_reference = _universe_price_reference_from_inputs(_universe_inputs,
                 initial_cash=options['initial_cash'],deadline=_deadline)
     for name,result in results.items():
+        if getattr(account_version,'recovery',None) is not None:
+            expected_path=_account_execution_paths(job,name,account_version)['settlement']
+            if Path(index[name]['settlement']).resolve()!=expected_path.resolve():
+                raise PermissionError('REPORT_FAILED_ACCOUNT_RECOVERY_SETTLEMENT_PATH_CONFLICT')
+            validated_settlement(job,name)
         if sha(index[name]['result'])!=index[name]['sha256'] or read_json(index[name]['settlement'])['result_sha256']!=index[name]['sha256']:
             raise PermissionError('REPORT_SETTLEMENT_CONFLICT')
         report=deepcopy(result['report'])
@@ -1092,6 +1404,8 @@ def write_reports(job,index,*,_universe_inputs=None,_deadline=None,_report_repai
             raise PermissionError('REPORT_ACCOUNT_VERSION_CONFLICT')
         if account_version is not None:
             report['account_version_continuation']=expected_version
+            if getattr(account_version,'recovery',None) is not None:
+                report['failed_account_recovery_proof']=account_version.recovery.proof()
         report['artifacts']['source_result']={'path':index[name]['result'],'sha256':index[name]['sha256']}
         report['artifacts']['trades']=index[name]['result']+'#fills'
         ledger_key=next(k for k in ('ledger','ledgers','final_account_checkpoint') if k in result)
@@ -1140,15 +1454,21 @@ def status(path):
     """只读执行进度与结算原因，不读取收益或持仓。"""
     job=read_json(path);root=Path(job['root']);states={}
     successor=(account_version_context(job)
-        if (root.parent/'account-purpose-time-extensions').exists() else None)
+        if (root.parent/'account-purpose-time-extensions').exists()
+            or (root.parent/'failed-account-recoveries').exists() else None)
     for name in job['plans']:
-        settled=root/(name+'_SETTLEMENT.json');started=root/(name+'_START.json')
+        recovery=_failed_account_recovery(successor,name)
+        paths=_account_execution_paths(job,name,successor)
+        settled=paths['settlement'];started=paths['start']
         if settled.exists():
             value=read_json(settled)
             states[name]={'state':'COMPLETED' if value['completed'] else 'FAILED','error':value['error'],
-                'wall_seconds':value['wall_seconds'],'resource_path':str(root/(name+'_RESOURCE.json'))}
+                'wall_seconds':value['wall_seconds'],'resource_path':str(paths['resource'])}
         elif started.exists():states[name]={'state':'UNSETTLED_CHECK_WORKER','started_at':read_json(started)['started_at']}
         else:states[name]={'state':'NOT_STARTED'}
+        if recovery is not None:
+            states[name].update(historical_state='FAILED',historical_settlement_path=str(root/(name+'_SETTLEMENT.json')),
+                failed_account_recovery_proof=recovery.proof())
         if 'profile_id' in job.get('resources', {}):
             from chanlun_trader.research_daemon_state import DaemonInstanceLockV1
             profile=job['resources'];value=states[name]
@@ -1181,13 +1501,15 @@ def status(path):
                         alive=worker_path.exists() and DaemonInstanceLockV1._pid_alive(int(read_json(worker_path)['pid']))
                         value['state']='RUNNING' if alive else 'RESUME_REQUIRED'
                     else:
-                        value['state']='FAILED' if state['segments'] and state['segments'][-1]['charge']['outcome']=='FAILED' else\
-                            'PAUSED' if control_state(job)['paused'] else 'READY_TO_CONTINUE'
+                        failed=bool(state['segments'] and state['segments'][-1]['charge']['outcome']=='FAILED')
+                        if recovery is not None and state.get('effective_execution_status')=='RUNNING':
+                            failed=False
+                        value['state']='FAILED' if failed else 'PAUSED' if _execution_paused(job,successor) else 'READY_TO_CONTINUE'
     complete=sum(v['state']=='COMPLETED' for v in states.values())
     value={'completed':complete,'total':len(states),'progress_percent':100*complete/len(states),
            'report_index_exists':(root/'RESULTS_INDEX.json').exists(),'items':states}
     if 'profile_id' in job.get('resources', {}):
-        from chanlun_trader.research_factory.universe_compute_governance_v1 import UniverseComputeGovernanceV1
+        from chanlun_trader.research_factory.failed_account_calendar_scope_v1 import calendar_compute_governance_v1 as UniverseComputeGovernanceV1
         from chanlun_trader.research_daemon_state import DaemonInstanceLockV1
         compute={}
         for stage in ('VERIFICATION','REPORT'):
@@ -1206,7 +1528,7 @@ def status(path):
                     row['state']='RUNNING' if alive else 'RESUME_REQUIRED'
                 else:row['state']=last['charge']['outcome'] if last else 'READY_TO_CONTINUE'
             compute[stage]=row
-        value.update(compute_stages=compute,paused=control_state(job)['paused'],execution_profile=job['resources'],
+        value.update(compute_stages=compute,paused=_execution_paused(job,successor),execution_profile=job['resources'],
             stage='ACCOUNT' if complete<len(states) else 'COMPLETED' if compute['REPORT']['state']=='COMPLETED'
                 else 'REPORT' if compute['VERIFICATION']['state']=='COMPLETED' else 'VERIFICATION')
     return value
