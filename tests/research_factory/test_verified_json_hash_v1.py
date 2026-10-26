@@ -119,4 +119,3 @@ def test_parsed_json_owner_path_has_same_assertions_and_fresh_revocation(tmp_pat
     for require in (store.require, store.require_json):
         with pytest.raises(PermissionError, match='OWNER_APPROVAL_NOT_REGISTERED'):
             require(reference, summary)
-
