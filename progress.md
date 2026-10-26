@@ -4354,3 +4354,35 @@ H5当前源码局部111PASS/1原权限SKIP；有限计量自然退出1，Missing
 
 回滚点：本提交父版本1e73884c57853bb570f59e9b8203fd8253d4ce79；如需撤销，使用本提交的git revert形成新提交，保留原失败和红绿证据，重新冻结来源；不能恢复旧CLAIM或据旧结果放行。
 红绿/源核验原件：E:\worktrees\recovery-session-error-boundary\trade-system-contract-port-v1\reports\recovery_session_error_boundary_20261025\SESSION_ERROR_BOUNDARY_RED_GREEN_AND_SOURCE_AUDIT_R1.json SHA a37f1557996188e41f4c978151ff49431e07242ccb600e5c1ced50931abf395b。
+
+
+## 2026-10-26 - Task: 已批准的同检查点治理源码接续与 JSON 核验优化
+
+### What was done
+
+按人类明确批准，实现结清边界的一次受限治理源码接续。只允许四个治理读取器及协议本身，沿用原根、任务、Owner、计划、已完成日、全部费用、预算和绝对截止；新增批准摘要及规范槽保留旧协议历史。已解析 JSON 的身份、复制和 Owner 摘要改用等价编解码；每个公开边界、返回前原件复读、Owner 撤销、执行截止和全部原断言保持。当前人工链仍使用冻结 DFEC，本提交未安装，不重跑旧 R11，不合并部署或触碰已过期真实账户。
+
+### Testing
+
+优化前后局部 90 项及协议兼容 90 项分别通过。R3 新协议计时辅助脚本猜错检查点文件名，原兼容 90PASS 后出现 1 个 setup ERROR；失败原件保留，改从 JOB 读取实际路径。R4 冻结 1065 个 py／560 产品来源，七文件 117 项正在验证，尚不记通过。原 399 个 require 原因及全部原断言保留，87 经济代码 SHA 相同、12 原输入未打开。
+
+首次加入协议的读取测量普通模式退化约10.1%，已拒绝接入。进一步优化后，同一已结清人工 BASE504／STRESS1 夹具、独立进程各3次：普通中位2.274814→2.269931秒（基本持平），原追踪中位5.138965→4.361490秒（15.13%）；身份相同、账户文件不变、零派发。这不是普通段吞吐证明。旧DFEC真实读取器另在独立进程拒绝新协议原件；四文件真实候选和完整模块的 R4 等价性、撤销、截止、边界费用及下一段证明仍在验证。新精确 CI 与最终完整证据尚待，不借旧绿放行。
+
+### Notes
+
+- src/chanlun_trader/research_factory/campaign_scope_v1.py：保留通用 Owner 核验，增加已解析 JSON 摘要的等价路径，共用全部原检查；识别受认证的保留槽。
+- src/chanlun_trader/research_factory/account_purpose_time_extension_v1.py：只对已解析 JSON 使用等价身份／复制，原返回边界增加新批准最终 fresh 核验。
+- src/chanlun_trader/research_factory/failed_account_recovery_v1.py：认证新的受限换源证明后投影治理来源，保留原恢复身份与历史证据。
+- src/chanlun_trader/research_factory/account_version_continuation_v1.py：保留原计划和证明，后续段记录新的治理版本接续引用；历史段保持原样。
+- src/chanlun_trader/research_factory/governance_source_revision_v1.py：同根、单槽、段结清、零新增额度的 prepare／install／fresh read 协议。
+- tests/research_factory/test_verified_json_hash_v1.py：JSON 规范哈希、Owner 路径等价、复制独立及 fresh 撤销断言。
+- tests/research_factory/test_governance_source_revision_v1.py：四文件及协议模块安装、原件保持、篡改／扩限／撤销拒绝和下一段完整费用证明。
+- tests/research_factory/test_verification_return_boundaries_v1.py：替身对接 JSON Owner 入口，原全部返回截止断言保持。
+- tests/benchmarks/compare_checkpoint_revision_read_v1.py：已结清人工夹具上的独立进程读取计量，零派发且不读真实价格。
+- .github/workflows/autonomous-completion.yml：现有双OS治理context作业追加两个新测试文件，不降低原选择与断言。
+- docs/governance-source-checkpoint-continuation-20261026.md：说明批准范围、来源接续、计时证据与接入前验证边界。
+- progress.md：仅追加本条，旧失败和中断历史保持。
+
+回滚点：父提交 dfec8e7d67cb0fc671a65d19f1048e5a90983f53。未安装时可停止采用候选并继续原冻结链；源码撤销使用本提交的 git revert 形成新提交。安装后不得覆盖源码、清空费用或复用旧许可回滚，应在边界停止并保留接续原件。局部原件位于 reports/recovery_validation_replay_20261026；后续同根有限操作器仅供人工演练，必须实际复审和新独占 CLAIM 后执行，原绝对运输截止不重置。
+
+2026-10-26 追加订正（提交冻结前）：R4 已自然结束，91PASS／1setup ERROR；旧人工夹具漏列 campaign_scope/account_version_continuation 两个待替换读取器，产品 SOURCE_ALLOWLIST_CONFLICT 拒绝正确。只在新增协议用例的首次 Owner 批准前补齐人工运行闭包和相应声明，新增漏列来源拒绝回归，未放宽产品规则。R5 七文件118项已启动，尚未通过；1065py／560产品冻结，R4原件完整保留。新增四个py以显式LF属性绑定跨平台检出字节。当前运行人工根未修改、未暂停。

@@ -201,3 +201,9 @@
 # Bind CI resource locator and its regression tests to the measured LF bytes.
 /tests/ci/pytest_resource_artifact_paths.py text eol=lf
 /tests/research_factory/test_ci_pytest_resource_artifact_paths.py text eol=lf
+
+# Pin checkpoint governance revision and its validation byte identities.
+/src/chanlun_trader/research_factory/governance_source_revision_v1.py text eol=lf
+/tests/benchmarks/compare_checkpoint_revision_read_v1.py text eol=lf
+/tests/research_factory/test_governance_source_revision_v1.py text eol=lf
+/tests/research_factory/test_verified_json_hash_v1.py text eol=lf

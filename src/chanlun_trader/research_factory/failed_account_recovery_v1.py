@@ -120,8 +120,8 @@ def _owner_binding(context, reference, *, base_authorization=None):
     """只读认证恢复 Owner 原件；不生成完整恢复能力或跨调用凭证。"""
     manifest = _read(reference, context.root); value = manifest.get('summary', {})
     _require(set(manifest) == {'schema_version', 'summary', 'approval_ref', 'identity'}
-        and manifest.get('schema_version') == VERSION and extension._identity(manifest)
-        and value.get('schema_version') == SUMMARY_VERSION and extension._identity(value, 'summary_identity')
+        and manifest.get('schema_version') == VERSION and extension._json_identity(manifest)
+        and value.get('schema_version') == SUMMARY_VERSION and extension._json_identity(value, 'summary_identity')
         and value.get('maximum_recoveries') == 1
         and value.get('allowed_action') == 'ONE_FAILED_ACCOUNT_PRODUCTION_CONTINUATION'
         and all(value.get(key) == 0 for key in (
@@ -134,7 +134,7 @@ def _owner_binding(context, reference, *, base_authorization=None):
         and value['base_authorization_ref'] == auth_ref and value['base_authorization_identity'] == stable_hash(base)
         and value['scope_hash'] == base['scope_policy']['scope_hash']
         and value['approval_store'] == str(approvals.directory), 'AUTHORIZATION_CONFLICT')
-    approvals.require(manifest['approval_ref'], value)
+    approvals.require_json(manifest['approval_ref'], value)
     return manifest, value, directory, base, approvals
 
 
@@ -160,7 +160,9 @@ def _job_manifest_reference(job):
     if not isinstance(job, dict) or not isinstance(job.get('root'), str): return None
     account_root = _path(job['root'], None); folder = account_root.parent / 'failed-account-recoveries'
     if not folder.exists(): return None
-    _path(folder, account_root.parent); paths = list(folder.glob('*/MANIFEST.json'))
+    _path(folder, account_root.parent)
+    # 新保留槽另有原 Owner 认证；普通恢复仍必须恰一，后续 read 不允许忽略无效新槽。
+    paths = [path for path in folder.glob('*/MANIFEST.json') if path.parent.name != 'governance-source-revision']
     _require(len(paths) == 1, 'MANIFEST_DISCOVERY_CONFLICT')
     manifest = _read(_reference(paths[0], account_root.parent), account_root.parent)
     root = manifest.get('summary', {}).get('root'); _require(isinstance(root, str), 'MANIFEST_INVALID')
@@ -171,9 +173,9 @@ def _predecessor(root, reference, base, approvals):
     """独立核原扩时的签名、规范slot和冻结前缀；不读取当前执行治理。"""
     manifest = _read(reference, root); previous = manifest.get('summary', {})
     _require(set(manifest) == {'schema_version', 'summary', 'approval_ref', 'identity'}
-        and manifest.get('schema_version') == extension.VERSION and extension._identity(manifest)
+        and manifest.get('schema_version') == extension.VERSION and extension._json_identity(manifest)
         and previous.get('schema_version') == extension.SUMMARY_VERSION
-        and extension._identity(previous, 'summary_identity') and previous.get('maximum_extensions') == 1
+        and extension._json_identity(previous, 'summary_identity') and previous.get('maximum_extensions') == 1
         and previous.get('aggregate_reserved_delta') == 86400
         and all(previous.get(key) == 0 for key in ('grant_delta', 'new_account_jobs',
             'new_candidate_attempts', 'new_preparation_jobs')), 'PREDECESSOR_MANIFEST_INVALID')
@@ -182,7 +184,7 @@ def _predecessor(root, reference, base, approvals):
         and previous.get('approval_store') == str(approvals.directory)
         and previous.get('base_authorization_ref') == _reference(root / 'reports' / 'research_campaigns'
             / stable_hash(base['authorization_id']) / 'authorization.json', root), 'PREDECESSOR_SCOPE_CONFLICT')
-    approvals.require(manifest['approval_ref'], previous)
+    approvals.require_json(manifest['approval_ref'], previous)
     original = previous['original']; task_root = Path(original['task']['path']).parent
     _require(previous['extension_id'] == extension.AccountPurposeTimeExtensionV1.extension_identity(
         base['authorization_id'], previous['task_id']) and Path(reference['path']) == task_root
@@ -252,7 +254,7 @@ def _inventory(root, previous, continuation, job):
     return inventory
 
 
-def _sources(root, previous, continuation, job, replacements, runtime_refs, economic_refs):
+def _sources(root, previous, continuation, job, replacements, runtime_refs, economic_refs, *, revision=None):
     inventory = _inventory(root, previous, continuation, job)
     economic = _refs(economic_refs, root)
     _require(economic == sorted(previous['economic_sources'], key=lambda ref: ref['path']), 'ECONOMIC_INVENTORY_CHANGED')
@@ -270,21 +272,27 @@ def _sources(root, previous, continuation, job, replacements, runtime_refs, econ
             'GOVERNANCE_SOURCE_ALLOWLIST_CONFLICT')
         _require(isinstance(row['archive_ref'], dict) and row['archive_ref'].get('sha256') == row['old_sha256']
             and _reference(row['archive_ref']['path'], root / 'reports') == row['archive_ref'], 'SOURCE_ARCHIVE_CHANGED')
-        _require(_reference(path, root)['sha256'] == row['new_sha256'], 'GOVERNANCE_SOURCE_CHANGED')
+        expected = row['new_sha256'] if revision is None else revision.expected_digest(path, row['new_sha256'])
+        _require(_reference(path, root)['sha256'] == expected, 'GOVERNANCE_SOURCE_CHANGED')
         mapping[row['path']] = row
-    runtime = _refs(runtime_refs, root); runtime_paths = {ref['path'] for ref in runtime}
+    runtime = _refs(runtime_refs if revision is None else revision.current_runtime_refs(runtime_refs), root)
+    runtime_paths = {ref['path'] for ref in runtime}
     _require(runtime and all(Path(ref['path']).relative_to(root).as_posix() in GOVERNANCE_PATHS for ref in runtime)
         and set(mapping) <= runtime_paths and {ref['path'] for ref in previous['runtime_sources']} <= runtime_paths
         and {str(root / path) for path in REQUIRED_RUNTIME_PATHS} <= runtime_paths,
         'RUNTIME_CLOSURE_INVALID')
     for path, digest in inventory.items():
         startup_checkpoint('FAILED_ACCOUNT_RECOVERY_SOURCE_VERIFY')
-        _require(_reference(path, root)['sha256'] == mapping.get(path, {}).get('new_sha256', digest),
+        expected = mapping.get(path, {}).get('new_sha256', digest)
+        expected = expected if revision is None else revision.expected_digest(path, expected)
+        _require(_reference(path, root)['sha256'] == expected,
             'UNAPPROVED_SOURCE_CHANGED')
     for ref in runtime:
         startup_checkpoint('FAILED_ACCOUNT_RECOVERY_RUNTIME_VERIFY')
         if ref['path'] in inventory:
-            _require(ref['sha256'] == mapping.get(ref['path'], {}).get('new_sha256', inventory[ref['path']]),
+            expected = mapping.get(ref['path'], {}).get('new_sha256', inventory[ref['path']])
+            expected = expected if revision is None else revision.expected_digest(ref['path'], expected)
+            _require(ref['sha256'] == expected,
                 'RUNTIME_SOURCE_CONFLICT')
     for plan in previous['successor_plans'].values():
         for path, digest in extension._source_inventory([plan['backend'], plan['strategy']]).items():
@@ -304,16 +312,18 @@ def source_inventory(root, *, authorization_id, task_ref, predecessor_manifest_r
         'predecessor_summary': deepcopy(previous), 'original_job': job}
 
 
-def _capabilities(root, base, approvals, previous, continuation, replacements):
+def _capabilities(root, base, approvals, previous, continuation, replacements, *, revision=None):
     current = bridges.capabilities()
     _require(extension._identity(current, 'fingerprint'), 'CURRENT_CAPABILITIES_INVALID')
+    if revision is not None:
+        current = revision.predecessor_capabilities(current)
     old_extension = bridges._project_snapshot(current, replacements)
     old_continuation = bridges._project_snapshot(old_extension, previous['source_replacements'])
     bridge_ref = continuation['capability_bridge_ref']
     bridge = _read({key: bridge_ref[key] for key in ('path', 'sha256')}, approvals.directory)
     bridge_summary = bridge['summary']
     _require(set(bridge) == {'schema_version', 'summary', 'approval_ref', 'identity'}
-        and bridge.get('schema_version') == bridges.VERSION and extension._identity(bridge)
+        and bridge.get('schema_version') == bridges.VERSION and extension._json_identity(bridge)
         and bridge.get('approval_ref') == bridge_ref['approval_ref']
         and Path(bridge_ref['path']) == approvals.directory / 'account_version_capability_bridges' / 'records'
             / (bridge['identity'] + '.json')
@@ -326,7 +336,7 @@ def _capabilities(root, base, approvals, previous, continuation, replacements):
     _require(binding == {'schema_version': bridges.VERSION, 'base_authorization_identity': stable_hash(base),
         'live_capabilities_fingerprint': old_continuation['fingerprint'], 'reference': bridge_ref},
         'PREDECESSOR_CAPABILITY_BINDING_CHANGED')
-    approvals.require(bridge['approval_ref'], bridge_summary)
+    approvals.require_json(bridge['approval_ref'], bridge_summary)
     original = bridges._project_snapshot(old_continuation, continuation['source_replacements'])
     original = bridges.AccountVersionCapabilityBridgeV1._predecessor(root, base, approvals,
         bridge['summary'].get('predecessor_bridge_ref'), original)
@@ -344,7 +354,7 @@ def _events(root, directory, base, frozen=None):
     all_events = extension._verification_json_lines(lines); seen = set()
     for event in all_events:
         startup_checkpoint('FAILED_ACCOUNT_RECOVERY_LEDGER_VERIFY')
-        _require(event.get('run_id') == base['authorization_id'] and event.get('event_id') == stable_hash({
+        _require(event.get('run_id') == base['authorization_id'] and event.get('event_id') == extension._hash_json_tree({
             key: event[key] for key in ('run_id', 'event_type', 'payload')})
             and event['event_id'] not in seen, 'LEDGER_EVENT_INVALID')
         seen.add(event['event_id'])
@@ -446,14 +456,14 @@ def _local_boundary(root, job, name, receipt, operation, previous, predecessor_r
         charge_ref = _reference(account_root / (prefix + '_CHARGE.json'), root)
         dispatch, charge = _read(dispatch_ref, root), _read(charge_ref, root)
         proof = expected_proof if number > previous['accounts'][name]['segment_count'] else None
-        _require(extension._identity(dispatch, 'dispatch_id') and dispatch.get('schema_version') == 'strategy-account-segment-dispatch-v1'
+        _require(extension._json_identity(dispatch, 'dispatch_id') and dispatch.get('schema_version') == 'strategy-account-segment-dispatch-v1'
             and dispatch.get('kind') == name and dispatch.get('receipt_id') == receipt['receipt_id']
             and dispatch.get('segment_number') == number and dispatch.get('previous_head') == head
             and dispatch.get('charged_before') == charged and dispatch.get('profile_hash') == profile['profile_hash']
             and dispatch.get('time_extension_proof') == proof, 'LOCAL_DISPATCH_CHAIN_CONFLICT')
         seconds, basis = segment_charge(charge.get('measured_seconds'), dispatch['upper_bound_seconds'],
             charge.get('evidence_identity'), outcome=charge.get('outcome'))
-        _require(extension._identity(charge, 'charge_id') and charge.get('schema_version') == 'strategy-account-segment-charge-v1'
+        _require(extension._json_identity(charge, 'charge_id') and charge.get('schema_version') == 'strategy-account-segment-charge-v1'
             and charge.get('dispatch_id') == dispatch['dispatch_id'] and charge.get('seconds') == seconds
             and charge.get('basis') == basis and charge.get('time_extension_proof') == proof
             and charge.get('outcome') == ('FAILED' if number == FAILED_SEGMENT_COUNT else parent.get('outcome'))
@@ -513,7 +523,7 @@ def _session_boundary(root, previous, *, frozen=None, exact=False):
     for path in sorted((audit / 'events').glob('*.json')):
         startup_checkpoint('FAILED_ACCOUNT_RECOVERY_SESSION_VERIFY')
         ref = _reference(path, root); row = _read(ref, root)
-        _require(path.stem == str(len(rows) + 1).zfill(6) and extension._identity(row)
+        _require(path.stem == str(len(rows) + 1).zfill(6) and extension._json_identity(row)
             and row.get('previous') == head, 'SESSION_CHAIN_CHANGED')
         rows.append(row); refs.append(ref); head = row['identity']
     prior = previous['session_boundary']['event_refs']
@@ -573,7 +583,7 @@ class FailedAccountRecoveryV1:
         from .account_version_continuation_v1 import _control
         control = _control(job)
         receipt = _read(original['receipt'], root); mapping = receipt.get('source', {}).get('operation_ids', {})
-        _require(extension._identity(receipt, 'receipt_id') and receipt.get('strategy_plans') == job['plans']
+        _require(extension._json_identity(receipt, 'receipt_id') and receipt.get('strategy_plans') == job['plans']
             and receipt.get('input_identity') == job['input_identity'] and set(mapping) == set(job['plans'])
             and len(set(mapping.values())) == 2, 'RECEIPT_OR_MAPPING_CONFLICT')
         recovery_id = cls.recovery_identity(authorization_id, task['task_id']); accounts = {}; successors = {}; failed = None
@@ -740,8 +750,13 @@ class FailedAccountRecoveryV1:
         _require(slot == {'recovery_id': value['recovery_id'], 'manifest_ref': reference}, 'SLOT_CONFLICT')
         _refs([value['original'][key] for key in ('task', 'job', 'preview', 'receipt')]
             + value['original']['control'] + [value['proposal_ref'], value['ci_ref']], context.root)
-        _sources(context.root, previous, continuation, job, value['source_replacements'], value['runtime_sources'], value['economic_sources'])
-        snapshot, live = _capabilities(context.root, base, approvals, previous, continuation, value['source_replacements'])
+        from .governance_source_revision_v1 import GovernanceSourceRevisionV1
+        revision = GovernanceSourceRevisionV1.read(context.root, reference, value, job, execution_expires_at,
+            for_dispatch=for_dispatch)
+        _sources(context.root, previous, continuation, job, value['source_replacements'], value['runtime_sources'],
+            value['economic_sources'], **({'revision': revision} if revision is not None else {}))
+        snapshot, live = _capabilities(context.root, base, approvals, previous, continuation, value['source_replacements'],
+            **({'revision': revision} if revision is not None else {}))
         _require(snapshot == value['capabilities_snapshot'] and live == value['live_capabilities_fingerprint'], 'CAPABILITIES_CHANGED')
         _, operations, effective, trials = _ledger_boundary(context.root, directory, base, previous,
             value['predecessor_manifest_ref'], value['budget_boundary'])
@@ -806,6 +821,7 @@ class FailedAccountRecoveryV1:
         context.task_root = task_root; context.predecessor_summary = extension._copy_json_tree(previous)
         context.original_failed_account = failed
         context._execution_expires_at = execution_expires_at
+        context.governance_revision = revision
         return context
 
     @property

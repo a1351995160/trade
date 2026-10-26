@@ -9,7 +9,7 @@ from chanlun_trader.account_startup_boundary_v1 import startup_checkpoint
 from .account_version_capability_bridge_v1 import (
     AccountVersionCapabilityBridgeV1, BUSINESS_PATH, _hash, _path, _read, _reference, _require,
 )
-from .campaign_scope_v1 import OwnerApprovalStoreV1
+from .campaign_scope_v1 import OwnerApprovalStoreV1, _hash_json_tree
 from .common import stable_hash
 from .exploration_governance import immutable
 from .mutation_boundary import ObjectiveMutationLock
@@ -23,6 +23,10 @@ SUMMARY_VERSION = 'OWNER_ACCOUNT_VERSION_CONTINUATION_SUMMARY_V1'
 
 def _identity(value, field='identity'):
     return isinstance(value, dict) and value.get(field) == stable_hash({k: v for k, v in value.items() if k != field})
+
+
+def _json_identity(value, field='identity'):
+    return isinstance(value, dict) and value.get(field) == _hash_json_tree({k: v for k, v in value.items() if k != field})
 
 
 def _project(value, replacements):
@@ -52,7 +56,7 @@ def _control(job):
         _require(path.name == 'CONTROL_' + str(len(rows) + 1).zfill(6) + '.json'
             and row.get('sequence') == len(rows) + 1 and row.get('previous_head') == head
             and row.get('job_sha256') == _reference(root / 'JOB.json', root)['sha256']
-            and row.get('event') in ('PAUSE', 'RESUME') and _identity(row, 'event_id'), 'CONTROL_CHAIN_CONFLICT')
+            and row.get('event') in ('PAUSE', 'RESUME') and _json_identity(row, 'event_id'), 'CONTROL_CHAIN_CONFLICT')
         head = row['event_id']; paused = row['event'] == 'PAUSE'; rows.append(row)
     return {'paused': paused, 'head': head, 'events': rows}
 
@@ -163,6 +167,9 @@ class AccountVersionContinuationV1:
                     and _reference(following['archive_ref']['path'], root / 'reports') == following['archive_ref'],
                     'RECOVERY_SOURCE_ARCHIVE_CHANGED')
                 expected = following['new_sha256']
+            revision = getattr(recovery, 'governance_revision', None)
+            if revision is not None:
+                expected = revision.expected_digest(path, expected)
             _require(_reference(source, root)['sha256'] == expected,
                 'UNAPPROVED_SOURCE_CHANGED')
             if source.suffix == '.py':
@@ -196,10 +203,10 @@ class AccountVersionContinuationV1:
             and job.get('resource_job_total_seconds') == profile['total_seconds'] * 2, 'PROFILE_CONFLICT')
         cls._source_check(root, job, bridge_summary['source_replacements'])
         preview_ref = _reference(task_root / 'PREVIEW.json', root); preview = _read(preview_ref, root)
-        _require(_identity(preview, 'preview_identity') and preview.get('preview_identity') == task.get('preview_identity'),
+        _require(_json_identity(preview, 'preview_identity') and preview.get('preview_identity') == task.get('preview_identity'),
             'PREVIEW_CONFLICT')
         receipt_ref = _reference(job_path.parent / 'CONFIRMATION.json', root); receipt = _read(receipt_ref, root)
-        _require(_identity(receipt, 'receipt_id') and receipt.get('strategy_plans') == job['plans']
+        _require(_json_identity(receipt, 'receipt_id') and receipt.get('strategy_plans') == job['plans']
             and receipt.get('input_identity') == job['input_identity'] and receipt.get('objective_id') == job['objective_id']
             and receipt.get('budget_path') == job['budget_path'] and receipt['source'].get('origin') == 'CAMPAIGN_V1'
             and receipt['source'].get('campaign_root') == str(root)
@@ -437,14 +444,17 @@ class AccountVersionContinuationV1:
             and not (for_dispatch and for_reconcile), 'DISPATCH_MODE_INVALID')
         manifest = _read(self.scope_reference, self.root)
         _require(set(manifest) == {'schema_version', 'summary', 'approval_ref', 'identity'}
-            and manifest['schema_version'] == VERSION and _identity(manifest), 'MANIFEST_INVALID')
+            and manifest['schema_version'] == VERSION and _json_identity(manifest), 'MANIFEST_INVALID')
         summary = manifest['summary']
         _require(summary.get('schema_version') == SUMMARY_VERSION
-            and summary.get('version_id') == stable_hash({k: v for k, v in summary.items() if k not in ('version_id', 'active_plans')})
+            and summary.get('version_id') == _hash_json_tree({k: v for k, v in summary.items() if k not in ('version_id', 'active_plans')})
             and summary.get('maximum_version_switches') == 1 and summary.get('daily_commit_count_at_install') == 0
             and summary.get('grant_delta') == summary.get('new_account_jobs') == summary.get('new_preparation_jobs') == 0,
             'SUMMARY_INVALID')
-        self.summary_value = deepcopy(summary); self.summary = deepcopy(summary)
+        startup_checkpoint('ACCOUNT_VERSION_JSON_COPY')
+        encoded_summary = json.dumps(summary, ensure_ascii=True, separators=(',', ':'))
+        self.summary_value = json.loads(encoded_summary); self.summary = json.loads(encoded_summary)
+        startup_checkpoint('ACCOUNT_VERSION_JSON_COPY_COMPLETE')
         self.approval_ref = deepcopy(manifest['approval_ref']); self.version_id = summary['version_id']
         self.task_root = Path(summary['original']['task']['path']).parent
         self.job_path = Path(summary['original']['job']['path'])
@@ -456,7 +466,7 @@ class AccountVersionContinuationV1:
         slot = self.campaign.directory / 'account-version-continuation-slots' / (summary['continuation_id'] + '.json')
         _require(_read(_reference(slot, self.root), self.root) == {
             'continuation_id': summary['continuation_id'], 'manifest_ref': self.scope_reference}, 'SLOT_CONFLICT')
-        OwnerApprovalStoreV1(summary['approval_store']).require(self.approval_ref, summary)
+        OwnerApprovalStoreV1(summary['approval_store']).require_json(self.approval_ref, summary)
         self.job = _read(summary['original']['job'], self.root)
         from .failed_account_recovery_v1 import FailedAccountRecoveryV1
         self.recovery = FailedAccountRecoveryV1.from_job(self.job)
@@ -679,6 +689,15 @@ class AccountVersionContinuationV1:
                 else:
                     _require(previous['new_sha256'] == row['old_sha256'], 'RECOVERY_SOURCE_CHAIN_CONFLICT')
                     previous['new_sha256'] = row['new_sha256']
+        revision = getattr(self.recovery, 'governance_revision', None)
+        if revision is not None:
+            for row in revision.summary['source_replacements']:
+                previous = mapping.get(row['path'])
+                if previous is None:
+                    mapping[row['path']] = {key: deepcopy(row[key]) for key in ('path', 'old_sha256', 'new_sha256', 'archive_ref')}
+                else:
+                    _require(previous['new_sha256'] == row['old_sha256'], 'GOVERNANCE_REVISION_SOURCE_CHAIN_CONFLICT')
+                    previous['new_sha256'] = row['new_sha256']
         return list(mapping.values())
 
     def approved_runtime_sources(self):
@@ -687,6 +706,11 @@ class AccountVersionContinuationV1:
             mapping.update({row['path']: deepcopy(row) for row in self.time_extension.summary_value['runtime_sources']})
         if self.recovery is not None:
             mapping.update({row['path']: deepcopy(row) for row in self.recovery.summary_value['runtime_sources']})
+        revision = getattr(self.recovery, 'governance_revision', None)
+        if revision is not None:
+            mapping = {row['path']: row for row in revision.current_runtime_refs(list(mapping.values()))}
+            added = revision.summary['added_runtime_ref']
+            mapping[added['path']] = deepcopy(added)
         return list(mapping.values())
 
     def _dispatch_path(self, name, number):
@@ -821,6 +845,11 @@ class AccountVersionContinuationV1:
                         if dispatch.get('failed_account_recovery_proof') is not None:
                             value.update(failed_account_recovery_proof=deepcopy(dispatch['failed_account_recovery_proof']),
                                 dispatch_identity=dispatch['dispatch_identity'])
+                        revision = getattr(self.recovery, 'governance_revision', None)
+                        if revision is not None:
+                            proof = revision.segment_proof(name, number)
+                            if proof is not None:
+                                value['governance_source_revision'] = proof
                         immutable(path, value)
                 if aggregate:
                     self._require_aggregate_authority(authority)
@@ -851,6 +880,11 @@ class AccountVersionContinuationV1:
         if dispatch.get('failed_account_recovery_proof') is not None:
             value.update(failed_account_recovery_proof=deepcopy(dispatch['failed_account_recovery_proof']),
                 dispatch_identity=dispatch['dispatch_identity'])
+        revision = getattr(self.recovery, 'governance_revision', None)
+        if revision is not None:
+            proof = revision.segment_proof(name, dispatch['segment_number'])
+            if proof is not None:
+                value['governance_source_revision'] = proof
         immutable(_path(self._dispatch_path(name, dispatch['segment_number']), self.root), value)
         return value
 
@@ -878,6 +912,11 @@ class AccountVersionContinuationV1:
         _require(dispatch.get('failed_account_recovery_proof') == recovery_proof, 'DISPATCH_RECOVERY_CONFLICT')
         if recovery_proof is not None:
             expected.update(failed_account_recovery_proof=deepcopy(recovery_proof), dispatch_identity=dispatch['dispatch_identity'])
+        revision = getattr(self.recovery, 'governance_revision', None)
+        if revision is not None:
+            proof = revision.segment_proof(name, number)
+            if proof is not None:
+                expected['governance_source_revision'] = proof
         _require(_read(_reference(self._dispatch_path(name, number), self.root), self.root) == expected, 'DISPATCH_VERSION_CONFLICT')
         time_proof = expected['account_version_continuation'].get('account_purpose_time_extension')
         _require(dispatch.get('time_extension_proof') == time_proof, 'DISPATCH_TIME_EXTENSION_CONFLICT')

@@ -39,7 +39,7 @@ def test_final_io_cannot_return_expired_execution_context(tmp_path, monkeypatch,
             clock['now'] = deadline
 
     monkeypatch.setattr(extension, 'datetime', Clock)
-    monkeypatch.setattr(extension, 'OwnerApprovalStoreV1', lambda directory: SimpleNamespace(require=require))
+    monkeypatch.setattr(extension, 'OwnerApprovalStoreV1', lambda directory: SimpleNamespace(require_json=require))
     monkeypatch.setattr(extension._VerificationReadView, 'verify_reused_files', verify)
 
     @extension._verified_recovery_reader

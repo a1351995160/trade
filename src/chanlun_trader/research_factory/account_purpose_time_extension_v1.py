@@ -11,7 +11,7 @@ from pathlib import Path
 import re
 
 from chanlun_trader.account_startup_boundary_v1 import startup_checkpoint
-from .campaign_scope_v1 import OwnerApprovalStoreV1, _write_once, replay_grant, stage_remaining
+from .campaign_scope_v1 import OwnerApprovalStoreV1, _write_once, replay_grant, stage_remaining, _hash_json_tree
 from .common import stable_hash
 from .mutation_boundary import ObjectiveMutationLock
 from . import secure_file_reference_v1 as _secure_files
@@ -144,8 +144,11 @@ def _verified_recovery_reader(reader):
         with _verification_read_scope():
             context = reader(*args, **kwargs)
         # Owner检查不复用；原件复核之后、返回权限上下文之前再核签发原件。
-        OwnerApprovalStoreV1(context.summary_value['approval_store']).require(
+        OwnerApprovalStoreV1(context.summary_value['approval_store']).require_json(
             context.approval_ref, context.summary_value)
+        revision = getattr(context, 'governance_revision', None)
+        if revision is not None:
+            revision.validate_return(for_dispatch=kwargs.get('for_install', False) or kwargs.get('for_dispatch', False))
         if kwargs.get('for_install', False) or kwargs.get('for_dispatch', False):
             if datetime.now(timezone.utc) >= datetime.fromisoformat(context.execution_expires_at):
                 raise PermissionError('FAILED_ACCOUNT_RECOVERY_EXPIRED')
@@ -210,6 +213,10 @@ def _copy_json_tree(value):
     result = json.loads(json.dumps(value, ensure_ascii=True, separators=(',', ':')))
     startup_checkpoint('VERIFICATION_JSON_COPY_COMPLETE')
     return result
+
+
+def _json_identity(value, field='identity'):
+    return isinstance(value, dict) and value.get(field) == _hash_json_tree({k: v for k, v in value.items() if k != field})
 
 
 def _require(condition, reason):
@@ -307,7 +314,7 @@ def _authorization(root, authorization_id):
         'ORIGINAL_SCOPE_INVALID')
     owner = checked_directory_path(policy['approval_store'], error_code='ACCOUNT_PURPOSE_TIME_EXTENSION_OWNER_INVALID')
     approvals = OwnerApprovalStoreV1.from_checked_directory(owner)
-    approvals.require(policy['approval_ref'], policy['summary'])
+    approvals.require_json(policy['approval_ref'], policy['summary'])
     return directory, reference, base, approvals
 
 
@@ -330,7 +337,7 @@ def _ledger_boundary(root, directory, base, frozen=None):
     ids = set(); operations = {}; effective = None; revoked = False; extension_seen = False
     for event in events:
         startup_checkpoint('TIME_EXTENSION_LEDGER_REPLAY')
-        _require(event.get('run_id') == base['authorization_id'] and event.get('event_id') == stable_hash({
+        _require(event.get('run_id') == base['authorization_id'] and event.get('event_id') == _hash_json_tree({
             'run_id': event['run_id'], 'event_type': event['event_type'], 'payload': event['payload']})
             and event['event_id'] not in ids, 'LEDGER_EVENT_INVALID')
         ids.add(event['event_id']); kind, item = event['event_type'], event['payload']
@@ -401,17 +408,17 @@ def _ledger_boundary(root, directory, base, frozen=None):
 def _predecessor(root, reference, base, approvals):
     manifest = _read(reference, root)
     _require(set(manifest) == {'schema_version', 'summary', 'approval_ref', 'identity'}
-        and manifest.get('schema_version') == 'ACCOUNT_VERSION_CONTINUATION_MANIFEST_V1' and _identity(manifest),
+        and manifest.get('schema_version') == 'ACCOUNT_VERSION_CONTINUATION_MANIFEST_V1' and _json_identity(manifest),
         'PREDECESSOR_MANIFEST_INVALID')
     value = manifest['summary']
     _require(value.get('schema_version') == 'OWNER_ACCOUNT_VERSION_CONTINUATION_SUMMARY_V1'
-        and value.get('version_id') == stable_hash({k: v for k, v in value.items() if k not in ('version_id', 'active_plans')})
+        and value.get('version_id') == _hash_json_tree({k: v for k, v in value.items() if k not in ('version_id', 'active_plans')})
         and value.get('root') == str(root) and value.get('base_authorization_identity') == stable_hash(base)
         and value.get('scope_hash') == base['scope_policy']['scope_hash']
         and value.get('approval_store') == str(approvals.directory)
         and value.get('maximum_version_switches') == 1 and value.get('daily_commit_count_at_install') == 0,
         'PREDECESSOR_SCOPE_CONFLICT')
-    approvals.require(manifest['approval_ref'], value)
+    approvals.require_json(manifest['approval_ref'], value)
     task_root = Path(value['original']['task']['path']).parent
     _require(Path(reference['path']) == task_root / 'account-version-continuations' / value['continuation_id'] / 'MANIFEST.json',
         'PREDECESSOR_PATH_CONFLICT')
@@ -429,12 +436,12 @@ def _predecessor(root, reference, base, approvals):
     _require(isinstance(bridge_ref, dict) and set(bridge_ref) == {'path', 'sha256', 'approval_ref'},
         'PREDECESSOR_BRIDGE_INVALID')
     bridge = _read({key: bridge_ref[key] for key in ('path', 'sha256')}, approvals.directory)
-    _require(_identity(bridge) and bridge.get('schema_version') == 'OWNER_ACCOUNT_VERSION_CAPABILITY_BRIDGE_V1'
+    _require(_json_identity(bridge) and bridge.get('schema_version') == 'OWNER_ACCOUNT_VERSION_CAPABILITY_BRIDGE_V1'
         and bridge.get('approval_ref') == bridge_ref['approval_ref']
         and bridge.get('summary', {}).get('base_authorization_identity') == stable_hash(base)
         and bridge['summary'].get('source_replacements') == value['source_replacements']
         and bridge['summary'].get('runtime_sources') == value['runtime_sources'], 'PREDECESSOR_BRIDGE_CONFLICT')
-    approvals.require(bridge['approval_ref'], bridge['summary'])
+    approvals.require_json(bridge['approval_ref'], bridge['summary'])
     for row in value['source_replacements']:
         _require(row.get('archive_ref', {}).get('sha256') == row.get('old_sha256')
             and _reference(row['archive_ref']['path'], root) == row['archive_ref'], 'PREDECESSOR_ARCHIVE_CHANGED')
@@ -525,7 +532,7 @@ def _local_segment_boundary(root, job, name, receipt, parent):
     """新 Owner 证明尚未冻结时，用原规范逐段复验，绝不从治理入口自举新能力。"""
     account_root = Path(job['root']); profile = validate_execution_profile(job['resources'])
     start = _read(_reference(account_root / (name + '_START.json'), root), root)
-    _require(_identity(receipt, 'receipt_id') and receipt.get('strategy_plans') == job['plans']
+    _require(_json_identity(receipt, 'receipt_id') and receipt.get('strategy_plans') == job['plans']
         and receipt.get('input_identity') == job['input_identity'] and receipt.get('objective_id') == job['objective_id']
         and receipt.get('budget_path') == job['budget_path'] and start.get('receipt_id') == receipt['receipt_id']
         and start.get('kind') == name, 'START_OR_RECEIPT_CONFLICT')
@@ -533,7 +540,7 @@ def _local_segment_boundary(root, job, name, receipt, parent):
     for path in sorted(account_root.glob(name + '_SEGMENT_*_DISPATCH.json')):
         number = len(rows) + 1; prefix = name + '_SEGMENT_' + str(number).zfill(6)
         dispatch = _read(_reference(path, root), root)
-        _require(path.name == prefix + '_DISPATCH.json' and _identity(dispatch, 'dispatch_id')
+        _require(path.name == prefix + '_DISPATCH.json' and _json_identity(dispatch, 'dispatch_id')
             and dispatch.get('schema_version') == 'strategy-account-segment-dispatch-v1'
             and dispatch.get('segment_number') == number and dispatch.get('previous_head') == head
             and dispatch.get('receipt_id') == receipt['receipt_id'] and dispatch.get('kind') == name
@@ -546,7 +553,7 @@ def _local_segment_boundary(root, job, name, receipt, parent):
         charge_paths.add(charge_path); charge = _read(_reference(charge_path, root), root)
         seconds, basis = segment_charge(charge.get('measured_seconds'), dispatch['upper_bound_seconds'],
             charge.get('evidence_identity'), outcome=charge.get('outcome'))
-        _require(_identity(charge, 'charge_id') and charge.get('schema_version') == 'strategy-account-segment-charge-v1'
+        _require(_json_identity(charge, 'charge_id') and charge.get('schema_version') == 'strategy-account-segment-charge-v1'
             and charge.get('dispatch_id') == dispatch['dispatch_id'] and charge.get('seconds') == seconds
             and charge.get('basis') == basis and charge.get('time_extension_proof') is None
             and charge.get('outcome') in ('CONTINUE', 'PAUSED', 'COMPLETED', 'FAILED'), 'LOCAL_CHARGE_CHAIN_CONFLICT')
@@ -587,10 +594,10 @@ def _checkpoint(root, job, name, *, frozen=None, exact=False):
         _require(not any((account_root / (name + '_DAYS')).glob('*.json.gz')), 'ORPHAN_ACCOUNT_DAYS')
         return None
     reference = _reference(path, root); value = _read(reference, root)
-    _require(_identity(value, 'state_identity') and value.get('version') == 'UNIVERSE_EXECUTION_STATE_V2'
+    _require(_json_identity(value, 'state_identity') and value.get('version') == 'UNIVERSE_EXECUTION_STATE_V2'
         and _hash(value.get('execution_identity')), 'CHECKPOINT_INVALID')
     artifacts = value.get('artifacts', {})
-    _require(_identity(artifacts, 'manifest_identity') and artifacts.get('version') == 'UNIVERSE_EXECUTION_ARTIFACTS_V1'
+    _require(_json_identity(artifacts, 'manifest_identity') and artifacts.get('version') == 'UNIVERSE_EXECUTION_ARTIFACTS_V1'
         and artifacts.get('identity') == value['execution_identity']
         and artifacts.get('root') == str(account_root / (name + '_DAYS')), 'DAY_MANIFEST_INVALID')
     calendar = plan['backend']['window']['calendar']; first = calendar.index(plan['backend']['window']['account_start'])
@@ -601,7 +608,7 @@ def _checkpoint(root, job, name, *, frozen=None, exact=False):
     head = stable_hash(['UNIVERSE_EXECUTION_ARTIFACTS_V1', value['execution_identity']]); day_refs = []
     for row in days:
         startup_checkpoint('TIME_EXTENSION_DAY_VERIFY')
-        _require(row.get('previous') == head and _identity(row, 'chain') and _hash(row.get('payload_identity'))
+        _require(row.get('previous') == head and _json_identity(row, 'chain') and _hash(row.get('payload_identity'))
             and isinstance(row.get('file'), str) and Path(row['file']).name == row['file'], 'DAY_CHAIN_CHANGED')
         reference_day = _reference(account_root / (name + '_DAYS') / row['file'], root)
         _require(reference_day['sha256'] == row.get('sha256'), 'DAY_BYTES_CHANGED')
@@ -636,7 +643,7 @@ def _session_boundary(root, previous):
     for path in sorted((audit / 'events').glob('*.json')):
         reference = _reference(path, root); row = _read(reference, root)
         _require(path.stem == str(len(rows) + 1).zfill(6) and row.get('previous') == head
-            and _identity(row) and row.get('action') != 'ERROR', 'SESSION_EVENT_CONFLICT')
+            and _json_identity(row) and row.get('action') != 'ERROR', 'SESSION_EVENT_CONFLICT')
         head = row['identity']; rows.append(row); refs.append(reference)
     pending = next((row['action'] for row in reversed(rows) if row['action'] in (
         'ADVANCE_STARTED', 'ADVANCE_RETURNED', 'RECONCILE_RETURNED', 'PUBLIC_RECONCILED', 'ERROR')), None)
@@ -812,8 +819,8 @@ class AccountPurposeTimeExtensionV1:
         context = cls(root, reference)
         manifest = _read(reference, context.root); summary = manifest.get('summary', {})
         _require(set(manifest) == {'schema_version', 'summary', 'approval_ref', 'identity'}
-            and manifest['schema_version'] == VERSION and _identity(manifest)
-            and summary.get('schema_version') == SUMMARY_VERSION and _identity(summary, 'summary_identity')
+            and manifest['schema_version'] == VERSION and _json_identity(manifest)
+            and summary.get('schema_version') == SUMMARY_VERSION and _json_identity(summary, 'summary_identity')
             and summary.get('maximum_extensions') == 1 and summary.get('aggregate_reserved_delta') == ADDITIONAL_SECONDS * 2
             and summary.get('grant_delta') == summary.get('new_account_jobs') == summary.get('new_candidate_attempts')
                 == summary.get('new_preparation_jobs') == 0, 'MANIFEST_INVALID')
@@ -830,7 +837,7 @@ class AccountPurposeTimeExtensionV1:
             and summary.get('scope_hash') == base['scope_policy']['scope_hash']
             and summary.get('approval_store') == str(approvals.directory)
             and summary.get('base_authorization_ref') == auth_ref, 'AUTHORIZATION_CONFLICT')
-        approvals.require(manifest['approval_ref'], summary)
+        approvals.require_json(manifest['approval_ref'], summary)
         previous = _predecessor(context.root, summary['predecessor_manifest_ref'], base, approvals)
         original = summary['original']; task_root = Path(original['task']['path']).parent
         _require(summary['extension_id'] == cls.extension_identity(summary['authorization_id'], summary['task_id'])

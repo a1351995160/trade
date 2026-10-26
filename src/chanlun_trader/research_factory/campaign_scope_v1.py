@@ -1,6 +1,7 @@
 """持续研究的维护者批准边界；执行端只能引用已批准、内容寻址的记录。"""
 from copy import deepcopy
 from datetime import datetime, timezone
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -14,6 +15,15 @@ VERSION = 'CONTINUOUS_CAMPAIGN_SCOPE_V1'
 STAGES = ('EXPLORATION', 'CONFIRMATION', 'OBSERVATION')
 RESOURCES = ('candidate_attempts', 'data_experiments', 'account_jobs', 'model_calls',
              'model_tokens', 'model_cost_microunits', 'verification_jobs', 'wall_seconds')
+
+
+def _hash_json_tree(value):
+    """只用于已从 JSON 原件解析的树；每次完整编码和哈希，不复用校验结果。"""
+    startup_checkpoint('VERIFICATION_JSON_HASH')
+    encoded = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(',', ':'), default=str)
+    result = hashlib.sha256(encoded.encode('utf-8')).hexdigest()
+    startup_checkpoint('VERIFICATION_JSON_HASH_COMPLETE')
+    return result
 
 
 def _units(value):
@@ -89,21 +99,30 @@ class OwnerApprovalStoreV1:
         return {'approval_id': record['approval_id'], 'summary_hash': record['summary_hash']}
 
     def require(self, reference, summary):
+        return self._require(reference, summary, stable_hash)
+
+    def require_json(self, reference, summary):
+        """仅供已解析 JSON 原件的内部调用；仍逐次读取批准和完整执行原断言。"""
+        return self._require(reference, summary, _hash_json_tree)
+
+    def _require(self, reference, summary, summary_hash):
         startup_checkpoint('CAMPAIGN_OWNER_APPROVAL')
         if (not isinstance(reference, dict) or set(reference) != {'approval_id', 'summary_hash'}
                 or not re.fullmatch(r'[a-f0-9]{64}', str(reference['approval_id']))
-                or reference['summary_hash'] != stable_hash(summary)):
+                or reference['summary_hash'] != summary_hash(summary)):
             raise PermissionError('OWNER_APPROVAL_BINDING_INVALID')
         path = self.directory / (reference['approval_id'] + '.json')
         if not path.is_file() or path.is_symlink():
             raise PermissionError('OWNER_APPROVAL_NOT_REGISTERED')
-        record = json.loads(path.read_text(encoding='utf-8'))
+        raw = path.read_text(encoding='utf-8')
+        record = json.loads(raw)
         if (record.get('approval_id') != reference['approval_id']
-                or stable_hash({key: item for key, item in record.items() if key != 'approval_id'}) != reference['approval_id']
-                or record.get('summary') != summary or record.get('summary_hash') != stable_hash(summary)
+                or _hash_json_tree({key: item for key, item in record.items() if key != 'approval_id'}) != reference['approval_id']
+                or record.get('summary') != summary or record.get('summary_hash') != summary_hash(summary)
                 or record.get('store_root') != os.path.normcase(str(self.directory))):
             raise PermissionError('OWNER_APPROVAL_IDENTITY_CONFLICT')
-        return deepcopy(record)
+        # 原件已逐项核验；从同一原始 JSON 另建独立返回树，避免递归 deepcopy。
+        return json.loads(raw)
 
 
 def scope_summary(root, authorization, contract, stage_limits, *, capabilities_snapshot=None):
@@ -155,7 +174,8 @@ def validate_scope_policy(root, authorization):
             _path, _read, _reference, resolve_failed_account_recovery_manifest,
         )
         _path(recovery_folder, Path(root))
-        slots = list(recovery_folder.glob('*.json'))
+        # 保留槽让旧协议 fail closed；新槽的内容由完整恢复读取器重新核原 Owner。
+        slots = [path for path in recovery_folder.glob('*.json') if path.name != 'GOVERNANCE_SOURCE_REVISION.json']
         if len(slots) != 1:
             raise PermissionError('FAILED_ACCOUNT_RECOVERY_SCOPE_SLOT_CONFLICT')
         slot = _read(_reference(slots[0], root), root)
