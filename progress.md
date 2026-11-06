@@ -4525,3 +4525,51 @@ R1实际1ERROR已保留；R2因订正测试输入受控退出；R3因限定实�
 ### Notes
 
 改动：governance_source_continuation_v2.py增加只暂停及JOB绑定；test_governance_source_revision_v1.py改用原会话短根并补正向／拒绝回归；test_governance_continuation_submission_v2.py补两处JOB变更零CONTROL写入；autonomous-completion.yml修缩进；新协议docs说明到期暂停；progress.md追加结果。reports内操作器草稿修正fresh CI原件及Windows扩展路径重复前缀，普通／扩展路径实读相同且原ZIP SHA保持，该52fd原件只作读取兼容探针，不借作新门禁。新操作器配置未创建或审过。原981日／135费未操作、Owner未签发、无第65段。证据EXPIRED_PAUSE_REVIEW_FIX_AND_JOB_RED_GREEN_R3.json和V2_EXPIRED_PAUSE_LIMITED_ACTUAL_CODE_REVIEW_R3.json；工程回滚点337b9f8a132b2029b656cb659689ad613b5ba453，不得回滚日／费／Owner／控制。
+
+
+## 2026-11-06 - Task: 精确A7FD冻结后启动原必要组与到期暂停验证
+
+### What was done
+
+当前新head a7fd356e88dfaa183a3abdede83738727c03706d／tree d0cc1f97eeea120d62deabede1de4f178e871d2f已非强制推回原draft PR45。1069份Python来源（561产品）与Git filtered逐字节一致。取锁前／锁内／最终fresh的JOB绑定和到期后仅PAUSE、CI参数缩进修正、原会话短根夹具均纳入新字节；旧失败／取消原件保留，不借337b／52fd绿灯。
+
+### Testing
+
+JOB绑定先1FAIL再相关22PASS，限定实际源码实审已闭合；R5自然1FAIL是通用治理夹具误入完整策略benchmark检查，未测到新暂停，修正为真实gov.active到期鉴权，不mock执行器校验。当前运输99590使用原冻结r3驱动仅REPO适配及扩展文件路径，原十selectors加派发／V1／V2／新JOB回归单链执行，尚无结果。新CI初读90项（预计91）为2成功／20运行／68排队；不能当CI通过，原被取消337b不再收集。
+
+### Notes
+
+原981日CP／父账本、旧Owner SHA、12条控制及真实四SHA实际保持，无第65段；原135费未操作，本轮引用原母子结清审计，不冒充全量重审。原各72000／global288002保持，72小时尚未签发。操作器草稿补CI原件fresh与已有扩展前缀兼容；上一草稿按SHA归档，其head常量更新到A7FD，配置仍未创建或审过。四状态／CN／direct-control及两份progress只追加同步。正式记录E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_PRECISEA7FD_EXPIRED_PAUSE_LOCAL_GATES_ACTIVE_20261106T143123247679Z.json，元数据回滚点E:\worktrees\recovery-segment-deadline\trade-system-contract-port-v1\reports\recovery_segment_deadline_20261106\preciseA7FD_state_backups_20261106T143123247679Z/MANIFEST.json；源码工程回滚点337b9f8a132b2029b656cb659689ad613b5ba453，禁止回滚日／费／Owner／控制。真实期限已过、无真实动作，504定时任务保持取消。
+
+
+## 2026-11-06 - Task: 准备A7FD同根接续范围并核实签名来源链
+
+### What was done
+
+已准备不可执行的同根范围文件及冻结操作器A7FD_R4，绑定原981日／135费、下一STRESS478／65、人类原件、旧V1、原控制12、原任务及预算。操作器强制原r4十selectors加四份协议／派发文件和原五文件90的精确选择，不能由配置用局部测试替代；缺失门禁的准备文件不作为CONFIG或CLAIM使用。
+
+### Testing
+
+只读核验实际人工根：八个待换文件旧SHA均在原签名恢复＋V1来源链内，候选新字节各不同；后端／策略的替换交集为空。人工恢复摘要中原封存100ref（88份Python、12份输入）按该根自身口径记录，88代码同时匹配封存值及当前WT，输入内容未读；不将该人工口径冒充真实原99ref。新CI91现53成功／20运行／18排队，未全过；本机99590仍在跑，原账户无运输。
+
+### Notes
+
+正式准备记录E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_A7FD_PREPARED_SCOPE_SIGNED_SOURCE_CHAIN_GATES_RUNNING_20261106T145623077211Z.json；prepared scope为E:\worktrees\recovery-segment-deadline\trade-system-contract-port-v1\reports\recovery_segment_deadline_20261106\PREPARED_SECOND_CONTINUATION_SCOPE_A7FD_R4.json，来源核验为E:\worktrees\recovery-segment-deadline\trade-system-contract-port-v1\reports\recovery_segment_deadline_20261106\ACTUAL_ROOT_SIGNED_SOURCE_CHAIN_PREPARATION_A7FD_R3.json；冻结入口E:\worktrees\recovery-segment-deadline\trade-system-contract-port-v1\reports\recovery_segment_deadline_20261106\second_continuation_operator_A7FD_R4.py。四状态／CN／direct-control及两份progress只追加同步，元数据回滚点E:\worktrees\recovery-segment-deadline\trade-system-contract-port-v1\reports\recovery_segment_deadline_20261106\a7fd_prepared_scope_state_backups_20261106T145623077211Z/MANIFEST.json。所有门禁与实际配置复审未齐备前，不创建原根安装许可、不签发Owner、不派第65段；72小时未开始，真实截止已过且无真实动作，504任务保持取消。
+
+
+## 2026-11-06 - Task: 保留981日并处理精确A7FD的CI夹具阻塞
+### What was done
+保存GitHub官方失败job原日志与5FAIL/255PASS证据；准备但尚未应用解析器夹具补丁。生成同根控制器R1至R3草稿，保留原10项单段和14项收尾断言；修正批准原件/安装副本绑定和同根运输互斥草稿。
+### Testing
+99590仍在原冻结A7FD字节上运行；无自然结果。控制器仅AST摘要与语法compile，不代表实际配置或接续通过。原981日两个检查点、135费用所在父账本、旧Owner和真实四SHA逐字节保持，无65或CONTROL13。
+### Notes
+未创建新Owner、账户运输、配置或CLAIM；未热改活的测试。失败CI不能放行，完整及最终53refs仍未通过。回滚点为 E:\worktrees\recovery-segment-deadline\trade-system-contract-port-v1\reports\recovery_segment_deadline_20261106\a7fd_ci_stub_block_backups_20261106T152655491309Z\MANIFEST.json；状态可从该备份三方恢复并保留后续历史，草稿停用即可，禁止重写旧运行。
+
+
+## 2026-11-07 - Task: 补齐解析器测试夹具并保留981日接续门禁
+### What was done
+仅修改test_verified_json_resolvers_v1.py的内存夹具，补齐expires_at和governance_revision，并新增历史期限与effective期限分离回归。原56条assert AST全保留，新增5条；561产品源码SHA均与A7FD一致。限定独立补丁只读复核未发现遗漏或断言弱化。同步V2实施文档；原人工账户与全部费用不变。
+### Testing
+A7FD原必要组自然303PASS／0FAIL,ERROR,SKIP，测试5264.92秒、外层5279.434733秒、changed=[]，99590已最终读闭。A7FD的91CI最终87SUCCESS／4FAILURE；四个失败任务均同5项缺字段错误，全部原日志已保存。修复后17PASS／6.69秒／零FAIL,ERROR,SKIP，XML E:\t\gsc2_jsonfix_20261107.xml SHA e07d22271580a516c2878986caee232bb7782d10a6d511183e5d51974be936d6。该短组是提交前证据，不代替提交后完整来源门禁。
+### Notes
+未创建Owner或第65段；原981/1008日、135段结清费、72000/global288002和fresh校验保持。新精确来源需跑原十selectors＋四份协议文件＋修改的resolver文件，再原五文件90及全部CI实际原件。回滚点A7FD提交及 E:\worktrees\recovery-segment-deadline\trade-system-contract-port-v1\reports\recovery_segment_deadline_20261106\resolver_fixture_commit_backups_20261106T225747703981Z\MANIFEST.json；可恢复本次单文件测试改动并保留失败与验证原件，不回滚账户历史。

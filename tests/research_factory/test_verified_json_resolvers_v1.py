@@ -55,7 +55,10 @@ def resolver_case(request, monkeypatch, tmp_path):
               "numbers": [0, -0.0, 1e-300, 1e300]
             }
           },
-          "calendar_deadline_extension": {"nested": {"tags": ["deadline"]}},
+          "calendar_deadline_extension": {
+            "expires_at": "2030-01-02T00:00:00+00:00",
+            "nested": {"tags": ["deadline"]}
+          },
           "calendar_task_scope": {"nested": {"tags": ["calendar-scope"]}}
         }
     ''')
@@ -70,7 +73,8 @@ def resolver_case(request, monkeypatch, tmp_path):
         return value
 
     context = SimpleNamespace(summary_value=summary, extension_id='artificial-extension',
-        recovery_id='artificial-recovery', execution_expires_at='2030-01-02T00:00:00+00:00', proof=proof)
+        recovery_id='artificial-recovery', execution_expires_at='2030-01-02T00:00:00+00:00',
+        governance_revision=None, proof=proof)
     owner = (extension.AccountPurposeTimeExtensionV1 if request.param == 'extension'
         else recovery.FailedAccountRecoveryV1)
     resolver = (extension.resolve_time_extension_manifest if request.param == 'extension'
@@ -87,7 +91,8 @@ def resolver_case(request, monkeypatch, tmp_path):
             objective_id=summary['objective_id'], **flags)
 
     return SimpleNamespace(kind=request.param, summary=summary, manifest_ref=manifest_ref,
-        calls=calls, proofs=proofs, owner=owner, read=read, resolver=resolver, resolve=resolve, root=tmp_path)
+        calls=calls, proofs=proofs, owner=owner, read=read, resolver=resolver, resolve=resolve, root=tmp_path,
+        context=context)
 
 
 def test_resolvers_keep_read_flags_proof_and_caller_deepcopy(resolver_case):
@@ -141,6 +146,25 @@ def test_resolver_account_alias_and_each_returned_tree_are_independent(resolver_
     result['summary_value']['accounts']['STRESS']['notes']['tags'].append('summary-result')
     assert result['accounts']['STRESS']['notes'] == {'tags': ['stress']}
     assert case.summary == before
+
+
+@pytest.mark.parametrize('resolver_case', ('recovery',), indirect=True)
+def test_recovery_resolver_preserves_signed_deadline_separately_from_continuation(resolver_case):
+    case = resolver_case
+    before = deepcopy(case.summary)
+    proof = {'manifest_ref': {'path': 'artificial-second-manifest', 'sha256': 'b' * 64},
+        'continuation_id': 'artificial-continuation'}
+    case.context.execution_expires_at = '2030-01-03T00:00:00+00:00'
+    case.context.governance_revision = SimpleNamespace(
+        execution_expires_at=case.context.execution_expires_at, proof=lambda: deepcopy(proof))
+
+    result = case.resolve()
+
+    assert result['execution_expires_at'] == before['calendar_deadline_extension']['expires_at']
+    assert result['effective_execution_expires_at'] == '2030-01-03T00:00:00+00:00'
+    assert result['governance_continuation_proof'] == proof
+    assert result['summary_value'] == before and case.summary == before
+    assert len(case.calls) == 1 and len(case.proofs) == 1
 
 
 def test_each_resolver_call_reads_fresh_and_does_not_reuse_result_trees(resolver_case):
