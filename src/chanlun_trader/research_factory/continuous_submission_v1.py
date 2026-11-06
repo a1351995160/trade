@@ -146,10 +146,15 @@ def bind_request(service, request, *, batch_id, candidate_identity, phase):
     return request
 
 
-def continuous_authority(service, request):
+def continuous_authority(service, request, *, calendar_context=None):
     if service.continuous_scope is None:
         raise PermissionError('CONTINUOUS_SCOPE_DEPLOYMENT_REQUIRED')
-    binding = service.continuous_scope.resolve(request['research_binding_ref'])
+    if calendar_context is not None:
+        from .failed_account_calendar_scope_v1 import FailedAccountCalendarContextV1
+        if type(calendar_context) is not FailedAccountCalendarContextV1:
+            raise PermissionError('FAILED_ACCOUNT_CALENDAR_SIGNED_CONTEXT_REQUIRED')
+    binding = (service.continuous_scope.resolve(request['research_binding_ref']) if calendar_context is None else
+        service.continuous_scope.resolve(request['research_binding_ref'], calendar_context=calendar_context))
     campaign = service.continuous_scope.campaign
     base = campaign.peek_status()['base_authorization']
     contract = base['scope_policy']['summary']['contract']
@@ -188,6 +193,8 @@ def continuous_authority(service, request):
     for key in ('trusted_deployment', 'trusted_data_access'):
         if key in parent:
             authority[key] = deepcopy(parent[key])
+    if calendar_context is not None:
+        FailedAccountCalendarContextV1.require_authority(calendar_context, authority, request, without_symbols=True)
     return authority
 
 
@@ -261,7 +268,9 @@ def advance_submission(service, task_id):
             raise ValueError('CONTINUOUS_FROZEN_JOB_CHANGED')
         preview = read_json(task_root / 'PREVIEW.json')
         request = {key: value for key, value in preview['request'].items() if key != 'symbols'}
-        authority = continuous_authority(service, request)
+        from .failed_account_calendar_scope_v1 import FailedAccountCalendarContextV1
+        calendar_context = FailedAccountCalendarContextV1.from_job(service.continuous_scope.campaign.root, read_json(path))
+        authority = continuous_authority(service, request, calendar_context=calendar_context)
         from .account_version_continuation_v1 import AccountVersionContinuationV1
         continuation = AccountVersionContinuationV1.from_job(read_json(path), for_dispatch=False)
         version_proof = continuation.proof() if continuation else None
@@ -357,8 +366,8 @@ def reconcile_submission(service, task_id):
         if binding['phase']!=request['phase']:
             raise PermissionError('CONTINUOUS_RECONCILE_BINDING_CHANGED')
         stages=[]
-        account_pending=any((path.parent/(name+'_START.json')).exists()
-            and not (path.parent/(name+'_SETTLEMENT.json')).exists() for name in job['plans'])
+        account_pending=any(paths['start'].exists() and not paths['settlement'].exists()
+            for paths in (runner.account_execution_paths(job,name) for name in job['plans']))
         if account_pending:
             from .universe_execution_recovery_v1 import resume_long_horizon_job
             resume_long_horizon_job(path,job,reconcile_only=True)

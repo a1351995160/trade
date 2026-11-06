@@ -3968,3 +3968,608 @@ V2 新增 115 项测试全部通过（公式 oracle、因果性、边界、三�
 - 对应三份 tests/research_factory 测试补充多代/篡改/重复/物理跨年回归；docs/CONTINUOUS_UNIVERSE_RESEARCH_GUIDE.md 和 docs/LONG_HORIZON_UNIVERSE_RESEARCH_GUIDE.md 同步实际入口与使用边界。
 - 本轮证据存 reports/continuous_universe_real_acceptance_20261010/SOURCE_FIX_VALIDATION.json 与 READONLY_COLLECTION_LINEAGE_CHECK.json。全 4607 登记池的 504 TRAIN 配套仍在真实采集，账户与独立 252 验证未执行，不能称整个目标已完成。
 - 回滚：仅 revert 本次修复提交；保留所有采集原件、续采失败回执、授权及消费账本，不删除旧研究记录。原用户未提交内容保持原样，仅追加本段。
+
+## 2026-10-17 - Task: 原账户有限日历后继实施并保全旧源测试
+
+### What was done
+
+已在隔离WT实现Owner新日历摘要、父预算仅原用途投影、原凭证/版本/扩时/公共收尾适配，同步新测试和CI选择。旧4515为新源门禁受控保全关闭，人工286日原件保留。
+
+### Testing
+
+AST和diff静态检查通过；99经济引用保持。旧4515无1046源变更，1453 ZIP成员逐SHA/CRC通过，natural_exit=false不记PASS/产品FAILED。新pytest/CI/full均尚待；真实277日/费用未动。
+
+### Notes
+
+Files: docs/plans/2026-10-17-001-fix-original-account-calendar-deadline-continuation.md; docs/research/failed-account-calendar-deadline-implementation-20261017.md; calendar scope/recovery, parent budget/campaign, original runtime governance, runner and four new tests; .github/workflows/autonomous-completion.yml; primary/four tracking states. Rollback point: isolated WT base29712a45; mutable .before_calendar_targeted_20261017T124737257296Z.bak; no deployment or real account rollback necessary. Closure PRODUCTION_FULL_R7_CONTROLLED_CLOSED_FOR_AUTHORIZED_CALENDAR_SUCCESSOR_20261017T124240360012Z.json SHA 77ffe0a9656a94927eadab19bd7824a784a09658276418e58b545d7681260248.
+
+## 2026-10-17 - Task: 有限日历恢复三处P1修复与同源必要门禁
+
+### What was done
+
+在隔离生产后继中修复事件派生字段注入、旧期限后两个治理入口遗漏用途截止、CONTINUE离线核账误用历史期限。原授权、277日、50FAILED、全部费用和各72000/global288002保持；未安装Owner或派发真实51。完整合成增加真实墙钟越过人工原期限后才安装及全链执行，默认48小时夹具保持。
+
+### Testing
+
+R1夹具失败原件保留；R2受控关闭736.0888233000005秒、changed=[]、无有效JUnit，不计PASS或产品FAILED。R3自然3FAIL证实事件入口缺口；修复后R4自然12PASS/0FAIL/ERROR/SKIP、8.615670099999988秒、changed=[]。当前唯一必要R5/56232正在执行，1051源码冻结，不预报通过。99经济引用与四真实关键SHA再次保持。记录 PRODUCTION_FINITE_CALENDAR_P1_REPAIRS_RED3_GREEN12_AND_NECESSARY_R5_20261017T131139452736Z.json SHA256 748ff318719f3340e6f9855416bcc4f84660a6ed1be111bb3fddc50113f696fe
+
+### Notes
+
+Files: src/chanlun_trader/research_factory/run_budget.py（阻断派生字段载荷）；etf_account_governance_v1.py（两处绑定原用途）；universe_execution_recovery_v1.py（认证执行期限核账）；三个calendar测试（Owner篡改夹具、注入红绿、旧新期限核账）；test_account_purpose_time_extension_integration_v1.py（默认不变的人工期限参数）；test_failed_account_recovery_integration_v1.py（实际旧期限已过后完整门禁）；四状态/primary及本记录。回滚点：隔离WT的base29712和各1051源码快照；实际账户与原件从未修改，记录与失败证据保留。
+
+## 2026-10-17 - Task: Calendar r4 delivery identity and original-source collection
+
+### What was done
+
+Bound the exact finite-calendar r4 operator/four-step/proposal, retaining r3 and pre-expiry-check r4 originals. Collected original main governance sources with the reviewed bounded collect-sources action; zero Owner/account dispatch.
+
+### Testing
+
+Independent limited security findings=[]; 19 pure validator cases passed (not a full gate or Owner approval). The first external validator fixture had LF/CRLF prefix mismatch and was preserved before its fixture-only correction. All112 inventory/99 economic refs and all13 archived byte streams/line endings equal the original r3 collection. Four real key hashes unchanged. Evidence PRODUCTION_CALENDAR_DELIVERY_R4_REVIEW19_AND_ORIGINAL_COLLECTION_BOUND_20261017T131846156416Z.json SHA256 286e07df6f493031ec3b1bce55b92d4a1a2d6076c08a8613bb8ac03c3360669c
+
+### Notes
+
+Files: external r4 three files and their SHA archive; external pure-contract validator, report and immutable source collection; four mutable states/primary; docs/research/failed-account-calendar-deadline-implementation-20261017.md; progress.md. Runtime install is pending all new-source gates. Rollback point: retained r3 and pre-change r4 SHA backups; real Owner/account bytes were never changed.
+
+## 2026-10-17 - Task: 修复延期收尾用途父API撤销后可写派发的缺口
+
+### What was done
+
+将完整fresh恢复授权检查前移到精确VERIFICATION/REPORT预留写入之前，并覆盖START、派发限额和段DISPATCH。普通历史replay及新期限之后的离线收费结算保持；新5文件增加固定LF属性，避免Windows CI与已测原件换行漂移。
+
+### Testing
+
+R5必要组按精确身份受控保全，708.0951522000105秒/natural_exit=false/changed=[]/无有效JUnit，不计完整PASS或产品FAILED。R6父入口红基线自然3FAIL（明确人工Owner读取层、真实预算事件）；修复后R7自然72PASS/0FAIL/ERROR/SKIP、51.29336959999637秒、changed=[]，为budget25+scope47执行记录。完整必要/回归/新精确CI/完整双504仍待。1051来源与green launch逐SHA一致，四真实关键SHA保持。证据 PRODUCTION_CALENDAR_PARENT_DISPATCH_P1_RED3_GREEN72_AND_R5_PRESERVED_20261017T132551034244Z.json SHA 19cdef0a910d879eae28a432ec387abb9b1e0577ff330afb14397750892bc741
+
+### Notes
+
+Files: research_campaign_v1.py（新预留及执行共用完整当前恢复许可）；test_failed_account_calendar_deadline_budget_v1.py（8拒绝零写入+正常离线结清）；.gitattributes（仅新增5文件LF）；四状态/primary/docs/progress。回滚点：R5/R6/R7各1051源码快照和base29712；原账户/Owner未修改，旧失败与费用证据保留。
+
+## 2026-10-17 - Task: 精确有限日历后继已提交推送并启动新门禁
+
+### What was done
+
+精确提交cefebdb2dbec2550b05090e8fa4280a3cd758282 / tree 9aa8ad9d13321b9ef451f6606ddf2d7a9827be69已快进推送原draft PR45。原生产WT及main未改。同源必要R8/65589运行；外部线性控制38062只等其自然通过后串行接原5文件90回归，再接实际旧期限已过的完整双504；不自动重试、不执行真实Owner或账户派发。
+
+### Testing
+
+两个实际红基线各3FAIL，定向12PASS及父预算+scope72PASS保留；不代表全部新门禁通过。1051来源与launch逐SHA一致，src/scripts/tests无未提交差异。初始CI实际{'QUEUED': 57, 'IN_PROGRESS': 20, 'SUCCESS': 13}，已登记90项、最终要求91，尚未收新工件。四真实关键SHA保持。记录 PRODUCTION_PRECISE_CEFEB_COMMITTED_PUSHED_AND_SERIAL_NEW_GATES_STARTED_20261017T133504555897Z.json SHA 3042be0077ad8136a0e4a9c33b1805dc65e00d09f02628748a3c18deff4c275d
+
+### Notes
+
+Files: 精确提交内24项范围文件；外部串行测试控制器/claim/state/日志；四状态/primary/本记录/progress。回滚点：base29712和各1051源码快照；保留新提交与全部失败记录，不reset/clean；要停原测试先核精确身份并保全，不能热改。
+
+## 2026-10-17 - Task: 保全精确CI失败并修复普通计算入口兼容
+
+### What was done
+
+精确CEFEB双OS各8个长期账户回归失败，原始日志/元数据保持。先停止外部串行控制38062，再受控关闭R8/65589；未启动后续回归或完整合成。普通构造器改回调用时绑定和原默认四位置参数；calendar子类仅在签名范围实际需要时定义。
+
+### Testing
+
+新进程原失败节点R9自然1FAIL；修复后R10原两长期账户文件+calendar scope/budget自然104PASS/0FAIL/ERROR/SKIP，141.1568849000032秒，1051来源快照和当前逐SHA相同、changed=[]。受控R8无有效JUnit，不计PASS或产品FAILED。原4关键真实文件和冻结经济原类SHA保持；新精确全部门禁仍未完成。记录 PRODUCTION_CEFEB_CI_FAILURE_PRESERVED_ORDINARY_RED1_GREEN104_20261017T135500964967Z.json SHA cb168bdee538c1173a452fb06bf53e387adc99eea9d3b9b8f4dc1611b691997c
+
+### Notes
+
+Files: failed_account_calendar_scope_v1.py（延迟构造适配器和普通类）；test_failed_account_calendar_scope_v1.py（3个普通调用边界）；四状态/primary/旧serial可变state/本记录及docs/progress。回滚点CEFEB及R8/R9完整1051快照；不改原失败工件、不reset/clean；原Owner未安装、真实账户未派发。
+
+## 2026-10-17 - Task: 精确1102普通计算兼容修复提交并接续新门禁
+
+### What was done
+
+普通入口兼容修复已限定独立复审findings=[]，新提交1102f733938a1309f6aff4308f9a3cf86faffa2a/treee315db9878c2bffecf9b0f34ebaecb2ab3f3cdc0已快进推送原draft PR45。唯一必要组R11/29200运行；串行控制34630仅在自然通过后接原五文件90回归，再接实际旧期限已过的完整双504，无自动重试或Owner动作。
+
+### Testing
+
+原两legacy文件及calendar scope/budget104项自然通过，1051源码与新提交启动逐SHA一致；限定复审核对adapter方法AST保持。新精确CI初始{'QUEUED': 64, 'IN_PROGRESS': 20, 'SUCCESS': 6}/90，尚非91全部成功。原真实四SHA保持。记录PRODUCTION_PRECISE1102_ORDINARY_FIX_COMMITTED_PUSHED_AND_NEW_GATES_20261017T135919168870Z.json SHA9ce8b5d95ef36df76514f33bd5a11cb513a00aeff08699cf2d37fe4543912a04
+
+### Notes
+
+Files: 本次提交4项已记录文件，外部1102线性门禁控制/claim/进程记录、primary/四状态/docs/progress。回滚点CEFEB及R10的1051源快照；旧CI两原失败日志、旧控制和R8受控结果保持，不reset/clean或将其改标为PASS。
+
+## 2026-10-17 - Task: 保全1102真实门禁失败并修正三类接续边界
+
+### What was done
+
+R11自然213PASS/1FAIL/0ERROR/SKIP、2588.807032900004秒、changed=[]，其串行控制自然拒绝后续，二运输最终读取关闭。保全双OS及PR对应六份CI原失败日志。原凭证与精确消费投影比较、普通tasks/campaign并列根路由及反馈替身接口分别定位修复。
+
+### Testing
+
+凭证形状真实红1FAIL/1PASS后8PASS；并列根真实2FAIL后scope54PASS；限定安全/测试静态复审findings=[]。唯一R16/58850正在原公开有界worker与反馈7节点定向验证，未预报通过。完整Owner/父子账本runtime原21条assert及原异常断言AST保持，仍须新完整门禁。四真实关键SHA保持；记录PRODUCTION_1102_RUNTIME_AND_CI_FAILURES_PRESERVED_NARROW_REPAIRS_20261017T151723823086Z.json SHAe6370984d6bc54e636bbccc4da680077a7044b439951d06452b1187dfefce9bb
+
+### Notes
+
+Files: etf_account_governance_v1.py（只接纳精确运行凭证投影）；failed_account_calendar_scope_v1.py（根外普通任务回退）；两calendar测试文件（边界正负例）；test_account_version_feedback_v1.py（补显式替身接口不改原断言）；四状态/primary/docs/本记录/progress。回滚点1102及R11的1051完整快照；保留自然FAIL与原CI日志，不reset/clean或改标为PASS，真实Owner未安装、277日和费用保持。
+
+## 2026-10-17 - Task: 三处接续边界修复提交0a34并启动全新门禁
+
+### What was done
+
+原凭证/精确消费投影、普通任务与账本目录分离、反馈替身接口三处修复已提交0a34925a8acc40ca1985b52fc2600a0dab4e51f1/tree83092897b1f3cf668c6b12d8faf1510bf76a2120并推送原draft PR45。更新PR描述以体现已获新有限日历授权，保留原body备份。独立限定安全、测试及串行控制复审findings=[]。定向R16原公开worker/反馈7节点自然通过并最终读取关闭；唯一串行83404已启动新必要R17，之后仅自然通过才接原五文件90和完整单integration。
+
+### Testing
+
+R16自然0/7PASS/零FAIL,ERROR,SKIP，1165.488750199991秒、changed=[]。它在冻结修复字节上先启动，提交前后1051 launch/snapshot/current字节完全相同，未把旧head执行冒充新head；正式三组另从精确0a34启动。新CI初始{'QUEUED': 62, 'IN_PROGRESS': 20, 'SUCCESS': 8}/90，仍待91全过。原112库存、99经济引用（87代码+12输入仅SHA未复制）、13归档字节/CRLF、真实四SHA及原计划SHA保持。记录PRODUCTION_PRECISE0A34_THREE_BOUNDARY_FIXES_TARGETED7_AND_NEW_GATES_20261017T153914440154Z.json SHA3f9dbb569c372b078fa5c0433231d74fbc15f163e79a13f69bc497b262c4d054
+
+### Notes
+
+Files: 0a34提交7项范围文件；外部0a34串行控制/进程记录/审查、PRbody备份与更新、primary/四状态/docs/progress。回滚点1102及R11/R16完整1051快照；保留旧213PASS/1FAIL、六CI失败日志和取消原件，不reset/clean，不将局部通过当完整门禁。真实Owner未安装，仍277/0及原50FAILED。
+
+## 2026-10-18 - Task: 精确0a34必要226与原回归90自然通过并继续完整合成
+
+### What was done
+
+核验必要R17自然226PASS及原五文件回归自然90PASS；唯一串行83404已启动固定完整单integration CALENDAR_FULL_R10_0A34_EXPIRED_ORIGINAL。限定独立实际复审findings=[]，范围仅本机终态及完整启动。更新primary/四状态/docs，旧29712当前CI通过字段移入保留历史并明确新0a34仍待。
+
+### Testing
+
+必要自然0/226PASS/0FAIL,ERROR,SKIP/5519.967188800001秒；回归自然0/90PASS/0FAIL,ERROR,SKIP/241.87015370000154秒，均changed=[]。三launch/三快照/current1051同源，精确HEAD/tree及原四真实SHA/原计划SHA保持；全合成仍运行，无自然结果，最后来源群/新精确CI91及最终53refs仍待。当前CI只观察90SUCCESS/1IN_PROGRESS，未收集或预报全过。记录PRODUCTION_PRECISE0A34_NECESSARY226_REGRESSION90_NATURAL_FULL_R10_RUNNING_20261017T172225271583Z.json SHAfd7a960f8bfe9b60d5610268e5559b9c930337b995f17cfc62d9d8154be59372
+
+### Notes
+
+Files: 外部本机工件复审、完整进程身份、阶段记录、primary/三JSON别名/CN状态/期限docs/progress。回滚点为before_0a34_local226_90_full_时间戳.bak与原0a34提交及1051快照；仅状态回滚，不重启或重发已结清工件。83404是整条串行的前台运输，不能把两组完成误作全运输关闭。真实仍277/0及原50FAILED，新Owner未安装，各72000/global288002不增加。
+
+## 2026-10-18 - Task: 精确0a34全部91CI成功并启动唯一原件收集
+
+### What was done
+
+精确head0a34的91项CI均SUCCESS；在核原collector SHA、无活跃collector及无同head旧目录后，前台启动唯一60275，只读收33ZIP/28XML/5Win来源。保全原rollup、精确PID/创建/命令及新artifact目录，primary/四状态/docs同步收集运行，未预报收集或复审通过。
+
+### Testing
+
+原rollup91项逐项SUCCESS，head精确0a34；当前完整R10六控制加两pipeline身份均匹配，仍NATIVE_BOUNDED_277_DAY_ECONOMIC_PREFIX且无自然结果。真实四关键SHA保持，无新Owner或真实派发。记录PRODUCTION_PRECISE0A34_CI91_SUCCESS_ARTIFACT_COLLECTION_STARTED_20261017T181737491830Z.json SHA54559058be04c95b09ca54aaae7b11c33dc70950719b43b663e894bd8a15ca3e
+
+### Notes
+
+Files: 外部rollup/collector身份/收集目录/阶段记录，primary/三JSON/CN状态/期限docs/progress。回滚点为before_0a34_ci91_collection_时间戳.bak；不删收集原件、不重跑CI或测试。CI成功不等于完整自然门禁或最终53refs复审通过。
+
+## 2026-10-18 - Task: 精确0a34原件收集自然终态保全与来源标签订正
+
+### What was done
+
+collector60275自然code0并最终读取关闭，精确两个PID已退出；保全33官方ZIP/28XML/5份Win1051来源及manifest，独立实际复审仍待。旧观察将run39045480195称作push有误，官方元数据确认为pull_request；真实工件来源始终是selected push39045476141/attempt1，追加订正，不覆盖旧原件。
+
+### Testing
+
+MANIFEST SHA324c3ca55a0ad8c3a32e3e4eed8ba5567ab3d2fee50d6010201de75479fade57；28XML逐SHA/实际node核计执行记录{'tests': 5950, 'passed': 5938, 'failures': 0, 'errors': 0, 'skipped': 12}，不是唯一测试数；零FAIL/ERROR，跳过合法性由独立复审确认。完整自然合成和最终53refs仍待。记录PRODUCTION_PRECISE0A34_CI91_ARTIFACTS_COLLECTED_NATURAL_CLOSED_20261017T182241732041Z.json SHAf7d71569cfd6cafe1728c846e2b9bb7887c8cb343f8d292c36f05477e84de266
+
+### Notes
+
+Files: 外部原run元数据/收集终态记录/primary/三JSON/CN状态/期限docs/progress。回滚点为before_0a34_ci_natural_closed_时间戳.bak，不重收、改写原CI/JUnit或重启已结束session。真实277/0及全部费用保持，无新Owner/真实派发。
+
+## 2026-10-18 - Task: 精确0a34 CI91全部原件限定独立复审通过
+
+### What was done
+
+33官方ZIP/成员、原push日志、28XML及5份Win1051来源限定独立实际复审findings=[]。CI门禁标为精确0a34通过，完整自然合成/最终53refs仍未通过；PR描述同步实际226/90/CI91并保持draft，保留旧body及精确回读。
+
+### Testing
+
+实际5950执行记录=5938PASS/12合法SKIP/0FAIL/0ERROR，不是唯一测试数。selected push39045476141/attempt1的checkout/source身份经实际工件核验；PR counterpart仅raw rollupSUCCESS，不虚称其独立checkout或计时。1051本机/当前Git filtered/5Win身份一致，完整自然终态群仍待；真实四关键SHA和原计划SHA再次保持。记录PRODUCTION_PRECISE0A34_CI91_ACTUAL_ARTIFACT_REVIEW_PASSED_FULL_R10_CONTINUING_20261017T183405785499Z.json SHA83f0ed5a90aca5d490aa5f081f12951e79e7e5ccc6b50f62e7ac51f8800b9d2d
+
+### Notes
+
+Files: 外部CI限定复审、PRbody更新与备份、阶段记录、primary/三JSON/CN状态/期限docs/progress。回滚点为before_0a34_ci_actual_review_时间戳.bak及PR45_BODY_BEFORE_LOCAL226_90_CI91备份；不改写CI/原费用或重启闭合运输。真实仍277/0/原50FAILED，无新Owner或真实派发。
+
+## 2026-10-18 - Task: 保全完整日历R10自然失败并定位夹具预算契约冲突
+
+### What was done
+
+完整R10自然1FAIL，根因是通用合成夹具初始global1000000与日历人类夹具固定288002不一致；产品拒绝正确，未批准恢复Owner或派51。83404整链自然退出并最终读取关闭，原八精确控制进程均退出。保全1051源快照、原JUnit/log/SCENARIO/原授权/277CP/50费及其余50CHARGE到逐SHA/CRC验证ZIP；所有原目录保留不热改。
+
+### Testing
+
+自然code1/0PASS/1FAIL/0ERROR/SKIP、5825.9004724000115秒、changed=[]；人工277日last20230418/原50FAILED/无51，真实四关键SHA保持。ZIP PRODUCTION_FULL_CALENDAR_R10_NATURAL_FAIL_PRESERVED_20261017T192018837270Z.zip SHA063759be5baca641fc4e8f5ca4e25804c850f250873bb13464e658ef0c901092；记录PRODUCTION_FULL_CALENDAR_R10_NATURAL_FAIL_CLOSED_FIXTURE_BUDGET_PRESERVED_20261017T192018837270Z.json SHA1848c883e73b221e671c813a63204f24c9c36996ff4e2368754bb23127100535
+
+### Notes
+
+Files: 外部失败保全ZIP/阶段记录、primary/三JSON/CN状态/期限docs/progress。原0a34 CI91/226/90仍只证明旧源；待测试夹具修复后必须重新完整来源门禁，绝不放宽288002或真实额度。回滚点0a34提交及本次1051快照与before_full_calendar_R10_fail_*.bak；不重启83404。
+
+## 2026-10-18 - Task: 修复完整日历夹具首次签发预算并验证默认兼容
+
+### What was done
+
+仅修改四个测试文件：通用_public_case及_full_public_case增加默认兼容的resource_wall和exploration_only参数；完整失败恢复场景在第一次Owner签发前显式288002/单EXPLORATION，并在277日构造前断言初始授权及阶段墙钟上限。单阶段保留原account_jobs4/candidate_attempts2等非墙钟阶段额度；原4小时期限、等待实际到期、经济/日链/费用/双原生/报告/反馈完整断言保持。新增两个实际人工Owner初始签发契约节点，未派发经济worker或修改签发后授权。112原库存、99经济引用及13归档SHA/CRLF再次保持，未复制原12输入。
+
+### Testing
+
+R18缺失参数真实红1FAIL/1PASS，R19仅前两helper修复阶段2PASS，R20完整四文件2PASS；最后只补新测试前空行和纠正文案后R21自然code0/2PASS/零FAIL,ERROR,SKIP、7.667682400002377秒、changed=[]，1051 launch/snapshot/current一致。R21在提交前运行，不冒充新精确head门禁，仍须新必要/原五回归/CI91及完整自然门禁。记录PRODUCTION_CALENDAR_FIXTURE_INITIAL_BUDGET_REPAIRED_TARGETED2_ONLY_20261017T192749823983Z.json SHAe5d3de8664b06dba6b748a02b78d0e815336b8503125c81484ec6b910dc4b69a。
+
+### Notes
+
+Files: 上述四测试文件、docs/research/failed-account-calendar-deadline-implementation-20261017.md、本记录；外部定向证据及独立限定原因复审。首次辅助bytepatch误将第三文件LF假设为CRLF，前两helper写入后在第三写入前断言停止；PowerShell仍接起R19，所以明确只将其视为部分helper绿。R19最终关闭后单独补齐第三文件，后续R20/R21实际验证完整字节；未在测试存活时热改源码。所有红/部分绿及原R10失败保留，不改标。回滚点0a34925a8acc40ca1985b52fc2600a0dab4e51f1与R10/R21完整来源快照，回滚按四文件逐项恢复并保留证据，不reset/clean。真实仍277/0及原50FAILED，新Owner未安装、原费用/各72000/global288002不变。
+
+R22 final source addendum: removed only one new EOF LF after R21 closed; AST unchanged. R22 natural code0/2PASS/0FAIL,ERROR,SKIP/7.529661399996257 seconds/changed=[]; final source1051 launch/snapshot/current verified by limited review. XML SHA d5d8caabdba354671e7dc6cd696857bed4d0a7ddc21add38a13aa6674a260ddd. git diff --check passed. R22 is precommit contract evidence, not complete new-head gates.
+
+## 2026-10-18 - Task: 独立工作树优化单次恢复核验并准备合回原PR45
+
+### What was done
+
+从2fd0建立独立工作树codex/recovery-validation-scope；仅修改三个治理读取文件，在FailedAccountRecoveryV1.read单次调用内复用已安全读入的字节/摘要/账本JSON，返回前完整重读被复用原件并再核Owner和绝对执行期限。保留原安全打开前后检查，去掉成功路径额外第三次路径遍历；仅对确定JSON来源树使用带前后协作截止检查的JSON复制。原301个_require/assert AST节点保持，全部事件哈希、顺序、费用及状态重放断言仍执行，不缓存授权结论或跨调用许可。新增三个测试文件及只读基准工具，CI原failed-account-context组追加三测试文件，原矩阵/原模块保留；新增文件固定LF，未批量转码。当前R11工作树、root、控制器、经济源、预算、期限及费用均未修改。
+
+### Testing
+
+最终补充单元及边界R8自然67PASS/1原Windows符号链接权限SKIP/0FAIL,ERROR，等价R8自然13PASS/0FAIL,ERROR,SKIP；原XML位于E:/t/，SHA分别4e0a427527a8aee38eb5339368b344a83a5025a02cf18e2d335a9984af8ecdc6、6b7989ac3823ea14d737e19339e630870156669ff6111056a3fd9183794d198e。限定独立安全复审findings=[]，已修复返回前绝对期限跨越、NDJSON物理行及基准输出路径问题。实际2fd0/优化两个进程、同一合法人工277日/50FAILED原件、普通与830秒原trace各3次：中位5.657198→5.223391秒（7.67%），trace8.257040→7.619101秒（7.73%），安全打开983→981，路径遍历2353→1970；summary/proof/expiry/approval identity相同，账户changed=[]，派发0，136导入来源各自闭合。记录在reports/recovery_validation_scope_20261018/，最终JSON SHA6f03fc4844faff9a83fa193052f5ae858c9d5756996c8c634c8da21f9c372081与0ed0cadfe3641bd267b1340f2d6837cb00f63e95fc2ffd9157da2fc180c62325。
+
+### Notes
+
+Files: 三治理读取文件、三新测试、tests/benchmarks/compare_failed_account_read_v1.py、原CI追加、四项LF属性、docs/recovery-validation-scope-20261018.md、本记录。早期版本变慢、R1夹具装配受控关闭及所有红/错误/订正原件保留，不改标通过。性能只证明单次读取，不能保证完整504或总体ETA，也不能放行真实恢复。用户已授权修好后合回：提交快进纳入原draft PR45，新head重新取得冻结r4十selectors228/原五文件90/CI91及完整自然双504等所有门禁和最终53refs后再merge/ff部署。外部接续控制器等待旧R11自然关闭和精确身份全部退出，不并发第二条账户链；未以此局部测试冒充正式门禁。回滚点2fd070894ac48f9d0f289a340336160c686b9592；合入后通过反向提交回退本次代码，保留所有授权/费用/工件及追加记录，不reset/clean/prune或修改已发生经济状态。
+
+## 2026-10-23 - Task: 取消504排程后直接核算和验证性能
+### What was done
+- 确认504已取消、无替代排程；原真实截止已过，原277日和全部费用不变。保全H5中断现场，不补造收费或重跑旧链。
+- 在独立工作树试验H6纯词法角色复用；完成单元、等价与微基准/整次读取ABBA。整次收益小且有波动，保全实验并只撤回本轮两个文件，恢复1059源精确H5。
+- 记录原基线/H3普通段对比、真实50费用及预算必要平均值；新普通段、full和真实均未启动，未设置后台唤醒。
+### Testing
+- H6本地100PASS/1既有Windows权限SKIP，等价13PASS；首次缺pyarrow收集错误保留。XML与环境清单均绑定正式记录。
+- 同环境四进程ABBA整次读取981安全打开/1970完整分量检查、identity一致、changed=[]、零派发；中位改善1.66%/3.29%，不代worker或完整门禁。
+- Q/T1059源对原H5冻结逐SHA一致；真实JOB/CP277/CHARGE50/父账本四SHA不变；git diff --check通过。
+### Notes
+- 改动文件：T的src/chanlun_trader/research_factory/secure_file_reference_v1.py和tests/research_factory/test_lexical_reference_cache_v1.py仅本轮实验已撤回；P6/reports中的原始JSON/脚本/REJECTED_H6_SOURCE保存证据；M/T的docs/recovery-validation-direct-control-20261023.md新增当前结论；M/docs/recovery-deadline-budget-risk-20261019.md新增历史提示；R/REAL_ACCEPTANCE_STATUS_CN.md与四JSON状态同步；M/T progress.md仅追加。
+- T继承的H5未提交源码和CI配置仍保留；未提交/推送/合并新字节。普通段完整证据和新来源门禁仍待。
+- 回滚点：状态与既有文档逐文件原件在 E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\mutable_status_history\DIRECT_H6_REJECTED_20261023T041748092705Z（MANIFEST含SHA）；progress仅追加订正，不覆盖历史。H6撤回来源为P6/BEFORE_H6，拒绝版本在P6/REJECTED_H6_SOURCE；不得reset/clean/stash-all或恢复旧活CLAIM。
+- 正式记录：E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_DIRECT_H6_REJECTED_H5_PRESERVED_EXPIRED_20261023T041748092705Z.json SHA86c62d13a5b978ca2311884b48a24d2ea9739402223cc5a509d25b90c96baf46。
+
+
+## 2026-10-23 - Task: 保全H5C有限计量环境失败并修复隔离依赖
+
+### What was done
+
+2026-10-23 当前补充：H5C/R1人工有限计量自然code1，因新隔离环境缺少pydantic停在前驱装配；未派普通51，不能作为H5性能结果或产品失败。56750已最终读取关闭，原精确控制及根残留全部退出，1059源码与真实四SHA保持。已按原requirements补齐隔离依赖，14项模块导入和依赖一致性检查通过，相关局部测试复核中；只有通过后才建立新根/CLAIM/配置的一次有限计量，不自动重试旧根。真实截止已过，原余额与全部门禁保持。正式记录 E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_H5C_ENVIRONMENT_FAILURE_CLOSED_20261023T044043161084Z.json SHAb7be1e90d31734a176766dbc5ca38a1192603b6860f65a4e325213a1b2110a5f。
+
+### Testing
+
+H5当前源码局部111PASS/1原权限SKIP；有限计量自然退出1，Missing pydantic，未派普通51；修复后14项导入通过，uv pip check通过。修复后测试结果另行记录，不借用旧环境结果。
+
+### Notes
+
+改动文件：四JSON状态更新已闭合原因；CN及两工作树direct-control文档追加现状；本progress追加历史。报告H5_FINITE_DIRECT_R1保留原件，新ISOLATED_RUNTIME_DEPENDENCIES_FIXED_R2记录完整依赖。产品与测试源未修改。回滚点：E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\mutable_status_history\H5C_R1_CLOSED_20261023T044043161084Z\MANIFEST.json；按对应备份逐文件恢复状态/文档，保留本追加日志及失败原件。
+
+
+## 2026-10-23 - Task: 依赖修复后以新独占根启动H5一次有限计量
+
+### What was done
+
+2026-10-23 当前：修复新隔离环境后111PASS/1原权限SKIP、14模块导入及依赖检查通过，H5D全新有限人工计量已实际启动。唯一运输34032，controller10300创建04:42:51.8108840Z/父4984及完整命令匹配；新根E:/t/recovery_throughput_H5D_20261023_R2/r，新CLAIM/配置01245318425d9990fe92c12fa566fd5fd892dee79ff1295e16673a6ecb6978b3，原1059源码/559产品/H5冻结保持。只允许一次普通51；自然结果待，不预报新日和收费。R1依赖失败原件已闭合保留，不复用旧根；本次实际配置复核为当前代理限定复核，不冒充最终独立验收。504取消；无并发测试/账户/热改、无full或真实入口。真实期限已过，BASE29660/STRESS72000保持。记录 E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_H5D_NEW_FINITE_MEASUREMENT_ACTIVE_20261023T044355747168Z.json SHA5a1a72e0a18adb4b005e5c6e2fefcaa27659124de3a24914b78ea866c7319267。
+
+### Testing
+
+当前环境111PASS/1原权限SKIP/0FAIL,ERROR，106.30秒；原guard和b2df harness字节保持，1059源核对一致，实际新配置预检通过。普通段完整计量尚未完成，禁止把本记录当完整通过。
+
+### Notes
+
+改动文件：reports/.../H5_FINITE_DIRECT_20261023_R2/run_one.py及CONFIG/REVIEW/guard只控制新有限计量，增加真实已导入包集合核对；四状态与CN/两WT direct-control文档更新当前活身份；progress仅追加。产品测试源未改。回滚：依次通过primary work_paused_by_human=true或本配置HOLD.json请求边界停止，等已入有限操作收尾且核进程退出后，按E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\mutable_status_history\H5D_ACTIVE_20261023T044355747168Z\MANIFEST.json恢复本次状态/文档对应备份；不删除失败或运行原件，不复用CLAIM。
+
+
+## 2026-10-23 - Task: 修正有限计量路径兼容性并在新短根接续
+
+### What was done
+
+2026-10-23 当前：R2已自然失败闭合，原因是263字符归档路径超过新系统普通路径能力（LongPathsEnabled=0，父目录存在），已完成的人工277日/34段历史费保留，未派普通51。当前新R3已启动，唯一运输78013、controller7580创建2026-10-23T04:51:54.2428610Z，新独占短根E:/t/recovery_throughput_F_1/r；1405个历史完整计量路径投影最长251字符且普通Path写/读实证通过。原1059源/H5、原b2df计量器/全部断言/预算/Windows设置保持，源配置不热改、不重用R2根或CLAIM。R3自然普通段结果尚待，不冒充代表性通过；配置为当前代理实际限定复核，非最终独立验收。504已取消；真实期限已过，原余额保持，不启动full或真实动作。记录 E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_H5_SHORT_ROOT_FINITE_ACTIVE_20261023T045323448813Z.json SHAaa3e9ecea6f947f0db1648aa7f6057967190ea3b210d5a3e17dfff022b5158ab。
+
+### Testing
+
+依赖修复后111PASS/1原权限SKIP原件保持；1405路径投影最长251，普通Path打开读取成功；原始R2自然退出1/全部进程退出/34032最终读闭。R3配置/claim/精确控制实际匹配，普通51未完成。
+
+### Notes
+
+改动：reports/.../H5_FINITE_DIRECT_20261023_R3新控制配置/实际限定复核/路径实证；四JSON状态、CN和两WT direct-control文档写入当前实际身份，progress仅追加。产品及原计量器未改。回滚点 E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\mutable_status_history\H5_SHORT_ROOT_R3_ACTIVE_20261023T045323448813Z\MANIFEST.json；需停止时仅设置本轮HOLD请求边界停派，等有限操作自然收尾与精确进程退出后恢复对应备份，不删除运行及失败证据，不复用旧CLAIM。
+
+
+2026-10-23T05:53:57.744848+00:00 H5自然有限段结清及历史对照缺口
+最新实际状态（2026-10-23）：H5短根R3已自然code0，运输78013最终读取关闭，全部控制及根残留已退出。人工277→292（新增15日），完整启动176.182843秒，收费850.915814秒／56.727721秒每新增日，公共调用1225.017598秒。292日gzip／payload／链、原277前缀／50费用、唯一母子八字段及RESOURCE SHA均实际核验，无52。单段必要速率达标，不是完整验收。
+
+严格历史对照发现当前pandas3.1.0／PyArrow26.0.0与旧2.3.3／21.0.0导致人工Parquet物理类型与字节不同，原严格相同字节检查失败保留；不能据旧基线声称代码因果提速。下一步只补同一当前环境／相同人工数据字节的一次有限60f2基线；须新根／CLAIM／配置与实际限定复核，全部fresh／断言／原预算保持，尚未派发。完整门禁仍未启动，真实期限已过，BASE29660／STRESS72000／global288002保持；504已取消。
+
+正式记录：E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_H5_NATURAL_MEASURED_COMPARISON_GAP_REAL_EXPIRED_20261023T055357744848Z.json SHA54eac07e2a5df815806f7c5cd8b49df06612013b4ae3f41ca2aacb136fa179f5。以下保留旧观察历史，以本条最新状态为准。
+
+
+
+当前直接推进（2026-10-23T05:58:17.645588+00:00）：同环境60f2有限基线已实际启动，唯一运输90012，controller1748/父23012，创建05:56:55.2766350Z，完整命令与CLAIM匹配。新根E:/t/recovery_throughput_B_1/r，冻结1055源与原60f2实际launch逐字节一致；与已闭合H5使用同一解释器、完整依赖和原计量器。仅一个普通51，要求生成的人工数据字节与H5一致，结果尚待；不预报新日或收费，不自动接full或重试。H5单段15日/56.727721秒每新增日已核验，但历史跨环境对照缺口未放行。
+
+配置、源、每个暂停边界、全部断言与原预算保持。本次复核是当前代理实际限定复核，不是最终独立验收。真实截止已过，原真实277/0/50FAILED及费用、BASE29660/STRESS72000/global288002保持，零真实动作。504已取消。正式记录 E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_SAME_RUNTIME_BASE60F2_FINITE_CONTROL_ACTIVE_20261023T055817645588Z.json SHA11d13faf003cab34d18f1762b75c792fcf1d4a04dec3ef2dffac71916522b158。下方仅保留此前观察历史。
+
+
+
+2026-10-23 当前：同一Python/依赖及六份人工数据字节的60f2/H5有限单段对照已自然完成并实际核验。基线90012自然code0最终读闭；H5的78013此前自然读闭；精确控制和根残留退出。完整启动359.444186→176.182843秒（减少50.98%），新增日7→15，worker收费851.984579→850.915814秒，收费121.712083→56.727721秒/新增日（减少53.39%），公共调用1474.279654→1225.017598秒，公共墙钟210.611379→81.667840秒/新增日。两组均CONTINUE/75/非timeout，原277日前缀和50费用不变，全部gzip/日期/链及唯一母子八字段收费/RESOURCE SHA通过、无52。当前代理实际核验不是最终独立53refs。
+
+保留H5四治理文件优化；原fresh/断言/87经济代码/12未读输入及72000/global288002/900/2048/并发1不变。此单段低于BASE必要130.660793秒/日，不能证明后段/STRESS/报告或完整验收。下一步封存已测源，修复主测试虚拟环境与最小人工full短路径，冻结新精确来源后按原CI及228→90→完整单integration验证，不借旧绿。真实截止2026-10-20T19:43:08+08:00已过、余日历0；BASE29660/STRESS72000保持，无新真实Owner/51/278，门禁和新明确未来期限齐备前不合并部署或真实恢复。504已取消，无替代排程。
+
+正式记录：E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_H5_SAME_RUNTIME_PAIR_PASSED_REAL_EXPIRED_20261023T071104591139Z.json SHA490a56a63333d34a2284bddd5a5e52da75af15f7929083cd64d69d7e2cf70d86。以下为保留的历史观察，以本条为准。
+
+
+
+2026-10-23 本次工程改动：四个治理读取文件只优化不可变路径解析、实时Windows分量属性读取与已验证JSON树复制；打开前后身份检查、Owner/期限fresh与账本重放断言保留。完整人工测试改用短且独占的临时根，原场景AST及43条assert完全不变，四小时实际跨期仍须执行。已测1059源已完整封存ZIP，当前产品559仍等于已测H5。新主测试环境固定Python3.13.5/41依赖，14模块实际导入通过；旧虚拟环境保留。已有111PASS/1原权限SKIP及同环境普通段实际核验只是补充证据；新精确CI、228/90/full和最终独立53refs尚待。
+
+本次提交只提供上述优化和补充证据，精确新来源的完整验收继续保留为未通过。
+
+
+精确新版本本机验证准备（2026-10-23T07:36:02.215018+00:00）：H5 性能修复已提交为 e5c0e7971faa1e3b2757003c0432acb0d78d6b29 / tree db6887592715752031d9bf6207067c148253c4c9，1059 Python / 559 产品与 Git filtered 逐字节闭合；559 产品与同环境代表性实测一致。新本机门禁配置已在 E:/t/g504r1 独占目录准备，尚未建 CLAIM 或启动测试。原冻结 r3 字节不改，仅 REPO 指向新树，顺序仍为原 228→90→完整单 integration；所有新版本门禁均待实际运行。推送因本机无可用 GitHub 登录而失败，用户选择暂时只做本机验证，原 PR 分支仍保留 60f2，未合并部署。旧 CI 通过字段已完整转存历史；真实截止已过、277/0/50FAILED、原预算和真实停止保持。记录 E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_E5C0_FROZEN_LOCAL_GATES_PREPARED_REAL_EXPIRED_20261023T073602215018Z.json SHA eaf41fbabe872265c2a49edf9f47b99856da5aab279672717c2ae4c85ea6c3ba。
+
+
+新精确版本本机必要组已启动（2026-10-23T07:42:44.473115+00:00）：e5c0e7971faa1e3b2757003c0432acb0d78d6b29 的原 r4 十 selectors / 声明228项，由唯一运输98781、controller15860（创建07:41:12.5422930Z）在全新 E:/t/g504r2 CLAIM 下实际执行；原 r3 SHA保持，只适配REPO。启动1059来源、当前工作树和源码快照逐SHA一致，配置及控制经过当前代理限定实际检查与11项调用权限边界用例，非独立最终复审。尚无自然结果，不将声明228当通过；后续仅自然通过才串行90与完整单integration，无自动重试。CI依用户选择暂不推送，本机验证继续；真实截止已过，真实277/0/50FAILED和原预算保持。记录 E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_E5C0_EXACT_LOCAL228_ACTIVE_REAL_EXPIRED_20261023T074244473115Z.json SHA 3332d1df64c607e4648624cb4c377d8e8f60d235e7ae4352cff07c524f93fc27。
+
+
+2026-10-23 当前更新（2026-10-23T08:02:50.505544+00:00）：原 E5 必要组已自然 code1 关闭，46PASS/2FAIL/1ERROR，来源 changed=[]；90 和完整组未启动，失败原件保留。两项失败来自人工目录的 Windows 长路径限制；另一项在进入原生阻塞前已耗完0.2秒协作窗口。现人工用例改用每次独占短目录，阶段0.2/1秒从目标阶段开始计时，整进程1.5秒硬超时仍包含导入和握手，原断言全部保留并新增原生入口证据。6项定向实测自然通过，原生调用确实进入并发生硬超时；这不是228/90/完整验收。559产品字节与实测H5一致，生产预算、截止及真实四SHA保持。用户已完成GitHub登录并恢复推送授权；下一步提交夹具修复并在新精确来源、新CLAIM上重跑原CI和228→90→完整单integration。真实截止已过，暂不合并部署或安装真实Owner。正式记录 E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_FIXTURE_SIX_PASSED_NEW_EXACT_GATES_REQUIRED_20261023T080250505544Z.json SHA 30057e675d0eb6c5ba15b56ed60783a9d003c558806bd6d45dbb5b01480cd07c。
+
+
+2026-10-23 最新（2026-10-23T08:13:39.854817+00:00）：0361已非强制快进推送原draft PR45，新CI91已触发（初始4SUCCESS/20进行/67排队，不是通过）。本机原必要组自然code1，86PASS/0FAIL/3ERROR，192.63689190000878秒、changed=[]；三项为共享fresh-recovery-readers夹具仍用长tmp_path_factory路径而发生Windows206。53593已最终读闭，精确控制/revision残留退出；90/full未启动，旧CLAIM不复用。下一步只修正两个共享夹具目录入口，全部原断言/生产559实测字节/预算保持，再定向验证并冻结新精确来源。真实截止已过、277/0/原50FAILED及原额度保持，无真实动作。504保持取消。记录 E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_PRECISE0361_NATURAL_SHARED_FIXTURE_ERRORS_CLOSED_20261023T081339854817Z.json SHA 5ad149ec625be477f05d85020ff773e73971708d6ae5598a30cac772dc211e20。
+
+
+2026-10-23 当前（2026-10-23T08:24:29.724367+00:00）：共享短目录修复定向52PASS/0FAIL,ERROR,SKIP（431.84秒）；Windows父链接故障注入适配当前组件元数据入口后，2个原反例及真实junction/实际属性变化合计4PASS（6.33秒）。原Assert/Raise全部保持，两个共享夹具所有测试函数AST不变；只改三份测试文件，559产品仍为已测H5。0361本机86PASS/3ERROR及CI Windows owner组2FAIL/45PASS/1合法SKIP原件保留，不改标。新结果只证明修复范围，下一步提交新精确来源，原CI91与228→90→完整单integration全部重新绑定，不能借旧通过。真实截止已过、原额度/费用/277/0保持，无合并部署/Owner/278。收据 E:\worktrees\recovery-validation-lexical\trade-system-contract-port-v1\reports\recovery_validation_lexical_20261023\SHARED_FIXTURE_AND_CI_REPAIR_TARGETED_PASSED_R1.json SHA 0bd49572f216d6d77708ba883965e1e327c9b2768a4707d99a623981bdb10b19。
+
+
+2026-10-23 当前更新（2026-10-23T08:27:21.493952+00:00）：GitHub登录已生效，使用现有系统代理完成非强制快进推送，原draft PR45 head=c7c20c7555956947ad9504d680c6b08e00081972/tree=1802df7c77bb136494256e2308ee071ded2619e6，main保持1b787901。新CI已触发，首次观察90项（目标91项），2进行/88排队，尚未通过。原228必要组已由唯一运输57320/controller5772（创建08:25:14.8967680Z）在全新g504r4 CLAIM下执行；1059来源/current/launch/snapshot逐SHA一致，559产品仍为同环境实测H5。共享夹具52项和链接检查4项定向验证已通过；原e5失败与全部旧原件保留，不借旧CI。仅本必要组自然通过才接90及原完整单integration，失败不自动重试；完整4h实际等待/全部断言/预算保持。自动化504已取消，当前会话直接推进。真实截止已过，真实277/0/50FAILED及原29660/72000/global288002保持；新的真实截止授权与全部门禁齐备前不合并部署/Owner/278。记录 E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_PRECISEC7C20_PUSHED_CI_PENDING_LOCAL228_RUNNING_20261023T082721493952Z.json SHA 425ce49ae34eabcbf8d84853b87483a4748b1d9229f51e92fc82b1534678fc83。
+
+
+2026-10-23 当前（2026-10-23T08:56:52.266442+00:00）：精确c7c20c75的原必要组自然code0/228PASS/零FAIL,ERROR,SKIP，1752.657342秒、changed=[]；原10 selectors/1059来源/launch/snapshot已实际核验，前组精确进程退出。唯一57320/controller5772继续原90→完整单integration顺序，当前观察RUNNING_REGRESSION，不提前标记后组通过。CI观察91项中35SUCCESS/5进行/51排队，无失败但尚未完整通过。此前0361失败XML及原ZIP已保全，不借旧绿。真实四SHA/277/0/50FAILED与原预算保持，真实截止已过，无合并部署/Owner/278。504保持取消。当前代理核验不冒充独立最终53refs。记录 E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_PRECISEC7C20_NECESSARY228_PASSED_SERIAL_CONTINUING_20261023T085652266442Z.json SHA 906962bbaf8a8e5f1dc9cd4156ba9c67d414ba1242fc7e59363c08b424b08209。
+
+
+2026-10-23 当前（2026-10-23T09:14:21.816755+00:00）：精确c7c20c75的原228必要组与原五文件90回归均自然code0，零FAIL/ERROR/SKIP，耗时分别1752.657342/678.676286秒，changed=[]。两组完整1059来源与当前/快照一致、旧组进程退出。唯一57320/controller5772已串行进入原完整单integration FX4F1，人工新根E:\t\fr_vix4j36x\r，初始560=559产品+原fixture sitecustomize，SCENARIO sourcehead精确C7，当前NATIVE_BOUNDED_277_DAY_ECONOMIC_PREFIX；无自然full结果，不标完整PASS。原4h实际等待、双504/native/逐日核账/报告/反馈/全部断言和预算保持。CI91最新43SUCCESS/8进行/40排队，无失败但尚未通过。当前代理限定核验不是最终独立53refs。真实四SHA/277/0/50FAILED/29660与72000/global288002保持，真实期限已过，无合并部署/Owner/278；504已取消。记录 E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_PRECISEC7C20_NATURAL228_REG90_FULL_FX4F1_RUNNING_20261023T091421816755Z.json SHA 5d1feb2c90b24928ebc12524061f28553c465fa09943626574b6f3667fb92b4c。
+
+
+2026-10-23 状态标签订正（2026-10-23T09:24:19.368536+00:00）：C7当前产品与1059来源已经提交且逐SHA保持；四状态残留的E5/60f2当前标签及空运输字段迁入历史，当前运输为57320。228/90自然通过、完整FX4F1继续，CI在09:19UTC观察为50SUCCESS/10进行/31排队，未标通过。人工CP已实际记录277日/last20230418；SCENARIO仍处前缀阶段，不能据此预报50费、后继段或完整通过。原人工截止2026-10-23T13:07:10.463184+00:00和4h等待保持。PR45两组结果已更新并精确回读，保持draft。真实截止过期、原预算和四SHA不变，504已取消。记录 E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_C7_CURRENT_LABELS_AND_NATIVE277_OBSERVED_20261023T092419368536Z.json SHA 240bca65517ddd14d43a18ba1f23466814fe946f18ed4ea89883d21c4c019a81。
+
+
+2026-10-23 当前（2026-10-23T09:40:36.127879+00:00）：C7完整FX4F1已实际保全人工277日/last20230418及原50费用，总额42339.896402100036秒、第50段FAILED、STRESS0、无51。09:34:39.694613Z进入WAITING_FOR_ORIGINAL_CALENDAR_DEADLINE，原人工截止2026-10-23T13:07:10.463184Z（北京时间21:07:10）前按原门禁真实等待；这不是性能停滞、真实授权截止或整体ETA。唯一57320及六控制完整身份保持，当前1059来源未改，无自然full结果。228/90已自然通过；CI09:36观察63SUCCESS/17进行/11排队，尚未通过。最终双504/native/报告/反馈/独立53refs仍待。真实四SHA、277/0/50FAILED及原预算保持，真实期限已过，无合并部署/Owner/278；504已取消。记录 E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_PRECISEC7C20_FULL277_FAILED50_WAITING_ORIGINAL_CALENDAR_20261023T094036127879Z.json SHA f2ea02b04e1f5994732b1cdfe85761b39f355f9fc8630eccd0b532a791db4e10。
+
+
+2026-10-24 接续核对（2026-10-24T00:19:22.822341+00:00）：C7原完整FX4F1/57320的六个精确控制及revision残留全部退出，旧会话不可读取，无自然result/XML/SCENARIO_TRANSPORT_RESULT。磁盘仅保留原期限等待观察，不能认作仍活、自然失败码或通过；退出原因未建立。原人工277日/50费用及FAILED历史、无51、1059来源均逐SHA保全。原同head的228/90自然通过保留，后续仅以全新独占目录/CLAIM重新接完整一组，不复活旧运输。精确CI91全部SUCCESS，原只读collector83064正在收集官方33ZIP/28XML/5Win与原始日志，尚未标工件复审通过。真实四SHA及277/0/50FAILED、原预算保持，真实截止已过，无真实Owner/278/部署，504已取消。记录 E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_C7_INTERRUPTED_FX4F1_CLOSED_CI91_COLLECTING_20261024T001922822341Z.json SHA fc9b3d1fe6adb2c08e03be70588a5034794de8b976c96e9c5696a2090602f266。
+
+
+2026-10-24 当前修复（2026-10-24T00:33:31.792152+00:00）：C7 CI91虽全部SUCCESS，原collector83064自然code1，33官方ZIP/28XML均保全，但5份Windows包只有源码身份、无资源侧车，完整CI工件门禁未通过。原始push日志已用正常gh登录单独补齐；未重收33包。根因是独占短pytest根没有进入原上传规则。现仅增加精确根标记读取器、新13测试和CI路径接线；保留原模式并要求worker真实资源存在，实际20PASS（13新+7原worker），9份真实RESOURCE/23份侧车逐SHA不变且进入清单。此前装配错误和测试路径断言红原件保留。全部旧1059源码、559产品、fresh/原断言/预算保持。旧FX4F1中断无自然结果，原228/90只属C7，原“同head仅接full”计划被本新测试字节覆盖；提交新来源后重跑CI和全新228→90→完整单integration，绝不借旧绿/CLAIM。真实四SHA/277/0/50FAILED及额度保持，真实截止已过，无Owner/278/部署；504已取消。记录 E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_C7_CI_RESOURCE_GAP_CLOSED_TARGETED_UPLOAD_FIX_20261024T003331792152Z.json SHA 9f0273b28ba867250727f494d277903b64c059b2fedf1b5da5f86cf71b1d06f2。
+
+
+## 2026-10-25 - Task: 完整双504自然失败闭环与公共反馈修复接续
+
+### What was done
+
+2026-10-25 自然闭环（2026-10-25T06:21:38.210795+00:00）：精确1e73完整FX5F1自然code1／1FAIL，98209.794764秒、changed=[]；67547最终读取关闭，原控制和revision残留退出，旧CLAIM不复用。人工BASE504／STRESS504及双native结果一致、PUBLIC_RESULT为ACCOUNT_VERIFIED；最终公共FEEDBACK和幂等收尾未通过。实际失败为旧ERROR之后循环内pending事件选择遗漏ERROR，返回WAITING后夹具索引outcome失败；不将最后native阶段标签当成实际失败位置。BASE新增227日含helper收费16401.621001秒／72.253837秒每新日；STRESS504日收费42445.599631秒／84.217460秒每新日，STRESS父整数收费42446、余29554；末段仅4日，不把尾段均值当稳态退化。原件闭环 E:\worktrees\recovery-validation-lexical\trade-system-contract-port-v1\reports\recovery_validation_lexical_20261023\FX5_NATURAL_DUAL504_NATIVE_FEEDBACK_FAILURE_CLOSURE_R1_20261025.json SHA b1ecfb76caeac653c0df8d8820e1f612c16bd1e903ba2b775979dfe1499c0d04。独立修复工作树 E:\worktrees\recovery-session-error-boundary\trade-system-contract-port-v1，保留旧1e73来源；新字节须重新绑定CI和原本机完整门禁，不借旧通过。原真实四SHA、277／0／50FAILED及全部费用不变，真实截止2026-10-20T19:43:08+08:00已过；无新Owner／51／278。504保持删除，不自动重试、扩限、合并或真实派发。
+
+### Testing
+
+只读核对自然result/XML、双账户结果与费用、双native资源和经济结果、旧277日/50费、1061来源、原真实四SHA；全部原字节保持。完整结果为1FAIL，独立53refs尚未通过；本记录不改标。
+
+### Notes
+
+文件：四JSON状态同步终态；REAL_ACCEPTANCE_STATUS_CN.md与三工作树direct-control文档追加最新闭环；三工作树progress.md仅追加；closure证据和只读工具位于既有reports目录；新修复工作树用于下一有限复现。回滚：按 E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\mutable_status_history\FX5_NATURAL_CLOSURE_20261025T062138210795Z\MANIFEST.json 精确恢复对应状态/文档备份；progress保留本条并追加纠正记录，失败原件不改。
+
+
+## 2026-10-25 - Task: 修复后继版本公共反馈被已结束ERROR误阻塞
+
+### What was done
+
+仅统一公共session循环与入口处的待处理事件集合，已记录ERROR关闭原调用；合法后继版本仍须fresh核验原子用途和完整报告后才进入反馈。UNKNOWN、活动段及真正未返回调用继续零派发等待；保留原错误事件、费用和终态幂等。
+
+### Testing
+
+修复前新增四种情形实测1FAIL/3PASS；修复后完整session模块36PASS，零FAIL/ERROR/SKIP。原35条require/assert和全部原测试函数AST一致；除一个产品文件和一个测试文件外，其余1059个py逐字节一致。87经济代码SHA保持，12原输入未打开；完整integration/共享夹具、预算、fresh及UNKNOWN检查均未修改。正式新CI与228→94→完整单integration尚待，局部结果不放行。
+
+### Notes
+
+- scripts/run_account_version_session_resume_v1.py：循环内待处理事件集合增加既有ERROR终止事件。
+- tests/research_factory/test_account_version_session_resume_v1.py：增加旧ERROR完成、UNKNOWN、活动段和真实未返回四个回归情形，原32例保留。
+- docs/recovery-validation-direct-control-20261023.md：记录实测根因、回归范围和新来源接续条件；旧历史保留。
+- progress.md：仅追加本条及先前自然失败闭环记录。
+
+回滚点：本提交父版本1e73884c57853bb570f59e9b8203fd8253d4ce79；如需撤销，使用本提交的git revert形成新提交，保留原失败和红绿证据，重新冻结来源；不能恢复旧CLAIM或据旧结果放行。
+红绿/源核验原件：E:\worktrees\recovery-session-error-boundary\trade-system-contract-port-v1\reports\recovery_session_error_boundary_20261025\SESSION_ERROR_BOUNDARY_RED_GREEN_AND_SOURCE_AUDIT_R1.json SHA a37f1557996188e41f4c978151ff49431e07242ccb600e5c1ced50931abf395b。
+
+
+## 2026-10-26 - Task: 已批准的同检查点治理源码接续与 JSON 核验优化
+
+### What was done
+
+按人类明确批准，实现结清边界的一次受限治理源码接续。只允许四个治理读取器及协议本身，沿用原根、任务、Owner、计划、已完成日、全部费用、预算和绝对截止；新增批准摘要及规范槽保留旧协议历史。已解析 JSON 的身份、复制和 Owner 摘要改用等价编解码；每个公开边界、返回前原件复读、Owner 撤销、执行截止和全部原断言保持。当前人工链仍使用冻结 DFEC，本提交未安装，不重跑旧 R11，不合并部署或触碰已过期真实账户。
+
+### Testing
+
+优化前后局部 90 项及协议兼容 90 项分别通过。R3 新协议计时辅助脚本猜错检查点文件名，原兼容 90PASS 后出现 1 个 setup ERROR；失败原件保留，改从 JOB 读取实际路径。R4 冻结 1065 个 py／560 产品来源，七文件 117 项正在验证，尚不记通过。原 399 个 require 原因及全部原断言保留，87 经济代码 SHA 相同、12 原输入未打开。
+
+首次加入协议的读取测量普通模式退化约10.1%，已拒绝接入。进一步优化后，同一已结清人工 BASE504／STRESS1 夹具、独立进程各3次：普通中位2.274814→2.269931秒（基本持平），原追踪中位5.138965→4.361490秒（15.13%）；身份相同、账户文件不变、零派发。这不是普通段吞吐证明。旧DFEC真实读取器另在独立进程拒绝新协议原件；四文件真实候选和完整模块的 R4 等价性、撤销、截止、边界费用及下一段证明仍在验证。新精确 CI 与最终完整证据尚待，不借旧绿放行。
+
+### Notes
+
+- src/chanlun_trader/research_factory/campaign_scope_v1.py：保留通用 Owner 核验，增加已解析 JSON 摘要的等价路径，共用全部原检查；识别受认证的保留槽。
+- src/chanlun_trader/research_factory/account_purpose_time_extension_v1.py：只对已解析 JSON 使用等价身份／复制，原返回边界增加新批准最终 fresh 核验。
+- src/chanlun_trader/research_factory/failed_account_recovery_v1.py：认证新的受限换源证明后投影治理来源，保留原恢复身份与历史证据。
+- src/chanlun_trader/research_factory/account_version_continuation_v1.py：保留原计划和证明，后续段记录新的治理版本接续引用；历史段保持原样。
+- src/chanlun_trader/research_factory/governance_source_revision_v1.py：同根、单槽、段结清、零新增额度的 prepare／install／fresh read 协议。
+- tests/research_factory/test_verified_json_hash_v1.py：JSON 规范哈希、Owner 路径等价、复制独立及 fresh 撤销断言。
+- tests/research_factory/test_governance_source_revision_v1.py：四文件及协议模块安装、原件保持、篡改／扩限／撤销拒绝和下一段完整费用证明。
+- tests/research_factory/test_verification_return_boundaries_v1.py：替身对接 JSON Owner 入口，原全部返回截止断言保持。
+- tests/benchmarks/compare_checkpoint_revision_read_v1.py：已结清人工夹具上的独立进程读取计量，零派发且不读真实价格。
+- .github/workflows/autonomous-completion.yml：现有双OS治理context作业追加两个新测试文件，不降低原选择与断言。
+- docs/governance-source-checkpoint-continuation-20261026.md：说明批准范围、来源接续、计时证据与接入前验证边界。
+- progress.md：仅追加本条，旧失败和中断历史保持。
+
+回滚点：父提交 dfec8e7d67cb0fc671a65d19f1048e5a90983f53。未安装时可停止采用候选并继续原冻结链；源码撤销使用本提交的 git revert 形成新提交。安装后不得覆盖源码、清空费用或复用旧许可回滚，应在边界停止并保留接续原件。局部原件位于 reports/recovery_validation_replay_20261026；后续同根有限操作器仅供人工演练，必须实际复审和新独占 CLAIM 后执行，原绝对运输截止不重置。
+
+2026-10-26 追加订正（提交冻结前）：R4 已自然结束，91PASS／1setup ERROR；旧人工夹具漏列 campaign_scope/account_version_continuation 两个待替换读取器，产品 SOURCE_ALLOWLIST_CONFLICT 拒绝正确。只在新增协议用例的首次 Owner 批准前补齐人工运行闭包和相应声明，新增漏列来源拒绝回归，未放宽产品规则。R5 七文件118项已启动，尚未通过；1065py／560产品冻结，R4原件完整保留。新增四个py以显式LF属性绑定跨平台检出字节。当前运行人工根未修改、未暂停。
+
+
+## 2026-11-06 - Task: 修复扩时账户在fresh核验间上限缩小的派发冲突
+
+### What was done
+
+在独立工作树修复ETF账户治理中相对派发上限过时的问题。原本地fresh、Owner、预算和镜像校验保持；仅扩时路径在父fresh核验后采用父实际额度，子记录精确镜像。父显式超额请求拒绝及普通来源路径保持。增加回归并纳入原CI双OS预算测试组，准备仅针对人工981日的第二次受限换源／有限期限方案。原人工根和已安装源码未修改。
+
+### Testing
+
+基线52fd同一人工测试已自然1FAIL／41.53秒复现BOUND_CONFLICT。首轮补丁8PASS／1FAIL，实际到期正确被原BudgetExhaustedError拒绝，仅测试预期类型错误；原件保留。订正精确预期后，最终45PASS／0FAIL,ERROR,SKIP，自然code0，耗时676.031000秒。XML：E:\t\dlr_final_20261106.xml，SHA 99ef4e4810463c49424cd91df0ec7558723a4b669c824f0ea34073af6bc45c51。未重跑已完成日或原完整演练；上述结果不代表CI、228／90、完整门禁或final53通过。
+
+只读核对BASE504／STRESS477、135段母子唯一收费、原父账本和真实四SHA保持，尚无65段；87经济代码逐SHA保持，12输入未读。ETF原181个if条件和121个raise AST保持。git diff --check通过。
+
+### Notes
+
+改动文件：src/chanlun_trader/research_factory/etf_account_governance_v1.py修正额度传递；tests/research_factory/test_account_segment_deadline_race_v1.py覆盖正常及拒绝／恢复边界；.github/workflows/autonomous-completion.yml追加该测试到现有双OS预算组；docs/recovery-segment-deadline-fix-20261106.md记录实际证据与待批准接续范围；progress.md仅追加本条。工程核对脚本和原件索引在reports/recovery_segment_deadline_20261106，未作为产品运行入口。
+
+回滚点：52fd759e8d1250c6279c610c0af61a702011566e；可反向应用本次补丁或对本次提交执行git revert。原账户日、费用、Owner和旧MANIFEST未修改，不能回滚经济历史。原人工Owner已于2026-10-28T19:43:45.280534+08:00到期，V1一次读取器换源槽已使用且不含ETF文件；第二次协议与人工新期限须明确批准后实施和验证，再绑定全部适用门槛后接STRESS第478日／第65段。真实期限已过，无真实入口；定时任务504保持取消。
+
+
+## 2026-11-06 - Task: 按人类批准实施一次追加治理接续和有限人工期限
+
+### What was done
+
+人类在确认不重跑981日后明确答复“那我批准”。已保存本次批准原件E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\HUMAN_APPROVED_ARTIFICIAL_SECOND_GOVERNANCE_CONTINUATION_20261106T033700746208Z.json，批准范围为同人工根一次追加治理换源及实际限时签发起72小时，原72000／global288002、981日和135段费用保持。它是协议实施权限，不是Owner已签发或账户已恢复。已在独立工作树开始实现V2协议，保留V1 MANIFEST／旧期限，通过新槽、独立Owner摘要和父零预算增量事件绑定第二次接续；72小时尚未开始计时。
+
+### Testing
+
+新代码已通过语法编译和git diff --check；当前仅启动新人工协议smoke R1（运输51188），未取得结果，不标通过。先前45项本机派发修复回归只证明35f3同字节补丁，不代替本次新协议、CI／228／90或最终验收。原人工账户未新派发，旧关闭运输没有重启。
+
+### Notes
+
+当前源码改动涉及治理接续新模块及原七文件白名单内的必要接口，经济代码、输入、计划及原预算不得更改；具体清单随实际冻结来源更新。四JSON状态已同步“批准后实施中”，REAL_ACCEPTANCE_STATUS_CN.md和docs/recovery-validation-direct-control-20261023.md追加状态，主／独立WT progress.md仅追加。正式记录E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_HUMAN_APPROVED_SECOND_PROTOCOL_IMPLEMENTING_20261106T035143380664Z.json；元数据回滚点E:\worktrees\recovery-segment-deadline\trade-system-contract-port-v1\reports\recovery_segment_deadline_20261106\human_approval_state_backups与HUMAN_APPROVAL_STATE_BACKUP_MANIFEST.json；不能以回滚删除人类批准、账户日、费用或旧控制。真实期限已过，真实277／0／原50FAILED保持，不在本批准范围内。
+
+
+## 2026-11-06 - Task: 核对协议测试迭代并保留981日接续点
+
+### What was done
+
+已闭环读取R1的实际XML：1ERROR，原因是旧scope读取器拒绝新V2兼容标记；只增加精确标记识别，未知标记仍拒绝。R1运输最终读取为Unknown process ID，退出码未知，不标通过。R2在发现测试使用无效的JSON空白变更后受控关闭，最终code1／natural_exit=false；订正为删除Owner及改变标记内容，产品拒绝未削弱。当前仅R3人工协议测试运输39381活动，原981日账户运输仍为空。
+
+### Testing
+
+R3尚未取得自然结果。限定只读审查发现新父事件缺少“候选重放后、实际追加前”的最终Owner／规范槽／实时截止检查，已接受并准备补齐；不把已有旧45项或本轮未完成测试算作新协议通过。原981日CP与真实四SHA实际保持，STRESS第65段不存在；72小时尚未签发计时。R1、R2及原失败演练证据保留，不重跑旧账户链。
+
+### Notes
+
+本轮更新四JSON状态，修正旧51188活动观察为当前39381；CN、direct-control及两份progress只追加。独立WT新增协议操作文档及最终提交时刻的隔离回归候选，CI原双OS治理组追加V2测试；它们均未作为已执行门禁。正式记录E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_SECOND_PROTOCOL_R3_SERIAL_VALIDATION_20261106T075806592779Z.json，元数据回滚点E:\worktrees\recovery-segment-deadline\trade-system-contract-port-v1\reports\recovery_segment_deadline_20261106\protocol_iteration_backups_20261106T075806592779Z/MANIFEST.json。原预算、计划、经济来源和输入不改；源码回滚点35f3a4b7366e39f8daf297a5eed754690d470cd1，仅供工程比较，不能回滚账户日、费用、Owner或控制历史。真实期限已过，不作真实部署或派发。
+
+
+## 2026-11-06 - Task: 实施获批的第二次人工治理接续并修复父激活提交边界
+
+### What was done
+
+新增V2接续协议与八个治理接口的必要适配，保留V1原件及原981日／135费，通过独立槽与零预算父事件限定一次追加治理版本和有限人工期限。旧恢复事件与原期限不重写；新有效期限须父激活后才用于原双ACCOUNT与其精确核账／报告用途。实际Owner尚未签发，72小时未开始，原根尚未安装。新增中文操作文档，原已批准提案SHA保持。
+
+### Testing
+
+R1实际1ERROR已保留；R2因订正测试输入受控退出；R3因限定实审发现提交边界问题受控关闭，code1／natural_exit=false，均不标通过。父事件提交缺口先复现1FAIL／4.89秒，再修复为7PASS／1.60秒，拒绝路径真实budget文件零写；75项日历／凭证兼容通过，原始完整Owner期限用例明确留给下一组，不冒充已执行。限定实际源码复审已核闭合，findings=[]；存根提交回归不代替完整合法V2来源链验证。下一步以冻结新来源执行原十selectors、附加V1／V2与派发回归，再接原五文件90，未启动新账户或重跑981日。
+
+### Notes
+
+改动文件：新增governance_source_continuation_v2.py与两个V2回归文件；governance_source_revision_v1.py、failed_account_recovery_v1.py、account_version_continuation_v1.py绑定双版本来源链；run_budget.py、research_campaign_v1.py增加唯一父事件和提交前fresh截止；etf_account_governance_v1.py、failed_account_calendar_scope_v1.py投影原用途有限期限；campaign_scope_v1.py精确识别V2标记；test_failed_account_calendar_scope_v1.py补收尾继承／fresh用例；autonomous-completion.yml追加原双OS组；docs/recovery-governance-continuation-v2-20261106.md说明签发和接续。证据位于reports/recovery_segment_deadline_20261106/V2_SUBMISSION_RED_GREEN_AND_FAST75.json和V2_PROTOCOL_LIMITED_ACTUAL_REVIEW_R2.json。工程回滚点35f3a4b7366e39f8daf297a5eed754690d470cd1；不得回滚账户日／费用／Owner／控制。所有原预算和经济输入保持，真实期限已过，无真实动作；全门禁与最终53refs仍未过。
+
+
+## 2026-11-06 - Task: 固定新接续来源的跨平台检出字节
+
+### What was done
+
+为新增V2模块、两份V2回归和本次派发上限回归补充四条LF属性，避免Windows检出默认转换使精确来源SHA漂移。现有产品、测试和已批准提案字节未转码。
+
+### Testing
+
+上一提交ba0a46f7615838de632712037d6679fe7deafd13的产品／测试字节保持，新增属性与实际LF一致。下一步冻结完整Git filtered来源后执行必要组；该属性提交不把待运行测试标为通过。
+
+### Notes
+
+仅.gitattributes追加四条定点属性、progress.md追加本条。回滚可git revert本属性提交；不能回滚账户／费用／Owner历史。
+
+
+## 2026-11-06 - Task: 精确337b接续候选提交并启动原必要验证
+
+### What was done
+
+人类批准的第二次人工治理接续已提交并非强制推回原draft PR45；精确head 337b9f8a132b2029b656cb659689ad613b5ba453／tree d93a18613ef2084ea7daafa08c60ef82c8c4dfba。完整1069份Python来源、其中561产品，与Git filtered逐字节一致。原981日／135段费用、父账本和真实四SHA保持，无第65段、新Owner或原根安装。72小时尚未开始。新PR描述已按实际范围更新并由API回读，main保持1b787901。
+
+### Testing
+
+提交时刻缺口先1FAIL再7PASS，快速兼容75PASS，限定实际源码实审findings=[]。R3因该finding受控关闭，最终code1／natural_exit=false，不计通过。首次精确门禁在pytest启动前因Windows CopyFile2长路径快照失败；原CLAIM／半快照保留。使用同一冻结r3驱动扩展路径、仅REPO全局适配和新独占R2 CLAIM，当前实际运输95804执行原十selectors，加原V1／新V2／派发回归；没有启动新完整账户或从头重跑。精确CI91初读17成功／20运行／54排队，尚无完整门禁结果；全部旧身份绿灯迁入历史。
+
+### Notes
+
+四JSON／CN／direct-control同步精确新来源，主及独立WT progress只追加；当前同根账户运输为空，必要组自然全过后才接原五文件90，精确CI官方原件仍须独立实际复审。之后按已批准方案现场有限签发、PAUSE结清换源、全新进程父激活和独立strict零派发复核，再从STRESS478／第65段继续。全尾部和最终53refs仍必需，真实期限已过不作真实动作。正式记录E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_PRECISE337B_SECOND_PROTOCOL_LOCAL_GATES_ACTIVE_20261106T081831658064Z.json，元数据回滚点E:\worktrees\recovery-segment-deadline\trade-system-contract-port-v1\reports\recovery_segment_deadline_20261106\precise337b_state_backups_20261106T081831658064Z/MANIFEST.json；源码工程回滚点35f3a4b7366e39f8daf297a5eed754690d470cd1，不得回滚账户日／费用／Owner／控制历史。
+
+
+## 2026-11-06 - Task: 纠正新增CI参数缩进并保留当前本机验证
+
+### What was done
+
+发现本次新增两行CI参数缩进多两个空格；YAML folded run实际包含3个换行，会把参数拆成独立命令。已纠正缩进并解析验证为单条命令，原V1及两份V2测试各出现一次；全部1069份Python来源SHA保持。精确337b的两条受影响CI运输已受控取消，最终91检查为57成功／34取消，不能计CI通过。当前本机必要组95804继续自然运行，源码和测试未热改，没有中断原981日演练或派发账户。
+
+### Testing
+
+原错误命令和纠正后解析结果、取消请求及最后rollup均已保存。纠正仅作用于CI YAML；待当前本机组自然结束后提交该配置修正，以新精确CI通过及全部来源map复核为准。若Python／测试字节不变，可按完整来源SHA明确绑定本次实际本机结果，不能声称已按新提交元数据重跑，也不借用已取消337b CI。
+
+### Notes
+
+修改.github/workflows/autonomous-completion.yml两行缩进，四状态更新CI已取消／配置修正待提交，CN、direct-control及两份progress仅追加。正式记录E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_PRECISE337B_CI_CONFIG_FIX_STAGED_LOCAL_UNCHANGED_CONTINUING_20261106T083541224455Z.json，元数据回滚点E:\worktrees\recovery-segment-deadline\trade-system-contract-port-v1\reports\recovery_segment_deadline_20261106\ci_command_fix_state_backups_20261106T083541224455Z/MANIFEST.json；原981日／135费、原预算、Owner未签发和真实期限已过的限制保持。504定时任务保持取消。
+
+
+## 2026-11-06 - Task: 闭环必要组长路径错误并补到期后受限暂停
+
+### What was done
+
+上一运输95804已自然code1结束：1785.487秒／changed=[]，242PASS／3ERROR／零FAIL；三个错误均为V1模块夹具的过长基准路径，V2尚未执行。最后读取unified为Unknown process id，退出码以自然result原件为1，不重复poll。夹具改用原conftest的会话短根并给模块独占目录，仍由原资源工件marker定位，不删断言或改预算。
+
+### Testing
+
+实际操作器复核发现原公开PAUSE也会因旧Owner到期拒绝，因此新增协议的pause_expired_predecessor，只在旧V1已到期、旧Owner／来源／JOB／全部日链与母子费用fresh、全部结清且无active／UNKNOWN／撤销、人类同根范围和72000都匹配时，锁内追加原格式PAUSE。不签发／展期／激活／派发。新增合法夹具回归当前运输1459验证原拒绝、假范围／撤销Owner／源码变更零写及合法单PAUSE幂等；尚无结果，不标通过。操作器也补fresh核官方CI MANIFEST、33ZIP／28XML／5Win身份、日志和tree；配置仍未创建或复审。
+
+### Notes
+
+源码修改governance_source_continuation_v2.py及test_governance_source_revision_v1.py；新协议docs说明仅暂停边界，reports内操作器为未执行草稿。已取消337b CI不作新字节证据，CI缩进修复并入待冻结新来源；当前仍未提交。四状态／CN／direct-control及两份progress同步，只追加历史。原981日CP／父账本及真实四SHA实际保持，原控制12／旧Owner仍在，无第65段。此处引用原135段结清审计，不冒充本轮重审全部费用。正式记录E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_EXPIRED_SETTLED_PAUSE_R5_RUNNING_20261106T140459691902Z.json，元数据回滚点E:\worktrees\recovery-segment-deadline\trade-system-contract-port-v1\reports\recovery_segment_deadline_20261106\expired_pause_r5_state_backups_20261106T140459691902Z/MANIFEST.json；工程源码回滚点337b9f8a132b2029b656cb659689ad613b5ba453。真实期限已过，无真实动作；72小时尚未签发计时，504自动任务保持取消。
+
+
+## 2026-11-06 - Task: 收紧到期暂停的JOB绑定并冻结新必要验证候选
+
+### What was done
+
+新增到期后只PAUSE的受限协议入口，签发、展期、父激活与账户派发均不在该入口中。先fresh校验并比较入口JOB，再取相同签名JOB的锁；锁内和最终fresh之后再次比较，后续只使用独立副本，拒绝可变上下文重新绑定目标。人类范围、旧Owner、来源、日链、全部结清费用、撤销／active／UNKNOWN及原72000检查保持。CI folded YAML两行缩进已纠正，未减少测试。
+
+### Testing
+
+上一必要组自然242PASS／3ERROR（V1长路径，V2未执行）保留，不计全过。R5合法V1短根已装配成功且最长路径242；新回归误用完整策略执行器入口，实际因benchmark不匹配1FAIL／820.4秒、未测到新暂停。已改用原PAUSE所调用的真实gov.active到期鉴权；不mock或放宽runner检查。JOB重绑定先1FAIL／3.27秒，修复后新提交／JOB及CI资源定位22PASS／2.66秒、零FAIL／ERROR／SKIP。限定实际源码复审finding已闭合、findings=[]，正向PAUSE和完整V1／V2链仍待新来源实际通过。
+
+### Notes
+
+改动：governance_source_continuation_v2.py增加只暂停及JOB绑定；test_governance_source_revision_v1.py改用原会话短根并补正向／拒绝回归；test_governance_continuation_submission_v2.py补两处JOB变更零CONTROL写入；autonomous-completion.yml修缩进；新协议docs说明到期暂停；progress.md追加结果。reports内操作器草稿修正fresh CI原件及Windows扩展路径重复前缀，普通／扩展路径实读相同且原ZIP SHA保持，该52fd原件只作读取兼容探针，不借作新门禁。新操作器配置未创建或审过。原981日／135费未操作、Owner未签发、无第65段。证据EXPIRED_PAUSE_REVIEW_FIX_AND_JOB_RED_GREEN_R3.json和V2_EXPIRED_PAUSE_LIMITED_ACTUAL_CODE_REVIEW_R3.json；工程回滚点337b9f8a132b2029b656cb659689ad613b5ba453，不得回滚日／费／Owner／控制。
+
+
+## 2026-11-06 - Task: 精确A7FD冻结后启动原必要组与到期暂停验证
+
+### What was done
+
+当前新head a7fd356e88dfaa183a3abdede83738727c03706d／tree d0cc1f97eeea120d62deabede1de4f178e871d2f已非强制推回原draft PR45。1069份Python来源（561产品）与Git filtered逐字节一致。取锁前／锁内／最终fresh的JOB绑定和到期后仅PAUSE、CI参数缩进修正、原会话短根夹具均纳入新字节；旧失败／取消原件保留，不借337b／52fd绿灯。
+
+### Testing
+
+JOB绑定先1FAIL再相关22PASS，限定实际源码实审已闭合；R5自然1FAIL是通用治理夹具误入完整策略benchmark检查，未测到新暂停，修正为真实gov.active到期鉴权，不mock执行器校验。当前运输99590使用原冻结r3驱动仅REPO适配及扩展文件路径，原十selectors加派发／V1／V2／新JOB回归单链执行，尚无结果。新CI初读90项（预计91）为2成功／20运行／68排队；不能当CI通过，原被取消337b不再收集。
+
+### Notes
+
+原981日CP／父账本、旧Owner SHA、12条控制及真实四SHA实际保持，无第65段；原135费未操作，本轮引用原母子结清审计，不冒充全量重审。原各72000／global288002保持，72小时尚未签发。操作器草稿补CI原件fresh与已有扩展前缀兼容；上一草稿按SHA归档，其head常量更新到A7FD，配置仍未创建或审过。四状态／CN／direct-control及两份progress只追加同步。正式记录E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_PRECISEA7FD_EXPIRED_PAUSE_LOCAL_GATES_ACTIVE_20261106T143123247679Z.json，元数据回滚点E:\worktrees\recovery-segment-deadline\trade-system-contract-port-v1\reports\recovery_segment_deadline_20261106\preciseA7FD_state_backups_20261106T143123247679Z/MANIFEST.json；源码工程回滚点337b9f8a132b2029b656cb659689ad613b5ba453，禁止回滚日／费／Owner／控制。真实期限已过、无真实动作，504定时任务保持取消。
+
+
+## 2026-11-06 - Task: 准备A7FD同根接续范围并核实签名来源链
+
+### What was done
+
+已准备不可执行的同根范围文件及冻结操作器A7FD_R4，绑定原981日／135费、下一STRESS478／65、人类原件、旧V1、原控制12、原任务及预算。操作器强制原r4十selectors加四份协议／派发文件和原五文件90的精确选择，不能由配置用局部测试替代；缺失门禁的准备文件不作为CONFIG或CLAIM使用。
+
+### Testing
+
+只读核验实际人工根：八个待换文件旧SHA均在原签名恢复＋V1来源链内，候选新字节各不同；后端／策略的替换交集为空。人工恢复摘要中原封存100ref（88份Python、12份输入）按该根自身口径记录，88代码同时匹配封存值及当前WT，输入内容未读；不将该人工口径冒充真实原99ref。新CI91现53成功／20运行／18排队，未全过；本机99590仍在跑，原账户无运输。
+
+### Notes
+
+正式准备记录E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_A7FD_PREPARED_SCOPE_SIGNED_SOURCE_CHAIN_GATES_RUNNING_20261106T145623077211Z.json；prepared scope为E:\worktrees\recovery-segment-deadline\trade-system-contract-port-v1\reports\recovery_segment_deadline_20261106\PREPARED_SECOND_CONTINUATION_SCOPE_A7FD_R4.json，来源核验为E:\worktrees\recovery-segment-deadline\trade-system-contract-port-v1\reports\recovery_segment_deadline_20261106\ACTUAL_ROOT_SIGNED_SOURCE_CHAIN_PREPARATION_A7FD_R3.json；冻结入口E:\worktrees\recovery-segment-deadline\trade-system-contract-port-v1\reports\recovery_segment_deadline_20261106\second_continuation_operator_A7FD_R4.py。四状态／CN／direct-control及两份progress只追加同步，元数据回滚点E:\worktrees\recovery-segment-deadline\trade-system-contract-port-v1\reports\recovery_segment_deadline_20261106\a7fd_prepared_scope_state_backups_20261106T145623077211Z/MANIFEST.json。所有门禁与实际配置复审未齐备前，不创建原根安装许可、不签发Owner、不派第65段；72小时未开始，真实截止已过且无真实动作，504任务保持取消。
+
+
+## 2026-11-06 - Task: 保留981日并处理精确A7FD的CI夹具阻塞
+### What was done
+保存GitHub官方失败job原日志与5FAIL/255PASS证据；准备但尚未应用解析器夹具补丁。生成同根控制器R1至R3草稿，保留原10项单段和14项收尾断言；修正批准原件/安装副本绑定和同根运输互斥草稿。
+### Testing
+99590仍在原冻结A7FD字节上运行；无自然结果。控制器仅AST摘要与语法compile，不代表实际配置或接续通过。原981日两个检查点、135费用所在父账本、旧Owner和真实四SHA逐字节保持，无65或CONTROL13。
+### Notes
+未创建新Owner、账户运输、配置或CLAIM；未热改活的测试。失败CI不能放行，完整及最终53refs仍未通过。回滚点为 E:\worktrees\recovery-segment-deadline\trade-system-contract-port-v1\reports\recovery_segment_deadline_20261106\a7fd_ci_stub_block_backups_20261106T152655491309Z\MANIFEST.json；状态可从该备份三方恢复并保留后续历史，草稿停用即可，禁止重写旧运行。
+
+
+## 2026-11-07 - Task: 补齐解析器测试夹具并保留981日接续门禁
+### What was done
+仅修改test_verified_json_resolvers_v1.py的内存夹具，补齐expires_at和governance_revision，并新增历史期限与effective期限分离回归。原56条assert AST全保留，新增5条；561产品源码SHA均与A7FD一致。限定独立补丁只读复核未发现遗漏或断言弱化。同步V2实施文档；原人工账户与全部费用不变。
+### Testing
+A7FD原必要组自然303PASS／0FAIL,ERROR,SKIP，测试5264.92秒、外层5279.434733秒、changed=[]，99590已最终读闭。A7FD的91CI最终87SUCCESS／4FAILURE；四个失败任务均同5项缺字段错误，全部原日志已保存。修复后17PASS／6.69秒／零FAIL,ERROR,SKIP，XML E:\t\gsc2_jsonfix_20261107.xml SHA e07d22271580a516c2878986caee232bb7782d10a6d511183e5d51974be936d6。该短组是提交前证据，不代替提交后完整来源门禁。
+### Notes
+未创建Owner或第65段；原981/1008日、135段结清费、72000/global288002和fresh校验保持。新精确来源需跑原十selectors＋四份协议文件＋修改的resolver文件，再原五文件90及全部CI实际原件。回滚点A7FD提交及 E:\worktrees\recovery-segment-deadline\trade-system-contract-port-v1\reports\recovery_segment_deadline_20261106\resolver_fixture_commit_backups_20261106T225747703981Z\MANIFEST.json；可恢复本次单文件测试改动并保留失败与验证原件，不回滚账户历史。

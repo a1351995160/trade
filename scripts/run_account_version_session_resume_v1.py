@@ -20,6 +20,7 @@ from chanlun_trader.research_factory.continuous_submission_v1 import reconcile_s
 from chanlun_trader.research_factory.exploration_governance import immutable
 from chanlun_trader.research_factory.mutation_boundary import ObjectiveMutationLock
 from chanlun_trader.research_factory.research_campaign_v1 import ResearchCampaignV1
+from chanlun_trader.research_factory.run_budget import effective_execution_status
 from chanlun_trader.research_factory.secure_file_reference_v1 import (
     checked_file_path, file_sha256, read_file_bytes, read_pinned_json,
 )
@@ -53,6 +54,8 @@ def load_session(job_path):
     require(context is not None and context.job_path == job_path, 'APPROVED_CONTINUATION_REQUIRED')
     context.validate(for_reconcile=True)
     require(context.time_extension is None or context.time_extension_installed, 'TIME_EXTENSION_NOT_INSTALLED')
+    require(getattr(context, 'recovery', None) is None or context.recovery_installed,
+            'FAILED_ACCOUNT_RECOVERY_NOT_INSTALLED')
     summary, refs = context.summary_value, context.summary_value.get('session_refs', {})
     require(set(refs) == SESSION_REFS, 'ORIGINAL_REFERENCES_REQUIRED')
     workspace, owner = Path(summary['root']), Path(summary['approval_store'])
@@ -177,7 +180,7 @@ def run_session(job_path, *, max_steps=1):
                     if row['batch_id'] == config['batch_id'] and row['kind'] != 'CANDIDATE']
 
         def children_terminal():
-            return all(row['status'] in ('COMPLETED', 'FAILED') and not row.get('active_segment')
+            return all(effective_execution_status(row) in ('COMPLETED', 'FAILED') and not row.get('active_segment')
                        for row in children())
 
         def attempt_record(outcome, evidence):
@@ -234,6 +237,14 @@ def run_session(job_path, *, max_steps=1):
 
         def finish_error(error_event):
             evidence = {**error_event['payload'], 'event_identity': error_event['identity']}
+            if getattr(context, 'recovery', None) is not None and context.recovery_installed and not any(
+                    effective_execution_status(row) == 'UNKNOWN' or row.get('active_segment') for row in children()):
+                from scripts.run_strategy_account_v1 import account_execution_paths
+                paths = account_execution_paths(context.job, context.recovery.original_failed_account)
+                if paths['start'].exists() and not paths['settlement'].exists():
+                    from chanlun_trader.research_factory.universe_execution_recovery_v1 import resume_long_horizon_job
+                    resume_long_horizon_job(Path(task['job_path']), context.job, reconcile_only=True)
+                    context.validate(for_dispatch=False)
             if not children_terminal():
                 return {'status': 'WAITING_ORIGINAL_OPERATION_RECONCILIATION',
                         'task_id': task['task_id'], 'evidence': evidence, PROOF: proof}
@@ -253,7 +264,7 @@ def run_session(job_path, *, max_steps=1):
         pending_event = next((item['action'] for item in reversed(events) if item['action'] in
                               ('ADVANCE_STARTED', 'ADVANCE_RETURNED', 'RECONCILE_RETURNED', 'ERROR')), None)
         if context.mirrors_pending() or pending_event == 'ADVANCE_STARTED' or any(
-                row['status'] == 'UNKNOWN' or row.get('active_segment') for row in children()):
+                effective_execution_status(row) == 'UNKNOWN' or row.get('active_segment') for row in children()):
             reconciled = reconcile_submission(submission, task['task_id'])
             context.validate(for_dispatch=False)
             event('RECONCILE_RETURNED', reconciled)
@@ -271,9 +282,9 @@ def run_session(job_path, *, max_steps=1):
         try:
             for _ in range(max_steps):
                 pending_event = next((item['action'] for item in reversed(events) if item['action'] in
-                                      ('ADVANCE_STARTED', 'ADVANCE_RETURNED', 'RECONCILE_RETURNED')), None)
+                                      ('ADVANCE_STARTED', 'ADVANCE_RETURNED', 'RECONCILE_RETURNED', 'ERROR')), None)
                 if pending_event == 'ADVANCE_STARTED' or any(
-                        row['status'] == 'UNKNOWN' or row.get('active_segment') for row in children()):
+                        effective_execution_status(row) == 'UNKNOWN' or row.get('active_segment') for row in children()):
                     reconciled = reconcile_submission(submission, task['task_id'])
                     context.validate(for_dispatch=False)
                     event('RECONCILE_RETURNED', reconciled)
