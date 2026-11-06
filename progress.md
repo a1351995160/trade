@@ -4465,3 +4465,63 @@ R1实际1ERROR已保留；R2因订正测试输入受控退出；R3因限定实�
 ### Notes
 
 仅.gitattributes追加四条定点属性、progress.md追加本条。回滚可git revert本属性提交；不能回滚账户／费用／Owner历史。
+
+
+## 2026-11-06 - Task: 精确337b接续候选提交并启动原必要验证
+
+### What was done
+
+人类批准的第二次人工治理接续已提交并非强制推回原draft PR45；精确head 337b9f8a132b2029b656cb659689ad613b5ba453／tree d93a18613ef2084ea7daafa08c60ef82c8c4dfba。完整1069份Python来源、其中561产品，与Git filtered逐字节一致。原981日／135段费用、父账本和真实四SHA保持，无第65段、新Owner或原根安装。72小时尚未开始。新PR描述已按实际范围更新并由API回读，main保持1b787901。
+
+### Testing
+
+提交时刻缺口先1FAIL再7PASS，快速兼容75PASS，限定实际源码实审findings=[]。R3因该finding受控关闭，最终code1／natural_exit=false，不计通过。首次精确门禁在pytest启动前因Windows CopyFile2长路径快照失败；原CLAIM／半快照保留。使用同一冻结r3驱动扩展路径、仅REPO全局适配和新独占R2 CLAIM，当前实际运输95804执行原十selectors，加原V1／新V2／派发回归；没有启动新完整账户或从头重跑。精确CI91初读17成功／20运行／54排队，尚无完整门禁结果；全部旧身份绿灯迁入历史。
+
+### Notes
+
+四JSON／CN／direct-control同步精确新来源，主及独立WT progress只追加；当前同根账户运输为空，必要组自然全过后才接原五文件90，精确CI官方原件仍须独立实际复审。之后按已批准方案现场有限签发、PAUSE结清换源、全新进程父激活和独立strict零派发复核，再从STRESS478／第65段继续。全尾部和最终53refs仍必需，真实期限已过不作真实动作。正式记录E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_PRECISE337B_SECOND_PROTOCOL_LOCAL_GATES_ACTIVE_20261106T081831658064Z.json，元数据回滚点E:\worktrees\recovery-segment-deadline\trade-system-contract-port-v1\reports\recovery_segment_deadline_20261106\precise337b_state_backups_20261106T081831658064Z/MANIFEST.json；源码工程回滚点35f3a4b7366e39f8daf297a5eed754690d470cd1，不得回滚账户日／费用／Owner／控制历史。
+
+
+## 2026-11-06 - Task: 纠正新增CI参数缩进并保留当前本机验证
+
+### What was done
+
+发现本次新增两行CI参数缩进多两个空格；YAML folded run实际包含3个换行，会把参数拆成独立命令。已纠正缩进并解析验证为单条命令，原V1及两份V2测试各出现一次；全部1069份Python来源SHA保持。精确337b的两条受影响CI运输已受控取消，最终91检查为57成功／34取消，不能计CI通过。当前本机必要组95804继续自然运行，源码和测试未热改，没有中断原981日演练或派发账户。
+
+### Testing
+
+原错误命令和纠正后解析结果、取消请求及最后rollup均已保存。纠正仅作用于CI YAML；待当前本机组自然结束后提交该配置修正，以新精确CI通过及全部来源map复核为准。若Python／测试字节不变，可按完整来源SHA明确绑定本次实际本机结果，不能声称已按新提交元数据重跑，也不借用已取消337b CI。
+
+### Notes
+
+修改.github/workflows/autonomous-completion.yml两行缩进，四状态更新CI已取消／配置修正待提交，CN、direct-control及两份progress仅追加。正式记录E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_PRECISE337B_CI_CONFIG_FIX_STAGED_LOCAL_UNCHANGED_CONTINUING_20261106T083541224455Z.json，元数据回滚点E:\worktrees\recovery-segment-deadline\trade-system-contract-port-v1\reports\recovery_segment_deadline_20261106\ci_command_fix_state_backups_20261106T083541224455Z/MANIFEST.json；原981日／135费、原预算、Owner未签发和真实期限已过的限制保持。504定时任务保持取消。
+
+
+## 2026-11-06 - Task: 闭环必要组长路径错误并补到期后受限暂停
+
+### What was done
+
+上一运输95804已自然code1结束：1785.487秒／changed=[]，242PASS／3ERROR／零FAIL；三个错误均为V1模块夹具的过长基准路径，V2尚未执行。最后读取unified为Unknown process id，退出码以自然result原件为1，不重复poll。夹具改用原conftest的会话短根并给模块独占目录，仍由原资源工件marker定位，不删断言或改预算。
+
+### Testing
+
+实际操作器复核发现原公开PAUSE也会因旧Owner到期拒绝，因此新增协议的pause_expired_predecessor，只在旧V1已到期、旧Owner／来源／JOB／全部日链与母子费用fresh、全部结清且无active／UNKNOWN／撤销、人类同根范围和72000都匹配时，锁内追加原格式PAUSE。不签发／展期／激活／派发。新增合法夹具回归当前运输1459验证原拒绝、假范围／撤销Owner／源码变更零写及合法单PAUSE幂等；尚无结果，不标通过。操作器也补fresh核官方CI MANIFEST、33ZIP／28XML／5Win身份、日志和tree；配置仍未创建或复审。
+
+### Notes
+
+源码修改governance_source_continuation_v2.py及test_governance_source_revision_v1.py；新协议docs说明仅暂停边界，reports内操作器为未执行草稿。已取消337b CI不作新字节证据，CI缩进修复并入待冻结新来源；当前仍未提交。四状态／CN／direct-control及两份progress同步，只追加历史。原981日CP／父账本及真实四SHA实际保持，原控制12／旧Owner仍在，无第65段。此处引用原135段结清审计，不冒充本轮重审全部费用。正式记录E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_EXPIRED_SETTLED_PAUSE_R5_RUNNING_20261106T140459691902Z.json，元数据回滚点E:\worktrees\recovery-segment-deadline\trade-system-contract-port-v1\reports\recovery_segment_deadline_20261106\expired_pause_r5_state_backups_20261106T140459691902Z/MANIFEST.json；工程源码回滚点337b9f8a132b2029b656cb659689ad613b5ba453。真实期限已过，无真实动作；72小时尚未签发计时，504自动任务保持取消。
+
+
+## 2026-11-06 - Task: 收紧到期暂停的JOB绑定并冻结新必要验证候选
+
+### What was done
+
+新增到期后只PAUSE的受限协议入口，签发、展期、父激活与账户派发均不在该入口中。先fresh校验并比较入口JOB，再取相同签名JOB的锁；锁内和最终fresh之后再次比较，后续只使用独立副本，拒绝可变上下文重新绑定目标。人类范围、旧Owner、来源、日链、全部结清费用、撤销／active／UNKNOWN及原72000检查保持。CI folded YAML两行缩进已纠正，未减少测试。
+
+### Testing
+
+上一必要组自然242PASS／3ERROR（V1长路径，V2未执行）保留，不计全过。R5合法V1短根已装配成功且最长路径242；新回归误用完整策略执行器入口，实际因benchmark不匹配1FAIL／820.4秒、未测到新暂停。已改用原PAUSE所调用的真实gov.active到期鉴权；不mock或放宽runner检查。JOB重绑定先1FAIL／3.27秒，修复后新提交／JOB及CI资源定位22PASS／2.66秒、零FAIL／ERROR／SKIP。限定实际源码复审finding已闭合、findings=[]，正向PAUSE和完整V1／V2链仍待新来源实际通过。
+
+### Notes
+
+改动：governance_source_continuation_v2.py增加只暂停及JOB绑定；test_governance_source_revision_v1.py改用原会话短根并补正向／拒绝回归；test_governance_continuation_submission_v2.py补两处JOB变更零CONTROL写入；autonomous-completion.yml修缩进；新协议docs说明到期暂停；progress.md追加结果。reports内操作器草稿修正fresh CI原件及Windows扩展路径重复前缀，普通／扩展路径实读相同且原ZIP SHA保持，该52fd原件只作读取兼容探针，不借作新门禁。新操作器配置未创建或审过。原981日／135费未操作、Owner未签发、无第65段。证据EXPIRED_PAUSE_REVIEW_FIX_AND_JOB_RED_GREEN_R3.json和V2_EXPIRED_PAUSE_LIMITED_ACTUAL_CODE_REVIEW_R3.json；工程回滚点337b9f8a132b2029b656cb659689ad613b5ba453，不得回滚日／费／Owner／控制。

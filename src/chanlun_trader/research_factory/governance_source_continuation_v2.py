@@ -50,6 +50,23 @@ def _identity(value):
     return isinstance(value, dict) and value.get('identity') == stable_hash({k:v for k,v in value.items() if k != 'identity'})
 
 
+def _human_authorization(root, reference, job_path, predecessor_reference, global_wall_seconds):
+    human = _read(reference, root/'reports')
+    _require(human.get('schema_version') == 'HUMAN_ARTIFICIAL_SECOND_GOVERNANCE_CONTINUATION_AUTHORIZATION_V1'
+        and human.get('root') == str(root) and human.get('job_path') == job_path
+        and human.get('predecessor_revision_ref') == predecessor_reference
+        and human.get('artificial_only') is True and human.get('allow_protocol_implementation_and_validation') is True
+        and type(human.get('additional_governance_revisions')) is int and human['additional_governance_revisions'] == 1
+        and human.get('execution_window_seconds') == WINDOW_SECONDS
+        and human.get('execution_window_starts') == 'ACTUAL_SCOPED_OWNER_ISSUANCE'
+        and human.get('each_account_seconds') == 72000 and human.get('global_seconds') == global_wall_seconds
+        and human.get('all_fresh_assertions_required') is True
+        and all(human.get(k) is False for k in ('allow_budget_increase','allow_new_task_candidate_purpose_grant_or_root',
+            'allow_economic_source_or_input_change','automatic_deadline_extension','real_account_actions_allowed')),
+        'HUMAN_SCOPE_CONFLICT')
+    return human
+
+
 def _first(root, recovery_reference, recovery, job, expires_at):
     """认证V1原槽和Owner；当前源码由V2串接核验，不能要求退回旧字节。"""
     from . import governance_source_revision_v1 as first
@@ -123,19 +140,8 @@ class GovernanceSourceContinuationV2:
         _require(issued.tzinfo is not None and deadline.tzinfo is not None
             and deadline-issued == timedelta(seconds=WINDOW_SECONDS)
             and deadline > datetime.fromisoformat(expires_at), 'FINITE_WINDOW_REQUIRED')
-        human = _read(summary['human_authorization_ref'], root/'reports')
-        _require(human.get('schema_version') == 'HUMAN_ARTIFICIAL_SECOND_GOVERNANCE_CONTINUATION_AUTHORIZATION_V1'
-            and human.get('root') == str(root) and human.get('job_path') == summary['job_ref']['path']
-            and human.get('predecessor_revision_ref') == predecessor.reference
-            and human.get('artificial_only') is True and human.get('allow_protocol_implementation_and_validation') is True
-            and type(human.get('additional_governance_revisions')) is int and human['additional_governance_revisions'] == 1
-            and human.get('execution_window_seconds') == WINDOW_SECONDS
-            and human.get('execution_window_starts') == 'ACTUAL_SCOPED_OWNER_ISSUANCE'
-            and human.get('each_account_seconds') == 72000 and human.get('global_seconds') == summary['global_wall_seconds']
-            and human.get('all_fresh_assertions_required') is True
-            and all(human.get(k) is False for k in ('allow_budget_increase','allow_new_task_candidate_purpose_grant_or_root',
-                'allow_economic_source_or_input_change','automatic_deadline_extension','real_account_actions_allowed')),
-            'HUMAN_SCOPE_CONFLICT')
+        human = _human_authorization(root, summary['human_authorization_ref'], summary['job_ref']['path'],
+            predecessor.reference, summary['global_wall_seconds'])
         mapping = {name:row['operation_id'] for name,row in recovery['accounts'].items()}
         _require(summary.get('operation_ids') == mapping and set(summary.get('accounts',{})) == set(job['plans'])
             and sum(not row['completed'] for row in summary['accounts'].values()) == 1
@@ -255,6 +261,76 @@ class GovernanceSourceContinuationV2:
                 and datetime.fromisoformat(self.summary['issued_at']) <= installed_at <= now
                 and installed_at < datetime.fromisoformat(self.execution_expires_at),
                 'PARENT_ACTIVATION_TIME_CONFLICT')
+
+    @classmethod
+    def pause_expired_predecessor(cls, context, *, human_authorization_ref):
+        """已到期、全部结清的原用途只允许PAUSE；不签发、展期、激活或派发。"""
+        from .account_version_continuation_v1 import AccountVersionContinuationV1, _control
+        from .governance_source_revision_v1 import GovernanceSourceRevisionV1
+        from .account_purpose_time_extension_v1 import _checkpoint
+        from .run_budget import effective_execution_status, effective_execution_total_seconds
+        _require(type(context) is AccountVersionContinuationV1, 'CONTEXT_REQUIRED')
+        root, job = context.root, deepcopy(context.job)
+        context.validate(for_dispatch=False)
+        _require(context.root == root and context.job == job, 'JOB_CHANGED')
+        job = deepcopy(context.job)
+        with ObjectiveMutationLock.for_resource(Path(job['root'])/'LONG_EXECUTION.lock'):
+            with ObjectiveMutationLock.for_resource(Path(job['root'])/'CONTROL.lock'):
+                context.validate(for_dispatch=False)
+                _require(context.root == root and context.job == job, 'JOB_CHANGED')
+                predecessor = getattr(context.recovery, 'governance_revision', None)
+                _require(type(predecessor) is GovernanceSourceRevisionV1, 'SINGLE_PREDECESSOR_REQUIRED')
+                recovery = context.recovery.summary_value
+                human = _human_authorization(root, human_authorization_ref, recovery['original']['job']['path'],
+                    predecessor.reference, recovery['global_wall_seconds'])
+                _require(datetime.now(timezone.utc) >= datetime.fromisoformat(context.recovery.execution_expires_at),
+                    'PREDECESSOR_NOT_EXPIRED')
+                folder, slot, marker = _paths(root, recovery)
+                _require(not any(path.exists() for path in (folder/'MANIFEST.json',slot,marker)), 'ALREADY_INSTALLED')
+                revoked = validated_reference_path(Path(job['root'])/'REVOKED.json',root=root,
+                    error_code='GOVERNANCE_CONTINUATION_REVOKED_PATH_INVALID')
+                _require(not revoked.exists(), 'REVOKED')
+                control = _control(job)
+                view = context.campaign.peek_status()
+                _require(not view.get('revoked') and not any(op.get('active_segment') is not None
+                    or effective_execution_status(op) == 'UNKNOWN' for op in view['operations'].values()), 'ACTIVE_OR_UNKNOWN')
+                days = segments = running = 0
+                for name in job['plans']:
+                    state = context.governance.segment_status(name)
+                    operation = view['operations'][recovery['accounts'][name]['operation_id']]
+                    status = effective_execution_status(operation)
+                    _require(status in ('RUNNING','COMPLETED') and state['pending'] is None
+                        and all(row['charge'] is not None for row in state['segments'])
+                        and effective_execution_total_seconds(operation) == state['effective_total_seconds'] == 72000,
+                        'UNSETTLED_BOUNDARY')
+                    context._parent_prefix(state,operation,0)
+                    checkpoint = _checkpoint(root,job,name)
+                    _require(checkpoint is not None and (checkpoint['processed_days'] == 504) is (status == 'COMPLETED'),
+                        'CHECKPOINT_REQUIRED')
+                    days += checkpoint['processed_days']; segments += len(state['segments']); running += status == 'RUNNING'
+                _require(running == 1 and days == human.get('completed_days_to_preserve')
+                    and segments == human.get('settled_segments_to_preserve'), 'ACCOUNT_SCOPE_CONFLICT')
+                predecessor.validate_boundary(job,for_dispatch=True)
+                receipt = _read(recovery['original']['receipt'],root)
+                _require(Path(recovery['original']['receipt']['path']) == context.governance.receipt_path,
+                    'RECEIPT_PATH_CONFLICT')
+                context.validate(for_dispatch=False)
+                _require(context.root == root and context.job == job, 'JOB_CHANGED')
+                predecessor.validate_return(for_dispatch=False)
+                _require(_human_authorization(root,human_authorization_ref,recovery['original']['job']['path'],
+                    predecessor.reference,recovery['global_wall_seconds']) == human and not revoked.exists()
+                    and _control(job) == control, 'PAUSE_BOUNDARY_CHANGED')
+                if control['paused']:
+                    return control
+                record = {'sequence':len(control['events'])+1,'previous_head':control['head'],'event':'PAUSE',
+                    'job_sha256':_ref(Path(job['root'])/'JOB.json',root)['sha256'],'receipt_id':receipt['receipt_id'],
+                    'recorded_at':datetime.now(timezone.utc).isoformat()}
+                record['event_id'] = stable_hash(record)
+                target = validated_reference_path(Path(job['root'])/('CONTROL_'+str(record['sequence']).zfill(6)+'.json'),
+                    root=root,error_code='GOVERNANCE_CONTINUATION_CONTROL_PATH_INVALID')
+                _require(not target.exists(), 'CONTROL_ALREADY_EXISTS')
+                _write_once(target,record)
+                return _control(job)
 
     @classmethod
     def prepare(cls,context,*,replacements,added_runtime_ref,verification_ref,human_authorization_ref,issued_at=None):

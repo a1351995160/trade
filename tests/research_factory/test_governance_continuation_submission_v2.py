@@ -88,3 +88,29 @@ def test_historical_parent_replay_remains_readable_after_expiry(submission, monk
     continuation.apply_parent_continuation(value.authorization, operations, value.payload, False, event_index=0)
     assert all(row['governance_continuation']['proof'] == value.payload['proof'] for row in operations.values())
     assert value.budget._events == []
+
+
+@pytest.mark.parametrize('changed_at', [1, 2])
+def test_pause_rejects_mutated_job_before_using_control_target(tmp_path, changed_at):
+    """隔离JOB重新绑定和锁目标，不以本存根证明完整Owner／日费链。"""
+    from chanlun_trader.research_factory.account_version_continuation_v1 import AccountVersionContinuationV1
+    account = tmp_path/'signed_account';account.mkdir()
+    other = tmp_path/'unapproved_account'
+    job = {'root':str(account),'plans':{}}
+    context = AccountVersionContinuationV1.__new__(AccountVersionContinuationV1)
+    context.root = tmp_path
+    context.job = {**job,'root':str(other)} if changed_at == 1 else dict(job)
+    context.recovery = SimpleNamespace(governance_revision=None)
+    calls = []
+    def fresh(*, for_dispatch=False):
+        assert for_dispatch is False
+        calls.append(True)
+        context.job = dict(job)
+        if len(calls) == 2 and changed_at == 2:
+            context.job['root'] = str(other)
+    context.validate = fresh
+    with pytest.raises(PermissionError, match='GOVERNANCE_CONTINUATION_JOB_CHANGED'):
+        continuation.GovernanceSourceContinuationV2.pause_expired_predecessor(context,
+            human_authorization_ref={'unused_because_job_is_rejected':True})
+    assert not other.exists() and not list(tmp_path.rglob('CONTROL_*.json'))
+    assert len(calls) == changed_at

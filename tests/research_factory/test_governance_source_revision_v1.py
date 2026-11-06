@@ -49,9 +49,12 @@ def local_benchmark(case, checkout, output, *, revised):
 
 
 @pytest.fixture(scope='module')
-def revised_case(tmp_path_factory):
+def revised_case(_research_short_tmp_root, request):
+    # 复用原CI工件定位的会话短根；每个模块独占，保留全部夹具操作／断言／预算。
+    folder = _research_short_tmp_root / ('g' + hashlib.sha256(request.module.__name__.encode()).hexdigest()[:6])
+    folder.mkdir(exist_ok=False)
     with pytest.MonkeyPatch.context() as patch:
-        case = extension_case.__wrapped__(tmp_path_factory.mktemp('revision'), patch, SimpleNamespace(param={}))
+        case = extension_case.__wrapped__(folder, patch, SimpleNamespace(param={}))
         case = recovery_case.__wrapped__(case)
         # 原通用夹具只列最小恢复运行闭包。本用例在首次 Owner 批准前，
         # 显式把四个待替换读取器的原字节纳入人工 CI 和恢复来源，不放宽产品白名单。
@@ -314,3 +317,75 @@ def test_next_original_segment_binds_revision_and_preserves_prior_version_record
     context._parent_prefix(state, operation, 0)
     assert len(operation['segments']) == 2
     assert not (case['account'] / 'ARTIFICIAL_STRESS_SEGMENT_000003_DISPATCH.json').exists()
+
+
+def test_expired_predecessor_can_only_pause_with_fresh_approval_and_settled_history(revised_case, monkeypatch):
+    from chanlun_trader.research_factory import governance_source_continuation_v2 as second
+    from chanlun_trader.research_factory import account_version_continuation_v1 as versions
+    from chanlun_trader.research_factory import account_purpose_time_extension_v1 as extension
+    from chanlun_trader.research_factory import research_campaign_v1 as campaigns
+    from chanlun_trader.research_factory import etf_account_governance_v1 as governance
+    from chanlun_trader.research_factory.budget import BudgetExhaustedError
+    from scripts import run_strategy_account_v1 as runner
+    case = revised_case
+    context = AccountVersionContinuationV1.from_job(case['job'])
+    control(case, 'RESUME')
+    control_before = runner.control_state(case['job'])
+    assert not control_before['paused']
+    counts = sum(len(case['gov'].segment_status(name)['segments']) for name in case['job']['plans'])
+    days = sum(len(json.loads(Path(case['job']['items'][name]['backend_options']['checkpoint_path']).read_text(
+        encoding='utf-8'))['artifacts']['days']) for name in case['job']['plans'])
+    value = {'schema_version':'HUMAN_ARTIFICIAL_SECOND_GOVERNANCE_CONTINUATION_AUTHORIZATION_V1',
+        'root':str(case['root']),'job_path':str(case['account']/'JOB.json'),'predecessor_revision_ref':case['revision_ref'],
+        'artificial_only':True,'allow_protocol_implementation_and_validation':True,'additional_governance_revisions':1,
+        'completed_days_to_preserve':days,'settled_segments_to_preserve':counts,'execution_window_seconds':259200,
+        'execution_window_starts':'ACTUAL_SCOPED_OWNER_ISSUANCE','each_account_seconds':72000,'global_seconds':200000,
+        'allow_budget_increase':False,'allow_new_task_candidate_purpose_grant_or_root':False,
+        'allow_economic_source_or_input_change':False,'automatic_deadline_extension':False,
+        'real_account_actions_allowed':False,'all_fresh_assertions_required':True}
+    human = write(case['root']/'reports/expired_pause_human.json', value)
+    old_deadline = datetime.fromisoformat(context.recovery.execution_expires_at)
+    class Expired(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            when = old_deadline+timedelta(seconds=1)
+            return when.astimezone(tz) if tz else when.replace(tzinfo=None)
+    for module in (second, revision, recovery_module, versions, extension, campaigns, governance, runner):
+        monkeypatch.setattr(module, 'datetime', Expired)
+    before = {p:p.read_bytes() for p in case['account'].rglob('*') if p.is_file() and '.lock' not in p.name}
+    ledger = case['campaign'].budget_path.with_name('run_budget_events.jsonl');ledger_before=ledger.read_bytes()
+    # 原PAUSE所用active鉴权因到期拒绝；新增入口只暂停已结清历史。
+    # 通用治理夹具不冒充完整策略执行器的benchmark／loader装配。
+    with pytest.raises((PermissionError,BudgetExhaustedError), match='EXPIRED'):
+        case['gov'].active()
+    assert runner.control_state(case['job']) == control_before
+    bad = deepcopy(value);bad['real_account_actions_allowed']=True
+    bad_ref = write(case['root']/'reports/invalid_pause_human.json', bad)
+    with pytest.raises(PermissionError, match='HUMAN_SCOPE_CONFLICT'):
+        second.GovernanceSourceContinuationV2.pause_expired_predecessor(context,human_authorization_ref=bad_ref)
+    assert runner.control_state(case['job']) == control_before
+    owner = case['approvals'].directory/(case['revision_approval']['approval_id']+'.json')
+    owner_bytes = owner.read_bytes()
+    try:
+        owner.unlink()
+        with pytest.raises(PermissionError, match='OWNER_APPROVAL_NOT_REGISTERED'):
+            second.GovernanceSourceContinuationV2.pause_expired_predecessor(context,human_authorization_ref=human)
+        assert runner.control_state(case['job']) == control_before
+    finally:
+        owner.write_bytes(owner_bytes)
+    source = case['revision_source'];source_bytes=source.read_bytes()
+    try:
+        source.write_bytes(source_bytes+b'\n')
+        with pytest.raises(PermissionError):
+            second.GovernanceSourceContinuationV2.pause_expired_predecessor(context,human_authorization_ref=human)
+        assert runner.control_state(case['job']) == control_before
+    finally:
+        source.write_bytes(source_bytes)
+    paused = second.GovernanceSourceContinuationV2.pause_expired_predecessor(context,human_authorization_ref=human)
+    assert paused == runner.control_state(case['job']) and paused['paused']
+    assert len(paused['events']) == len(control_before['events'])+1
+    assert second.GovernanceSourceContinuationV2.pause_expired_predecessor(context,human_authorization_ref=human) == paused
+    assert ledger.read_bytes() == ledger_before and all(p.read_bytes()==data for p,data in before.items())
+    changed = {p for p in case['account'].rglob('*') if p.is_file() and '.lock' not in p.name}-set(before)
+    assert changed == {case['account']/('CONTROL_'+str(len(paused['events'])).zfill(6)+'.json')}
+    assert not (case['account']/'ARTIFICIAL_STRESS_SEGMENT_000003_DISPATCH.json').exists()
