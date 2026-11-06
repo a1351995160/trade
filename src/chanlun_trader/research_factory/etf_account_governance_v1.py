@@ -621,8 +621,10 @@ class StrategyBatchGovernanceV1(ETFAccountGovernanceV1):
             parent=None
             if receipt['source'].get('origin') == 'CAMPAIGN_V1':
                 source=receipt['source']; campaign=validate_campaign_source(source,self.plans,self.objective_id)
+                # 扩时父子镜像已逐项核验；由父端fresh核验后裁定随截止缩小的上限。
                 parent=campaign.start_execution_segment(source['operation_ids'][name],segment_number=number,
-                                                        profile=state['profile'],upper_bound_seconds=upper)
+                    profile=state['profile'],upper_bound_seconds=upper if state['time_extension_proof'] is None else None)
+                upper=parent['upper_bound_seconds']
             record={'schema_version':'strategy-account-segment-dispatch-v1','kind':name,
                 'receipt_id':receipt['receipt_id'],'segment_number':number,'profile_hash':state['profile']['profile_hash'],
                 'charged_before':state['charged_seconds'],'upper_bound_seconds':upper,

@@ -4386,3 +4386,22 @@ H5当前源码局部111PASS/1原权限SKIP；有限计量自然退出1，Missing
 回滚点：父提交 dfec8e7d67cb0fc671a65d19f1048e5a90983f53。未安装时可停止采用候选并继续原冻结链；源码撤销使用本提交的 git revert 形成新提交。安装后不得覆盖源码、清空费用或复用旧许可回滚，应在边界停止并保留接续原件。局部原件位于 reports/recovery_validation_replay_20261026；后续同根有限操作器仅供人工演练，必须实际复审和新独占 CLAIM 后执行，原绝对运输截止不重置。
 
 2026-10-26 追加订正（提交冻结前）：R4 已自然结束，91PASS／1setup ERROR；旧人工夹具漏列 campaign_scope/account_version_continuation 两个待替换读取器，产品 SOURCE_ALLOWLIST_CONFLICT 拒绝正确。只在新增协议用例的首次 Owner 批准前补齐人工运行闭包和相应声明，新增漏列来源拒绝回归，未放宽产品规则。R5 七文件118项已启动，尚未通过；1065py／560产品冻结，R4原件完整保留。新增四个py以显式LF属性绑定跨平台检出字节。当前运行人工根未修改、未暂停。
+
+
+## 2026-11-06 - Task: 修复扩时账户在fresh核验间上限缩小的派发冲突
+
+### What was done
+
+在独立工作树修复ETF账户治理中相对派发上限过时的问题。原本地fresh、Owner、预算和镜像校验保持；仅扩时路径在父fresh核验后采用父实际额度，子记录精确镜像。父显式超额请求拒绝及普通来源路径保持。增加回归并纳入原CI双OS预算测试组，准备仅针对人工981日的第二次受限换源／有限期限方案。原人工根和已安装源码未修改。
+
+### Testing
+
+基线52fd同一人工测试已自然1FAIL／41.53秒复现BOUND_CONFLICT。首轮补丁8PASS／1FAIL，实际到期正确被原BudgetExhaustedError拒绝，仅测试预期类型错误；原件保留。订正精确预期后，最终45PASS／0FAIL,ERROR,SKIP，自然code0，耗时676.031000秒。XML：E:\t\dlr_final_20261106.xml，SHA 99ef4e4810463c49424cd91df0ec7558723a4b669c824f0ea34073af6bc45c51。未重跑已完成日或原完整演练；上述结果不代表CI、228／90、完整门禁或final53通过。
+
+只读核对BASE504／STRESS477、135段母子唯一收费、原父账本和真实四SHA保持，尚无65段；87经济代码逐SHA保持，12输入未读。ETF原181个if条件和121个raise AST保持。git diff --check通过。
+
+### Notes
+
+改动文件：src/chanlun_trader/research_factory/etf_account_governance_v1.py修正额度传递；tests/research_factory/test_account_segment_deadline_race_v1.py覆盖正常及拒绝／恢复边界；.github/workflows/autonomous-completion.yml追加该测试到现有双OS预算组；docs/recovery-segment-deadline-fix-20261106.md记录实际证据与待批准接续范围；progress.md仅追加本条。工程核对脚本和原件索引在reports/recovery_segment_deadline_20261106，未作为产品运行入口。
+
+回滚点：52fd759e8d1250c6279c610c0af61a702011566e；可反向应用本次补丁或对本次提交执行git revert。原账户日、费用、Owner和旧MANIFEST未修改，不能回滚经济历史。原人工Owner已于2026-10-28T19:43:45.280534+08:00到期，V1一次读取器换源槽已使用且不含ETF文件；第二次协议与人工新期限须明确批准后实施和验证，再绑定全部适用门槛后接STRESS第478日／第65段。真实期限已过，无真实入口；定时任务504保持取消。

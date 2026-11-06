@@ -175,6 +175,7 @@ jobs:
         run: >-
           python -m pytest -q
           tests/research_factory/test_account_purpose_time_budget_v1.py
+          tests/research_factory/test_account_segment_deadline_race_v1.py
           --basetemp=${{ runner.temp }}/purpose-budget-tests
           --junitxml=completion-tests.xml
       - name: Verify account purpose successor runtime and recovery
