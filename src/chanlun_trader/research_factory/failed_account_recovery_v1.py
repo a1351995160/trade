@@ -162,7 +162,8 @@ def _job_manifest_reference(job):
     if not folder.exists(): return None
     _path(folder, account_root.parent)
     # 新保留槽另有原 Owner 认证；普通恢复仍必须恰一，后续 read 不允许忽略无效新槽。
-    paths = [path for path in folder.glob('*/MANIFEST.json') if path.parent.name != 'governance-source-revision']
+    paths = [path for path in folder.glob('*/MANIFEST.json') if path.parent.name not in (
+        'governance-source-revision', 'governance-source-continuation-v2')]
     _require(len(paths) == 1, 'MANIFEST_DISCOVERY_CONFLICT')
     manifest = _read(_reference(paths[0], account_root.parent), account_root.parent)
     root = manifest.get('summary', {}).get('root'); _require(isinstance(root, str), 'MANIFEST_INVALID')
@@ -814,6 +815,9 @@ class FailedAccountRecoveryV1:
                 and control['paused'] is control_boundary['paused'], 'CONTROL_INSTALL_BOUNDARY_CHANGED')
         if for_dispatch:
             _dispatch_boundary(context.root, directory, base, value, reference)
+        # 原摘要和原安装事件保留旧期限；只由独立批准的V2派生当前执行期限。
+        if revision is not None and hasattr(revision, 'execution_expires_at'):
+            execution_expires_at = revision.execution_expires_at
         if for_install or for_dispatch:
             _require(datetime.now(timezone.utc) < datetime.fromisoformat(execution_expires_at), 'EXPIRED')
         context.summary_value = extension._copy_json_tree(value); context.summary = extension._copy_json_tree(value); context.approval_ref = deepcopy(manifest['approval_ref'])
@@ -914,8 +918,11 @@ def resolve_failed_account_recovery_manifest(manifest_ref, *, root, authorizatio
         'economic_sources': extension._copy_json_tree(value['economic_sources']), 'successor_plans': extension._copy_json_tree(value['successor_plans']),
         'active_plans': extension._copy_json_tree(value['successor_plans'])}
     if 'calendar_deadline_extension' in value:
-        result.update(execution_expires_at=context.execution_expires_at,
+        result.update(execution_expires_at=value['calendar_deadline_extension']['expires_at'],
                       calendar_deadline_extension=extension._copy_json_tree(value['calendar_deadline_extension']))
         if 'calendar_task_scope' in value:
             result['calendar_task_scope'] = extension._copy_json_tree(value['calendar_task_scope'])
+    if context.governance_revision is not None and hasattr(context.governance_revision, 'execution_expires_at'):
+        result['effective_execution_expires_at'] = context.execution_expires_at
+        result['governance_continuation_proof'] = context.governance_revision.proof()
     return result

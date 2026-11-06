@@ -175,7 +175,8 @@ def validate_scope_policy(root, authorization):
         )
         _path(recovery_folder, Path(root))
         # 保留槽让旧协议 fail closed；新槽的内容由完整恢复读取器重新核原 Owner。
-        slots = [path for path in recovery_folder.glob('*.json') if path.name != 'GOVERNANCE_SOURCE_REVISION.json']
+        slots = [path for path in recovery_folder.glob('*.json') if path.name not in (
+            'GOVERNANCE_SOURCE_REVISION.json', 'GOVERNANCE_SOURCE_CONTINUATION_V2.json')]
         if len(slots) != 1:
             raise PermissionError('FAILED_ACCOUNT_RECOVERY_SCOPE_SLOT_CONFLICT')
         slot = _read(_reference(slots[0], root), root)

@@ -879,7 +879,8 @@ class StrategyBatchGovernanceV1(ETFAccountGovernanceV1):
                 or job.get('objective_id') != self.objective_id or job.get('budget_path') != str(self.budget_path)):
             raise PermissionError('STRATEGY_CALENDAR_JOB_CONFLICT')
         recovery = FailedAccountRecoveryV1.from_job(job, for_dispatch=True)
-        if recovery is None or recovery.summary_value.get('calendar_deadline_extension') is None:
+        if recovery is None or (recovery.summary_value.get('calendar_deadline_extension') is None
+                and getattr(getattr(recovery, 'governance_revision', None), 'execution_expires_at', None) is None):
             return receipt['expires_at']
         original = recovery.summary_value['original']['receipt']
         canonical = read_json(self.receipt_path)

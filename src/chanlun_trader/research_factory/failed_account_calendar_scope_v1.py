@@ -121,7 +121,7 @@ def calendar_task_scope(root, original, mapping, execution_expires_at):
 
 def calendar_operation_deadline(authorization, operations, operation):
     """完整父重放视图中的精确收尾用途；无 IO，不扩大原授权。"""
-    from .run_budget import effective_execution_status
+    from .run_budget import effective_execution_status, effective_execution_expires_at
     original = authorization['expires_at']
     if not isinstance(operation, dict) or operation.get('kind') != 'VERIFY':
         return original
@@ -158,7 +158,10 @@ def calendar_operation_deadline(authorization, operations, operation):
                 or item.get('failed_account_recovery_proof') != proof or item.get('active_segment') is not None
                 or item.get('resource_overrun') or effective_execution_status(item) != 'COMPLETED' for item in pair):
             continue
-        return scope['execution_expires_at']
+        deadlines = {effective_execution_expires_at(authorization, item) for item in pair}
+        if len(deadlines) != 1:
+            continue
+        return deadlines.pop()
     return original
 
 
@@ -209,6 +212,13 @@ class FailedAccountCalendarContextV1:
                 and operation.get('execution_expires_at') == scope['execution_expires_at'], 'INSTALLATION_REQUIRED')
             if for_dispatch:
                 campaign._dispatchable(view, operation['stage'], operation=operation)
+        # 冻结scope仍保留原期限；返回投影只供已安装的有限V2用途使用。
+        if recovery.execution_expires_at != scope['execution_expires_at']:
+            from .run_budget import effective_execution_expires_at
+            _require(all(effective_execution_expires_at(view['authorization'],view['operations'][operation_id])
+                == recovery.execution_expires_at for operation_id in scope['account_operation_ids'].values()),
+                'CONTINUATION_INSTALLATION_REQUIRED')
+            scope = {**scope, 'execution_expires_at':recovery.execution_expires_at}
         return recovery, scope, campaign, view
 
     def require_binding(self, campaign, reference, binding, *, for_dispatch=True):

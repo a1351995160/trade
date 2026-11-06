@@ -420,7 +420,7 @@ class ResearchCampaignV1:
         proof = operation.get('failed_account_recovery_proof')
         if is_calendar:
             sources = [account for account in view['operations'].values()
-                if account.get('execution_expires_at') == calendar_deadline
+                if effective_execution_expires_at(view['authorization'], account) == calendar_deadline
                 and isinstance(account.get('calendar_task_scope'), dict)
                 and any(item.get('operation_id') == operation['operation_id'] for item in
                     account['calendar_task_scope'].get('compute_operations', {}).values())]
@@ -436,17 +436,32 @@ class ResearchCampaignV1:
             authorization_id=self.authorization_id, objective_id=view['authorization']['objective_id'],
             for_dispatch=True)
         if is_calendar:
-            if (resolved['proof'] != proof or calendar_deadline != resolved.get('execution_expires_at')
+            if (resolved['proof'] != proof or calendar_deadline != resolved.get('effective_execution_expires_at', resolved.get('execution_expires_at'))
                     or any(account['calendar_task_scope'] != resolved.get('calendar_task_scope') for account in sources)):
                 raise PermissionError('CAMPAIGN_CALENDAR_COMPUTE_PROOF_CONFLICT')
         elif (resolved['proof'] != proof or operation['operation_id'] not in resolved['operation_ids'].values()
                 or operation.get('recovery_boundary') not in resolved['accounts'].values()
                 or effective_execution_expires_at(view['authorization'], operation)
-                    != resolved.get('execution_expires_at', resolved['expires_at'])):
+                    != resolved.get('effective_execution_expires_at', resolved.get('execution_expires_at', resolved['expires_at']))):
             raise PermissionError('CAMPAIGN_FAILED_ACCOUNT_RECOVERY_PROOF_CONFLICT')
         failed = view['operations'].get(resolved['operation_id'], {}).get('failed_account_recovery')
         if failed is None or failed['status'] in ('FAILED', 'UNKNOWN'):
             raise PermissionError('CAMPAIGN_FAILED_ACCOUNT_RECOVERY_TERMINAL_OR_UNKNOWN')
+
+    def install_governance_source_continuation(self, reference):
+        """换源后由全新进程显式激活同用途期限；只追加一次零预算增量事件。"""
+        from .governance_source_continuation_v2 import resolve_continuation, validate_parent_boundary, EVENT
+        with self._lock():
+            budget, view = self._budget_with_view()
+            context = resolve_continuation(self.root, reference, self.authorization_id, view['authorization']['objective_id'])
+            validate_parent_boundary(context, view['authorization'], view['operations'], view.get('revoked', False))
+            context.validate_boundary(context.job, exact=True)
+            now = datetime.now(timezone.utc)
+            if not datetime.fromisoformat(context.summary['issued_at']) <= now < datetime.fromisoformat(context.execution_expires_at):
+                raise PermissionError('GOVERNANCE_CONTINUATION_EXPIRED')
+            context.validate_return(for_dispatch=False)
+            budget.campaign_event(EVENT, {'proof':context.proof(), 'installed_at':now.isoformat()})
+            return deepcopy(budget.campaign_view()['operations'])
 
     @staticmethod
     def _execution_limit_from_view(view, operation_id):

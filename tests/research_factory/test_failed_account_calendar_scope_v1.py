@@ -205,6 +205,7 @@ def install_context_mock(case, monkeypatch):
     recovered.root = case.root
     recovered.scope_reference = case.proof['manifest_ref']
     recovered.recovery_id = case.proof['recovery_id']
+    recovered._execution_expires_at = NEW
     recovered.summary_value = {'original': deepcopy(case.original), 'authorization_id': case.authorization['authorization_id'],
         'expires_at': OLD, 'accounts': {name: {'operation_id': value} for name, value in case.mapping.items()},
         'calendar_deadline_extension': {'expires_at': NEW}, 'calendar_task_scope': deepcopy(case.scope)}
@@ -217,6 +218,49 @@ def install_context_mock(case, monkeypatch):
     monkeypatch.setattr(ResearchCampaignV1, 'peek_status', lambda campaign: deepcopy(case.view))
     monkeypatch.setattr(ResearchCampaignV1, 'status', lambda campaign: deepcopy(case.view))
     return recovered, calls
+
+
+@pytest.mark.parametrize('stage', ['VERIFICATION', 'REPORT'])
+def test_second_deadline_only_follows_the_same_completed_pair(frozen_task, stage):
+    case = frozen_task
+    deadline = '2100-01-01T00:00:00+00:00'
+    item = deepcopy(case.scope['compute_operations'][stage])
+    for operation in case.operations.values():
+        operation['governance_continuation'] = {'execution_expires_at': deadline}
+    before = deepcopy((case.authorization, case.operations, case.scope, item))
+    assert calendar.calendar_operation_deadline(case.authorization, case.operations, item) == deadline
+    assert (case.authorization, case.operations, case.scope, item) == before
+    stress = case.operations[case.mapping['RULE_STRESS']]
+    stress['governance_continuation']['execution_expires_at'] = NEW
+    assert calendar.calendar_operation_deadline(case.authorization, case.operations, item) == OLD
+    stress['governance_continuation']['execution_expires_at'] = deadline
+    stress['status'] = 'RUNNING'
+    assert calendar.calendar_operation_deadline(case.authorization, case.operations, item) == OLD
+
+
+@pytest.mark.parametrize('stage', ['VERIFICATION', 'REPORT'])
+def test_second_calendar_deadline_preserves_meter_and_requires_fresh_parent_installation(frozen_task, monkeypatch, stage):
+    case = frozen_task
+    recovered, calls = install_context_mock(case, monkeypatch)
+    deadline = '2100-01-01T00:00:00+00:00'
+    recovered._execution_expires_at = deadline
+    for operation in case.operations.values():
+        operation['governance_continuation'] = {'execution_expires_at': deadline}
+    binding = {'phase': 'EXPLORATION', 'batch_id': 'original_batch',
+        'binding_id': case.request['research_binding_ref']['binding_id'], 'expires_at': OLD}
+    monkeypatch.setattr(CampaignScopeV1, 'resolve', lambda *args, **kwargs: deepcopy(binding))
+    before = {key: Path(row['path']).read_bytes() for key, row in case.original.items()}
+    meter = calendar.calendar_compute_governance_v1(case.account/('COMPUTE_'+stage),
+        case.authority, case.request, stage)
+    assert meter.binding == calendar._compute_binding(case.scope, case.request, stage)
+    assert meter._active_deadline() == deadline
+    assert meter.binding['expires_at'] == OLD and meter.budget_key == stable_hash(case.authority)
+    assert before == {key: Path(row['path']).read_bytes() for key, row in case.original.items()}
+    previous = len(calls)
+    case.operations[case.mapping['RULE_STRESS']].pop('governance_continuation')
+    with pytest.raises(PermissionError, match='CONTINUATION_INSTALLATION_REQUIRED'):
+        meter.active()
+    assert len(calls) > previous and calls[-1] is True
 
 
 def test_context_never_caches_recovery_or_installed_parent_view(frozen_task, monkeypatch):

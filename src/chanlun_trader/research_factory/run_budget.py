@@ -16,7 +16,8 @@ from .budget import BudgetExhaustedError, BudgetLedgerMismatchError
 from .common import now_timestamp, stable_hash
 
 
-CALENDAR_DERIVED_FIELDS = frozenset({'execution_expires_at', 'calendar_task_scope', 'calendar_task_deadline_proof'})
+CALENDAR_DERIVED_FIELDS = frozenset({'execution_expires_at', 'calendar_task_scope', 'calendar_task_deadline_proof',
+    'governance_continuation'})
 
 
 def effective_operation_upper_bounds(operation):
@@ -30,6 +31,11 @@ def effective_execution_total_seconds(operation):
 
 def effective_execution_expires_at(authorization, operation):
     """日历后继仅投影到已验证安装的原恢复用途。"""
+    continuation = operation.get('governance_continuation')
+    if continuation is not None:
+        if operation.get('failed_account_recovery_proof') is None:
+            raise BudgetLedgerMismatchError('CAMPAIGN_GOVERNANCE_CONTINUATION_WITHOUT_RECOVERY')
+        return continuation['execution_expires_at']
     if operation.get('execution_expires_at') is not None:
         if operation.get('failed_account_recovery_proof') is None and operation.get('calendar_task_deadline_proof') is None:
             raise BudgetLedgerMismatchError('CAMPAIGN_CALENDAR_DEADLINE_WITHOUT_RECOVERY')
@@ -842,7 +848,7 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
     def campaign_view(self):
         authorization, base_authorization, operations, stages = None, None, {}, {}
         paused, revoked, grants = False, False, {}
-        for event in self._events:
+        for event_index, event in enumerate(self._events):
             startup_checkpoint('CAMPAIGN_EVENT_REPLAY')
             kind, item = event['event_type'], event['payload']
             if set(item) & (CALENDAR_DERIVED_FIELDS | {'effective_upper_bounds', 'effective_total_seconds',
@@ -885,7 +891,7 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
                 from .failed_account_calendar_scope_v1 import calendar_operation_deadline
                 deadline = calendar_operation_deadline(authorization, operations, item)
                 if deadline != authorization['expires_at']:
-                    sources = [op for op in operations.values() if op.get('execution_expires_at') == deadline
+                    sources = [op for op in operations.values() if effective_execution_expires_at(authorization, op) == deadline
                         and item in op.get('calendar_task_scope', {}).get('compute_operations', {}).values()]
                     if not sources or len({stable_hash(op['failed_account_recovery_proof']) for op in sources}) != 1:
                         raise BudgetLedgerMismatchError('CAMPAIGN_CALENDAR_COMPUTE_BINDING_CONFLICT')
@@ -896,6 +902,9 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
                 _apply_account_purpose_time_extension(authorization, base_authorization, operations, item, revoked)
             elif kind == 'CAMPAIGN_FAILED_ACCOUNT_RECOVERY_INSTALLED':
                 _apply_failed_account_recovery(authorization, base_authorization, operations, item, revoked)
+            elif kind == 'CAMPAIGN_GOVERNANCE_SOURCE_CONTINUATION_INSTALLED':
+                from .governance_source_continuation_v2 import apply_parent_continuation
+                apply_parent_continuation(authorization, operations, item, revoked, event_index=event_index)
             elif kind == 'CAMPAIGN_FAILED_ACCOUNT_RECOVERY_UNKNOWN':
                 operation = operations.get(item.get('operation_id'))
                 recovery = operation.get('failed_account_recovery') if operation else None
@@ -1022,6 +1031,9 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
                         expires_at = datetime.fromisoformat(effective_execution_expires_at(authorization, operation))
                         if revoked or paused or dispatched_at.tzinfo is None or dispatched_at >= expires_at:
                             raise ValueError('FAILED_ACCOUNT_RECOVERY_DISPATCH_NOT_AUTHORIZED')
+                        continuation = operation.get('governance_continuation')
+                        if continuation is not None and dispatched_at < datetime.fromisoformat(continuation['installed_at']):
+                            raise ValueError('GOVERNANCE_CONTINUATION_DISPATCH_BEFORE_INSTALLATION')
                     except (ValueError, TypeError, KeyError) as exc:
                         raise BudgetLedgerMismatchError('CAMPAIGN_FAILED_ACCOUNT_RECOVERY_DISPATCH_CONFLICT') from exc
                 if (type(item.get('segment_number')) is not int or item['segment_number'] != len(segments)+1
@@ -1103,13 +1115,17 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
         if set(payload) & CALENDAR_DERIVED_FIELDS:
             raise BudgetLedgerMismatchError('CAMPAIGN_CALENDAR_DEADLINE_DERIVED_FIELDS_FORBIDDEN')
         if kind in ('CAMPAIGN_ACCOUNT_PURPOSE_TIME_EXTENDED', 'CAMPAIGN_FAILED_ACCOUNT_RECOVERY_INSTALLED',
+                    'CAMPAIGN_GOVERNANCE_SOURCE_CONTINUATION_INSTALLED',
                     'CAMPAIGN_FAILED_ACCOUNT_RECOVERY_UNKNOWN', 'CAMPAIGN_FAILED_ACCOUNT_RECOVERY_SETTLED'):
             # 校验完整原子结果后才提交；无效许可不能污染权威事件流。
             candidate={'event_type':kind, 'payload':deepcopy(payload)}
             self._events.append(candidate)
             try:
-                self.campaign_view()
+                checked_view = self.campaign_view()
             finally:
                 self._events.pop()
+            if kind == 'CAMPAIGN_GOVERNANCE_SOURCE_CONTINUATION_INSTALLED':
+                from .governance_source_continuation_v2 import validate_parent_submission
+                validate_parent_submission(checked_view['authorization'], payload)
         self._append_event(kind, payload)
         self._persist()

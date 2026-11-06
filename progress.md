@@ -4405,3 +4405,48 @@ H5当前源码局部111PASS/1原权限SKIP；有限计量自然退出1，Missing
 改动文件：src/chanlun_trader/research_factory/etf_account_governance_v1.py修正额度传递；tests/research_factory/test_account_segment_deadline_race_v1.py覆盖正常及拒绝／恢复边界；.github/workflows/autonomous-completion.yml追加该测试到现有双OS预算组；docs/recovery-segment-deadline-fix-20261106.md记录实际证据与待批准接续范围；progress.md仅追加本条。工程核对脚本和原件索引在reports/recovery_segment_deadline_20261106，未作为产品运行入口。
 
 回滚点：52fd759e8d1250c6279c610c0af61a702011566e；可反向应用本次补丁或对本次提交执行git revert。原账户日、费用、Owner和旧MANIFEST未修改，不能回滚经济历史。原人工Owner已于2026-10-28T19:43:45.280534+08:00到期，V1一次读取器换源槽已使用且不含ETF文件；第二次协议与人工新期限须明确批准后实施和验证，再绑定全部适用门槛后接STRESS第478日／第65段。真实期限已过，无真实入口；定时任务504保持取消。
+
+
+## 2026-11-06 - Task: 按人类批准实施一次追加治理接续和有限人工期限
+
+### What was done
+
+人类在确认不重跑981日后明确答复“那我批准”。已保存本次批准原件E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\HUMAN_APPROVED_ARTIFICIAL_SECOND_GOVERNANCE_CONTINUATION_20261106T033700746208Z.json，批准范围为同人工根一次追加治理换源及实际限时签发起72小时，原72000／global288002、981日和135段费用保持。它是协议实施权限，不是Owner已签发或账户已恢复。已在独立工作树开始实现V2协议，保留V1 MANIFEST／旧期限，通过新槽、独立Owner摘要和父零预算增量事件绑定第二次接续；72小时尚未开始计时。
+
+### Testing
+
+新代码已通过语法编译和git diff --check；当前仅启动新人工协议smoke R1（运输51188），未取得结果，不标通过。先前45项本机派发修复回归只证明35f3同字节补丁，不代替本次新协议、CI／228／90或最终验收。原人工账户未新派发，旧关闭运输没有重启。
+
+### Notes
+
+当前源码改动涉及治理接续新模块及原七文件白名单内的必要接口，经济代码、输入、计划及原预算不得更改；具体清单随实际冻结来源更新。四JSON状态已同步“批准后实施中”，REAL_ACCEPTANCE_STATUS_CN.md和docs/recovery-validation-direct-control-20261023.md追加状态，主／独立WT progress.md仅追加。正式记录E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_HUMAN_APPROVED_SECOND_PROTOCOL_IMPLEMENTING_20261106T035143380664Z.json；元数据回滚点E:\worktrees\recovery-segment-deadline\trade-system-contract-port-v1\reports\recovery_segment_deadline_20261106\human_approval_state_backups与HUMAN_APPROVAL_STATE_BACKUP_MANIFEST.json；不能以回滚删除人类批准、账户日、费用或旧控制。真实期限已过，真实277／0／原50FAILED保持，不在本批准范围内。
+
+
+## 2026-11-06 - Task: 核对协议测试迭代并保留981日接续点
+
+### What was done
+
+已闭环读取R1的实际XML：1ERROR，原因是旧scope读取器拒绝新V2兼容标记；只增加精确标记识别，未知标记仍拒绝。R1运输最终读取为Unknown process ID，退出码未知，不标通过。R2在发现测试使用无效的JSON空白变更后受控关闭，最终code1／natural_exit=false；订正为删除Owner及改变标记内容，产品拒绝未削弱。当前仅R3人工协议测试运输39381活动，原981日账户运输仍为空。
+
+### Testing
+
+R3尚未取得自然结果。限定只读审查发现新父事件缺少“候选重放后、实际追加前”的最终Owner／规范槽／实时截止检查，已接受并准备补齐；不把已有旧45项或本轮未完成测试算作新协议通过。原981日CP与真实四SHA实际保持，STRESS第65段不存在；72小时尚未签发计时。R1、R2及原失败演练证据保留，不重跑旧账户链。
+
+### Notes
+
+本轮更新四JSON状态，修正旧51188活动观察为当前39381；CN、direct-control及两份progress只追加。独立WT新增协议操作文档及最终提交时刻的隔离回归候选，CI原双OS治理组追加V2测试；它们均未作为已执行门禁。正式记录E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_SECOND_PROTOCOL_R3_SERIAL_VALIDATION_20261106T075806592779Z.json，元数据回滚点E:\worktrees\recovery-segment-deadline\trade-system-contract-port-v1\reports\recovery_segment_deadline_20261106\protocol_iteration_backups_20261106T075806592779Z/MANIFEST.json。原预算、计划、经济来源和输入不改；源码回滚点35f3a4b7366e39f8daf297a5eed754690d470cd1，仅供工程比较，不能回滚账户日、费用、Owner或控制历史。真实期限已过，不作真实部署或派发。
+
+
+## 2026-11-06 - Task: 实施获批的第二次人工治理接续并修复父激活提交边界
+
+### What was done
+
+新增V2接续协议与八个治理接口的必要适配，保留V1原件及原981日／135费，通过独立槽与零预算父事件限定一次追加治理版本和有限人工期限。旧恢复事件与原期限不重写；新有效期限须父激活后才用于原双ACCOUNT与其精确核账／报告用途。实际Owner尚未签发，72小时未开始，原根尚未安装。新增中文操作文档，原已批准提案SHA保持。
+
+### Testing
+
+R1实际1ERROR已保留；R2因订正测试输入受控退出；R3因限定实审发现提交边界问题受控关闭，code1／natural_exit=false，均不标通过。父事件提交缺口先复现1FAIL／4.89秒，再修复为7PASS／1.60秒，拒绝路径真实budget文件零写；75项日历／凭证兼容通过，原始完整Owner期限用例明确留给下一组，不冒充已执行。限定实际源码复审已核闭合，findings=[]；存根提交回归不代替完整合法V2来源链验证。下一步以冻结新来源执行原十selectors、附加V1／V2与派发回归，再接原五文件90，未启动新账户或重跑981日。
+
+### Notes
+
+改动文件：新增governance_source_continuation_v2.py与两个V2回归文件；governance_source_revision_v1.py、failed_account_recovery_v1.py、account_version_continuation_v1.py绑定双版本来源链；run_budget.py、research_campaign_v1.py增加唯一父事件和提交前fresh截止；etf_account_governance_v1.py、failed_account_calendar_scope_v1.py投影原用途有限期限；campaign_scope_v1.py精确识别V2标记；test_failed_account_calendar_scope_v1.py补收尾继承／fresh用例；autonomous-completion.yml追加原双OS组；docs/recovery-governance-continuation-v2-20261106.md说明签发和接续。证据位于reports/recovery_segment_deadline_20261106/V2_SUBMISSION_RED_GREEN_AND_FAST75.json和V2_PROTOCOL_LIMITED_ACTUAL_REVIEW_R2.json。工程回滚点35f3a4b7366e39f8daf297a5eed754690d470cd1；不得回滚账户日／费用／Owner／控制。所有原预算和经济输入保持，真实期限已过，无真实动作；全门禁与最终53refs仍未过。

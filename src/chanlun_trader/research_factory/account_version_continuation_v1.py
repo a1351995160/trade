@@ -691,13 +691,14 @@ class AccountVersionContinuationV1:
                     previous['new_sha256'] = row['new_sha256']
         revision = getattr(self.recovery, 'governance_revision', None)
         if revision is not None:
-            for row in revision.summary['source_replacements']:
-                previous = mapping.get(row['path'])
-                if previous is None:
-                    mapping[row['path']] = {key: deepcopy(row[key]) for key in ('path', 'old_sha256', 'new_sha256', 'archive_ref')}
-                else:
-                    _require(previous['new_sha256'] == row['old_sha256'], 'GOVERNANCE_REVISION_SOURCE_CHAIN_CONFLICT')
-                    previous['new_sha256'] = row['new_sha256']
+            for replacements in revision.replacement_chain():
+                for row in replacements:
+                    previous = mapping.get(row['path'])
+                    if previous is None:
+                        mapping[row['path']] = {key: deepcopy(row[key]) for key in ('path', 'old_sha256', 'new_sha256', 'archive_ref')}
+                    else:
+                        _require(previous['new_sha256'] == row['old_sha256'], 'GOVERNANCE_REVISION_SOURCE_CHAIN_CONFLICT')
+                        previous['new_sha256'] = row['new_sha256']
         return list(mapping.values())
 
     def approved_runtime_sources(self):
@@ -709,8 +710,8 @@ class AccountVersionContinuationV1:
         revision = getattr(self.recovery, 'governance_revision', None)
         if revision is not None:
             mapping = {row['path']: row for row in revision.current_runtime_refs(list(mapping.values()))}
-            added = revision.summary['added_runtime_ref']
-            mapping[added['path']] = deepcopy(added)
+            for added in revision.runtime_additions():
+                mapping[added['path']] = deepcopy(added)
         return list(mapping.values())
 
     def _dispatch_path(self, name, number):

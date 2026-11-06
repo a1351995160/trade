@@ -129,6 +129,17 @@ class GovernanceSourceRevisionV1:
     @classmethod
     def read(cls, root, recovery_reference, recovery, job, expires_at, *, for_dispatch=False):
         root = Path(root)
+        second = Path(recovery['original']['task']['path']).parent / 'failed-account-recoveries' / 'governance-source-continuation-v2'
+        second_key = stable_hash(['OWNER_GOVERNANCE_SOURCE_CONTINUATION_V2', str(root), recovery['task_id'], recovery['recovery_id']])
+        second_slot = Path(recovery['approval_store']) / 'governance-source-continuation-bindings' / (second_key + '.json')
+        second_marker = _legacy_marker(root, recovery).with_name('GOVERNANCE_SOURCE_CONTINUATION_V2.json')
+        for path, boundary in ((second / 'MANIFEST.json', root), (second_slot, Path(recovery['approval_store'])),
+                (second_marker, root)):
+            validated_reference_path(path, root=boundary, error_code='GOVERNANCE_SOURCE_REVISION_PATH_INVALID')
+        if any(path.exists() for path in (second / 'MANIFEST.json', second_slot, second_marker)):
+            from .governance_source_continuation_v2 import GovernanceSourceContinuationV2
+            return GovernanceSourceContinuationV2.read(root, recovery_reference, recovery, job, expires_at,
+                for_dispatch=for_dispatch)
         folder, slot = _paths(root, recovery)
         manifest_path = folder / 'MANIFEST.json'
         marker = _legacy_marker(root, recovery)
@@ -230,6 +241,12 @@ class GovernanceSourceRevisionV1:
     def current_runtime_refs(self, historical_refs):
         return [{'path': row['path'], 'sha256': self.expected_digest(row['path'], row['sha256'])}
             for row in historical_refs]
+
+    def runtime_additions(self):
+        return [deepcopy(self.summary['added_runtime_ref'])]
+
+    def replacement_chain(self):
+        return [self.summary['source_replacements']]
 
     def validate_sources(self):
         for row in self.mapping.values():
