@@ -207,3 +207,9 @@
 /tests/benchmarks/compare_checkpoint_revision_read_v1.py text eol=lf
 /tests/research_factory/test_governance_source_revision_v1.py text eol=lf
 /tests/research_factory/test_verified_json_hash_v1.py text eol=lf
+
+# 第二次治理接续及段限额回归固定实际LF字节，供精确CI和Owner绑定。
+/src/chanlun_trader/research_factory/governance_source_continuation_v2.py text eol=lf
+/tests/research_factory/test_governance_source_continuation_v2.py text eol=lf
+/tests/research_factory/test_governance_continuation_submission_v2.py text eol=lf
+/tests/research_factory/test_account_segment_deadline_race_v1.py text eol=lf

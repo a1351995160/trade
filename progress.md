@@ -4450,3 +4450,18 @@ R1实际1ERROR已保留；R2因订正测试输入受控退出；R3因限定实�
 ### Notes
 
 改动文件：新增governance_source_continuation_v2.py与两个V2回归文件；governance_source_revision_v1.py、failed_account_recovery_v1.py、account_version_continuation_v1.py绑定双版本来源链；run_budget.py、research_campaign_v1.py增加唯一父事件和提交前fresh截止；etf_account_governance_v1.py、failed_account_calendar_scope_v1.py投影原用途有限期限；campaign_scope_v1.py精确识别V2标记；test_failed_account_calendar_scope_v1.py补收尾继承／fresh用例；autonomous-completion.yml追加原双OS组；docs/recovery-governance-continuation-v2-20261106.md说明签发和接续。证据位于reports/recovery_segment_deadline_20261106/V2_SUBMISSION_RED_GREEN_AND_FAST75.json和V2_PROTOCOL_LIMITED_ACTUAL_REVIEW_R2.json。工程回滚点35f3a4b7366e39f8daf297a5eed754690d470cd1；不得回滚账户日／费用／Owner／控制。所有原预算和经济输入保持，真实期限已过，无真实动作；全门禁与最终53refs仍未过。
+
+
+## 2026-11-06 - Task: 固定新接续来源的跨平台检出字节
+
+### What was done
+
+为新增V2模块、两份V2回归和本次派发上限回归补充四条LF属性，避免Windows检出默认转换使精确来源SHA漂移。现有产品、测试和已批准提案字节未转码。
+
+### Testing
+
+上一提交ba0a46f7615838de632712037d6679fe7deafd13的产品／测试字节保持，新增属性与实际LF一致。下一步冻结完整Git filtered来源后执行必要组；该属性提交不把待运行测试标为通过。
+
+### Notes
+
+仅.gitattributes追加四条定点属性、progress.md追加本条。回滚可git revert本属性提交；不能回滚账户／费用／Owner历史。
