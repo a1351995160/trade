@@ -173,6 +173,7 @@ def _verify_segment_resources(job, name, aggregate, settlement, context, operati
     _require(aggregate.get('active_metering') is True and aggregate.get('segment_count') == len(state['segments'])
         and aggregate.get('segments') == [row['charge']['charge_id'] for row in state['segments']], 'RESOURCE_CHAIN_CONFLICT')
     receipt = original._json(root / 'CONFIRMATION.json')
+    repair = getattr(getattr(context.recovery, 'governance_revision', None), 'repair', None)
     measured = conservative = historical_failed = 0.
     for index, row in enumerate(state['segments']):
         dispatch, charge = row['dispatch'], row['charge']
@@ -190,9 +191,11 @@ def _verify_segment_resources(job, name, aggregate, settlement, context, operati
             and original._sha(resource_path) == charge['evidence_identity'], 'SEGMENT_RESOURCE_RECEIPT_CONFLICT')
         original._same(resource['elapsed_wall_seconds'], charge['seconds'], 'SEGMENT_MEASUREMENT_CONFLICT', 1e-6)
         if charge['outcome'] == 'FAILED':
-            _require(name == context.recovery.original_failed_account and number == count == FAILED_SEGMENT_COUNT
-                and boundary['parent_operation']['segments'][index]['outcome'] == 'FAILED'
-                and resource.get('dispatch_id') == dispatch['dispatch_id']
+            original_failed = (name == context.recovery.original_failed_account and number == count == FAILED_SEGMENT_COUNT
+                and boundary['parent_operation']['segments'][index]['outcome'] == 'FAILED')
+            repaired_failed = (repair is not None and repair.purpose == name and number == repair.boundary['segment_count']
+                and charge['evidence_identity'] == repair.summary['failure_refs']['RESOURCE']['sha256'])
+            _require((original_failed or repaired_failed) and resource.get('dispatch_id') == dispatch['dispatch_id']
                 and (resource.get('returncode') != 0 or resource.get('timed_out') is True),
                 'FAILED_SEGMENT_NOT_ORIGINAL_BOUNDARY')
             historical_failed += charge['seconds']; measured += charge['seconds']
@@ -280,7 +283,7 @@ def verify_failed_account_recovery_evidence(job_path, *, name, audit_checkpoint_
                 and pd.Timestamp(original_start['started_at']) <= pd.Timestamp(start['started_at'])
                 < pd.Timestamp(context.recovery.execution_expires_at)
                 and pd.Timestamp(start['started_at']) <= pd.Timestamp(settlement['settled_at']), 'AUTHORIZATION_TIME_CONFLICT')
-            if name == context.recovery.original_failed_account:
+            if paths['start'] != root / (name + '_START.json'):
                 _require(start.get('original_start_sha256') == original._sha(root / (name + '_START.json'))
                     and start.get('original_settlement_sha256') == original._sha(root / (name + '_SETTLEMENT.json'))
                     and start.get('reuses_original_consumed_purpose') is True
@@ -317,6 +320,14 @@ def verify_failed_account_recovery_evidence(job_path, *, name, audit_checkpoint_
             if name == context.recovery.original_failed_account:
                 _require(result['artifacts']['days'][:COMMITTED_DAYS] == original_checkpoint['artifacts']['days'],
                     'RESULT_ORIGINAL_DAY_PREFIX_CHANGED')
+            revision = getattr(context.recovery, 'governance_revision', None)
+            repair = getattr(revision, 'repair', None)
+            if repair is not None and repair.purpose == name:
+                previous = read_pinned_json(revision.summary['accounts'][name]['checkpoint_archive'], root=context.root,
+                    error_code='ARTIFICIAL_STRESS_REPAIR_ORIGINAL_CHECKPOINT_CHANGED')
+                prefix = previous['artifacts']['days']
+                _require(result['artifacts']['days'][:len(prefix)] == prefix
+                    and result['execution_identity'] == previous['execution_identity'], 'RESULT_ORIGINAL_DAY_PREFIX_CHANGED')
             from .universe_execution_artifacts_v1 import hydrated_result
             hydrated = hydrated_result(result)
             checkpoint = Path(item['backend_options']['checkpoint_path'])

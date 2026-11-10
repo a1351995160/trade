@@ -11,7 +11,7 @@ from .budget import BudgetExhaustedError, BudgetLedgerMismatchError
 from .common import stable_hash
 from .mutation_boundary import ObjectiveMutationLock
 from .run_budget import (AutonomousRunBudgetV2, effective_operation_upper_bounds,
-                         effective_execution_total_seconds, effective_segment_allowance,
+                         effective_execution_total_seconds, effective_execution_charge_ceiling, effective_segment_allowance,
                          effective_execution_status, execution_dispatch_identity, effective_execution_expires_at)
 
 STAGES = ('EXPLORATION', 'CONFIRMATION', 'OBSERVATION')
@@ -463,11 +463,28 @@ class ResearchCampaignV1:
             budget.campaign_event(EVENT, {'proof':context.proof(), 'installed_at':now.isoformat()})
             return deepcopy(budget.campaign_view()['operations'])
 
+    def install_artificial_stress_repair(self, reference):
+        """仅以已签名的人工失败边界恢复一次原用途，保留旧结算。"""
+        from .artificial_stress_repair_v1 import EVENT, resolve_repair, validate_parent_boundary
+        with self._lock():
+            budget, view = self._budget_with_view()
+            predecessor, repair = resolve_repair(self.root, reference, self.authorization_id,
+                view['authorization']['objective_id'])
+            validate_parent_boundary(predecessor, repair, view['authorization'], view['operations'], view.get('revoked', False))
+            repair.validate_boundary(exact=True)
+            budget.campaign_event(EVENT, {'proof': repair.proof(), 'installed_at': datetime.now(timezone.utc).isoformat()})
+            return deepcopy(budget.campaign_view()['operations'])
+
     @staticmethod
     def _execution_limit_from_view(view, operation_id):
         """仅投影本次已完整验证的父视图；不读取或保存跨调用状态。"""
         operation=view['operations'][operation_id]
-        return {'profile':deepcopy(operation['execution_profile']),
+        recovery = operation.get('failed_account_recovery') or {}
+        repair_limit = {}
+        if 'charge_ceiling_seconds' in recovery:
+            repair_limit = {'failure_attempt_boundary': deepcopy(recovery['boundary']),
+                'charge_ceiling_seconds': effective_execution_charge_ceiling(operation)}
+        return {**repair_limit, 'profile':deepcopy(operation['execution_profile']),
             'execution_expires_at': effective_execution_expires_at(view['authorization'], operation),
             'effective_total_seconds':effective_execution_total_seconds(operation),
             'time_extension_proof':deepcopy(operation.get('account_purpose_time_extension')),
@@ -508,8 +525,12 @@ class ResearchCampaignV1:
                 if resolved['proof'] != proof:
                     raise PermissionError('CAMPAIGN_ACCOUNT_TIME_EXTENSION_PROOF_CONFLICT')
             now=datetime.now(timezone.utc)
+            repaired_at = (recovery or {}).get('repair_installed_at')
+            if repaired_at is not None and now < _timestamp(repaired_at):
+                raise PermissionError('ARTIFICIAL_STRESS_REPAIR_DISPATCH_BEFORE_INSTALLATION')
             allowed=effective_segment_allowance(value,operation.get('active_wall_seconds',0),
                 effective_total_seconds=effective_execution_total_seconds(operation), time_extension_proof=proof,
+                charge_ceiling_seconds=(recovery or {}).get('charge_ceiling_seconds'),
                 seconds_to_expiry=(_timestamp(effective_execution_expires_at(view['authorization'],operation))-now).total_seconds())
             upper=allowed if upper_bound_seconds is None else upper_bound_seconds
             if type(upper) not in (int,float) or not 0 < upper <= allowed or (proof is not None and upper <= 70):

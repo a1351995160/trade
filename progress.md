@@ -4573,3 +4573,63 @@ JOB绑定先1FAIL再相关22PASS，限定实际源码实审已闭合；R5自然1
 A7FD原必要组自然303PASS／0FAIL,ERROR,SKIP，测试5264.92秒、外层5279.434733秒、changed=[]，99590已最终读闭。A7FD的91CI最终87SUCCESS／4FAILURE；四个失败任务均同5项缺字段错误，全部原日志已保存。修复后17PASS／6.69秒／零FAIL,ERROR,SKIP，XML E:\t\gsc2_jsonfix_20261107.xml SHA e07d22271580a516c2878986caee232bb7782d10a6d511183e5d51974be936d6。该短组是提交前证据，不代替提交后完整来源门禁。
 ### Notes
 未创建Owner或第65段；原981/1008日、135段结清费、72000/global288002和fresh校验保持。新精确来源需跑原十selectors＋四份协议文件＋修改的resolver文件，再原五文件90及全部CI实际原件。回滚点A7FD提交及 E:\worktrees\recovery-segment-deadline\trade-system-contract-port-v1\reports\recovery_segment_deadline_20261106\resolver_fixture_commit_backups_20261106T225747703981Z\MANIFEST.json；可恢复本次单文件测试改动并保留失败与验证原件，不回滚账户历史。
+
+
+## 2026-11-07 - Task: 修复已批准治理版本的工作进程校验
+
+### What was done
+
+2026-11-07 工作进程校验修复已在独立工作树本机验证。原入口漏掉运行时摘要的签名版本投影。修复仅调整worker准备、公共run和fresh guard的内存核验，保留原任务、计划、报告身份及88份经济代码。新用例9项通过。本机合计61个不同用例通过。首次27项Windows默认临时路径准备错误，使用短路径仅补测这27项。原人工检查点保持981日，已结清136笔费用。STRESS第65段失败终态仍保留。后续如获仅限本次人工STRESS失败恢复与已验证源码换入的明确授权，须先验证新协议和精确源码全门禁。从第478日、第66段接续，最多使用19578秒原未用父预留，保留原总预算与现有人工期限。本机修复记录 E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_WORKER_RUNTIME_PROJECTION_LOCAL_VERIFIED_20261107T142646110116Z.json SHA 28e7209247b9b50cf2f0f1a1103b2cd1ce917a077e8606ef3f3b43abc3e2c795。
+
+### Testing
+
+复现4项红基线。新增9项验证原入口、合法V1/V2投影、篡改拒绝、错计划和错输入拒绝、后续fresh撤销及运行中源码变化。原签名计划只读对照中两套计划的24份Python引用均匹配批准字节。原27项准备错误及其短路径补测XML均保留。当前修改还需独立复审和新精确来源门禁。
+
+### Notes
+
+独立工作树 E:\worktrees\recovery-worker-plan-verification\trade-system-contract-port-v1，变更为scripts/run_strategy_account_v1.py、tests/research_factory/test_long_horizon_cooperative_deadline_v1.py及进度记录。源码基线0e870b7c。元数据回滚点 E:\worktrees\recovery-segment-deadline\trade-system-contract-port-v1\reports\recovery_segment_deadline_20261106\worker_projection_local_verified_state_backups_20261107T142646110116Z\MANIFEST.json，按三方方式保留后续历史。原人工根的安装、失败结算和检查点保持，暂无第66段、真实账户动作或合并部署。
+
+
+## 2026-11-08 - Task: 人工 STRESS65 单次接续实现与复验
+
+### What was done
+
+2026-11-08 人工 STRESS 单次接续已获明确授权。原演练 981/1008 日，已结清 136 笔费用。接续保留第 65 段 FAILED 和原扣费，原预留上限 19578 秒，原人工期限为北京时间 2026-11-10 16:15:40.258615。独立工作树已实现签名 JOB 锁定、激活时间校验、原检查点字节和归档内容校验。首轮 24 项通过，1 项因新夹具缺少 RESOURCE 凭证失败，3 项因测试进程 Git 安全目录配置报错。限定复验已启动。原根尚未签发新 Owner、安装源码或派发第 66 段。记录 E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_APPROVED_ONE_STRESS65_REPAIR_R2_PROTOCOL_TEST_ACTIVE_20261107T215133223514Z.json SHA ccd41a0e2c58c18957339e076300abbf3e6cbf07df430c6a0450b548a4c81cfa。
+
+### Testing
+
+首轮原始 XML 位于 E:/t/sr_g1.xml，结论未通过。限定复验尚无自然结果。
+
+### Notes
+
+若弃用候选，保留原根和旧失败记录，使用 0e870b7c 作为源码回滚点。修改前的备份保存在 E:\worktrees\recovery-worker-plan-verification\trade-system-contract-port-v1\reports\recovery_artificial_stress_20261108\state_backups_20261107T215133223514Z。
+
+
+## 2026-11-10 - Task: 修复人工 STRESS 接续清单发现冲突
+
+### What was done
+
+2026-11-10 11:20:06 人工 STRESS 单次接续复验。R2 的 4 项通过，安装正向用例触发原恢复清单唯一性检查。将新接续清单改为独立文件名 REPAIR_MANIFEST.json，保留原恢复清单发现、签名和规范槽验证。CPython 3.13.5 已从本地保留分发恢复到原虚拟环境所需路径。新独立夹具 R3 已启动，原 981 日、136 笔费用和真实四原件保持。人工期限仍是北京时间 2026-11-10 16:15:40.258615。没有新的人工 Owner、安装或第 66 段派发。记录 E:\llmwiki\trade-system-contract-port-v1\reports\continuous_universe_real_acceptance_20261010\initialization_recovery_20261012\PRODUCTION_APPROVED_STRESS65_R2_DISCOVERY_FAIL_CLOSED_R3_ACTIVE_20261110T032006256866Z.json SHA 222cb3cf0606db120abb6df20414cfa4125e4828628c5d44ab2c20dee500a1e8。
+
+### Testing
+
+R2 原始 XML 位于 E:/t/sr_g2.xml。新协议安装和派发复验仍在 R3，尚无结论。
+
+### Notes
+
+独立工作树源码基线为 0e870b7c。修改前的状态、文档和进度备份保存在 E:\worktrees\recovery-worker-plan-verification\trade-system-contract-port-v1\reports\recovery_artificial_stress_20261108\state_backups_20261110T032006256866Z。
+
+
+## 2026-11-10 - Task: 隔离人工 STRESS 接续的账本标记
+
+### What was done
+
+独立接续清单已可与原恢复清单共存。R3 随后在父账本重放发现新标记占用旧协议的槽目录。将新标记移入独立目录，保留原恢复清单和槽的发现、签名及唯一性验证。新增两类路径共存回归。正式必要组先跑新接续协议，原测试和回归范围完整保留。
+
+### Testing
+
+R3 的原始 XML 为 E:/t/sr_g3.xml，1 项通过，1 项失败。路径和额度短组在 E:/t/sr_p4.xml 自然 2 项通过。签名安装、激活、派发及结算需由精确提交的正式门禁完成。
+
+### Notes
+
+原人工演练停在 981/1008 日、136 笔结清费用，现有许可的剩余额度上限 19578 秒。基线回滚点为 0e870b7c。原账本、检查点和人工期限保持。

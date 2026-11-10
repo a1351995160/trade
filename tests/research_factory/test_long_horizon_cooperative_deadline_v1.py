@@ -323,3 +323,111 @@ def test_existing_verifier_without_absolute_deadline_keeps_its_call_contract(set
                         lambda *args, **kwargs: observed.append(kwargs['segment_seconds']) or {})
     assert verify_job_evidence(path, name=name, segment_seconds=123.)['status'] == 'PASS'
     assert observed == [123.]
+
+
+@pytest.mark.parametrize(('case', 'error'), [
+    ('original', None),
+    ('signed_v1', None),
+    ('signed_v2', None),
+    ('changed_approved_file', 'RUNTIME_SOURCE_CHANGED'),
+    ('changed_other_file', 'RUNTIME_SOURCE_CHANGED'),
+    ('changed_during_run', 'RUNTIME_SOURCE_CHANGED'),
+    ('wrong_historical_receipt', 'STRATEGY_PLAN_OR_INPUT_NOT_AUTHORIZED'),
+    ('wrong_input', 'STRATEGY_PLAN_OR_INPUT_NOT_AUTHORIZED'),
+    ('revoked_on_later_guard', 'CAMPAIGN_REVOKED'),
+])
+def test_worker_checks_signed_runtime_versions_without_changing_plan_identity(tmp_path, monkeypatch, case, error):
+    from copy import deepcopy
+    import hashlib
+    from chanlun_trader.research_factory.strategy_interface_v1 import Requirements, prepare, run
+
+    class FixedStrategy:
+        strategy_id = 'FIXED'
+        parameters = {'threshold': .5}
+        requirements = Requirements('A_SHARE', 'DAY', 'RAW', (), 0, ())
+        source_files = ()
+
+    path, observed = account_worker(tmp_path, monkeypatch, clock(monkeypatch))
+    job = runner.read_json(path)
+    item = job['items']['FIXED']
+    governed = tmp_path / 'governance.py'
+    other = tmp_path / 'other.py'
+    governed.write_bytes(b'original')
+    other.write_bytes(b'unchanged')
+    digest = lambda value: hashlib.sha256(value).hexdigest()
+    item['source_hashes'] = {str(p): digest(p.read_bytes()) for p in (governed, other)}
+    strategy = FixedStrategy()
+
+    def execute(strategy, frame, actions, guard):
+        observed['account_calls'] += 1
+        guard()
+        guard()
+        if case == 'changed_during_run':
+            governed.write_bytes(b'changed after guard')
+        return {'fills': [], 'ledger': {}}
+
+    backend = SimpleNamespace(describe=lambda: {'backend': 'FIXTURE'}, check=lambda requirements: None,
+                              run=execute)
+    historical = prepare(strategy, backend, item)
+    job['plans']['FIXED'] = historical
+    path.write_text(json.dumps(job), encoding='utf-8')
+    original_job = path.read_bytes()
+    replacements = [[{'path': str(governed), 'old_sha256': digest(old), 'new_sha256': digest(new)}]
+                    for old, new in ((b'original', b'first'), (b'first', b'second'))]
+    if case != 'original':
+        if case == 'signed_v1':
+            replacements = replacements[:1]
+        revision = SimpleNamespace(replacement_chain=lambda: replacements)
+        account_version = SimpleNamespace(recovery=SimpleNamespace(governance_revision=revision),
+            active_item=lambda name: deepcopy(item), active_plan=lambda name: deepcopy(historical),
+            proof=lambda name: {}, validate_dispatch=lambda name, number: None,
+            project_receipt=lambda receipt, name: receipt)
+        monkeypatch.setattr(runner, 'validate_sources', lambda value: account_version)
+        governed.write_bytes(b'first' if case == 'signed_v1' else b'second')
+    if case == 'changed_approved_file':
+        governed.write_bytes(b'unapproved replacement')
+    if case == 'changed_other_file':
+        other.write_bytes(b'changed outside the signed chain')
+
+    receipt = {'input_identity': 'INPUT', 'strategy_plans': {'FIXED': deepcopy(historical)},
+        'novelty': {'FIXED': {'allowed': True, 'plan_id': historical['plan_id']}},
+        'execution_purpose': 'FIXED', 'execution_consumed': True}
+    if case == 'wrong_historical_receipt':
+        receipt['strategy_plans']['FIXED']['plan_id'] = 'OTHER'
+    if case == 'wrong_input':
+        receipt['input_identity'] = 'OTHER'
+    original_receipt = deepcopy(receipt)
+    governance = runner.service(job)
+    guard_calls = []
+
+    def active_execution(name):
+        guard_calls.append(name)
+        if case == 'revoked_on_later_guard' and len(guard_calls) == 4:
+            raise PermissionError('CAMPAIGN_REVOKED')
+        return deepcopy(receipt)
+
+    governance.active_execution = active_execution
+    fixture_resolve = runner.resolve
+    monkeypatch.setattr(runner, 'resolve',
+                        lambda name: (lambda: strategy) if name == 'fixture:strategy' else fixture_resolve(name))
+    monkeypatch.setattr(runner, 'backend_for', lambda strategy, options: backend)
+    monkeypatch.setattr(runner, '_execution_paused', lambda *args: False)
+    monkeypatch.setattr(runner, 'prepare', prepare)
+    monkeypatch.setattr(runner, 'run', run)
+
+    result_path = path.parent / 'FIXED_RESULT.json'
+    if error is None:
+        assert runner._long_horizon_worker(path, 'FIXED', 1) == 0
+        assert observed == {'loader_calls': 1, 'account_calls': 1}
+        assert guard_calls == ['FIXED'] * 4
+        result = runner.read_json(result_path)
+        assert result['strategy_plan'] == historical
+        assert result['report']['artifacts']['source_result']['plan_id'] == historical['plan_id']
+    else:
+        with pytest.raises(PermissionError, match=error):
+            runner._long_horizon_worker(path, 'FIXED', 1)
+        assert not result_path.exists()
+        assert observed['loader_calls'] == int(case not in ('changed_approved_file', 'changed_other_file'))
+        assert observed['account_calls'] == int(case in ('changed_during_run', 'revoked_on_later_guard'))
+    assert path.read_bytes() == original_job
+    assert receipt == original_receipt

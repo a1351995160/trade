@@ -814,7 +814,7 @@ class FailedAccountRecoveryV1:
             _require(control['head'] == value['original']['control_head']
                 and control['paused'] is control_boundary['paused'], 'CONTROL_INSTALL_BOUNDARY_CHANGED')
         if for_dispatch:
-            _dispatch_boundary(context.root, directory, base, value, reference)
+            _dispatch_boundary(context.root, directory, base, value, reference, repair=getattr(revision, 'repair', None))
         # 原摘要和原安装事件保留旧期限；只由独立批准的V2派生当前执行期限。
         if revision is not None and hasattr(revision, 'execution_expires_at'):
             execution_expires_at = revision.execution_expires_at
@@ -874,7 +874,7 @@ class FailedAccountRecoveryV1:
             'capabilities_snapshot': deepcopy(fresh.summary_value['capabilities_snapshot'])}
 
 
-def _dispatch_boundary(root, directory, base, summary, reference):
+def _dispatch_boundary(root, directory, base, summary, reference, *, repair=None):
     _, _, events = _events(root, directory, base, summary['budget_boundary'])
     proof = {'manifest_ref': reference, 'recovery_id': summary['recovery_id']}; installed = False
     for event in events[summary['budget_boundary']['line_count']:]:
@@ -885,7 +885,9 @@ def _dispatch_boundary(root, directory, base, summary, reference):
             _require(not installed and item.get('proof') == proof, 'INSTALLATION_CONFLICT'); installed = True
         if kind in ('CAMPAIGN_EXECUTION_SEGMENT_CHARGED', 'CAMPAIGN_FAILED_ACCOUNT_RECOVERY_SETTLED'):
             if item.get('failed_account_recovery_proof', item.get('proof')) == proof:
-                _require(item.get('outcome') != 'FAILED', 'SECOND_FAILURE_NO_RETRY')
+                recovered_failure = (repair is not None and kind == 'CAMPAIGN_EXECUTION_SEGMENT_CHARGED'
+                    and event['event_id'] == repair.summary['ledger']['failed_charge_event_id'])
+                _require(item.get('outcome') != 'FAILED' or recovered_failure, 'SECOND_FAILURE_NO_RETRY')
     _require(installed, 'NOT_INSTALLED')
     _require(not (Path(summary['original']['job']['path']).parent / 'REVOKED.json').exists(), 'ACCOUNT_REVOKED')
 

@@ -391,6 +391,8 @@ class StrategyBatchGovernanceV1(ETFAccountGovernanceV1):
         if (boundary is None or boundary['operation_id'] != source['operation_ids'][name]
                 or boundary['time_extension_proof'] != limit['time_extension_proof']):
             raise PermissionError('STRATEGY_FAILED_RECOVERY_BOUNDARY_CONFLICT')
+        proof_segment_count = boundary['segment_count']
+        boundary = limit.get('failure_attempt_boundary') or boundary
         expected = {'schema_version': 'strategy-account-failed-recovery-mirror-v1',
             'receipt_id': receipt['receipt_id'], 'source_identity': stable_hash(source),
             'operation_ids': deepcopy(source['operation_ids']), 'proof': deepcopy(proof)}
@@ -409,7 +411,7 @@ class StrategyBatchGovernanceV1(ETFAccountGovernanceV1):
                         error_code='STRATEGY_FAILED_RECOVERY_ORIGINAL_CHANGED') != reference['sha256']):
                     raise PermissionError('STRATEGY_FAILED_RECOVERY_ORIGINAL_CHANGED')
         return {'failed_account_recovery_proof': deepcopy(proof), 'recovery_boundary': deepcopy(boundary),
-            'effective_execution_status': limit['effective_execution_status'],
+            'proof_segment_count': proof_segment_count, 'effective_execution_status': limit['effective_execution_status'],
             'failed_account_recovery_mirror_pending': missing, 'failed_account_recovery_mirror': expected,
             'time_extension_proof': deepcopy(limit['time_extension_proof'])}
 
@@ -482,6 +484,7 @@ class StrategyBatchGovernanceV1(ETFAccountGovernanceV1):
         proof=extension['time_extension_proof'];boundary=extension['time_extension_boundary']
         recovery_proof=recovery['failed_account_recovery_proof'];recovery_boundary=recovery['recovery_boundary']
         effective_total=extension['effective_total_seconds']
+        charge_ceiling=extension.get('charge_ceiling_seconds', effective_total)
         rows=[]; charged=0.; head=None; pending=None
         charge_paths=set()
         for path in sorted(self.root.glob(name+'_SEGMENT_*_DISPATCH.json')):
@@ -489,11 +492,13 @@ class StrategyBatchGovernanceV1(ETFAccountGovernanceV1):
             dispatch=read_json(path); number=len(rows)+1
             segment_proof=proof if proof is not None and number > boundary['segment_count'] else None
             segment_recovery_proof=(recovery_proof if recovery_proof is not None
-                and number > recovery_boundary['segment_count'] else None)
+                and number > recovery['proof_segment_count'] else None)
             recovered_predecessor=(segment_recovery_proof is not None
                 and recovery_boundary['status_at_install']=='FAILED'
                 and number==recovery_boundary['next_segment_number'])
             segment_total=effective_total if segment_proof is not None else value['total_seconds']
+            if charge_ceiling != effective_total and number > recovery_boundary['segment_count']:
+                segment_total=charge_ceiling
             if (dispatch.get('segment_number') != number or dispatch.get('previous_head') != head
                     or dispatch.get('profile_hash') != value['profile_hash']
                     or dispatch.get('receipt_id') != receipt['receipt_id'] or dispatch.get('kind') != name
@@ -581,12 +586,13 @@ class StrategyBatchGovernanceV1(ETFAccountGovernanceV1):
         if recovery_mirror_pending and not _allow_missing_time_extension_mirror:
             raise PermissionError('STRATEGY_FAILED_RECOVERY_MIRROR_REQUIRED')
         failed=bool(rows and rows[-1]['charge'] and rows[-1]['charge']['outcome']=='FAILED')
-        if charged > effective_total and not failed:
+        if charged > charge_ceiling and not failed:
             raise PermissionError('STRATEGY_SEGMENT_CUMULATIVE_BOUND_EXCEEDED')
         return {'profile':value,'segments':rows,'charged_seconds':charged,'head':head,
                 'pending':pending,'next_segment_number':len(rows)+1,
-                'remaining_seconds':max(0,effective_total-charged),
+                'remaining_seconds':max(0,charge_ceiling-charged),
                 'effective_total_seconds':effective_total,'time_extension_proof':deepcopy(proof),
+                **({'charge_ceiling_seconds':charge_ceiling} if charge_ceiling != effective_total else {}),
                 'failed_account_recovery_proof':deepcopy(recovery_proof),
                 'recovery_boundary':deepcopy(recovery_boundary),
                 'effective_execution_status':recovery['effective_execution_status'],
@@ -616,7 +622,8 @@ class StrategyBatchGovernanceV1(ETFAccountGovernanceV1):
                 raise PermissionError('STRATEGY_SEGMENT_NUMBER_CONFLICT')
             now=datetime.now(timezone.utc)
             upper=effective_segment_allowance(state['profile'],state['charged_seconds'],
-                effective_total_seconds=state['effective_total_seconds'],time_extension_proof=state['time_extension_proof'],
+                effective_total_seconds=state['effective_total_seconds'], time_extension_proof=state['time_extension_proof'],
+                charge_ceiling_seconds=state.get('charge_ceiling_seconds'),
                 seconds_to_expiry=(datetime.fromisoformat(self._receipt_execution_expires_at(receipt))-now).total_seconds())
             parent=None
             if receipt['source'].get('origin') == 'CAMPAIGN_V1':

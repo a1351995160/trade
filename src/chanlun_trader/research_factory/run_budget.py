@@ -18,6 +18,7 @@ from .common import now_timestamp, stable_hash
 
 CALENDAR_DERIVED_FIELDS = frozenset({'execution_expires_at', 'calendar_task_scope', 'calendar_task_deadline_proof',
     'governance_continuation'})
+REPAIR_DERIVED_FIELDS = frozenset({'charge_ceiling_seconds', 'repair_installed_at', 'failure_attempt_boundary'})
 
 
 def effective_operation_upper_bounds(operation):
@@ -27,6 +28,12 @@ def effective_operation_upper_bounds(operation):
 
 def effective_execution_total_seconds(operation):
     return operation.get('effective_total_seconds', operation['execution_profile']['total_seconds'])
+
+
+def effective_execution_charge_ceiling(operation):
+    recovery = operation.get('failed_account_recovery') or {}
+    total = effective_execution_total_seconds(operation)
+    return recovery.get('charge_ceiling_seconds', total)
 
 
 def effective_execution_expires_at(authorization, operation):
@@ -80,11 +87,11 @@ def _recovery_segment_may_follow(operation, segments):
 
 
 def effective_segment_allowance(profile, charged_seconds, *, seconds_to_expiry,
-                                effective_total_seconds=None, time_extension_proof=None):
+                                effective_total_seconds=None, time_extension_proof=None, charge_ceiling_seconds=None):
     """纯额度计算；派发方仍须从原子预算事件复验 Owner 证明。"""
     from .universe_execution_profile_v1 import segment_allowance, validate_execution_profile
     if time_extension_proof is None:
-        if effective_total_seconds not in (None, profile['total_seconds']):
+        if effective_total_seconds not in (None, profile['total_seconds']) or charge_ceiling_seconds is not None:
             raise PermissionError('ACCOUNT_PURPOSE_TIME_EXTENSION_PROOF_REQUIRED')
         return segment_allowance(profile, charged_seconds, seconds_to_expiry=seconds_to_expiry)
     value = validate_execution_profile(profile)
@@ -98,7 +105,10 @@ def effective_segment_allowance(profile, charged_seconds, *, seconds_to_expiry,
         raise ValueError('UNIVERSE_SEGMENT_EXPIRY_INVALID')
     if seconds_to_expiry <= 0:
         raise PermissionError('UNIVERSE_EXECUTION_AUTHORIZATION_EXPIRED')
-    remaining = effective_total_seconds - charged_seconds
+    ceiling = effective_total_seconds if charge_ceiling_seconds is None else charge_ceiling_seconds
+    if type(ceiling) not in (int, float) or not 0 < ceiling <= effective_total_seconds:
+        raise PermissionError('ACCOUNT_PURPOSE_TIME_EXTENSION_LIMIT_CONFLICT')
+    remaining = ceiling - charged_seconds
     if remaining <= 0:
         raise PermissionError('UNIVERSE_EXECUTION_RESOURCE_EXHAUSTED')
     allowed = min(value['worker_seconds'], remaining, seconds_to_expiry)
@@ -851,7 +861,7 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
         for event_index, event in enumerate(self._events):
             startup_checkpoint('CAMPAIGN_EVENT_REPLAY')
             kind, item = event['event_type'], event['payload']
-            if set(item) & (CALENDAR_DERIVED_FIELDS | {'effective_upper_bounds', 'effective_total_seconds',
+            if set(item) & (CALENDAR_DERIVED_FIELDS | REPAIR_DERIVED_FIELDS | {'effective_upper_bounds', 'effective_total_seconds',
                             'account_purpose_time_extension', 'time_extension_boundary',
                             'failed_account_recovery', 'recovery_boundary'}):
                 raise BudgetLedgerMismatchError('CAMPAIGN_ACCOUNT_TIME_EXTENSION_DERIVED_FIELDS_FORBIDDEN')
@@ -905,6 +915,9 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
             elif kind == 'CAMPAIGN_GOVERNANCE_SOURCE_CONTINUATION_INSTALLED':
                 from .governance_source_continuation_v2 import apply_parent_continuation
                 apply_parent_continuation(authorization, operations, item, revoked, event_index=event_index)
+            elif kind == 'CAMPAIGN_ARTIFICIAL_STRESS_REPAIR_INSTALLED':
+                from .artificial_stress_repair_v1 import apply_parent_repair
+                apply_parent_repair(authorization, operations, item, revoked, event_index=event_index)
             elif kind == 'CAMPAIGN_FAILED_ACCOUNT_RECOVERY_UNKNOWN':
                 operation = operations.get(item.get('operation_id'))
                 recovery = operation.get('failed_account_recovery') if operation else None
@@ -1024,7 +1037,7 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
                 upper=item.get('upper_bound_seconds')
                 proof=operation.get('account_purpose_time_extension')
                 recovery_proof=operation.get('failed_account_recovery_proof')
-                total=effective_execution_total_seconds(operation)
+                total=effective_execution_charge_ceiling(operation)
                 if recovery_proof is not None or operation.get('calendar_task_deadline_proof') is not None:
                     try:
                         dispatched_at = datetime.fromisoformat(item['dispatched_at'])
@@ -1034,6 +1047,9 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
                         continuation = operation.get('governance_continuation')
                         if continuation is not None and dispatched_at < datetime.fromisoformat(continuation['installed_at']):
                             raise ValueError('GOVERNANCE_CONTINUATION_DISPATCH_BEFORE_INSTALLATION')
+                        repaired_at = (operation.get('failed_account_recovery') or {}).get('repair_installed_at')
+                        if repaired_at is not None and dispatched_at < datetime.fromisoformat(repaired_at):
+                            raise ValueError('ARTIFICIAL_STRESS_REPAIR_DISPATCH_BEFORE_INSTALLATION')
                     except (ValueError, TypeError, KeyError) as exc:
                         raise BudgetLedgerMismatchError('CAMPAIGN_FAILED_ACCOUNT_RECOVERY_DISPATCH_CONFLICT') from exc
                 if (type(item.get('segment_number')) is not int or item['segment_number'] != len(segments)+1
@@ -1112,10 +1128,12 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
     def campaign_event(self, kind, payload):
         if not kind.startswith('CAMPAIGN_'):
             raise ValueError('CAMPAIGN_EVENT_KIND_INVALID')
+        if set(payload) & REPAIR_DERIVED_FIELDS:
+            raise BudgetLedgerMismatchError('CAMPAIGN_ACCOUNT_TIME_EXTENSION_DERIVED_FIELDS_FORBIDDEN')
         if set(payload) & CALENDAR_DERIVED_FIELDS:
             raise BudgetLedgerMismatchError('CAMPAIGN_CALENDAR_DEADLINE_DERIVED_FIELDS_FORBIDDEN')
         if kind in ('CAMPAIGN_ACCOUNT_PURPOSE_TIME_EXTENDED', 'CAMPAIGN_FAILED_ACCOUNT_RECOVERY_INSTALLED',
-                    'CAMPAIGN_GOVERNANCE_SOURCE_CONTINUATION_INSTALLED',
+                    'CAMPAIGN_GOVERNANCE_SOURCE_CONTINUATION_INSTALLED', 'CAMPAIGN_ARTIFICIAL_STRESS_REPAIR_INSTALLED',
                     'CAMPAIGN_FAILED_ACCOUNT_RECOVERY_UNKNOWN', 'CAMPAIGN_FAILED_ACCOUNT_RECOVERY_SETTLED'):
             # 校验完整原子结果后才提交；无效许可不能污染权威事件流。
             candidate={'event_type':kind, 'payload':deepcopy(payload)}
@@ -1126,6 +1144,9 @@ class AutonomousRunBudgetV2(AutonomousRunBudgetV1):
                 self._events.pop()
             if kind == 'CAMPAIGN_GOVERNANCE_SOURCE_CONTINUATION_INSTALLED':
                 from .governance_source_continuation_v2 import validate_parent_submission
+                validate_parent_submission(checked_view['authorization'], payload)
+            elif kind == 'CAMPAIGN_ARTIFICIAL_STRESS_REPAIR_INSTALLED':
+                from .artificial_stress_repair_v1 import validate_parent_submission
                 validate_parent_submission(checked_view['authorization'], payload)
         self._append_event(kind, payload)
         self._persist()

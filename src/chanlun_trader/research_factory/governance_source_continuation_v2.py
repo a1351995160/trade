@@ -94,6 +94,7 @@ class GovernanceSourceContinuationV2:
         self.summary, self.predecessor = deepcopy(summary), predecessor
         self.mapping = {row['path']:row for row in summary['source_replacements']}
         self.execution_expires_at = summary['expires_at']
+        self.repair = None
 
     @classmethod
     def read(cls, root, recovery_reference, recovery, job, expires_at, *, for_dispatch=False):
@@ -112,6 +113,8 @@ class GovernanceSourceContinuationV2:
         OwnerApprovalStoreV1(recovery['approval_store']).require_json(manifest['approval_ref'], summary)
         context = cls(root, reference, summary, predecessor)
         context.job = deepcopy(job)
+        from .artificial_stress_repair_v1 import read_installed_repair
+        context.repair = read_installed_repair(context, recovery)
         context.validate_sources()
         context.validate_boundary(job, for_dispatch=for_dispatch)
         context.validate_return(for_dispatch=for_dispatch)
@@ -186,25 +189,37 @@ class GovernanceSourceContinuationV2:
     def expected_digest(self, path, predecessor_digest):
         previous = self.predecessor.expected_digest(path, predecessor_digest)
         row = self.mapping.get(str(path))
-        if row is None:
-            return previous
-        _require(previous == row['old_sha256']
-            and _ref(row['archive_ref']['path'], self.root/'reports') == row['archive_ref'], 'SOURCE_CHAIN_CHANGED')
-        return row['new_sha256']
+        if row is not None:
+            _require(previous == row['old_sha256']
+                and _ref(row['archive_ref']['path'], self.root/'reports') == row['archive_ref'], 'SOURCE_CHAIN_CHANGED')
+            previous = row['new_sha256']
+        return self._effective_digest(path, previous)
+
+    def _effective_digest(self, path, digest):
+        return self.repair.expected_digest(path, digest) if self.repair is not None else digest
 
     def current_runtime_refs(self, historical_refs):
         return [{'path':row['path'],'sha256':self.expected_digest(row['path'],row['sha256'])} for row in historical_refs]
 
     def runtime_additions(self):
         first = self.predecessor.summary['added_runtime_ref']
-        return [{'path':first['path'],'sha256':self.expected_digest(first['path'],first['sha256'])},
-            deepcopy(self.summary['added_runtime_ref'])]
+        second = self.summary['added_runtime_ref']
+        refs = [{'path':first['path'],'sha256':self.expected_digest(first['path'],first['sha256'])},
+                {'path':second['path'],'sha256':self._effective_digest(second['path'],second['sha256'])}]
+        if self.repair is not None:
+            refs.append(deepcopy(self.repair.summary['added_runtime_ref']))
+        return refs
 
     def replacement_chain(self):
-        return [self.predecessor.summary['source_replacements'], self.summary['source_replacements']]
+        chain = [self.predecessor.summary['source_replacements'], self.summary['source_replacements']]
+        if self.repair is not None:
+            chain.append(self.repair.summary['source_replacements'])
+        return chain
 
     def predecessor_capabilities(self, current):
         from .account_version_capability_bridge_v1 import _project_snapshot
+        if self.repair is not None:
+            current = _project_snapshot(current, self.repair.summary['source_replacements'])
         return self.predecessor.predecessor_capabilities(_project_snapshot(current,self.summary['source_replacements']))
 
     def validate_sources(self):
@@ -213,22 +228,30 @@ class GovernanceSourceContinuationV2:
                 and _ref(row['candidate_ref']['path'],self.root/'reports') == row['candidate_ref'], 'PREDECESSOR_SOURCE_CHANGED')
             _require(_ref(row['path'],self.root)['sha256'] == self.expected_digest(row['path'],row['old_sha256']), 'SOURCE_CHANGED')
         for row in self.mapping.values():
-            _require(_ref(row['path'],self.root)['sha256'] == row['new_sha256']
+            _require(_ref(row['path'],self.root)['sha256'] == self._effective_digest(row['path'],row['new_sha256'])
                 and _ref(row['archive_ref']['path'],self.root/'reports') == row['archive_ref']
                 and _ref(row['candidate_ref']['path'],self.root/'reports') == row['candidate_ref'], 'SOURCE_CHANGED')
         for reference in self.runtime_additions():
             _require(_ref(reference['path'],self.root) == reference, 'RUNTIME_CHANGED')
+        if self.repair is not None:
+            self.repair.validate_sources()
 
     def validate_boundary(self, job, *, for_dispatch=False, exact=False):
         from .governance_source_revision_v1 import GovernanceSourceRevisionV1
         # 前驱全部不可变引用必须包含在新边界中；派发时对该并集逐一fresh核字节。
         self.predecessor.validate_boundary(job,for_dispatch=False)
         GovernanceSourceRevisionV1.validate_boundary(self,job,for_dispatch=for_dispatch,exact=exact)
+        if self.repair is not None:
+            self.repair.validate_boundary()
 
     def proof(self):
         return {'manifest_ref':deepcopy(self.reference),'continuation_id':self.summary['identity']}
 
     def segment_proof(self,name,number):
+        if (self.repair is not None and name == self.repair.purpose
+                and number >= self.repair.boundary['next_segment_number']):
+            return {'manifest_ref':deepcopy(self.repair.reference), 'revision_id':self.repair.summary['identity'],
+                'purpose':name,'first_segment_number':self.repair.boundary['next_segment_number']}
         row = self.summary['accounts'][name]
         if number <= row['segment_count']:
             return self.predecessor.segment_proof(name,number)
@@ -261,6 +284,8 @@ class GovernanceSourceContinuationV2:
                 and datetime.fromisoformat(self.summary['issued_at']) <= installed_at <= now
                 and installed_at < datetime.fromisoformat(self.execution_expires_at),
                 'PARENT_ACTIVATION_TIME_CONFLICT')
+        if self.repair is not None:
+            self.repair.validate_return(for_dispatch=for_dispatch)
 
     @classmethod
     def pause_expired_predecessor(cls, context, *, human_authorization_ref):

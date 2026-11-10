@@ -210,7 +210,10 @@ def account_version_context(job):
 
 def _failed_account_recovery(account_version,name):
     recovery=getattr(account_version,'recovery',None) if account_version is not None else None
-    return recovery if recovery is not None and recovery.original_failed_account==name else None
+    if recovery is None:
+        return None
+    repair = getattr(getattr(recovery, 'governance_revision', None), 'repair', None)
+    return recovery if recovery.original_failed_account == name or (repair is not None and repair.purpose == name) else None
 
 
 
@@ -586,7 +589,18 @@ def _long_horizon_worker(path,name,number):
             with boundary.stage_scope('STRATEGY_PREPARE'):
                 strategy=resolve(item['factory'])(**item.get('factory_kwargs',{}))
                 backend=backend_for(strategy,item['backend_options'])
-                if prepare(strategy,backend,item) != plan:
+                worker_plan, worker_runtime = plan, item
+                revision = getattr(getattr(account_version, 'recovery', None), 'governance_revision', None)
+                if revision is not None:
+                    if item != plan['runtime']:
+                        raise PermissionError('WORKER_PLAN_CONFLICT')
+                    from chanlun_trader.research_factory.account_purpose_time_extension_v1 import project_governance_plan
+                    # 当前源码用于进程内核验，原签名计划仍用于持久化和接续。
+                    for replacements in revision.replacement_chain():
+                        worker_plan = project_governance_plan(worker_plan, replacements)
+                    worker_runtime = worker_plan['runtime']
+                projected = worker_plan != plan
+                if prepare(strategy,backend,worker_runtime) != worker_plan:
                     raise PermissionError('WORKER_PLAN_CONFLICT')
             with boundary.stage_scope('INPUT_ACCESS'):
                 save(root/(prefix+'_INPUT_ACCESS.json'),{'reader_pid':os.getpid(),'reader_parent_pid':os.getppid(),
@@ -610,6 +624,13 @@ def _long_horizon_worker(path,name,number):
                 receipt={**gov.active_execution(name),'execution_pause_requested':_execution_paused(job,account_version)}
                 if account_version is not None:
                     receipt=account_version.project_receipt(receipt,name)
+                if projected:
+                    novelty = receipt.get('novelty', {}).get(name, {})
+                    if (receipt.get('strategy_plans', {}).get(name) != plan
+                            or novelty.get('plan_id') != plan['plan_id']):
+                        raise PermissionError('STRATEGY_PLAN_OR_INPUT_NOT_AUTHORIZED')
+                    receipt['strategy_plans'][name] = worker_plan
+                    novelty['plan_id'] = worker_plan['plan_id']
                 # 只更新同一绝对截止的剩余；完整 guard 与后续启动核验仍由 trace 覆盖。
                 if first_active:
                     if deadline is not None:
@@ -666,7 +687,13 @@ def _long_horizon_worker(path,name,number):
             else:
                 with boundary.stage_scope('PUBLIC_PREPARE_AND_ENGINE_ENTRY'):
                     result=run(strategy,backend,frame=data['frame'],actions=data['actions'],input_identity=data['input_identity'],
-                        active_check=active,runtime=item)
+                        active_check=active,runtime=worker_runtime)
+                if projected:
+                    report_source = result['report']['artifacts']['source_result']
+                    if result['strategy_plan'] != worker_plan or report_source['plan_id'] != worker_plan['plan_id']:
+                        raise PermissionError('WORKER_PLAN_CONFLICT')
+                    result['strategy_plan'] = plan
+                    report_source['plan_id'] = plan['plan_id']
                 if not boundary.validation_complete:
                     if first_active:
                         raise PermissionError('JOB_STARTUP_ACTIVE_GUARD_REQUIRED')
