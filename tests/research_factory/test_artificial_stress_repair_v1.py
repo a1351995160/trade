@@ -191,7 +191,7 @@ def test_artificial_stress_repair_preserves_failed_trial_and_dispatches_once(con
     failure_bytes = failure_path.read_bytes()
     try:
         failure_path.write_bytes(failure_bytes + b' ')
-        with pytest.raises(PermissionError, match='CHANGED|INVALID'):
+        with pytest.raises(ValueError, match='GOVERNANCE_CONTINUATION_REFERENCE_CHANGED'):
             AccountVersionContinuationV1.from_job(case['job'], for_dispatch=True)
     finally:
         failure_path.write_bytes(failure_bytes)
