@@ -6,13 +6,18 @@ from types import SimpleNamespace
 
 import pytest
 
+from chanlun_trader.research_factory import account_purpose_time_extension_v1 as extension
+from chanlun_trader.research_factory import account_version_continuation_v1 as versions
 from chanlun_trader.research_factory import artificial_stress_repair_v1 as repair
+from chanlun_trader.research_factory import etf_account_governance_v1 as governance
+from chanlun_trader.research_factory import failed_account_recovery_v1 as recovery
+from chanlun_trader.research_factory import governance_source_continuation_v2 as continuation
 from chanlun_trader.research_factory import research_campaign_v1 as campaigns
 from chanlun_trader.research_factory.account_version_continuation_v1 import AccountVersionContinuationV1
 from chanlun_trader.research_factory.budget import BudgetLedgerMismatchError
 from chanlun_trader.research_factory.common import stable_hash
 from chanlun_trader.research_factory.run_budget import (
-    effective_execution_status, effective_segment_allowance, execution_dispatch_identity,
+    effective_execution_expires_at, effective_execution_status, effective_segment_allowance, execution_dispatch_identity,
 )
 from test_account_purpose_time_extension_v1 import control, pin, write
 from test_governance_source_continuation_v2 import continued_case
@@ -45,7 +50,9 @@ def test_repair_paths_keep_original_recovery_discovery_and_scope_slots_distinct(
     assert list(old_slot.parent.glob('*.json')) == [old_slot]
 
 
-def test_artificial_stress_repair_preserves_failed_trial_and_dispatches_once(continued_case, monkeypatch):
+@pytest.mark.parametrize('revised_case, renewed', [('original', False), ('renewed', True)],
+    indirect=['revised_case'], ids=['original-window', 'renewed-window'])
+def test_artificial_stress_repair_preserves_failed_trial_and_dispatches_once(continued_case, monkeypatch, renewed):
     case = continued_case
     root, account, gov, campaign = (case[key] for key in ('root', 'account', 'gov', 'campaign'))
     name = 'ARTIFICIAL_STRESS'
@@ -108,17 +115,60 @@ def test_artificial_stress_repair_preserves_failed_trial_and_dispatches_once(con
         'allow_budget_increase': False, 'allow_deadline_extension': False, 'automatic_retry': False, 'real_account_actions_allowed': False,
     }
     human = write(folder / 'human.json', human_value)
+    legacy_human = human
+    if renewed:
+        old_expiry = datetime.fromisoformat(v2.summary['expires_at'])
+        when = old_expiry + timedelta(seconds=1)
+
+        class AfterOldExpiry(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return when.astimezone(tz or timezone.utc)
+
+        # 旧失败已真实进入夹具账本；只有此后的签发和派发使用新的时钟。
+        for namespace in (repair, continuation, campaigns, extension, governance, recovery, versions):
+            monkeypatch.setattr(namespace, 'datetime', AfterOldExpiry)
+        daemon = root / repair.WINDOWS_PROCESS_SOURCE
+        daemon.parent.mkdir(parents=True, exist_ok=True)
+        daemon.write_bytes(b'artificial original process source\n')
+        old_daemon = folder / 'old_daemon.py'
+        old_daemon.write_bytes(daemon.read_bytes())
+        new_daemon = folder / 'new_daemon.py'
+        new_daemon.write_bytes((Path(__file__).resolve().parents[2] / repair.WINDOWS_PROCESS_SOURCE).read_bytes())
+        hashes = {'old_sha256': pin(old_daemon)['sha256'], 'new_sha256': pin(new_daemon)['sha256']}
+        rows.append({'path': str(daemon), **hashes, 'archive_ref': pin(old_daemon), 'candidate_ref': pin(new_daemon)})
+        renewal = {'schema_version': repair.RENEWAL_VERSION, 'approved': True, 'human_message': '批准',
+            'recorded_at': when.isoformat(), 'original_human_authorization_ref': legacy_human,
+            'execution_window_seconds': repair.WINDOW_SECONDS,
+            'windows_process_source': {'path': repair.WINDOWS_PROCESS_SOURCE, **hashes}}
+        human = write(folder / 'renewal.json', renewal)
     verification = write(folder / 'verification.json', {
         'status': 'PASSED', 'scope': 'ARTIFICIAL_STRESS_REPAIR', 'human_authorization_ref': human,
         'source_replacements': rows, 'added_runtime_ref': added, 'fixture_only': 'ARTIFICIAL_PROTOCOL_CONTRACT'})
     inputs = dict(replacements=rows, added_runtime_ref=added, verification_ref=verification, human_authorization_ref=human)
-    for key, value in (('max_remaining_seconds', limit - 1), ('allow_deadline_extension', True), ('maximum_repairs', 2)):
-        rejected = write(folder / (key + '.json'), {**human_value, key: value})
-        with pytest.raises(PermissionError, match='HUMAN_SCOPE_CONFLICT|ACCOUNT_BOUNDARY_CONFLICT'):
-            repair.prepare(context, **{**inputs, 'human_authorization_ref': rejected})
+    if renewed:
+        with pytest.raises(PermissionError, match='GOVERNANCE_CONTINUATION_EXPIRED'):
+            repair.prepare(context, **{**inputs, 'human_authorization_ref': legacy_human})
+        too_long = write(folder / 'too_long.json', {**renewal, 'execution_window_seconds': repair.WINDOW_SECONDS + 1})
+        with pytest.raises(PermissionError, match='RENEWAL_SCOPE_CONFLICT'):
+            repair.prepare(context, **{**inputs, 'human_authorization_ref': too_long})
+    else:
+        for key, value in (('max_remaining_seconds', limit - 1), ('allow_deadline_extension', True), ('maximum_repairs', 2)):
+            rejected = write(folder / (key + '.json'), {**human_value, key: value})
+            with pytest.raises(PermissionError, match='HUMAN_SCOPE_CONFLICT|ACCOUNT_BOUNDARY_CONFLICT'):
+                repair.prepare(context, **{**inputs, 'human_authorization_ref': rejected})
     assert ledger.read_bytes() == before
 
     summary = repair.prepare(context, **inputs)
+    if renewed:
+        assert datetime.fromisoformat(summary['issued_at']) == when
+        assert datetime.fromisoformat(summary['expires_at']) == when + timedelta(seconds=repair.WINDOW_SECONDS)
+        assert datetime.fromisoformat(summary['expires_at']) > old_expiry
+        wrong = deepcopy(summary)
+        wrong['expires_at'] = (when + timedelta(seconds=repair.WINDOW_SECONDS + 1)).isoformat()
+        wrong['identity'] = stable_hash({key: val for key, val in wrong.items() if key != 'identity'})
+        with pytest.raises(PermissionError, match='RENEWAL_WINDOW_CONFLICT'):
+            repair._binding(v2, context.recovery.summary_value, wrong)
     assert summary['checkpoint_refs'][name] == pin(checkpoint)
     assert summary['checkpoint_refs'][name]['sha256'] != v2.summary['accounts'][name]['checkpoint_archive']['sha256']
     approval = case['approvals'].approve(summary, approver='artificial_owner', capability=case['token'])
@@ -169,6 +219,15 @@ def test_artificial_stress_repair_preserves_failed_trial_and_dispatches_once(con
     assert new_op['failed_account_recovery']['remaining_reserved_seconds'] == limit
     assert new_op['failed_account_recovery']['charge_ceiling_seconds'] - prior['charged_seconds'] == pytest.approx(limit)
     fresh = campaign.peek_status()
+    for operation_id in v2.summary['operation_ids'].values():
+        operation_after = fresh['operations'][operation_id]
+        assert operation_after['governance_continuation']['execution_expires_at'] == v2.summary['expires_at']
+        assert effective_execution_expires_at(fresh['authorization'], operation_after) == summary['expires_at']
+    if renewed:
+        assert (root / repair.WINDOWS_PROCESS_SOURCE).read_bytes() == new_daemon.read_bytes()
+        base_id = v2.summary['operation_ids']['ARTIFICIAL_BASE']
+        assert fresh['operations'][base_id]['status'] == view['operations'][base_id]['status'] == 'FAILED'
+        assert effective_execution_status(fresh['operations'][base_id]) == 'COMPLETED'
     for key in ('used', 'grants', 'trial_usage', 'authorization'):
         assert fresh[key] == view[key]
     assert fresh['reserved']['wall_seconds'] - view['reserved']['wall_seconds'] == limit
@@ -183,6 +242,7 @@ def test_artificial_stress_repair_preserves_failed_trial_and_dispatches_once(con
     assert ledger.read_bytes() == post_activation
     installed = AccountVersionContinuationV1.from_job(case['job'])
     installed_revision = installed.recovery.governance_revision
+    assert installed.recovery.execution_expires_at == summary['expires_at']
     assert installed_revision.segment_proof(name, number) == v2.segment_proof(name, number)
     assert installed_revision.segment_proof(name, number + 1)['manifest_ref'] == reference
     assert installed_revision.runtime_additions()[-1] == added
@@ -212,6 +272,8 @@ def test_artificial_stress_repair_preserves_failed_trial_and_dispatches_once(con
         def now(cls, tz=None):
             return backdated.astimezone(tz or timezone.utc)
 
+    if renewed:
+        when += timedelta(seconds=1)
     with monkeypatch.context() as patch:
         patch.setattr(campaigns, 'datetime', BeforeActivation)
         with pytest.raises(PermissionError, match='DISPATCH_BEFORE_INSTALLATION'):
@@ -225,6 +287,8 @@ def test_artificial_stress_repair_preserves_failed_trial_and_dispatches_once(con
     assert recovered['charged_before'] == prior['charged_seconds']
     assert recovered['upper_bound_seconds'] == 900
     assert gov.segment_status(name)['pending'] == recovered
+    if renewed:
+        assert datetime.fromisoformat(recovered['dispatched_at']) > old_expiry
     parent_after_dispatch = ledger.read_bytes()
     budget = campaign._budget_with_view()[0]
     event = budget._events[-1]

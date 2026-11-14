@@ -18,7 +18,8 @@ from .common import now_timestamp, stable_hash
 
 CALENDAR_DERIVED_FIELDS = frozenset({'execution_expires_at', 'calendar_task_scope', 'calendar_task_deadline_proof',
     'governance_continuation'})
-REPAIR_DERIVED_FIELDS = frozenset({'charge_ceiling_seconds', 'repair_installed_at', 'failure_attempt_boundary'})
+REPAIR_DERIVED_FIELDS = frozenset({'charge_ceiling_seconds', 'repair_installed_at', 'failure_attempt_boundary',
+    'repair_expires_at'})
 
 
 def effective_operation_upper_bounds(operation):
@@ -42,7 +43,7 @@ def effective_execution_expires_at(authorization, operation):
     if continuation is not None:
         if operation.get('failed_account_recovery_proof') is None:
             raise BudgetLedgerMismatchError('CAMPAIGN_GOVERNANCE_CONTINUATION_WITHOUT_RECOVERY')
-        return continuation['execution_expires_at']
+        return continuation.get('repair_expires_at', continuation['execution_expires_at'])
     if operation.get('execution_expires_at') is not None:
         if operation.get('failed_account_recovery_proof') is None and operation.get('calendar_task_deadline_proof') is None:
             raise BudgetLedgerMismatchError('CAMPAIGN_CALENDAR_DEADLINE_WITHOUT_RECOVERY')

@@ -16,7 +16,8 @@ jobs:
         os: [ubuntu-latest, windows-latest]
         suite: [workflow, formal-scope, full-universe, long-horizon, continuous, account-purpose-owner, account-purpose-budget, account-purpose-runtime, account-purpose-runtime-authority, failed-account-owner, failed-account-budget, failed-account-context, failed-account-governance, failed-account-worker]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 150
+    # The recovery context matrix now exercises the original and extended Owner windows in separate fixtures.
+    timeout-minutes: ${{ matrix.os == 'windows-latest' && matrix.suite == 'failed-account-context' && 210 || 150 }}
     env:
       PYTHONUTF8: "1"
       PYTHONDONTWRITEBYTECODE: "1"

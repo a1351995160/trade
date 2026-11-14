@@ -217,3 +217,5 @@
 # 固定人工 STRESS 接续模块及回归的检出字节。
 /src/chanlun_trader/research_factory/artificial_stress_repair_v1.py text eol=lf
 /tests/research_factory/test_artificial_stress_repair_v1.py text eol=lf
+/src/chanlun_trader/research_daemon_state.py text eol=crlf
+/tests/research/test_research_daemon.py text eol=crlf

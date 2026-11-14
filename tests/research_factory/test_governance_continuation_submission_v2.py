@@ -42,6 +42,7 @@ def submission(tmp_path, monkeypatch):
             raise PermissionError('OWNER_APPROVAL_NOT_REGISTERED')
 
     context = SimpleNamespace(summary={'issued_at': issued.isoformat(), 'ledger': {'line_count': 0},
+        'expires_at': deadline.isoformat(),
         'operation_ids': {'BASE': 'original_base', 'STRESS': 'original_stress'}},
         execution_expires_at=deadline.isoformat(), proof=lambda: proof, validate_return=validate_return)
     monkeypatch.setattr(continuation, 'resolve_continuation', lambda *args: context)

@@ -87,7 +87,7 @@ def _first(root, recovery_reference, recovery, job, expires_at):
 
 
 class GovernanceSourceContinuationV2:
-    """只接受V1作为前驱；规范新槽不允许第三次换源或再次展期。"""
+    """只接受V1作为前驱。失败接续须通过独立的人工修复批准。"""
 
     def __init__(self, root, reference, summary, predecessor):
         self.root, self.reference = Path(root), deepcopy(reference)
@@ -115,6 +115,8 @@ class GovernanceSourceContinuationV2:
         context.job = deepcopy(job)
         from .artificial_stress_repair_v1 import read_installed_repair
         context.repair = read_installed_repair(context, recovery)
+        if context.repair is not None:
+            context.execution_expires_at = context.repair.summary['expires_at']
         context.validate_sources()
         context.validate_boundary(job, for_dispatch=for_dispatch)
         context.validate_return(for_dispatch=for_dispatch)
@@ -270,20 +272,10 @@ class GovernanceSourceContinuationV2:
             and _read(_ref(marker,self.root),self.root) == expected,'RETURN_SLOT_CHANGED')
         OwnerApprovalStoreV1(recovery['approval_store']).require_json(manifest['approval_ref'],self.summary)
         if for_dispatch:
+            from .artificial_stress_repair_v1 import validate_predecessor_activation
             now = datetime.now(timezone.utc)
             _require(datetime.fromisoformat(self.summary['issued_at']) <= now < datetime.fromisoformat(self.execution_expires_at),'EXPIRED')
-            events = [json.loads(line) for line in read_file_bytes(self.summary['ledger']['path'],root=self.root,
-                error_code='GOVERNANCE_CONTINUATION_LEDGER_CHANGED').splitlines()]
-            activation = [event for event in events if event['event_type'] == EVENT]
-            _require(len(activation) == 1 and activation[0]['payload']['proof'] == self.proof()
-                and activation[0]['event_id'] == stable_hash({k:activation[0][k] for k in ('run_id','event_type','payload')})
-                and events.index(activation[0]) == self.summary['ledger']['line_count'], 'PARENT_ACTIVATION_REQUIRED')
-            payload = activation[0]['payload']
-            installed_at = datetime.fromisoformat(payload['installed_at'])
-            _require(set(payload) == {'proof','installed_at'} and installed_at.tzinfo is not None
-                and datetime.fromisoformat(self.summary['issued_at']) <= installed_at <= now
-                and installed_at < datetime.fromisoformat(self.execution_expires_at),
-                'PARENT_ACTIVATION_TIME_CONFLICT')
+            validate_predecessor_activation(self, now)
         if self.repair is not None:
             self.repair.validate_return(for_dispatch=for_dispatch)
 
@@ -507,12 +499,12 @@ def apply_parent_continuation(authorization,operations,item,revoked,*,event_inde
         _require(type(event_index) is int and event_index == context.summary['ledger']['line_count'],'EVENT_ORDER_CONFLICT')
         installed=datetime.fromisoformat(item['installed_at'])
         _require(installed.tzinfo is not None and datetime.fromisoformat(context.summary['issued_at'])
-            <= installed < datetime.fromisoformat(context.execution_expires_at),'EVENT_TIME_CONFLICT')
+            <= installed < datetime.fromisoformat(context.summary['expires_at']),'EVENT_TIME_CONFLICT')
         validate_parent_boundary(context,authorization,operations,revoked)
         # 完整前缀及不可变日／费用仍由协议read核验；事件只派生同一对用途的期限。
         for operation_id in context.summary['operation_ids'].values():
             operations[operation_id]['governance_continuation']={'proof':deepcopy(proof),
-                'execution_expires_at':context.execution_expires_at,'installed_at':item['installed_at']}
+                'execution_expires_at':context.summary['expires_at'],'installed_at':item['installed_at']}
     except (PermissionError,ValueError,TypeError,KeyError,OSError) as exc:
         raise BudgetLedgerMismatchError('CAMPAIGN_GOVERNANCE_CONTINUATION_PROOF_INVALID') from exc
 
@@ -529,6 +521,6 @@ def validate_parent_submission(authorization, item):
         # 最后一次完整fresh返回后再采时；核验跨期或Owner撤销均不得追加事件。
         now = datetime.now(timezone.utc)
         _require(installed.tzinfo is not None and datetime.fromisoformat(context.summary['issued_at'])
-            <= installed <= now < datetime.fromisoformat(context.execution_expires_at), 'SUBMISSION_EXPIRED_OR_FUTURE')
+            <= installed <= now < datetime.fromisoformat(context.summary['expires_at']), 'SUBMISSION_EXPIRED_OR_FUTURE')
     except (PermissionError, ValueError, TypeError, KeyError, OSError) as exc:
         raise BudgetLedgerMismatchError('CAMPAIGN_GOVERNANCE_CONTINUATION_SUBMISSION_INVALID') from exc

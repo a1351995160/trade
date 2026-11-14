@@ -51,7 +51,8 @@ def local_benchmark(case, checkout, output, *, revised):
 @pytest.fixture(scope='module')
 def revised_case(_research_short_tmp_root, request):
     # 复用原CI工件定位的会话短根；每个模块独占，保留全部夹具操作／断言／预算。
-    folder = _research_short_tmp_root / ('g' + hashlib.sha256(request.module.__name__.encode()).hexdigest()[:6])
+    fixture_identity = request.module.__name__ + getattr(request, 'param', '')
+    folder = _research_short_tmp_root / ('g' + hashlib.sha256(fixture_identity.encode()).hexdigest()[:6])
     folder.mkdir(exist_ok=False)
     with pytest.MonkeyPatch.context() as patch:
         case = extension_case.__wrapped__(folder, patch, SimpleNamespace(param={}))

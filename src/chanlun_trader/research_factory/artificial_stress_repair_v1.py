@@ -1,6 +1,6 @@
 """原人工 STRESS 在已签名换源后的单次准备失败接续。"""
 from copy import deepcopy
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 import math
@@ -9,15 +9,19 @@ from pathlib import Path
 from .account_purpose_time_extension_v1 import read_file_bytes, _source_inventory
 from .campaign_scope_v1 import OwnerApprovalStoreV1, _write_once
 from .common import stable_hash
-from .governance_source_continuation_v2 import MODULE_PATH as PREDECESSOR_MODULE
+from .governance_source_continuation_v2 import EVENT as PREDECESSOR_EVENT
+from .governance_source_continuation_v2 import MODULE_PATH as PREDECESSOR_MODULE, WINDOW_SECONDS
+from .governance_source_continuation_v2 import _require as _require_predecessor
 from .governance_source_continuation_v2 import _identity, _read, _ref, resolve_continuation
 from .mutation_boundary import ObjectiveMutationLock
 from .secure_file_reference_v1 import validated_reference_path
 
 VERSION = 'OWNER_ARTIFICIAL_STRESS_REPAIR_V1'
 HUMAN_VERSION = 'HUMAN_ARTIFICIAL_STRESS_REPAIR_AUTHORIZATION_V1'
+RENEWAL_VERSION = 'HUMAN_ARTIFICIAL_STRESS_REPAIR_RENEWAL_V1'
 EVENT = 'CAMPAIGN_ARTIFICIAL_STRESS_REPAIR_INSTALLED'
 MODULE_PATH = 'src/chanlun_trader/research_factory/artificial_stress_repair_v1.py'
+WINDOWS_PROCESS_SOURCE = 'src/chanlun_trader/research_daemon_state.py'
 ALLOWED_PATHS = frozenset({
     PREDECESSOR_MODULE, 'scripts/run_strategy_account_v1.py',
     *('src/chanlun_trader/research_factory/' + name for name in (
@@ -48,7 +52,10 @@ def _paths(predecessor):
 
 
 def _human(predecessor, reference):
-    human = _read(reference, predecessor.root / 'reports')
+    reports = predecessor.root / 'reports'
+    value = _read(reference, reports)
+    renewal = value if value.get('schema_version') == RENEWAL_VERSION else None
+    human = _read(renewal['original_human_authorization_ref'], reports) if renewal is not None else value
     old = predecessor.summary
     purpose = human.get('purpose')
     _require(isinstance(purpose, str), 'HUMAN_SCOPE_CONFLICT')
@@ -63,7 +70,7 @@ def _human(predecessor, reference):
         and type(human.get('maximum_repairs')) is int and human['maximum_repairs'] == 1
         and human.get('each_account_seconds') == 72000 and human.get('global_wall_seconds') == old['global_wall_seconds']
         and deadline.tzinfo is not None
-        and deadline == datetime.fromisoformat(predecessor.execution_expires_at)
+        and deadline == datetime.fromisoformat(old['expires_at'])
         and human.get('failed_segment_number') == prior['segment_count'] + 1
         and human.get('next_segment_number') == prior['segment_count'] + 2
         and human.get('next_account_day') == prior['days'] + 1
@@ -76,7 +83,17 @@ def _human(predecessor, reference):
             'allow_new_task_candidate_purpose_grant_or_root', 'allow_economic_source_or_input_change',
             'allow_budget_increase', 'allow_deadline_extension', 'automatic_retry', 'real_account_actions_allowed')),
         'HUMAN_SCOPE_CONFLICT')
-    return human
+    if renewal is not None:
+        source = renewal['windows_process_source']
+        recorded = datetime.fromisoformat(renewal['recorded_at'])
+        _require(set(renewal) == {'schema_version', 'approved', 'human_message', 'recorded_at',
+            'original_human_authorization_ref', 'execution_window_seconds', 'windows_process_source'}
+            and renewal.get('approved') is True and renewal.get('execution_window_seconds') == WINDOW_SECONDS
+            and len(old['accounts']) == 2
+            and recorded.tzinfo is not None and recorded >= deadline
+            and set(source) == {'path', 'old_sha256', 'new_sha256'}
+            and source['path'] == WINDOWS_PROCESS_SOURCE, 'RENEWAL_SCOPE_CONFLICT')
+    return human, renewal
 
 
 def _ledger_lines(predecessor):
@@ -89,16 +106,49 @@ def _sha_lines(lines):
     return hashlib.sha256(b''.join(lines)).hexdigest()
 
 
-def _source_binding(predecessor, recovery, summary):
+def validate_predecessor_activation(predecessor, now):
+    """在旧模块尚未换入时也按原签发区间验证旧激活事件。"""
+    summary = predecessor.summary
+    data = read_file_bytes(summary['ledger']['path'], root=predecessor.root,
+        error_code='GOVERNANCE_CONTINUATION_LEDGER_CHANGED')
+    events = [json.loads(line) for line in data.splitlines()]
+    index = summary['ledger']['line_count']
+    activation = [event for event in events if event['event_type'] == PREDECESSOR_EVENT]
+    _require_predecessor(len(activation) == 1 and activation[0]['payload']['proof'] == predecessor.proof()
+        and activation[0]['event_id'] == stable_hash({key: activation[0][key] for key in ('run_id', 'event_type', 'payload')})
+        and events.index(activation[0]) == index, 'PARENT_ACTIVATION_REQUIRED')
+    payload = activation[0]['payload']
+    installed = datetime.fromisoformat(payload['installed_at'])
+    _require_predecessor(set(payload) == {'proof', 'installed_at'} and installed.tzinfo is not None
+        and datetime.fromisoformat(summary['issued_at']) <= installed <= now
+        and installed < datetime.fromisoformat(summary['expires_at']), 'PARENT_ACTIVATION_TIME_CONFLICT')
+
+
+def _validate_predecessor(predecessor, renewal):
+    predecessor.validate_return(for_dispatch=renewal is None)
+    if renewal is not None:
+        validate_predecessor_activation(predecessor, datetime.now(timezone.utc))
+
+
+def _source_binding(predecessor, recovery, summary, renewal):
     root = predecessor.root
     rows = summary['source_replacements']
     inventory = {ref['path']: ref['sha256'] for ref in
                  predecessor.current_runtime_refs(recovery['runtime_sources']) + predecessor.runtime_additions()}
+    allowed = ALLOWED_PATHS
+    if renewal is not None:
+        source = renewal['windows_process_source']
+        process_path = str(root / WINDOWS_PROCESS_SOURCE)
+        # 该文件在原运行目录清单中，由此次人工批准明确绑定原字节和新字节。
+        inventory.setdefault(process_path, source['old_sha256'])
+        allowed = allowed | {WINDOWS_PROCESS_SOURCE}
+        _require(any(row['path'] == process_path and row['old_sha256'] == source['old_sha256']
+            and row['new_sha256'] == source['new_sha256'] for row in rows), 'RENEWAL_SOURCE_CONFLICT')
     forbidden = set(_source_inventory([[plan['strategy'], plan['backend']]
         for plan in recovery['successor_plans'].values()])) | {ref['path'] for ref in recovery['economic_sources']}
     paths = [Path(row['path']).relative_to(root).as_posix() for row in rows]
     _require(len(set(paths)) == len(paths) and PREDECESSOR_MODULE in paths
-        and set(paths) <= ALLOWED_PATHS, 'SOURCE_ALLOWLIST_CONFLICT')
+        and set(paths) <= allowed, 'SOURCE_ALLOWLIST_CONFLICT')
     for row in rows:
         path = validated_reference_path(row['path'], root=root, error_code='ARTIFICIAL_STRESS_REPAIR_SOURCE_INVALID')
         _require(set(row) == {'path', 'old_sha256', 'new_sha256', 'archive_ref', 'candidate_ref'}
@@ -228,7 +278,7 @@ class ArtificialStressRepairV1:
         if for_dispatch:
             now = datetime.now(timezone.utc)
             issued = datetime.fromisoformat(self.summary['issued_at'])
-            expiry = datetime.fromisoformat(self.predecessor.execution_expires_at)
+            expiry = datetime.fromisoformat(self.summary['expires_at'])
             _require(issued <= now < expiry, 'EXPIRED')
             events = [json.loads(line) for line in _ledger_lines(self.predecessor)[self.summary['ledger']['line_count']:]]
             _require(events and events[0]['event_type'] == EVENT
@@ -237,7 +287,8 @@ class ArtificialStressRepairV1:
             payload = event['payload']
             _require(set(payload) == {'proof', 'installed_at'} and payload['proof'] == self.proof()
                 and event['event_id'] == stable_hash({key: event[key] for key in ('run_id', 'event_type', 'payload')})
-                and issued <= datetime.fromisoformat(payload['installed_at']) <= now, 'PARENT_ACTIVATION_CONFLICT')
+                and issued <= datetime.fromisoformat(payload['installed_at']) <= now
+                and datetime.fromisoformat(payload['installed_at']) < expiry, 'PARENT_ACTIVATION_CONFLICT')
 
 
 def _binding(predecessor, recovery, summary):
@@ -246,13 +297,18 @@ def _binding(predecessor, recovery, summary):
               'source_replacements', 'added_runtime_ref', 'identity'}
     _require(set(summary) == fields and _identity(summary) and summary['schema_version'] == VERSION
         and summary['root'] == str(predecessor.root) and summary['predecessor_ref'] == predecessor.reference
-        and summary['job_ref'] == predecessor.summary['job_ref']
-        and summary['expires_at'] == predecessor.execution_expires_at, 'SUMMARY_CONFLICT')
+        and summary['job_ref'] == predecessor.summary['job_ref'], 'SUMMARY_CONFLICT')
+    human, renewal = _human(predecessor, summary['human_authorization_ref'])
     issued = datetime.fromisoformat(summary['issued_at'])
-    _require(issued.tzinfo is not None
-        and datetime.fromisoformat(predecessor.summary['issued_at']) <= issued < datetime.fromisoformat(summary['expires_at']),
-        'ISSUANCE_TIME_CONFLICT')
-    human = _human(predecessor, summary['human_authorization_ref'])
+    prior_expiry = datetime.fromisoformat(predecessor.summary['expires_at'])
+    expires = datetime.fromisoformat(summary['expires_at'])
+    _require(issued.tzinfo is not None and expires.tzinfo is not None
+        and datetime.fromisoformat(predecessor.summary['issued_at']) <= issued < expires, 'ISSUANCE_TIME_CONFLICT')
+    if renewal is None:
+        _require(summary['expires_at'] == predecessor.summary['expires_at'], 'SUMMARY_CONFLICT')
+    else:
+        _require(prior_expiry <= issued and datetime.fromisoformat(renewal['recorded_at']) <= issued
+            and expires - issued == timedelta(seconds=WINDOW_SECONDS), 'RENEWAL_WINDOW_CONFLICT')
     name = summary['purpose']
     boundary = summary['boundary']
     previous = recovery['accounts'][name]
@@ -272,7 +328,7 @@ def _binding(predecessor, recovery, summary):
     _require(set(checkpoints) == set(predecessor.summary['accounts']) and all(
         row['path'] == predecessor.job['items'][name]['backend_options']['checkpoint_path']
         for name, row in checkpoints.items()), 'CHECKPOINT_PATH_CONFLICT')
-    _source_binding(predecessor, recovery, summary)
+    _source_binding(predecessor, recovery, summary, renewal)
 
 
 def read_installed_repair(predecessor, recovery):
@@ -292,8 +348,8 @@ def prepare(context, *, replacements, added_runtime_ref, verification_ref, human
     predecessor = context.recovery.governance_revision
     _require(predecessor.summary['schema_version'] == 'OWNER_GOVERNANCE_SOURCE_CONTINUATION_V2'
         and not any(path.exists() for path in _paths(predecessor)), 'SINGLE_UNUSED_REPAIR_REQUIRED')
-    predecessor.validate_return(for_dispatch=True)
-    human = _human(predecessor, human_authorization_ref)
+    human, renewal = _human(predecessor, human_authorization_ref)
+    _validate_predecessor(predecessor, renewal)
     name = human['purpose']
     recovery = context.recovery.summary_value
     account = Path(context.job['root'])
@@ -319,8 +375,11 @@ def prepare(context, *, replacements, added_runtime_ref, verification_ref, human
         'settlement_ref': _ref(account / (name + '_SETTLEMENT.json'), context.root)}
     issued = datetime.now(timezone.utc) if issued_at is None else datetime.fromisoformat(issued_at)
     _require(issued.tzinfo is not None and issued <= datetime.now(timezone.utc), 'ISSUANCE_IN_FUTURE')
+    expires_at = predecessor.summary['expires_at']
+    if renewal is not None:
+        expires_at = (issued + timedelta(seconds=WINDOW_SECONDS)).isoformat()
     summary = {'schema_version': VERSION, 'root': str(context.root), 'predecessor_ref': predecessor.reference,
-        'job_ref': predecessor.summary['job_ref'], 'issued_at': issued.isoformat(), 'expires_at': predecessor.execution_expires_at,
+        'job_ref': predecessor.summary['job_ref'], 'issued_at': issued.isoformat(), 'expires_at': expires_at,
         'purpose': name, 'boundary': boundary, 'control': {'head': control['head'], 'count': len(control['events'])},
         'ledger': {'line_count': len(lines), 'prefix_sha256': _sha_lines(lines),
                    'failed_charge_event_id': json.loads(lines[-3])['event_id']},
@@ -332,6 +391,7 @@ def prepare(context, *, replacements, added_runtime_ref, verification_ref, human
     repair = ArtificialStressRepairV1(predecessor, None, summary)
     repair.validate_boundary(exact=True)
     validate_parent_boundary(predecessor, repair, view['authorization'], view['operations'], view.get('revoked', False))
+    _require(datetime.now(timezone.utc) < datetime.fromisoformat(expires_at), 'EXPIRED')
     return summary
 
 
@@ -367,7 +427,8 @@ def install(context, summary, approval_ref, *, added_runtime_candidate_ref):
                 data.append((row['path'], read_file_bytes(row['candidate_ref']['path'], root=root / 'reports',
                     error_code='ARTIFICIAL_STRESS_REPAIR_CANDIDATE_CHANGED'), row['new_sha256']))
             _require(context.root == root and context.job == job and _read(job_ref, root) == job, 'INSTALL_JOB_CHANGED')
-            predecessor.validate_return(for_dispatch=True)
+            _, renewal = _human(predecessor, summary['human_authorization_ref'])
+            _validate_predecessor(predecessor, renewal)
             owner.require_json(approval_ref, summary)
             _require(datetime.now(timezone.utc) < datetime.fromisoformat(summary['expires_at']), 'EXPIRED')
             for path, content, digest in data:
@@ -433,6 +494,15 @@ def apply_parent_repair(authorization, operations, item, revoked, *, event_index
             and installed.tzinfo is not None and datetime.fromisoformat(repair.summary['issued_at'])
                 <= installed < datetime.fromisoformat(repair.summary['expires_at']), 'EVENT_BOUNDARY_CONFLICT')
         op = validate_parent_boundary(predecessor, repair, authorization, operations, revoked)
+        expiry = repair.summary['expires_at']
+        continuations = []
+        if expiry != predecessor.summary['expires_at']:
+            for operation_id in predecessor.summary['operation_ids'].values():
+                continuation = operations[operation_id]['governance_continuation']
+                _require(continuation['proof'] == predecessor.proof()
+                    and continuation['execution_expires_at'] == predecessor.summary['expires_at']
+                    and 'repair_expires_at' not in continuation, 'RENEWAL_PARENT_CONFLICT')
+                continuations.append(continuation)
         boundary = repair.boundary
         op['failed_account_recovery'] = {
             'proof': deepcopy(op['failed_account_recovery_proof']), 'status': 'RUNNING', 'boundary': deepcopy(boundary),
@@ -441,6 +511,9 @@ def apply_parent_repair(authorization, operations, item, revoked, *, event_index
             'charge_ceiling_seconds': boundary['charged_seconds'] + boundary['remaining_reserved_seconds'],
             'repair_installed_at': item['installed_at'],
         }
+        # BASE 已结清。双账户投影同一个时段，仅供 STRESS 接续和原任务的核验／报告使用。
+        for continuation in continuations:
+            continuation['repair_expires_at'] = expiry
     except (PermissionError, ValueError, TypeError, KeyError, OSError) as exc:
         raise BudgetLedgerMismatchError('CAMPAIGN_ARTIFICIAL_STRESS_REPAIR_PROOF_INVALID') from exc
 
@@ -453,6 +526,7 @@ def validate_parent_submission(authorization, item):
         _require(item['proof'] == repair.proof(), 'EVENT_PROOF_CONFLICT')
         repair.validate_boundary(exact=True)
         predecessor.validate_return(for_dispatch=False)
+        repair.validate_return(for_dispatch=False)
         now = datetime.now(timezone.utc)
         _require(datetime.fromisoformat(repair.summary['issued_at']) <= datetime.fromisoformat(item['installed_at'])
             <= now < datetime.fromisoformat(repair.summary['expires_at']), 'SUBMISSION_EXPIRED')
