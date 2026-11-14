@@ -279,22 +279,25 @@ class DaemonInstanceLockV1:
     def _pid_alive(pid: int) -> bool:
         if pid <= 0:
             return False
+        if os.name == "nt":
+            import _winapi
+
+            try:
+                handle = _winapi.OpenProcess(_winapi.SYNCHRONIZE, False, pid)
+            except OSError as exc:
+                # ERROR_INVALID_PARAMETER means the PID is absent. Other errors leave it unverified.
+                return exc.winerror != 87
+            try:
+                return _winapi.WaitForSingleObject(handle, 0) != _winapi.WAIT_OBJECT_0
+            except OSError:
+                return True
+            finally:
+                _winapi.CloseHandle(handle)
         try:
             import psutil  # type: ignore
             return bool(psutil.pid_exists(pid))
         except Exception:
             pass
-        if os.name == "nt":
-            try:
-                import ctypes
-                kernel32 = ctypes.windll.kernel32
-                handle = kernel32.OpenProcess(0x1000, False, pid)
-                if handle:
-                    kernel32.CloseHandle(handle)
-                    return True
-                return False
-            except Exception:
-                return False
         try:
             os.kill(pid, 0)
         except (OSError, ProcessLookupError, PermissionError):

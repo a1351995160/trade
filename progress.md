@@ -4633,3 +4633,18 @@ R3 的原始 XML 为 E:/t/sr_g3.xml，1 项通过，1 项失败。路径和额�
 ### Notes
 
 原人工演练停在 981/1008 日、136 笔结清费用，现有许可的剩余额度上限 19578 秒。基线回滚点为 0e870b7c。原账本、检查点和人工期限保持。
+
+## 2026-11-14 - Task: 修复 Windows 对已退出子进程的判定
+
+### What was done
+
+在独立工作树修复 src/chanlun_trader/research_daemon_state.py 的进程检查。Windows 现在查询进程对象的退出信号，查询受限或失败时保留阻止接续的判定。用 tests/research/test_research_daemon.py 的真实子进程用例验证句柄仍打开和退出码为 259 的情况。
+
+### Testing
+
+新用例在旧实现上失败。修复后，原五文件回归 103 项、实时进程检查和旧锁恢复共 105 项通过，零失败、错误或跳过。结果为 E:/t/pid_exit_checks_f36_20261114/WINDOWS_PID_AND_REGRESSION_SCOPED.xml。另一次扩大验证中，4 项旧 daemon 测试缺少未纳入 Git 的研究目标和合约夹具，原 f36c8de1 工作树复跑同 4 项也失败。
+
+### Notes
+
+回滚点为 f36c8de1，保留独立分支便于复核。原人工演练仍为 BASE 504 日、STRESS 477 日和 136 笔费用。此修复文件在原接续协议的允许列表之外，原人工签名期限已到期。当前提交只用于独立验证。
+本次验证 XML SHA-256 为 fdac640f6b24b922af6ad8b3e4abe840c0b9a233f101927b054689b0e4838fab。
