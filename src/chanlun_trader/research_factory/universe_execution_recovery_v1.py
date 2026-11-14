@@ -7,6 +7,7 @@ from pathlib import Path
 import sys
 import time
 
+from ..account_startup_boundary_v1 import startup_checkpoint
 from ..research_daemon_state import DaemonInstanceLockV1
 from .common import stable_hash
 from .engine_replay_recovery_v1 import _read_receipt
@@ -33,12 +34,12 @@ def resume_universe_job(path):
     from scripts import run_strategy_account_v1 as runner
     from ..synthetic_batch_resources import run_bounded_worker
     job = runner.read_json(path)
-    runner.validate_sources(job)
     root = Path(job['root'])
     if root.resolve() != root or root != Path(path).resolve().parent:
         raise PermissionError('UNIVERSE_RESUME_ROOT_CONFLICT')
     if 'profile_id' in job['resources']:
         return resume_long_horizon_job(path,job)
+    runner.validate_sources(job)
     if any(p['backend']['backend'] != 'UNIVERSE_ACCOUNT_BACKEND_V1' for p in job['plans'].values()):
         raise PermissionError('UNIVERSE_RESUME_VERSION_REQUIRED')
     with ObjectiveMutationLock.for_resource(root / 'RESUME.lock'):
@@ -129,6 +130,7 @@ def resume_long_horizon_job(path,job,*,reconcile_only=False):
     root = checked_directory_path(root, error_code='UNIVERSE_RESUME_ROOT_CONFLICT')
     checkpoints, feature_bindings = {}, {}
     for name in job['plans']:
+        startup_checkpoint('UNIVERSE_RESUME_PATHS')
         start = validated_reference_path(root / (name + '_START.json'), root=root,
             error_code='UNIVERSE_RESUME_ROOT_CONFLICT')
         if start.parent != root:
@@ -141,6 +143,12 @@ def resume_long_horizon_job(path,job,*,reconcile_only=False):
         if checkpoint.parent != root or feature_binding.parent.parent != root:
             raise PermissionError('UNIVERSE_RESUME_CHECKPOINT_PATH_CONFLICT')
         checkpoints[name], feature_bindings[name] = checkpoint, feature_binding
+    from .account_version_continuation_v1 import AccountVersionContinuationV1
+    context = AccountVersionContinuationV1.from_job(job, for_reconcile=True)
+    if context is not None and context.recovery is not None and context.mirrors_pending():
+        context.reconcile_segment_mirrors()
+        return {'status': 'WAITING_RECONCILIATION_REVIEW_NO_REDISPATCH', 'dispatched_segments': 0,
+            'items': runner.status(path)['items']}
     runner.validate_sources(job)
     if (job['resources']['purpose'] != 'RESEARCH_ACCOUNT'
             or any(p['backend']['backend'] != 'UNIVERSE_ACCOUNT_BACKEND_V2' for p in job['plans'].values())):
@@ -148,15 +156,23 @@ def resume_long_horizon_job(path,job,*,reconcile_only=False):
     gov=runner.service(job)
     with ObjectiveMutationLock.for_resource(root/'RESUME.lock'):
         for name in job['plans']:
-            if not (root/(name+'_START.json')).exists():
+            startup_checkpoint('UNIVERSE_RESUME_ACCOUNT')
+            execution_paths = runner.account_execution_paths(job, name)
+            recovered = (context is not None and context.recovery_installed
+                and context.recovery.original_failed_account == name)
+            if not execution_paths['start'].exists():
                 continue
-            if (root/(name+'_SETTLEMENT.json')).exists():
+            if execution_paths['settlement'].exists():
                 runner.validated_settlement(job,name)
                 continue
+            settle = gov.settle_recovery if recovered else gov.settle
             gov.reconcile_segment_mirrors(name)
             gov.dispatched_execution(name); state=gov.segment_status(name)
             pending=state['pending']
             if pending is None:
+                # 安装证明不把原第50段FAILED重新结算成新恢复失败。
+                if recovered and len(state['segments']) == context.recovery.summary_value['accounts'][name]['segment_count']:
+                    continue
                 if state['segments'] and state['segments'][-1]['charge']['outcome'] in ('COMPLETED','FAILED'):
                     last=state['segments'][-1];prefix=runner.segment_prefix(name,last['dispatch']['segment_number'])
                     outcome=last['charge']['outcome'];output=root/(name+'_RESULT.json')
@@ -172,8 +188,9 @@ def resume_long_horizon_job(path,job,*,reconcile_only=False):
                             raise PermissionError('UNIVERSE_RESUME_COMPLETION_NOT_PROVEN')
                     for suffix in ('_WORKER.json','_INPUT_ACCESS.json'):
                         source=root/(prefix+suffix)
-                        if source.exists():runner.save(root/(name+suffix),runner.read_json(source))
-                    summary_path=root/(name+'_RESOURCE.json')
+                        target = execution_paths['worker' if suffix == '_WORKER.json' else 'input_access']
+                        if source.exists():runner.save(target,runner.read_json(source))
+                    summary_path=execution_paths['resource']
                     if not summary_path.exists():
                         resource=runner.read_json(resource_path) if resource_path.exists() else {}
                         runner.save(summary_path,{**resource,'elapsed_wall_seconds':state['charged_seconds'],
@@ -181,20 +198,45 @@ def resume_long_horizon_job(path,job,*,reconcile_only=False):
                             'segments':[row['charge']['charge_id'] for row in state['segments']]})
                     elif runner.read_json(summary_path).get('elapsed_wall_seconds')!=state['charged_seconds']:
                         raise PermissionError('UNIVERSE_RESUME_CUMULATIVE_RESOURCE_CONFLICT')
-                    gov.settle(name,completed=outcome=='COMPLETED',seconds=state['charged_seconds'],
+                    settle(name,completed=outcome=='COMPLETED',seconds=state['charged_seconds'],
                         result_hash=runner.sha(output) if output.exists() else None,
                         error=None if outcome=='COMPLETED' else 'KNOWN_WORKER_FAILURE')
+                    if outcome == 'FAILED' and (recovered or not reconcile_only):
+                        raise PermissionError('UNIVERSE_KNOWN_FAILURE_NO_RETRY')
+                elif recovered and len(state['segments']) > context.recovery.summary_value['accounts'][name]['segment_count']:
+                    # 已收费的CONTINUE在期限/有效协作窗口耗尽后只结清，不重发或改写原FAILED。
+                    view=context.campaign.peek_status()
+                    from .run_budget import effective_execution_expires_at
+                    operation=view['operations'][context.recovery.summary_value['accounts'][name]['operation_id']]
+                    execution_expiry=effective_execution_expires_at(view['authorization'], operation)
+                    if execution_expiry != context.recovery.execution_expires_at:
+                        raise PermissionError('UNIVERSE_RESUME_RECOVERY_DEADLINE_CONFLICT')
+                    expiry=datetime.fromisoformat(execution_expiry)
+                    remaining_time=(expiry-datetime.now(timezone.utc)).total_seconds()
+                    remaining_budget=state['effective_total_seconds']-state['charged_seconds']
+                    revoked=view.get('revoked') or (root/'REVOKED.json').exists()
+                    if revoked or min(remaining_time,remaining_budget) <= 70:
+                        reason=('FAILED_ACCOUNT_RECOVERY_REVOKED' if revoked
+                            else 'FAILED_ACCOUNT_RECOVERY_DISPATCH_WINDOW_EXHAUSTED')
+                        settle(name,completed=False,seconds=state['charged_seconds'],result_hash=None,error=reason)
                 continue
             number=pending['segment_number'];prefix=runner.segment_prefix(name,number)
             version=(runner.account_version_context(job) if pending.get('time_extension_proof') is not None else None)
             version_proof=({'time_extension_proof':pending['time_extension_proof'],
                 'account_version_continuation':version.segment_proof(name,number)} if version is not None else {})
+            if pending.get('failed_account_recovery_proof') is not None:
+                version_proof.update(failed_account_recovery_proof=pending['failed_account_recovery_proof'],
+                    dispatch_identity=pending['dispatch_identity'])
+                version.validate_dispatch(name, number, for_reconcile=True)
             worker_path=root/(prefix+'_WORKER.json');access_path=root/(prefix+'_INPUT_ACCESS.json')
             if not worker_path.exists():
                 proof_path=root/(prefix+'_MIRROR_REPAIR.json')
                 proof=runner.read_json(proof_path) if proof_path.exists() else {}
                 if proof.get('worker_absent') is True and proof.get('dispatch_id')==pending['dispatch_id']:
-                    gov.end_segment(name,number,outcome='CONTINUE')
+                    if pending.get('failed_account_recovery_proof') is not None and any(
+                            proof.get(key) != pending.get(key) for key in ('failed_account_recovery_proof', 'dispatch_identity')):
+                        raise PermissionError('UNIVERSE_RESUME_MIRROR_RECOVERY_CONFLICT')
+                    gov.end_segment(name,number,outcome='CONTINUE', dispatch_identity=pending.get('dispatch_identity'))
                     runner.save(root/(prefix+'_RESUME.json'),{'dispatch_id':pending['dispatch_id'],
                         'charge_basis':'UNKNOWN_UPPER_BOUND','mirror_repair_sha256':runner.sha(proof_path),
                         'budget_reused':True,'execution_not_launched':True,**version_proof})
@@ -207,6 +249,9 @@ def resume_long_horizon_job(path,job,*,reconcile_only=False):
                 raise PermissionError('UNIVERSE_RESUME_WORKER_STILL_ACTIVE')
             if worker.get('dispatch_id')!=pending['dispatch_id']:
                 raise PermissionError('UNIVERSE_RESUME_WORKER_DISPATCH_CONFLICT')
+            if pending.get('failed_account_recovery_proof') is not None and any(
+                    worker.get(key) != pending.get(key) for key in ('failed_account_recovery_proof', 'dispatch_identity')):
+                raise PermissionError('UNIVERSE_RESUME_WORKER_RECOVERY_CONFLICT')
             failure_path=root/(prefix+'_FAILURE.json')
             known_failure=False
             if failure_path.exists():
@@ -215,6 +260,9 @@ def resume_long_horizon_job(path,job,*,reconcile_only=False):
                     raise PermissionError('UNIVERSE_RESUME_FAILURE_DISPATCH_CONFLICT')
                 if failure.get('time_extension_proof') != pending.get('time_extension_proof'):
                     raise PermissionError('UNIVERSE_RESUME_FAILURE_TIME_EXTENSION_CONFLICT')
+                if pending.get('failed_account_recovery_proof') is not None and any(
+                        failure.get(key) != pending.get(key) for key in ('failed_account_recovery_proof', 'dispatch_identity')):
+                    raise PermissionError('UNIVERSE_RESUME_FAILURE_RECOVERY_CONFLICT')
                 known_failure=True
             checkpoint, feature_binding = checkpoints[name], feature_bindings[name]
             checkpoint_raw = _optional_progress_bytes(checkpoint, root)
@@ -238,6 +286,9 @@ def resume_long_horizon_job(path,job,*,reconcile_only=False):
                     raise PermissionError('UNIVERSE_RESUME_RESOURCE_DISPATCH_CONFLICT')
                 if resource.get('time_extension_proof') != pending.get('time_extension_proof'):
                     raise PermissionError('UNIVERSE_RESUME_RESOURCE_TIME_EXTENSION_CONFLICT')
+                if pending.get('failed_account_recovery_proof') is not None and any(
+                        resource.get(key) != pending.get(key) for key in ('failed_account_recovery_proof', 'dispatch_identity')):
+                    raise PermissionError('UNIVERSE_RESUME_RESOURCE_RECOVERY_CONFLICT')
                 measured=resource.get('elapsed_wall_seconds');evidence=runner.sha(resource_path)
                 if (not known_failure and measured<=pending['upper_bound_seconds']
                         and resource.get('returncode')==0 and not resource.get('timed_out') and output.exists()
@@ -248,7 +299,8 @@ def resume_long_horizon_job(path,job,*,reconcile_only=False):
                           and resource.get('returncode')==75 and not resource.get('timed_out')
                           and status.get('dispatch_id')==pending['dispatch_id'] and status.get('state')=='CONTINUE'):
                     outcome='FAILED'
-            gov.end_segment(name,number,seconds=measured,evidence_identity=evidence,outcome=outcome)
+            gov.end_segment(name,number,seconds=measured,evidence_identity=evidence,outcome=outcome,
+                dispatch_identity=pending.get('dispatch_identity'))
             runner.save(root/(prefix+'_RESUME.json'),{'dispatch_id':pending['dispatch_id'],
                 'state_identity':hashlib.sha256(checkpoint_raw).hexdigest() if checkpoint_raw is not None else
                     hashlib.sha256(feature_raw).hexdigest() if feature_raw is not None else None,
@@ -258,13 +310,14 @@ def resume_long_horizon_job(path,job,*,reconcile_only=False):
                 total=gov.segment_status(name)['charged_seconds']
                 for suffix in ('_WORKER.json','_INPUT_ACCESS.json'):
                     source=root/(prefix+suffix)
-                    if source.exists():runner.save(root/(name+suffix),runner.read_json(source))
+                    target = execution_paths['worker' if suffix == '_WORKER.json' else 'input_access']
+                    if source.exists():runner.save(target,runner.read_json(source))
                 segments=gov.segment_status(name)['segments']
                 summary={**(resource or {}),'elapsed_wall_seconds':total,'resumed':True,'original_budget_reused':True,
                     'segment_count':len(segments),'active_metering':True,
                     'segments':[row['charge']['charge_id'] for row in segments]}
-                runner.save(root/(name+'_RESOURCE.json'),summary)
-                gov.settle(name,completed=outcome=='COMPLETED',seconds=total,
+                runner.save(execution_paths['resource'],summary)
+                settle(name,completed=outcome=='COMPLETED',seconds=total,
                     result_hash=runner.sha(output) if output.exists() else None,error=None if outcome=='COMPLETED' else 'KNOWN_WORKER_FAILURE')
                 if outcome=='FAILED':
                     raise PermissionError('UNIVERSE_KNOWN_FAILURE_NO_RETRY')

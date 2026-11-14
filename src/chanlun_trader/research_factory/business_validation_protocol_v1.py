@@ -551,9 +551,14 @@ class BusinessValidationProtocolV1:
                 and (outcome['verification'].get('items', {}).get(name, {})
                      .get('account_version_continuation')) == member_proof,
                 'BUSINESS_VALIDATION_ACCOUNT_VERSION_MEMBER_CONFLICT')
+            settlement = read_json(path.parent / (name + '_SETTLEMENT.json'))
+            if (continuation is not None and getattr(continuation, 'recovery', None) is not None
+                    and continuation.recovery.original_failed_account == name):
+                from scripts.run_strategy_account_v1 import validated_settlement
+                settlement = validated_settlement(job, name)
             _require(Path(source.get('path', '')).absolute() == result_path
                 and _file_hash(result_path) == source.get('sha256')
-                and read_json(path.parent / (name + '_SETTLEMENT.json')).get('result_sha256') == source['sha256']
+                and settlement.get('result_sha256') == source['sha256']
                 and final.get('research', {}).get('source_result_sha256') == source['sha256']
                 and final['research'].get('account_and_signal') == report,
                 'BUSINESS_VALIDATION_CANONICAL_RESULT_OR_REPORT_BINDING_CONFLICT')

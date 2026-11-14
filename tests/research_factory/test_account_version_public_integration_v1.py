@@ -72,7 +72,8 @@ def _install_synthetic_capabilities(root):
     return declaration
 
 
-def _public_case(root, *, fixture_factory=None, rule_overrides=None, authorization_lifetime=timedelta(hours=8)):
+def _public_case(root, *, fixture_factory=None, rule_overrides=None, authorization_lifetime=timedelta(hours=8),
+                 resource_wall=1000000, exploration_only=False):
     """冻结前指定504日；沿用原合成提供器及规则，不接触真实账户或行情。"""
     from chanlun_trader.research_factory.campaign_scope_v1 import (
         CampaignScopeV1, OwnerApprovalStoreV1, bind_campaign_scope, scope_summary,
@@ -124,9 +125,11 @@ def _public_case(root, *, fixture_factory=None, rule_overrides=None, authorizati
         final_criteria=original_contract['final_criteria'], criteria_source=original_contract['criteria_source'],
         capabilities_snapshot=snapshot)
     units = dict.fromkeys(AutonomousRunBudgetV2.resource_names, 100000)
-    units.update(account_jobs=8, candidate_attempts=4, wall_seconds=1000000)
+    units.update(account_jobs=8, candidate_attempts=4, wall_seconds=resource_wall)
     stages = {phase: {name: amount // 2 for name, amount in units.items()}
         for phase in ('EXPLORATION', 'CONFIRMATION')}
+    if exploration_only:
+        stages = {'EXPLORATION': {**stages['EXPLORATION'], 'wall_seconds': resource_wall}}
     authorization = {'authorization_id': 'SYNTHETIC_ACCOUNT_VERSION', 'objective_id': contract['objective_id'],
         'resource_limits': units, 'stages': list(stages),
         'expires_at': expires_at,

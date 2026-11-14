@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+import subprocess
+import sys
 
 import pytest
 
@@ -314,6 +316,18 @@ def test_single_instance_and_stale_lock_recovery(tmp_path: Path) -> None:
     recovered.acquire(run_id="RUN3")
     assert json.loads(store.lock_path.read_text(encoding="utf-8"))["daemon_run_id"] == "RUN3"
     recovered.release()
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows process handle lifetime")
+def test_windows_daemon_liveness_after_exit_with_open_handle() -> None:
+    with subprocess.Popen(
+        [sys.executable, "-c", "import sys; sys.stdin.buffer.read(); sys.exit(259)"],
+        stdin=subprocess.PIPE,
+    ) as worker:
+        assert DaemonInstanceLockV1._pid_alive(worker.pid)
+        worker.communicate(timeout=15)
+        assert worker.returncode == 259
+        assert not DaemonInstanceLockV1._pid_alive(worker.pid)
 
 
 def test_checkpoint_is_atomic_and_status_is_read_only(tmp_path: Path) -> None:
